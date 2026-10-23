@@ -5,7 +5,8 @@ import type { MarketSnapshot } from "./market";
 import { dateOf, dueSoon, type Task, type TasksSnapshot } from "./tasks";
 import type { WeatherSnapshot } from "./weather";
 
-// Wie JARVIS auf einen Satz reagiert, bis in Phase 2 das KI-Gehirn freie Sätze versteht.
+// Feste Regeln für Befehle, die JARVIS sofort und ohne Internet versteht. Was keine Regel versteht,
+// beantwortet das KI-Gehirn (src/lib/server/brain.ts), sobald ein Claude-Schlüssel eingetragen ist.
 // Jeder Befehl ist eine Regel: passende Wörter -> Antwort, und optional eine Ansicht, die sich öffnet,
 // eine Änderung (Aufgabe abhaken, Mail als gelesen markieren) und eine Besprechung, die weiterläuft.
 
@@ -240,11 +241,14 @@ function taskFromSpeech(input: string, day: string): { text: string; due?: strin
 
 type Rule = { match: RegExp; run: (ctx: CommandContext, text: string, original: string) => Decision };
 
+// Der Not-Aus gilt immer sofort, egal wie lang der Satz ist.
+const EMERGENCY: Rule = {
+  match: /not-?aus|stopp alles|alles stoppen/,
+  run: () => ({ reply: "Der Not-Aus ist bereit. Sobald der Spielgeld-Handel läuft, stoppt er alle Agenten sofort." }),
+};
+
 const RULES: Rule[] = [
-  {
-    match: /not-?aus|stopp alles|alles stoppen/,
-    run: () => ({ reply: "Der Not-Aus ist bereit. Sobald der Spielgeld-Handel läuft, stoppt er alle Agenten sofort." }),
-  },
+  EMERGENCY,
   {
     match: ADD_TASK,
     run: (ctx, _text, original) => {
@@ -347,23 +351,37 @@ const RULES: Rule[] = [
   },
 ];
 
-export function decide(input: string, ctx: CommandContext): Decision {
+// Mit KI-Gehirn (brain) greifen die Regeln nur bei kurzen Befehlen bis vier Wörter und bei den Antworten
+// in einer Besprechung; längere Sätze versteht Claude besser. null heißt: frag das KI-Gehirn.
+export function decide(input: string, ctx: CommandContext, brain = false): Decision | null {
   const original = input.trim().replace(/[.!?]+$/, "");
   const text = original.toLowerCase();
   if (ctx.session) {
     const inSession = sessionCommand(ctx, ctx.session, text);
     if (inSession) return inSession;
   }
+  const short = original.split(/\s+/).length <= 4;
   const rule = RULES.find((r) => r.match.test(text));
-  if (rule) return rule.run(ctx, text, original);
+  if (rule && (!brain || short || rule === EMERGENCY)) return rule.run(ctx, text, original);
+  if (brain) return null;
   if (ctx.session) {
     const hint = ctx.session.kind === "aufgaben" ? "Sag erledigt, verschieben auf einen Tag, weiter oder beenden." : "Sag vorlesen, Aufgabe, gelesen, weiter oder beenden.";
     return { reply: `Das habe ich nicht verstanden. ${hint}` };
   }
   return {
     reply:
-      "Das verstehe ich noch nicht. Sag zum Beispiel Briefing, meine Mails, meine Aufgaben, notiere etwas bis Freitag, oder frag nach Wetter und Kursen. Freie Sätze verstehe ich ab Phase 2.",
+      "Das verstehe ich noch nicht. Sag zum Beispiel Briefing, meine Mails, meine Aufgaben, notiere etwas bis Freitag, oder frag nach Wetter und Kursen. Freie Sätze verstehe ich, sobald in den Einstellungen das KI-Gehirn eingerichtet ist.",
   };
+}
+
+// Was nur die Seite weiß (Wetter, Kurse), als Lagezeilen für das KI-Gehirn.
+export function situation(ctx: CommandContext): string[] {
+  return [`Wetter: ${weatherSentence(ctx.weather)}`, `Kurse: ${priceSentence(ctx.market, ["BTC", "ETH", "SOL"])}`];
+}
+
+// Startet eine Besprechung, wenn das KI-Gehirn sie vorschlägt. Seine Antwort ist die Einleitung.
+export function startSession(ctx: CommandContext, kind: Session["kind"], intro: string): Decision {
+  return kind === "post" ? startMail(ctx, intro) : startTasks(ctx, intro);
 }
 
 // Für die Besprechung einer einzelnen Aufgabe oder Mail, die du in der Liste anklickst.

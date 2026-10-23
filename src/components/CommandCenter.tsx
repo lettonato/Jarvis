@@ -17,9 +17,9 @@ import type { WeatherSnapshot } from "@/lib/weather";
 
 // Die Übersicht wie im NEXUS-Video: JARVIS in der Mitte, die Module als Kacheln links und rechts.
 
-type Data = { market: MarketSnapshot | null; weather: WeatherSnapshot | null; tasks: TasksSnapshot | null; mail: MailSnapshot | null; today: string | null };
+type Data = { market: MarketSnapshot | null; weather: WeatherSnapshot | null; tasks: TasksSnapshot | null; mail: MailSnapshot | null; brain: boolean | null; today: string | null };
 
-function telemetryFor({ market, weather, tasks, mail, today }: Data): Partial<Record<ModuleId, Telemetry>> {
+function telemetryFor({ market, weather, tasks, mail, brain, today }: Data): Partial<Record<ModuleId, Telemetry>> {
   const btc = market?.majors.quotes.find((q) => q.symbol === "BTC");
   const passed = market?.scan.candidates.filter((c) => c.passed).length ?? 0;
   const soon = tasks?.configured && today ? dueSoon(tasks.tasks, today) : [];
@@ -40,13 +40,15 @@ function telemetryFor({ market, weather, tasks, mail, today }: Data): Partial<Re
     trading: market ? { value: `${passed}/${market.scan.candidates.length}`, detail: "Coins bestehen die Filter" } : undefined,
     markt: btc ? { value: formatEur(btc.eur), detail: `BTC ${formatPct(btc.change24h)} in 24 Std` } : undefined,
     wetter: weather ? { value: `${Math.round(weather.temperature)} °C`, detail: `${weather.place}, ${weather.description}` } : undefined,
+    cognition: brain === null ? undefined : brain ? { value: "AN", detail: "Claude versteht freie Sätze" } : { value: "einrichten", detail: "Claude-Schlüssel eintragen" },
   };
 }
 
 export function CommandCenter() {
-  const { market, weather, tasks, mail, state } = useJarvis();
+  const { market, weather, tasks, mail, settings, state } = useJarvis();
   const now = useNow();
-  const telemetry = telemetryFor({ market, weather, tasks, mail, today: now ? isoDate(now) : null });
+  const brain = settings ? settings.brain.configured : null;
+  const telemetry = telemetryFor({ market, weather, tasks, mail, brain, today: now ? isoDate(now) : null });
   const left = MODULES.filter((m) => m.side === "links");
   const right = MODULES.filter((m) => m.side === "rechts");
 
@@ -54,7 +56,7 @@ export function CommandCenter() {
     <main className="grid flex-1 gap-4 p-4 sm:px-6 lg:grid-cols-[minmax(220px,280px)_1fr_minmax(220px,280px)] lg:[perspective:1400px]">
       <div className="order-2 grid grid-cols-2 gap-3 lg:order-none lg:grid-cols-1 lg:content-center lg:[transform-style:preserve-3d]">
         {left.map((m) => (
-          <ModuleCard key={m.id} module={m} telemetry={telemetry[m.id]} tilt="left" />
+          <ModuleCard key={m.id} module={m} telemetry={telemetry[m.id]} tilt="left" brain={Boolean(brain)} />
         ))}
       </div>
 
@@ -80,7 +82,7 @@ export function CommandCenter() {
 
       <div className="order-3 grid grid-cols-2 gap-3 lg:order-none lg:grid-cols-1 lg:content-center lg:[transform-style:preserve-3d]">
         {right.map((m) => (
-          <ModuleCard key={m.id} module={m} telemetry={telemetry[m.id]} tilt="right" />
+          <ModuleCard key={m.id} module={m} telemetry={telemetry[m.id]} tilt="right" brain={Boolean(brain)} />
         ))}
       </div>
     </main>

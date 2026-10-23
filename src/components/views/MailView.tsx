@@ -113,7 +113,7 @@ function Stat({ label, value, alert }: { label: string; value: number; alert?: b
 }
 
 function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; active: boolean }) {
-  const { run, discuss, mailText, tasks } = useJarvis();
+  const { run, discuss, mailText, spotlight, tasks } = useJarvis();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -121,9 +121,17 @@ function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; acti
   const text = mailText[mail.uid];
   const showText = (open || active) && text;
 
+  // Hat JARVIS die Mail gerade auf deine Frage hin geöffnet, klappt sie hier auch auf.
+  const lit = spotlight.uids.includes(mail.uid) ? spotlight.n : 0;
+  const [litSeen, setLitSeen] = useState(0);
+  if (lit !== litSeen) {
+    setLitSeen(lit);
+    if (lit) setOpen(true);
+  }
+
   useEffect(() => {
-    if (active) row.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [active]);
+    if (active || lit) row.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [active, lit]);
 
   async function act(effect: Parameters<typeof run>[0], done?: string) {
     setBusy(true);

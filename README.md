@@ -2,7 +2,7 @@
 
 Dein persönlicher Assistent mit Trading-Desk. Der Bauplan steht im Dokument „JARVIS Bauplan: Assistent und Trading-Desk“.
 
-**Stand: Phase 1.** JARVIS liest deine Mails und deine Obsidian-Aufgaben, geht sie mit dir durch, zeigt Live-Kurse und Wetter und prüft neue Solana-Memecoins mit den harten Filtern aus dem GrokBot-Video. Er kauft und verkauft nichts.
+**Stand: Phase 1, dazu das KI-Gehirn aus Phase 2.** JARVIS liest deine Mails und deine Obsidian-Aufgaben, geht sie mit dir durch, zeigt Live-Kurse und Wetter und prüft neue Solana-Memecoins mit den harten Filtern aus dem GrokBot-Video. Mit dem KI-Gehirn (Claude) versteht er auch freie Sätze. Er kauft und verkauft nichts.
 
 ## Ansichten
 
@@ -16,7 +16,7 @@ Oben wechselst du zwischen den Ansichten:
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
 | **Trading** (`/trading`) | Der Trading-Desk mit Agenten, Kursen und Scanner. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
-| **Einstellungen** (Zahnrad) | Name, Obsidian-Tresor, Postfach, Stimme. |
+| **Einstellungen** (Zahnrad) | Name, Obsidian-Tresor, Postfach, KI-Gehirn, Stimme. |
 
 Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Post, Trading und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
 
@@ -32,9 +32,29 @@ Sag **„Guten Morgen“** oder drück **Briefing starten**. JARVIS sagt zum Bei
 
 Sprichst du per Mikrofon, hört JARVIS nach seiner Frage gleich wieder zu. Statt zu sprechen kannst du auch die Knöpfe unten antippen.
 
-Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichtig“**, **„Erinnere mich morgen an den Zahnarzt“**, **„Merke dir: …“**, **„Meine Mails“**, **„Meine Aufgaben“**, **„Zeig nur dich“**, **„Zeig alle Module“**, Wetter, Uhrzeit, Kurse, Memecoins. Freie Sätze versteht er ab Phase 2 mit dem KI-Gehirn.
+Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichtig“**, **„Erinnere mich morgen an den Zahnarzt“**, **„Merke dir: …“**, **„Meine Mails“**, **„Meine Aufgaben“**, **„Zeig nur dich“**, **„Zeig alle Module“**, Wetter, Uhrzeit, Kurse, Memecoins. Alles andere beantwortet das KI-Gehirn, sobald es eingerichtet ist.
 
 **Tastatur:** Leertaste = sprechen, Escape = JARVIS unterbrechen.
+
+## KI-Gehirn (Claude)
+
+Ohne KI-Gehirn kennt JARVIS nur die Befehle oben. Mit ihm versteht er, was du frei sagst, und erledigt es selbst:
+
+- „Was muss ich bis Freitag noch erledigen?“
+- „Schieb die Winterreifen auf den 2. November.“
+- „Fass mir die Mail von Anna zusammen.“ (er öffnet sie dabei in der Post)
+- „Lass uns die Mails durchgehen.“ (startet die Besprechung)
+- „Erinner mich am Mittwoch, den Reifenwechsel zu bestätigen, ist wichtig.“
+
+Kurze Befehle wie **Briefing**, **weiter** oder **erledigt** erledigt JARVIS weiter sofort selbst, ohne Claude zu fragen. Er ändert Aufgaben und Mails nur, wenn du es sagst, und schickt, löscht oder beantwortet keine Mails.
+
+**Einrichten** (einmalig, etwa 5 Minuten):
+
+1. Auf [platform.claude.com](https://platform.claude.com/settings/keys) ein Konto anlegen.
+2. Unter **Billing** Guthaben aufladen, zum Beispiel 10 Euro, und ein **Monatslimit** setzen. Mehr kann dann nie abgebucht werden.
+3. Unter **API Keys** einen Schlüssel erstellen (beginnt mit `sk-ant-`) und in JARVIS unter **Einstellungen → KI-Gehirn** einfügen. JARVIS prüft ihn, bevor er speichert.
+
+JARVIS nutzt Claude Opus 5.5. Eine Frage kostet meist ein bis drei Cent. Lehnt Opus eine harmlose Frage versehentlich aus Sicherheitsgründen ab, beantwortet Anthropic sie automatisch mit einem Ersatzmodell.
 
 ## Obsidian verbinden
 
@@ -61,7 +81,8 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 
 - JARVIS läuft nur auf deinem Mac (`127.0.0.1`), andere Geräte im WLAN erreichen ihn nicht.
 - Webseiten im Browser können JARVIS nicht fernsteuern: der Server nimmt nur Anfragen von JARVIS selbst an.
-- Einstellungen samt Mail-Passwort liegen in `~/.jarvis/config.json`, lesbar nur für deinen Benutzer. Ein Update von JARVIS ändert daran nichts.
+- Einstellungen samt Mail-Passwort und Claude-Schlüssel liegen in `~/.jarvis/config.json`, lesbar nur für deinen Benutzer. Ein Update von JARVIS ändert daran nichts. Die Seite bekommt den Schlüssel nie zu sehen, nur seine letzten vier Zeichen.
+- Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
 
 ## Wetter
 
@@ -98,6 +119,8 @@ npm run lint
 npm run build
 ```
 
+Statt den Claude-Schlüssel in den Einstellungen zu speichern, kannst du ihn auch als Umgebungsvariable `ANTHROPIC_API_KEY` setzen; der Schlüssel aus den Einstellungen geht vor.
+
 Aufbau:
 
 | Datei | Inhalt |
@@ -108,14 +131,15 @@ Aufbau:
 | `src/components/views/` | die Ansichten Fokus, Aufgaben, Post, Agenten, Einstellungen |
 | `src/components/CommandCenter.tsx` | die Übersicht mit den Modul-Kacheln |
 | `src/components/ParticleHead.tsx` | der 3D-Kopf aus Partikeln (three.js) |
-| `src/lib/commands.ts` | was JARVIS versteht, Briefing und Besprechung |
+| `src/lib/commands.ts` | was JARVIS ohne KI-Gehirn versteht, Briefing und Besprechung |
+| `src/lib/server/brain.ts`, `src/app/api/gehirn/` | das KI-Gehirn: Claude mit Werkzeugen für Aufgaben, Mails und Ansichten |
 | `src/lib/dates.ts` | Datumsangaben wie „bis Freitag“ oder „in drei Tagen“ |
 | `src/lib/modules.ts` | Module und Agenten, hier kommen neue dazu |
 | `src/lib/server/obsidian.ts` | Aufgaben im Obsidian-Tresor lesen und ändern |
 | `src/lib/server/mail.ts` | Postfach über IMAP lesen |
 | `src/lib/server/config.ts` | Einstellungen in `~/.jarvis/config.json` |
 | `src/lib/server/guard.ts` | Schutz: nur Anfragen von diesem Mac |
-| `src/app/api/` | Schnittstellen für Aufgaben, Post, Einstellungen, Kurse, Wetter |
+| `src/app/api/` | Schnittstellen für Aufgaben, Post, Gehirn, Einstellungen, Kurse, Wetter |
 | `src/lib/useVoice.ts` | Spracherkennung und Sprachausgabe im Browser |
 | `src/lib/thresholds.ts`, `src/lib/vet.ts` | harte Filter aus dem Video und der Vet-Agent |
 | `src/lib/market.ts` | Kurse und Scanner (CoinGecko, DexScreener) |
