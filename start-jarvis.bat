@@ -19,6 +19,9 @@ if not exist node_modules\imapflow (
   )
 )
 
+rem Zwischenspeicher leeren, damit nach einem Update sicher die neuen Dateien gelten.
+if exist .next\dev rmdir /s /q .next\dev
+
 echo JARVIS startet. Der Browser oeffnet sich gleich mit http://localhost:3000
 start "" cmd /c "timeout /t 8 >nul & start http://localhost:3000"
 call npm run dev

@@ -13,7 +13,7 @@ import { VOICE_KEY } from "@/lib/useVoice";
 export function SettingsView() {
   const { settings } = useJarvis();
   return (
-    <main className="view-enter mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
       <PageHeader icon="einstellungen" title="Einstellungen" subtitle="Alles bleibt auf deinem Mac." />
       {!settings ? (
         <p className="text-sm text-quiet">Lade Einstellungen …</p>

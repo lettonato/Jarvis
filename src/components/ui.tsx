@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Holo } from "./HoloView";
 import { Icon, type IconName } from "./icons";
 
 // Bausteine, die alle Ansichten teilen: Glas-Kacheln mit Eckwinkeln, Überschriften, Knöpfe.
@@ -28,18 +29,22 @@ export function Panel({ children, className = "", glow = false }: { children: Re
   );
 }
 
-export function PageHeader({ icon, title, subtitle, children }: { icon: IconName; title: string; subtitle?: ReactNode; children?: ReactNode }) {
+// `holo` nennt die Kachel der Übersicht, aus der diese Überschrift beim Öffnen herausfliegt.
+export function PageHeader({ icon, title, subtitle, holo, children }: { icon: IconName; title: string; subtitle?: ReactNode; holo?: string; children?: ReactNode }) {
+  const heading = (
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-sky-300/40 bg-sky-400/10 text-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.25)]">
+        <Icon name={icon} className="h-6 w-6" />
+      </span>
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold uppercase tracking-[0.25em] text-sky-100">{title}</h1>
+        {subtitle && <p className="truncate text-xs text-quiet">{subtitle}</p>}
+      </div>
+    </div>
+  );
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-sky-300/40 bg-sky-400/10 text-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.25)]">
-          <Icon name={icon} className="h-6 w-6" />
-        </span>
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold uppercase tracking-[0.25em] text-sky-100">{title}</h1>
-          {subtitle && <p className="truncate text-xs text-quiet">{subtitle}</p>}
-        </div>
-      </div>
+      {holo ? <Holo name={holo}>{heading}</Holo> : heading}
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
     </div>
   );

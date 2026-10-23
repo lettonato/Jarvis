@@ -87,8 +87,8 @@ export function TasksView() {
 
 function Shell({ children, subtitle, actions }: { children: ReactNode; subtitle?: string; actions?: ReactNode }) {
   return (
-    <main className="view-enter mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
-      <PageHeader icon="aufgaben" title="Aufgaben" subtitle={subtitle}>
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
+      <PageHeader icon="aufgaben" holo="modul-aufgaben" title="Aufgaben" subtitle={subtitle}>
         {actions}
       </PageHeader>
       {children}

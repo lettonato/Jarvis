@@ -18,6 +18,8 @@ Oben wechselst du zwischen den Ansichten:
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
 | **Einstellungen** (Zahnrad) | Name, Obsidian-Tresor, Postfach, Stimme. |
 
+Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Post, Trading und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
+
 In allen Arbeitsansichten ist JARVIS unten klein dabei. Du sprichst einfach weiter, er wechselt die Ansicht selbst.
 
 ## Briefing: JARVIS geht den Tag mit dir durch
@@ -102,6 +104,7 @@ Aufbau:
 | --- | --- |
 | `src/components/JarvisProvider.tsx` | JARVIS über allen Ansichten: Gespräch, Stimme, Besprechung, Daten |
 | `src/components/AppFrame.tsx` | Navigation oben und der kleine JARVIS unten |
+| `src/lib/holo.ts`, `src/components/HoloView.tsx` | welche Übergangs-Animation bei welchem Wechsel läuft; die Animationen selbst stehen in `src/app/globals.css` |
 | `src/components/views/` | die Ansichten Fokus, Aufgaben, Post, Agenten, Einstellungen |
 | `src/components/CommandCenter.tsx` | die Übersicht mit den Modul-Kacheln |
 | `src/components/ParticleHead.tsx` | der 3D-Kopf aus Partikeln (three.js) |

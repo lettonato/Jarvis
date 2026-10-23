@@ -18,6 +18,9 @@ if [ ! -d node_modules ] || [ package.json -nt node_modules/.package-lock.json ]
   fi
 fi
 
+# Zwischenspeicher leeren, damit nach einem Update sicher die neuen Dateien und Animationen gelten.
+rm -rf .next/dev
+
 echo "JARVIS startet. Der Browser öffnet sich gleich mit http://localhost:3000"
 (sleep 8 && open http://localhost:3000) &
 npm run dev

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Holo } from "./HoloView";
 import { AGENTS, CURRENT_PHASE, type Agent } from "@/lib/agents";
 import type { Candidate, MajorQuote, MarketSnapshot } from "@/lib/market";
 import { FILTER_LABELS, HARD_FILTERS, type FilterKey } from "@/lib/thresholds";
@@ -71,7 +72,7 @@ export function TradingDesk() {
   const isDemo = snap ? snap.majors.source === "demo" || snap.scan.source === "demo" : false;
 
   return (
-    <main className="view-enter m-2 flex flex-1 flex-col gap-3 rounded-lg border-2 border-frame/80 bg-desk/60 p-3 sm:m-4 sm:p-4">
+    <main className="m-2 flex flex-1 flex-col gap-3 rounded-lg border-2 border-frame/80 bg-desk/60 p-3 sm:m-4 sm:p-4">
       <Header now={now} isDemo={isDemo} loading={!snap} />
       {error && (
         <p className="rounded border border-down/60 bg-down/10 px-3 py-2 text-sm text-down">
@@ -100,10 +101,12 @@ export function TradingDesk() {
 function Header({ now, isDemo, loading }: { now: Date | null; isDemo: boolean; loading: boolean }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-      <div>
-        <h1 className="text-xl font-bold uppercase tracking-[0.25em] text-frame">Trading-Desk</h1>
-        <p className="text-[11px] uppercase tracking-widest text-quiet">Phase {CURRENT_PHASE}: nur lesen, kein Handel</p>
-      </div>
+      <Holo name="modul-trading">
+        <div>
+          <h1 className="text-xl font-bold uppercase tracking-[0.25em] text-frame">Trading-Desk</h1>
+          <p className="text-[11px] uppercase tracking-widest text-quiet">Phase {CURRENT_PHASE}: nur lesen, kein Handel</p>
+        </div>
+      </Holo>
       <div className="flex items-center gap-2 text-xs">
         {!loading && (
           <span

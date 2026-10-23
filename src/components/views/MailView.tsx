@@ -94,8 +94,8 @@ export function MailView() {
 
 function Shell({ children, subtitle, actions }: { children: ReactNode; subtitle?: string; actions?: ReactNode }) {
   return (
-    <main className="view-enter mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
-      <PageHeader icon="post" title="Post" subtitle={subtitle}>
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
+      <PageHeader icon="post" holo="modul-post" title="Post" subtitle={subtitle}>
         {actions}
       </PageHeader>
       {children}

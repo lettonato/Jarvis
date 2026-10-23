@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { Console, STATE_LABEL } from "../Console";
+import { HoloLink } from "../HoloLink";
+import { Holo } from "../HoloView";
 import { Icon, type IconName } from "../icons";
 import { useJarvis } from "../JarvisProvider";
 import { ParticleHead } from "../ParticleHead";
@@ -44,7 +45,7 @@ export function FocusView() {
   if (weather) items.push({ icon: "wetter", text: `${Math.round(weather.temperature)} °C, ${weather.description}`, ask: "Wie ist das Wetter?" });
 
   return (
-    <main className="view-enter relative flex flex-1 flex-col items-center px-4 pb-6 sm:px-6">
+    <main className="relative flex flex-1 flex-col items-center px-4 pb-6 sm:px-6">
       <div className="mt-4 w-full max-w-[900px] text-center">
         <p className="text-[11px] uppercase tracking-[0.35em] text-quiet">{now ? DATE.format(now) : " "}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-[0.12em] text-sky-100 sm:text-3xl">
@@ -52,14 +53,16 @@ export function FocusView() {
         </h1>
       </div>
 
-      <button
-        type="button"
-        onClick={voice.canListen ? voice.toggle : () => ask("Briefing")}
-        aria-label={voice.canListen ? "Mit JARVIS sprechen" : "Briefing starten"}
-        className="relative h-[48vh] min-h-[300px] w-full max-w-[980px] cursor-pointer [mask-image:radial-gradient(ellipse_at_center,black_55%,transparent_78%)]"
-      >
-        <ParticleHead state={state} />
-      </button>
+      <Holo name="jarvis-kopf">
+        <button
+          type="button"
+          onClick={voice.canListen ? voice.toggle : () => ask("Briefing")}
+          aria-label={voice.canListen ? "Mit JARVIS sprechen" : "Briefing starten"}
+          className="relative h-[48vh] min-h-[300px] w-full max-w-[980px] cursor-pointer [mask-image:radial-gradient(ellipse_at_center,black_55%,transparent_78%)]"
+        >
+          <ParticleHead state={state} />
+        </button>
+      </Holo>
 
       <p className="-mt-8 mb-3 rounded-full border border-sky-300/30 bg-desk/70 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-sky-200">
         {STATE_LABEL[state]}
@@ -75,9 +78,9 @@ export function FocusView() {
         </button>
         {items.map((item) =>
           item.href ? (
-            <Link key={item.text} href={item.href} className={chipClass(item.alert)}>
+            <HoloLink key={item.text} href={item.href} className={chipClass(item.alert)}>
               <Icon name={item.icon} className="h-4 w-4" /> {item.text}
-            </Link>
+            </HoloLink>
           ) : (
             <button key={item.text} type="button" onClick={() => ask(item.ask!)} className={chipClass(item.alert)}>
               <Icon name={item.icon} className="h-4 w-4" /> {item.text}
@@ -88,9 +91,9 @@ export function FocusView() {
 
       <Console large />
 
-      <Link href="/" className="mt-4 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] text-sky-200/70 hover:text-sky-100">
+      <HoloLink href="/" className="mt-4 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] text-sky-200/70 hover:text-sky-100">
         <Icon name="uebersicht" className="h-4 w-4" /> Alle Module zeigen
-      </Link>
+      </HoloLink>
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import type { AvatarState } from "./ParticleHead";
 import { ApiError, getJson, postJson } from "@/lib/api";
+import { holoTypes } from "@/lib/holo";
 import { decide, discuss as discussDecision, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
@@ -163,7 +164,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       }
       setThinking(false);
       if (d.session !== undefined) setSession(d.session);
-      if (d.navigate && d.navigate !== place.current) router.push(d.navigate);
+      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: holoTypes(place.current, d.navigate) });
       const first = [d.reply, said].filter(Boolean).join(" ");
       if (first) addTurn("jarvis", first);
       if (d.after) addTurn("jarvis", d.after);

@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
+import { HoloLink } from "../HoloLink";
+import { Holo } from "../HoloView";
 import { Icon } from "../icons";
 import { useJarvis } from "../JarvisProvider";
 import { PageHeader, Panel } from "../ui";
@@ -30,7 +31,7 @@ export function AgentsView() {
   }, [hash]);
 
   return (
-    <main className="view-enter mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
       <PageHeader icon="agenten" title="Agenten" subtitle={`Jeder Agent hat eine Aufgabe. Gerade läuft Phase ${CURRENT_PHASE} des Bauplans.`} />
       <div className="grid gap-4 md:grid-cols-2">
         {MODULES.map((m) => (
@@ -45,31 +46,33 @@ function AgentCard({ module, highlighted }: { module: JarvisModule; highlighted:
   const active = isActive(module);
   const ownView = !module.href.startsWith("/agenten");
   return (
-    <div id={module.id} className="scroll-mt-24">
-      <Panel glow={highlighted} className={`h-full ${active ? "" : "opacity-80"}`}>
-        <div className="flex items-start gap-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-sky-300/30 bg-sky-400/10 text-sky-300">
-            <Icon name={module.id} className="h-7 w-7" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-bold uppercase tracking-[0.18em] text-sky-100">{module.name}</h2>
-              <span className="text-[10px] tracking-widest text-sky-200/60">{module.code}</span>
-              <span className={`ml-auto rounded px-2 py-0.5 text-[10px] font-bold tracking-widest ${active ? "bg-up/15 text-up" : "bg-panel-2 text-quiet"}`}>
-                {active ? "● AKTIV" : module.phase >= 6 ? "SPÄTER" : `PHASE ${module.phase}`}
-              </span>
+    <Holo name={`modul-${module.id}`}>
+      <div id={module.id} className="scroll-mt-24">
+        <Panel glow={highlighted} className={`h-full ${active ? "" : "opacity-80"}`}>
+          <div className="flex items-start gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-sky-300/30 bg-sky-400/10 text-sky-300">
+              <Icon name={module.id} className="h-7 w-7" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-bold uppercase tracking-[0.18em] text-sky-100">{module.name}</h2>
+                <span className="text-[10px] tracking-widest text-sky-200/60">{module.code}</span>
+                <span className={`ml-auto rounded px-2 py-0.5 text-[10px] font-bold tracking-widest ${active ? "bg-up/15 text-up" : "bg-panel-2 text-quiet"}`}>
+                  {active ? "● AKTIV" : module.phase >= 6 ? "SPÄTER" : `PHASE ${module.phase}`}
+                </span>
+              </div>
+              <p className="mt-1.5 text-sm leading-relaxed text-sky-50/85">{module.about}</p>
+              {module.id === "wetter" && <WeatherDetail />}
+              {ownView && (
+                <HoloLink href={module.href} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-sky-300 hover:text-sky-100">
+                  Ansicht öffnen →
+                </HoloLink>
+              )}
             </div>
-            <p className="mt-1.5 text-sm leading-relaxed text-sky-50/85">{module.about}</p>
-            {module.id === "wetter" && <WeatherDetail />}
-            {ownView && (
-              <Link href={module.href} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-sky-300 hover:text-sky-100">
-                Ansicht öffnen →
-              </Link>
-            )}
           </div>
-        </div>
-      </Panel>
-    </div>
+        </Panel>
+      </div>
+    </Holo>
   );
 }
 
