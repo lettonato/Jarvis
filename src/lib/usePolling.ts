@@ -1,28 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { getJson } from "./api";
 
 // Lädt eine JARVIS-Schnittstelle sofort und danach in festen Abständen neu.
-export function usePolling<T>(url: string, intervalMs: number): T | null {
+// `reload` lädt sofort, `set` übernimmt eine Antwort, die eine Änderung schon mitgebracht hat.
+export function usePolling<T>(url: string, intervalMs: number) {
   const [data, setData] = useState<T | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    async function load() {
+  const reload = useCallback(
+    async (query = "") => {
       try {
-        const res = await fetch(url, { cache: "no-store" });
-        if (res.ok && alive) setData((await res.json()) as T);
+        setData(await getJson<T>(url + query));
       } catch {
         // Beim nächsten Durchlauf erneut versuchen.
       }
-    }
-    load();
-    const timer = setInterval(load, intervalMs);
+    },
+    [url],
+  );
+
+  useEffect(() => {
+    const first = setTimeout(reload, 0);
+    const timer = setInterval(reload, intervalMs);
     return () => {
-      alive = false;
+      clearTimeout(first);
       clearInterval(timer);
     };
-  }, [url, intervalMs]);
+  }, [reload, intervalMs]);
 
-  return data;
+  return { data, reload, set: setData };
 }

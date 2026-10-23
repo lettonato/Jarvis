@@ -9,7 +9,8 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ ! -d node_modules ]; then
+# Beim ersten Start und nach einem Update (neue package.json) fehlende Pakete installieren.
+if [ ! -d node_modules ] || [ package.json -nt node_modules/.package-lock.json ]; then
   echo "Installiere Pakete, das dauert beim ersten Mal ein bis zwei Minuten ..."
   if ! npm install; then
     read -r -p "Die Installation ist fehlgeschlagen. Enter zum Schließen ..."

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# JARVIS-Einstellungen, falls JARVIS_CONFIG_DIR auf den Projektordner zeigt
+.jarvis/

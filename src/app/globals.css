@@ -18,3 +18,54 @@ body {
   color: var(--color-ink);
   font-family: var(--font-mono);
 }
+
+@keyframes jarvis-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes jarvis-breathe {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes jarvis-talk {
+  from {
+    transform: scale(0.9);
+  }
+  to {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes jarvis-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.view-enter {
+  animation: jarvis-enter 0.35s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
