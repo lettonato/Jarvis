@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AGENTS, CURRENT_PHASE, type Agent } from "@/lib/agents";
 import type { Candidate, MajorQuote, MarketSnapshot } from "@/lib/market";
@@ -34,7 +35,7 @@ function logFor(snap: MarketSnapshot): LogEntry[] {
   ].reverse();
 }
 
-export function Dashboard() {
+export function TradingDesk() {
   const [snap, setSnap] = useState<MarketSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -57,10 +58,13 @@ export function Dashboard() {
     }
     load();
     const refresh = setInterval(load, REFRESH_MS);
-    const clock = setInterval(() => setNow(new Date()), 1000);
+    const tick = () => setNow(new Date());
+    const first = setTimeout(tick, 0);
+    const clock = setInterval(tick, 1000);
     return () => {
       alive = false;
       clearInterval(refresh);
+      clearTimeout(first);
       clearInterval(clock);
     };
   }, []);
@@ -98,13 +102,20 @@ function Header({ now, isDemo, loading }: { now: Date | null; isDemo: boolean; l
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
       <div className="flex items-center gap-3">
-        <div className="relative grid h-10 w-10 place-items-center rounded-full border border-sky-400/70 bg-sky-500/10 shadow-[0_0_18px_rgba(56,189,248,0.45)]">
+        <Link
+          href="/"
+          aria-label="Zur Kommandozentrale"
+          className="relative grid h-10 w-10 place-items-center rounded-full border border-sky-400/70 bg-sky-500/10 shadow-[0_0_18px_rgba(56,189,248,0.45)] hover:bg-sky-500/25"
+        >
           <span className="text-lg font-bold text-sky-300">J</span>
-        </div>
+        </Link>
         <div>
           <h1 className="text-xl font-bold tracking-widest text-frame">JARVIS</h1>
           <p className="text-[11px] uppercase tracking-widest text-quiet">
-            Trading-Desk · Phase {CURRENT_PHASE}: nur lesen, kein Handel
+            Trading-Desk · Phase {CURRENT_PHASE}: nur lesen, kein Handel ·{" "}
+            <Link href="/" className="text-sky-300 hover:underline">
+              Kommandozentrale
+            </Link>
           </p>
         </div>
       </div>

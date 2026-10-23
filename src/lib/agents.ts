@@ -19,4 +19,4 @@ export const AGENTS: Agent[] = [
   { id: "crawler", name: "Crawler", motto: "liest zuerst, dann handelt der Desk", color: "#a78bfa", phase: 3 },
 ];
 
-export const CURRENT_PHASE = 1;
+export { CURRENT_PHASE } from "./modules";
