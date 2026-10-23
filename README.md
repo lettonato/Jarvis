@@ -21,17 +21,18 @@ Dein persönlicher Assistent mit Trading-Desk. Der Bauplan steht im Dokument „
 
 Sind CoinGecko, DexScreener oder Open-Meteo nicht erreichbar, zeigt JARVIS oben **BEISPIELDATEN**. Diese Zahlen sind erfunden und nur zur Ansicht.
 
-## Auf deinem Windows-PC starten
+## JARVIS starten
 
 Einmalig:
 
-1. Installiere **Node.js** in der LTS-Version von [nodejs.org](https://nodejs.org).
-2. Lade dieses Repository herunter: auf GitHub **Code** und dann **Download ZIP** wählen und die ZIP-Datei entpacken.
+1. Installiere **Node.js** in der LTS-Version von [nodejs.org](https://nodejs.org) (auf dem Mac den macOS-Installer).
+2. Lade JARVIS als [ZIP-Datei](https://github.com/lettonato/Jarvis/archive/refs/heads/main.zip) herunter und entpacke sie.
 
-Danach jedes Mal:
+**Mac:** Doppelklick auf `start-jarvis.command` im Ordner `Jarvis-main`. Meldet macOS beim ersten Mal, dass die Datei von einem nicht verifizierten Entwickler stammt: Rechtsklick auf die Datei, **Öffnen** und noch einmal **Öffnen**. Hilft das nicht, unter **Systemeinstellungen → Datenschutz & Sicherheit** auf **Trotzdem öffnen** klicken.
 
-3. Doppelklick auf `start-jarvis.bat`. Beim ersten Start werden die Pakete installiert, das dauert ein bis zwei Minuten.
-4. Der Browser öffnet sich mit `http://localhost:3000`. Zum Beenden das schwarze Fenster schließen.
+**Windows:** Doppelklick auf `start-jarvis.bat`.
+
+Beim ersten Start werden die Pakete installiert, das dauert ein bis zwei Minuten. Danach öffnet sich der Browser mit `http://localhost:3000`. Zum Sprechen am besten Chrome verwenden. Das Terminal-Fenster muss offen bleiben, solange JARVIS läuft; zum Beenden schließt du es.
 
 ## Für Entwickler
 
