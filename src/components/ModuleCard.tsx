@@ -7,8 +7,8 @@ import { isActive, type JarvisModule } from "@/lib/modules";
 export type Telemetry = { value: string; detail: string; alert?: boolean };
 
 // Eine schwebende Glas-Kachel wie in der NEXUS-Oberfläche. Jede Kachel öffnet ihre Ansicht.
-export function ModuleCard({ module, telemetry, tilt }: { module: JarvisModule; telemetry?: Telemetry; tilt: "left" | "right" }) {
-  const active = isActive(module);
+export function ModuleCard({ module, telemetry, tilt, brain }: { module: JarvisModule; telemetry?: Telemetry; tilt: "left" | "right"; brain: boolean }) {
+  const active = isActive(module, brain);
   return (
     <Holo name={`modul-${module.id}`}>
       <HoloLink

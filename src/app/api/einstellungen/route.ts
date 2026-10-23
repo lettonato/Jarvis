@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { connection } from "next/server";
 import { CONFIG_DIR, expandHome, readConfig, writeConfig, type JarvisConfig, type MailConfig } from "@/lib/server/config";
+import { brainKey, testKey } from "@/lib/server/brain";
 import { guard, readBody } from "@/lib/server/guard";
 import { testMail } from "@/lib/server/mail";
 import { createVault, detectVaults } from "@/lib/server/obsidian";
@@ -17,6 +18,11 @@ async function settings(config: JarvisConfig): Promise<Settings> {
     mail: config.mail
       ? { provider: config.mail.provider, host: config.mail.host, port: config.mail.port, user: config.mail.user, hasPassword: Boolean(config.mail.password) }
       : null,
+    brain: {
+      configured: Boolean(brainKey(config)),
+      hint: config.claude?.apiKey ? `…${config.claude.apiKey.slice(-4)}` : null,
+      fromEnv: !config.claude?.apiKey && Boolean(process.env.ANTHROPIC_API_KEY),
+    },
     configFile: path.join(CONFIG_DIR, "config.json"),
   };
 }
@@ -35,7 +41,9 @@ type Action =
   | { action: "vault"; path: string }
   | { action: "createVault" }
   | { action: "mail"; mail: MailInput }
-  | { action: "removeMail" };
+  | { action: "removeMail" }
+  | { action: "claude"; apiKey: string }
+  | { action: "removeClaude" };
 
 // Ergänzt Server und Port aus der Anbieterliste; ein leeres Passwort heißt „das gespeicherte behalten“.
 function mailConfig(input: MailInput, saved?: MailConfig): MailConfig | string {
@@ -79,6 +87,16 @@ export async function POST(request: Request) {
     return Response.json({ ...(await settings(config)), message: `Verbunden. Im Posteingang sind ${result.unread} ungelesene Mails.` });
   } else if (body.action === "removeMail") {
     delete config.mail;
+  } else if (body.action === "claude") {
+    const apiKey = body.apiKey?.trim() ?? "";
+    if (!apiKey.startsWith("sk-ant-")) return Response.json({ error: "Ein Claude-Schlüssel beginnt mit sk-ant-. Bitte den ganzen Schlüssel einfügen." }, { status: 400 });
+    const result = await testKey(apiKey);
+    if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+    config.claude = { apiKey };
+    await writeConfig(config);
+    return Response.json({ ...(await settings(config)), message: "Verbunden. Ab jetzt verstehe ich auch freie Sätze." });
+  } else if (body.action === "removeClaude") {
+    delete config.claude;
   } else {
     return Response.json({ error: "Unbekannte Aktion." }, { status: 400 });
   }

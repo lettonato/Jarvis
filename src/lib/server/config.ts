@@ -8,7 +8,10 @@ import type { MailProviderId } from "../mailProviders";
 
 export type MailConfig = { provider: MailProviderId; host: string; port: number; user: string; password: string };
 
-export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig };
+// Der Schlüssel für Claude (das KI-Gehirn) bleibt wie das Mail-Passwort nur hier.
+export type ClaudeConfig = { apiKey: string };
+
+export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig; claude?: ClaudeConfig };
 
 export const CONFIG_DIR = process.env.JARVIS_CONFIG_DIR ?? path.join(os.homedir(), ".jarvis");
 const FILE = path.join(CONFIG_DIR, "config.json");

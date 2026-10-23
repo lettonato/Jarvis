@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import type { AvatarState } from "./ParticleHead";
 import { ApiError, getJson, postJson } from "@/lib/api";
 import { holoTypes } from "@/lib/holo";
-import { decide, discuss as discussDecision, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
+import { VIEWS, type BrainReply, type BrainRequest, type BrainTurn } from "@/lib/brain";
+import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
 import type { Settings } from "@/lib/settings";
@@ -33,6 +34,8 @@ type Jarvis = {
   setMail: (m: MailSnapshot) => void;
   setSettings: (s: Settings) => void;
   mailText: Record<number, MailMessage>;
+  // Die Mails, die Claude zuletzt geöffnet hat; n zählt mit, damit dieselbe Mail wieder aufklappt.
+  spotlight: { uids: number[]; n: number };
   turns: Turn[];
   state: AvatarState;
   session: Session | null;
@@ -74,12 +77,15 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const [thinking, setThinking] = useState(false);
   const [session, setSessionState] = useState<Session | null>(null);
   const [mailText, setMailText] = useState<Record<number, MailMessage>>({});
+  const [spotlight, setSpotlight] = useState<{ uids: number[]; n: number }>({ uids: [], n: 0 });
 
   const sessionRef = useRef<Session | null>(null);
   const handsFree = useRef(false);
   const heard = useRef<(text: string) => void>(() => {});
   const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null });
   const place = useRef(pathname);
+  const history = useRef<Turn[]>([]);
+  const brain = useRef(false);
 
   const { canListen, listening, speaking, error, listen, stopListening, speak, stopSpeaking } = useVoice(
     useCallback((text: string) => heard.current(text), []),
@@ -89,6 +95,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     latest.current = { name, market, weather, tasks, mail };
     place.current = pathname;
+    history.current = turns;
+    brain.current = Boolean(settings?.brain.configured);
   });
 
   const setSession = useCallback((s: Session | null) => {
@@ -175,16 +183,57 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
 
   const context = useCallback((): CommandContext => ({ ...latest.current, now: new Date(), session: sessionRef.current }), []);
 
+  // Freie Sätze beantwortet Claude auf dem Server. Was er geändert hat, kommt frisch zurück.
+  const askBrain = useCallback(
+    async (text: string, earlier: BrainTurn[]) => {
+      const ctx = context();
+      const s = ctx.session;
+      const request: BrainRequest = {
+        text,
+        history: earlier,
+        view: place.current,
+        focus: s ? { kind: s.kind, id: s.ids[s.index] } : null,
+        extra: situation(ctx),
+      };
+      try {
+        const result = await postJson<BrainReply>("/api/gehirn", request);
+        if (result.tasks) setTasks(result.tasks);
+        if (result.mail) setMail(result.mail);
+        if (result.opened) {
+          const opened = result.opened;
+          setMailText((prev) => ({ ...prev, ...Object.fromEntries(opened.map((m) => [m.uid, m])) }));
+          setSpotlight((prev) => ({ uids: opened.map((m) => m.uid), n: prev.n + 1 }));
+        }
+        const fresh = { ...ctx, tasks: result.tasks ?? ctx.tasks, mail: result.mail ?? ctx.mail };
+        // Führt Claude dich während einer Besprechung in eine andere Ansicht, endet die Besprechung.
+        const leaves = Boolean(s && result.navigate && result.navigate !== VIEWS[s.kind]);
+        await execute(
+          result.session
+            ? startSession(fresh, result.session, result.reply)
+            : { reply: result.reply, navigate: result.navigate, ...(leaves ? { session: null } : {}) },
+        );
+      } catch (e) {
+        await execute({ reply: e instanceof Error ? e.message : String(e) });
+      }
+    },
+    [context, execute, setTasks, setMail],
+  );
+
   const handle = useCallback(
     (text: string, fromVoice: boolean) => {
       const clean = text.trim();
       if (!clean) return;
       handsFree.current = fromVoice;
+      const earlier = history.current.slice(-12).map(({ who, text }) => ({ who, text }));
       addTurn("du", clean);
       setThinking(true);
-      setTimeout(() => execute(decide(clean, context())), 350);
+      setTimeout(() => {
+        const decision = decide(clean, context(), brain.current);
+        if (decision) execute(decision);
+        else askBrain(clean, earlier);
+      }, 350);
     },
-    [addTurn, execute, context],
+    [addTurn, execute, context, askBrain],
   );
 
   useEffect(() => {
@@ -237,6 +286,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setMail,
       setSettings,
       mailText,
+      spotlight,
       turns,
       state,
       session,
@@ -245,7 +295,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       run,
       voice: { canListen, listening, error, toggle, stopSpeaking },
     }),
-    [name, market, weather, tasks, mail, settings, reloadTasks, loadMail, reloadSettings, setTasks, setMail, setSettings, mailText, turns, state, session, ask, discuss, run, canListen, listening, error, toggle, stopSpeaking],
+    [name, market, weather, tasks, mail, settings, reloadTasks, loadMail, reloadSettings, setTasks, setMail, setSettings, mailText, spotlight, turns, state, session, ask, discuss, run, canListen, listening, error, toggle, stopSpeaking],
   );
 
   return <JarvisContext.Provider value={value}>{children}</JarvisContext.Provider>;

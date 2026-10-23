@@ -22,6 +22,13 @@ export function SettingsView() {
           <Section title="Du">
             <NameForm />
           </Section>
+          <Section
+            id="gehirn"
+            title="KI-Gehirn (Claude)"
+            text="Mit dem KI-Gehirn versteht JARVIS freie Sätze: „Was muss ich bis Freitag noch erledigen?“, „Fass mir die Mail von Anna zusammen“ oder „Schieb den Zahnarzt auf nächsten Dienstag“. Kurze Befehle wie Briefing oder Weiter erledigt er weiter sofort selbst."
+          >
+            <BrainSetup />
+          </Section>
           <Section title="Obsidian" text="Aus diesem Tresor liest JARVIS deine Aufgaben. Neue Aufgaben landen in JARVIS/Eingang.md, Notizen in JARVIS/Notizen.md.">
             <VaultSetup />
           </Section>
@@ -33,6 +40,10 @@ export function SettingsView() {
           </Section>
           <Section title="Sicherheit">
             <ul className="space-y-1.5 text-sm text-sky-50/85">
+              <li>
+                Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails), verschlüsselt an Anthropic. Claude
+                kann keine Mails schreiben oder löschen und ändert Aufgaben nur, wenn du es sagst.
+              </li>
               <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
               <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
               <li>
@@ -46,9 +57,9 @@ export function SettingsView() {
   );
 }
 
-function Section({ title, text, children }: { title: string; text?: string; children: ReactNode }) {
+function Section({ id, title, text, children }: { id?: string; title: string; text?: string; children: ReactNode }) {
   return (
-    <Panel>
+    <Panel id={id}>
       <h2 className="text-sm font-bold uppercase tracking-[0.25em] text-sky-100">{title}</h2>
       {text && <p className="mt-1 text-xs text-quiet">{text}</p>}
       <div className="mt-3">{children}</div>
@@ -81,6 +92,77 @@ function NameForm() {
         </Button>
       </div>
       {state && <Notice tone={state.tone}>{state.text}</Notice>}
+    </form>
+  );
+}
+
+function BrainSetup() {
+  const { settings, setSettings } = useJarvis();
+  const brain = settings?.brain;
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  async function send(body: object) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const next = await postJson<Settings & { message?: string }>("/api/einstellungen", body);
+      setSettings(next);
+      setKey("");
+      setMessage(next.message ? { tone: "ok", text: next.message } : null);
+    } catch (e) {
+      setMessage({ tone: "error", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    send({ action: "claude", apiKey: key });
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-3 text-sm">
+      {brain?.configured && (
+        <Notice tone="ok">{brain.hint ? `Verbunden mit dem Schlüssel ${brain.hint}.` : "Verbunden über ANTHROPIC_API_KEY."} JARVIS versteht jetzt auch freie Sätze.</Notice>
+      )}
+      <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+        <li>
+          Auf{" "}
+          <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+            platform.claude.com
+          </a>{" "}
+          anmelden oder ein Konto anlegen.
+        </li>
+        <li>Unter „API Keys“ einen Schlüssel erstellen und hier einfügen. Er beginnt mit sk-ant-.</li>
+        <li>Unter „Billing“ Guthaben aufladen und am besten ein Monatslimit setzen, dann kann nie mehr ausgegeben werden.</li>
+      </ol>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          type="password"
+          autoComplete="off"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder={brain?.hint ? `gespeichert (${brain.hint}), zum Ändern neuen einfügen` : "sk-ant-…"}
+          aria-label="Claude-Schlüssel"
+          className={inputClass}
+        />
+        <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+          {busy ? "Prüfe …" : "Prüfen und speichern"}
+        </Button>
+      </div>
+      <p className="text-xs text-quiet">
+        JARVIS nutzt Claude Opus 5.5. Eine Frage kostet meist ein bis drei Cent, je nachdem, wie viel er dafür nachlesen muss. Der Schlüssel bleibt in deiner
+        Einstellungsdatei auf diesem Mac.
+      </p>
+      {brain?.hint && (
+        <Button tone="danger" disabled={busy} onClick={() => send({ action: "removeClaude" })}>
+          Schlüssel entfernen
+        </Button>
+      )}
+      {message && <Notice tone={message.tone}>{message.text}</Notice>}
     </form>
   );
 }

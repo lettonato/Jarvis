@@ -43,7 +43,8 @@ export function AgentsView() {
 }
 
 function AgentCard({ module, highlighted }: { module: JarvisModule; highlighted: boolean }) {
-  const active = isActive(module);
+  const { settings } = useJarvis();
+  const active = isActive(module, settings?.brain.configured);
   const ownView = !module.href.startsWith("/agenten");
   return (
     <Holo name={`modul-${module.id}`}>

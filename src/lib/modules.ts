@@ -131,11 +131,12 @@ export const MODULES: JarvisModule[] = [
     name: "Cognition",
     tagline: "KI-Gehirn, versteht freie Sätze",
     phase: 2,
-    href: "/agenten#cognition",
+    href: "/einstellungen#gehirn",
     side: "rechts",
     about:
-      "Das KI-Gehirn. Damit versteht JARVIS freie Sätze, fasst Mails zusammen, entwirft Antworten und bespricht deine Aufgaben wirklich mit dir statt nur nach festen Befehlen.",
+      "Das KI-Gehirn ist Claude von Anthropic. Damit versteht JARVIS freie Sätze, fasst Mails zusammen, legt Aufgaben mit Datum an, hakt ab und verschiebt, ganz wie du es sagst. Kurze Befehle wie „Briefing“ oder „Weiter“ erledigt er weiter sofort selbst. Eingerichtet wird es mit einem API-Schlüssel in den Einstellungen.",
   },
 ];
 
-export const isActive = (m: JarvisModule) => m.phase <= CURRENT_PHASE;
+// Das KI-Gehirn arbeitet, sobald ein Claude-Schlüssel eingetragen ist, auch wenn der Bauplan noch in Phase 1 steht.
+export const isActive = (m: JarvisModule, brain = false) => m.phase <= CURRENT_PHASE || (m.id === "cognition" && brain);
