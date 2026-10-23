@@ -1,5 +1,5 @@
-import { Dashboard } from "@/components/Dashboard";
+import { CommandCenter } from "@/components/CommandCenter";
 
 export default function Home() {
-  return <Dashboard />;
+  return <CommandCenter />;
 }
