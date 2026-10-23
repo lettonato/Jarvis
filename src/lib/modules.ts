@@ -1,14 +1,16 @@
 // Die Module der Kommandozentrale. Jedes Modul ist ein Agent mit eigener Aufgabe.
-// Ein neuer Agent kommt dazu, indem er hier eingetragen wird; die Kachel erscheint automatisch.
+// Ein neuer Agent kommt dazu, indem er hier eingetragen wird; Kachel und Agenten-Seite erscheinen automatisch.
 export type ModuleId =
+  | "aufgaben"
+  | "post"
+  | "kalender"
+  | "telefon"
+  | "browser"
   | "trading"
   | "markt"
   | "wetter"
-  | "cognition"
-  | "kalender"
   | "intel"
-  | "telefon"
-  | "browser";
+  | "cognition";
 
 export type JarvisModule = {
   id: ModuleId;
@@ -17,20 +19,123 @@ export type JarvisModule = {
   tagline: string;
   // Ab welcher Phase des Bauplans das Modul arbeitet. Phase 6 = Erweiterungen nach dem Live-Handel.
   phase: number;
-  href?: string;
+  // Wohin ein Klick auf die Kachel führt.
+  href: string;
+  // Was der Agent kann, für die Agenten-Seite.
+  about: string;
+  // Links stehen die Assistenten-Module, rechts Daten und Handel.
+  side: "links" | "rechts";
 };
 
 export const CURRENT_PHASE = 1;
 
 export const MODULES: JarvisModule[] = [
-  { id: "trading", code: "M-01", name: "Trading", tagline: "Scan, Vet, Risk und Fills", phase: 1, href: "/trading" },
-  { id: "markt", code: "M-02", name: "Markt", tagline: "Bitcoin, Ethereum, Solana", phase: 1 },
-  { id: "wetter", code: "M-03", name: "Wetter", tagline: "aktuell vor Ort", phase: 1 },
-  { id: "cognition", code: "M-04", name: "Cognition", tagline: "KI-Gehirn, versteht freie Sätze", phase: 2 },
-  { id: "intel", code: "M-05", name: "Intel", tagline: "Crawler liest News und Social", phase: 3 },
-  { id: "kalender", code: "M-06", name: "Kalender", tagline: "Termine, E-Mails, Aufgaben", phase: 4 },
-  { id: "telefon", code: "M-07", name: "Telefon", tagline: "Anrufe annehmen und führen", phase: 6 },
-  { id: "browser", code: "M-08", name: "Browser", tagline: "sucht und erledigt im Web", phase: 6 },
+  {
+    id: "aufgaben",
+    code: "M-01",
+    name: "Aufgaben",
+    tagline: "Obsidian: To-dos und Fristen",
+    phase: 1,
+    href: "/aufgaben",
+    side: "links",
+    about:
+      "Liest die Aufgaben aus deinem Obsidian-Tresor, sagt dir, was bis nächste Woche fällig ist, und geht die Punkte mit dir durch. Er hakt ab, verschiebt und notiert neue Aufgaben direkt in Obsidian.",
+  },
+  {
+    id: "post",
+    code: "M-02",
+    name: "Post",
+    tagline: "neue wichtige E-Mails",
+    phase: 1,
+    href: "/post",
+    side: "links",
+    about:
+      "Schaut in deinen Posteingang, trennt wichtige Mails von Newslettern und liest sie dir vor. Aus einer Mail macht er auf Zuruf eine Aufgabe. Antworten entwirft er ab Phase 2 mit dem KI-Gehirn.",
+  },
+  {
+    id: "kalender",
+    code: "M-03",
+    name: "Kalender",
+    tagline: "Termine und Erinnerungen",
+    phase: 4,
+    href: "/agenten#kalender",
+    side: "links",
+    about: "Liest deinen Kalender, erinnert dich an Termine und plant mit dir die Woche. Neue Termine trägt er auf Zuruf ein.",
+  },
+  {
+    id: "telefon",
+    code: "M-04",
+    name: "Telefon",
+    tagline: "Anrufe annehmen und führen",
+    phase: 6,
+    href: "/agenten#telefon",
+    side: "links",
+    about:
+      "Bekommt eine eigene Telefonnummer, nimmt Anrufe für dich an, schreibt mit, was der Anrufer will, und ruft auf deinen Auftrag an, um etwas zu erledigen, zum Beispiel einen Termin auszumachen.",
+  },
+  {
+    id: "browser",
+    code: "M-05",
+    name: "Browser",
+    tagline: "sucht und erledigt im Web",
+    phase: 6,
+    href: "/agenten#browser",
+    side: "links",
+    about:
+      "Wenn du sagst „such mir das raus“, öffnet er eine eigene Ansicht, recherchiert im Web, vergleicht Angebote und legt dir das Ergebnis vor. Kaufen oder Absenden nur mit deiner Freigabe.",
+  },
+  {
+    id: "trading",
+    code: "M-06",
+    name: "Trading",
+    tagline: "Scan, Vet, Risk und Fills",
+    phase: 1,
+    href: "/trading",
+    side: "rechts",
+    about:
+      "Die Agenten aus dem GrokBot-Video: Scan findet neue Solana-Coins, Vet prüft sie mit harten Filtern. Ab Phase 3 handeln Size, Risk und Fills mit Spielgeld und Stop-Loss, live erst nach vier Wochen und deiner Freigabe.",
+  },
+  {
+    id: "markt",
+    code: "M-07",
+    name: "Markt",
+    tagline: "Bitcoin, Ethereum, Solana",
+    phase: 1,
+    href: "/trading",
+    side: "rechts",
+    about: "Live-Kurse von Bitcoin, Ethereum und Solana in Euro. Ab Phase 3 erkennt er Trends und gibt Prognosen ab.",
+  },
+  {
+    id: "wetter",
+    code: "M-08",
+    name: "Wetter",
+    tagline: "aktuell und die nächsten Tage",
+    phase: 1,
+    href: "/agenten#wetter",
+    side: "rechts",
+    about: "Aktuelles Wetter und die Vorhersage für die nächsten Tage an deinem Ort, kostenlos über Open-Meteo.",
+  },
+  {
+    id: "intel",
+    code: "M-09",
+    name: "Intel",
+    tagline: "Crawler liest News und Social",
+    phase: 3,
+    href: "/agenten#intel",
+    side: "rechts",
+    about: "Der Crawler liest Nachrichten, X und Telegram mit und meldet, wenn sich der Markt dreht oder ein Coin plötzlich Aufmerksamkeit bekommt.",
+  },
+  {
+    id: "cognition",
+    code: "M-10",
+    name: "Cognition",
+    tagline: "KI-Gehirn, versteht freie Sätze",
+    phase: 2,
+    href: "/agenten#cognition",
+    side: "rechts",
+    about:
+      "Das KI-Gehirn. Damit versteht JARVIS freie Sätze, fasst Mails zusammen, entwirft Antworten und bespricht deine Aufgaben wirklich mit dir statt nur nach festen Befehlen.",
+  },
 ];
 
 export const isActive = (m: JarvisModule) => m.phase <= CURRENT_PHASE;

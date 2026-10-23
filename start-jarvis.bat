@@ -2,14 +2,14 @@
 title JARVIS
 cd /d "%~dp0"
 
-where node >/dev/null 2>nul
+where node >nul 2>nul
 if errorlevel 1 (
   echo Node.js fehlt. Bitte die LTS-Version von https://nodejs.org installieren und danach neu starten.
   pause
   exit /b 1
 )
 
-if not exist node_modules (
+if not exist node_modules\imapflow (
   echo Installiere Pakete, das dauert beim ersten Mal ein bis zwei Minuten ...
   call npm install
   if errorlevel 1 (
@@ -19,7 +19,10 @@ if not exist node_modules (
   )
 )
 
+rem Zwischenspeicher leeren, damit nach einem Update sicher die neuen Dateien gelten.
+if exist .next\dev rmdir /s /q .next\dev
+
 echo JARVIS startet. Der Browser oeffnet sich gleich mit http://localhost:3000
-start "" cmd /c "timeout /t 8 >/dev/null & start http://localhost:3000"
+start "" cmd /c "timeout /t 8 >nul & start http://localhost:3000"
 call npm run dev
 pause

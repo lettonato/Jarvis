@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
 
 export type AvatarState = "idle" | "listening" | "thinking" | "speaking";
@@ -128,7 +128,8 @@ export function ParticleHead({ state }: { state: AvatarState }) {
     stateRef.current = state;
   }, [state]);
 
-  useEffect(() => {
+  // useLayoutEffect, damit das erste Bild schon steht, wenn ein Übergang die neue Ansicht abfotografiert.
+  useLayoutEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
 
@@ -216,6 +217,7 @@ export function ParticleHead({ state }: { state: AvatarState }) {
       grid.geometry.dispose();
       gridMaterial.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
       mount.removeChild(renderer.domElement);
     };
   }, []);

@@ -18,3 +18,380 @@ body {
   color: var(--color-ink);
   font-family: var(--font-mono);
 }
+
+@keyframes jarvis-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes jarvis-breathe {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes jarvis-talk {
+  from {
+    transform: scale(0.9);
+  }
+  to {
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* ───────────── Übergänge zwischen den Ansichten ─────────────
+   Wie die Hologramme bei Tony Stark: Ansichten tauchen aus der Tiefe auf, klappen zu einer Lichtlinie
+   zusammen oder schwenken wie Tafeln um dich herum. Welche Bewegung läuft, steht in src/lib/holo.ts. */
+
+:root {
+  --holo-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --holo-ease-in: cubic-bezier(0.42, 0, 0.9, 0.6);
+  --holo-glow: drop-shadow(0 0 14px rgb(56 189 248 / 0.75));
+  --holo-time: 760ms;
+}
+
+/* Klicks gehen während der Animation an die Seite durch. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* Der Hintergrund bleibt stehen, nur die Ansichten bewegen sich. */
+::view-transition-old(root) {
+  display: none;
+}
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Navigation oben und JARVIS unten bleiben ruhig im Bild. */
+::view-transition-group(jarvis-nav),
+::view-transition-group(jarvis-dock) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(jarvis-nav),
+::view-transition-old(jarvis-dock) {
+  display: none;
+}
+::view-transition-new(jarvis-nav),
+::view-transition-new(jarvis-dock) {
+  animation: none;
+}
+/* Kommt der kleine JARVIS dazu oder geht er, fährt er unten herein oder hinaus. */
+::view-transition-new(jarvis-dock):only-child {
+  animation: holo-dock-in var(--holo-time) var(--holo-ease) both;
+}
+::view-transition-old(jarvis-dock):only-child {
+  display: block;
+  animation: holo-dock-out 380ms var(--holo-ease-in) both;
+}
+
+/* Der Leuchtrahmen gleitet zum neuen Reiter. */
+::view-transition-group(nav-aktiv) {
+  z-index: 101;
+  animation-duration: 480ms;
+  animation-timing-function: var(--holo-ease);
+}
+
+/* JARVIS und die Modul-Kacheln fliegen als eigenes Hologramm an ihren neuen Platz. */
+::view-transition-group(.holo-morph) {
+  z-index: 110;
+  animation-duration: var(--holo-time);
+  animation-timing-function: var(--holo-ease);
+}
+::view-transition-image-pair(.holo-morph) {
+  animation: holo-flare var(--holo-time) ease-in-out both;
+}
+::view-transition-old(.holo-morph),
+::view-transition-new(.holo-morph) {
+  height: 100%;
+  object-fit: fill;
+}
+::view-transition-old(.holo-morph) {
+  animation: holo-fade-out calc(var(--holo-time) * 0.55) ease-out both;
+}
+::view-transition-new(.holo-morph) {
+  animation: holo-fade-in calc(var(--holo-time) * 0.7) ease-in both;
+}
+/* Fehlt das Gegenstück (die andere Ansicht lag schon im Hintergrund), leuchtet das Teil an seinem Platz auf,
+   während sich die Ansicht darum herum aufbaut. */
+::view-transition-new(.holo-morph):only-child {
+  animation: holo-lone var(--holo-time) ease-out both;
+}
+::view-transition-old(.holo-morph):only-child {
+  animation: holo-fade-out 280ms ease-in both;
+}
+
+/* Alle Ansichten drehen sich um die Mitte dessen, was du gerade siehst. */
+::view-transition-old(.holo-in),
+::view-transition-new(.holo-in),
+::view-transition-old(.holo-out),
+::view-transition-new(.holo-out),
+::view-transition-old(.holo-left),
+::view-transition-new(.holo-left),
+::view-transition-old(.holo-right),
+::view-transition-new(.holo-right) {
+  transform-origin: 50% min(50%, 50vh);
+}
+::view-transition-old(.holo-zoom-in),
+::view-transition-new(.holo-zoom-in),
+::view-transition-old(.holo-zoom-out),
+::view-transition-new(.holo-zoom-out) {
+  transform-origin: 50% min(32%, 32vh);
+}
+
+/* Übersicht oder Fokus → Arbeitsansicht: du fliegst durch den Raum hindurch, die Tafel faltet sich
+   aus einer Lichtlinie in der Tiefe auf. */
+::view-transition-old(.holo-in) {
+  animation: holo-pass 480ms var(--holo-ease-in) both;
+}
+::view-transition-new(.holo-in) {
+  animation: holo-unfold var(--holo-time) var(--holo-ease) 90ms both;
+}
+
+/* Arbeitsansicht → Übersicht oder Fokus: die Tafel klappt zur Linie zusammen und versinkt,
+   der Raum kommt von vorn zurück. */
+::view-transition-old(.holo-out) {
+  animation: holo-fold 560ms var(--holo-ease-in) both;
+}
+::view-transition-new(.holo-out) {
+  animation: holo-from-front var(--holo-time) var(--holo-ease) 140ms both;
+}
+
+/* Übersicht → Fokus: die Kamera fliegt auf JARVIS zu, die Kacheln rauschen seitlich vorbei. */
+::view-transition-old(.holo-zoom-in) {
+  animation: holo-dive 560ms var(--holo-ease-in) both;
+}
+::view-transition-new(.holo-zoom-in) {
+  animation: holo-emerge var(--holo-time) var(--holo-ease) 120ms both;
+}
+
+/* Fokus → Übersicht: die Kamera fährt zurück, die Kacheln fliegen von außen an ihren Platz. */
+::view-transition-old(.holo-zoom-out) {
+  animation: holo-recede 440ms var(--holo-ease-in) both;
+}
+::view-transition-new(.holo-zoom-out) {
+  animation: holo-from-beyond var(--holo-time) var(--holo-ease) 80ms both;
+}
+
+/* Von Tafel zu Tafel: alles schwenkt um dich herum, wie ein Ring aus Hologrammen.
+   --holo-side sagt, auf welcher Seite die Tafel gerade verschwindet oder herkommt. */
+::view-transition-old(.holo-left),
+::view-transition-new(.holo-right) {
+  --holo-side: -1;
+}
+::view-transition-old(.holo-right),
+::view-transition-new(.holo-left) {
+  --holo-side: 1;
+}
+::view-transition-old(.holo-left),
+::view-transition-old(.holo-right) {
+  animation: holo-swing-out 480ms var(--holo-ease-in) both;
+}
+::view-transition-new(.holo-left),
+::view-transition-new(.holo-right) {
+  animation: holo-swing-in var(--holo-time) var(--holo-ease) 60ms both;
+}
+
+/* Ohne Richtung, etwa mit der Zurück-Taste: weiches Überblenden mit kurzem Aufleuchten. */
+::view-transition-old(.holo-fade) {
+  animation: holo-fade-out 240ms ease-out both;
+}
+::view-transition-new(.holo-fade) {
+  animation: holo-flicker 520ms ease-out 80ms both;
+}
+
+@keyframes holo-pass {
+  to {
+    opacity: 0;
+    transform: perspective(1200px) translateZ(460px);
+    filter: blur(10px) brightness(1.8);
+  }
+}
+
+@keyframes holo-from-front {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) translateZ(460px);
+    filter: blur(10px) brightness(1.8);
+  }
+}
+
+@keyframes holo-unfold {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) translateZ(-760px) rotateX(16deg) scaleY(0.015);
+    filter: brightness(3.2) saturate(0.5) blur(3px);
+  }
+  30% {
+    opacity: 1;
+    transform: perspective(1200px) translateZ(-280px) rotateX(10deg) scaleY(0.015);
+    filter: brightness(3.2) saturate(0.5) blur(1px) var(--holo-glow);
+  }
+  72% {
+    filter: brightness(1.35) var(--holo-glow);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes holo-fold {
+  0% {
+    filter: none;
+  }
+  45% {
+    opacity: 1;
+    transform: perspective(1200px) translateZ(-120px) scaleY(0.015);
+    filter: brightness(3) var(--holo-glow);
+  }
+  100% {
+    opacity: 0;
+    transform: perspective(1200px) translateZ(-900px) scale(0.3, 0.015);
+    filter: brightness(3) blur(2px);
+  }
+}
+
+@keyframes holo-dive {
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+    filter: blur(9px) brightness(1.6);
+  }
+}
+
+@keyframes holo-from-beyond {
+  from {
+    opacity: 0;
+    transform: scale(2.6);
+    filter: blur(9px) brightness(1.6);
+  }
+}
+
+@keyframes holo-emerge {
+  from {
+    opacity: 0;
+    transform: scale(0.62);
+    filter: blur(6px) brightness(2);
+  }
+}
+
+@keyframes holo-recede {
+  to {
+    opacity: 0;
+    transform: scale(0.62);
+    filter: blur(6px) brightness(2);
+  }
+}
+
+@keyframes holo-swing-in {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) translateX(calc(var(--holo-side) * 48%)) rotateY(calc(var(--holo-side) * 42deg)) scale(0.82);
+    filter: brightness(2.2) blur(2px) var(--holo-glow);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+@keyframes holo-swing-out {
+  40% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: perspective(1400px) translateX(calc(var(--holo-side) * 48%)) rotateY(calc(var(--holo-side) * 42deg)) scale(0.82);
+    filter: brightness(0.7) blur(2px);
+  }
+}
+
+@keyframes holo-flare {
+  45% {
+    filter: brightness(1.9) var(--holo-glow);
+  }
+}
+
+@keyframes holo-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(110%);
+  }
+}
+
+@keyframes holo-dock-out {
+  to {
+    opacity: 0;
+    transform: translateY(110%);
+  }
+}
+
+@keyframes holo-fade-out {
+  to {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+@keyframes holo-lone {
+  0%,
+  35% {
+    opacity: 0;
+    filter: brightness(2.6) blur(3px);
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@keyframes holo-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes holo-flicker {
+  0% {
+    opacity: 0;
+    filter: brightness(2.4) blur(4px);
+  }
+  20% {
+    opacity: 0.6;
+  }
+  30% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-image-pair(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
