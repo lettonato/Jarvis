@@ -1,4 +1,5 @@
 import type { MailMessage, MailSnapshot } from "./mail";
+import type { DeskSnapshot } from "./paper";
 import type { TasksSnapshot } from "./tasks";
 
 // Das KI-Gehirn: Sätze, die keine feste Regel versteht, beantwortet Claude. Hier steht, was die
@@ -28,6 +29,8 @@ export type BrainReply = {
   mail?: MailSnapshot;
   // Mails, die Claude geöffnet hat; die Post-Ansicht zeigt ihren Text.
   opened?: MailMessage[];
+  // Neuer Stand des Spielgeld-Desks, wenn Claude ihn gesteuert hat.
+  desk?: DeskSnapshot;
 };
 
 export const VIEWS = {

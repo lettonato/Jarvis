@@ -200,6 +200,13 @@ export async function addNote(vault: string, text: string) {
   await appendTo(vault, NOTES, "# Notizen\n\nWas du JARVIS gesagt hast, damit er es sich merkt.\n\n", `- ${isoDate(now)} ${time}: ${clean}`);
 }
 
+// Schreibt eine ganze Datei, die JARVIS selbst gehört, etwa den Tagesbericht des Spielgeld-Handels.
+export async function writeVaultFile(vault: string, file: string, content: string) {
+  const full = await inside(vault, file);
+  await fs.mkdir(path.dirname(full), { recursive: true });
+  await fs.writeFile(full, content, "utf8");
+}
+
 // Tresore, die Obsidian auf diesem Rechner kennt.
 export async function detectVaults(): Promise<{ name: string; path: string }[]> {
   const home = os.homedir();

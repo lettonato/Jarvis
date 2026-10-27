@@ -7,6 +7,8 @@ import { dateOf, dueSoon, sortTasks, type Task } from "../tasks";
 import type { JarvisConfig } from "./config";
 import { markSeen, readMail, readMessage } from "./mail";
 import { addNote, addTask, completeTask, readTasks, rescheduleTask } from "./obsidian";
+import { SAFETY, STATUS_LABEL } from "../paper";
+import { control, deskSnapshot, DeskError } from "./desk/engine";
 
 // Das KI-Gehirn: Claude versteht freie Sätze und erledigt sie mit Werkzeugen, die direkt auf
 // Obsidian und das Postfach zugreifen. Alles läuft auf dem Mac; zu Anthropic gehen nur der Satz,
@@ -54,8 +56,9 @@ Was du kannst:
 - Aufgaben aus ${name}s Obsidian-Tresor lesen, neu anlegen, abhaken und verschieben, und Notizen merken.
 - Den Posteingang lesen (ungelesene und markierte Mails der letzten 14 Tage), einzelne Mails öffnen und als gelesen markieren.
 - Eine Ansicht öffnen und eine Besprechung starten, in der ihr Mails oder fällige Aufgaben Punkt für Punkt durchgeht.
+- Den Spielgeld-Handel abfragen und steuern: starten, pausieren, fortsetzen, Not-Aus. Dort handeln die Agenten Scan, Vet, Crawler, Chief, Size, Fills und Risk mit ${SAFETY.startCapitalUsd.toLocaleString("de-DE")} Dollar erfundenem Geld, um ${SAFETY.testDays} Tage lang zu testen, ob sich der Desk nach Kosten lohnt.
 
-Was du noch nicht kannst: Mails schreiben, beantworten oder löschen, Termine im Kalender, telefonieren, im Web suchen und am Markt handeln. Der Trading-Desk zeigt Kurse nur an. Möchte ${name} so etwas, sag ehrlich, dass es später kommt, und biete an, es als Aufgabe zu notieren.
+Was du noch nicht kannst: Mails schreiben, beantworten oder löschen, Termine im Kalender, telefonieren, im Web suchen und mit echtem Geld handeln. Möchte ${name} so etwas, sag ehrlich, dass es später kommt, und biete an, es als Aufgabe zu notieren. Gib keine Kauf- oder Verkaufsempfehlungen für echtes Geld; die festen Regeln des Desks (Stop-Loss, 2 Prozent pro Trade, Tageslimit) kannst und darfst du nicht ändern.
 
 Wie du arbeitest:
 - Sieh mit den Werkzeugen nach, statt zu raten. Rechne Angaben wie „Freitag“ oder „in zwei Wochen“ mit dem Datum aus dem Kontext in ein Datum um.
@@ -110,9 +113,10 @@ export async function think(config: JarvisConfig, apiKey: string, request: Brain
   const mailbox = config.mail;
   const now = new Date();
   const today = isoDate(now);
-  const outcome: { navigate?: string; session?: "post" | "aufgaben"; tasks: boolean; mail: boolean; opened: MailMessage[] } = {
+  const outcome: { navigate?: string; session?: "post" | "aufgaben"; tasks: boolean; mail: boolean; desk: boolean; opened: MailMessage[] } = {
     tasks: false,
     mail: false,
+    desk: false,
     opened: [],
   };
 
@@ -267,6 +271,57 @@ export async function think(config: JarvisConfig, apiKey: string, request: Brain
       },
     }),
     betaTool({
+      name: "handel_status",
+      description:
+        "Liest den Stand des Spielgeld-Handels: Status, Kontostand, Ergebnis seit dem Start und heute, Testtag, offene Positionen mit Stop und Ziel, die letzten Trades mit Begründung und was Crawler und Chief zuletzt gemeldet haben.",
+      strict: true,
+      inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
+      run: async () => {
+        const d = await deskSnapshot();
+        const usd = (n: number) => Math.round(n * 100) / 100;
+        return JSON.stringify({
+          status: STATUS_LABEL[d.status],
+          grund: d.statusReason,
+          testtag: d.testDay,
+          testtage: SAFETY.testDays,
+          konto_usd: usd(d.equity),
+          bar_usd: usd(d.cash),
+          start_usd: d.startCapital,
+          ergebnis_usd: usd(d.pnlUsd),
+          ergebnis_prozent: usd(d.pnlPct),
+          heute_prozent: usd(d.dayPnlPct),
+          chief_bewertet_mit: d.chief === "claude" ? "Claude" : "Faustregeln (kein KI-Gehirn)",
+          positionen: d.positions.map((p) => ({ coin: p.symbol, kosten_usd: usd(p.costUsd), wert_usd: usd(p.qty * p.lastPrice), stop: p.stopPrice, ziel: p.targetPrice, gekauft: p.openedAt, warum: p.why })),
+          letzte_trades: d.trades.slice(0, 10).map((t) => ({ zeit: t.at, art: t.side, coin: t.symbol, usd: usd(t.usd), ergebnis_usd: t.pnlUsd === undefined ? null : usd(t.pnlUsd), wer: t.agent, warum: t.why })),
+          crawler: { seiten_gelesen: d.stats.pagesRead, aussortiert: d.stats.killed, rugs_gestoppt: d.stats.rugsStopped },
+          gewonnen: d.stats.wins,
+          verloren: d.stats.losses,
+          protokoll: d.log.slice(0, 15).map((l) => `${l.agent}: ${l.text}`),
+        });
+      },
+    }),
+    betaTool({
+      name: "handel_steuern",
+      description: "Steuert den Spielgeld-Handel: start (nur wenn er noch nicht läuft), pause (keine neuen Käufe, Stop-Loss bleibt), weiter (nach Pause oder Not-Aus), notaus (alle Agenten stoppen sofort). Nur auf ausdrücklichen Wunsch.",
+      strict: true,
+      inputSchema: {
+        type: "object",
+        properties: { aktion: { type: "string", enum: ["start", "pause", "weiter", "notaus"] } },
+        required: ["aktion"],
+        additionalProperties: false,
+      },
+      run: async ({ aktion }) => {
+        try {
+          const message = await control({ action: aktion as "start" | "pause" | "weiter" | "notaus" });
+          outcome.desk = true;
+          return message;
+        } catch (e) {
+          if (e instanceof DeskError) throw new Error(e.message);
+          throw e;
+        }
+      },
+    }),
+    betaTool({
       name: "besprechung_starten",
       description:
         "Startet nach deiner Antwort eine Besprechung: JARVIS geht die neuen wichtigen Mails oder die bis nächste Woche fälligen Aufgaben Punkt für Punkt mit dem Nutzer durch und nennt den ersten Punkt selbst. Kündige sie in deiner Antwort nur kurz an.",
@@ -307,6 +362,10 @@ export async function think(config: JarvisConfig, apiKey: string, request: Brain
     const item = mail?.items.find((m) => m.uid === Number(request.focus!.id));
     if (item) lines.push(`Gerade in der Besprechung: Mail uid ${item.uid} von ${item.from}, Betreff „${item.subject}“`);
   }
+  const desk = await deskSnapshot().catch(() => null);
+  if (desk && desk.status !== "aus") {
+    lines.push(`Spielgeld-Handel: ${STATUS_LABEL[desk.status]}, Konto ${Math.round(desk.equity)} Dollar (${desk.pnlPct >= 0 ? "+" : ""}${desk.pnlPct.toFixed(1)} % seit Start), Tag ${desk.testDay} von ${SAFETY.testDays}, ${desk.positions.length} Positionen offen`);
+  } else if (desk) lines.push("Spielgeld-Handel: noch nicht gestartet");
   for (const line of request.extra.slice(0, 4)) lines.push(line.slice(0, 300));
 
   const messages = historyMessages(request.history);
@@ -346,5 +405,6 @@ export async function think(config: JarvisConfig, apiKey: string, request: Brain
     tasks: outcome.tasks && vault ? await readTasks(vault) : undefined,
     mail: outcome.mail && mailbox ? await readMail(mailbox) : undefined,
     opened: outcome.opened.length ? outcome.opened : undefined,
+    desk: outcome.desk ? await deskSnapshot() : undefined,
   };
 }

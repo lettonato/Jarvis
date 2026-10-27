@@ -2,6 +2,7 @@ import { addDays, findDate, isoDate, spokenDay, spokenDue } from "./dates";
 import { formatEur, formatPct } from "./format";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { MarketSnapshot } from "./market";
+import { SAFETY, type DeskSnapshot } from "./paper";
 import { dateOf, dueSoon, type Task, type TasksSnapshot } from "./tasks";
 import type { WeatherSnapshot } from "./weather";
 
@@ -21,7 +22,8 @@ export type Effect =
   | { type: "addTask"; text: string; due?: string; important?: boolean }
   | { type: "addNote"; text: string }
   | { type: "markSeen"; uid: number }
-  | { type: "readMail"; uid: number };
+  | { type: "readMail"; uid: number }
+  | { type: "desk"; action: "start" | "pause" | "weiter" | "notaus" };
 
 export type Decision = {
   // Gesprochen, nachdem die Änderung geklappt hat. Bei „Mail vorlesen“ folgt direkt der Text der Mail.
@@ -41,6 +43,7 @@ export type CommandContext = {
   weather: WeatherSnapshot | null;
   tasks: TasksSnapshot | null;
   mail: MailSnapshot | null;
+  desk: DeskSnapshot | null;
   session: Session | null;
 };
 
@@ -49,6 +52,22 @@ const today = (ctx: CommandContext) => isoDate(ctx.now);
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // ---------- Sätze ----------
+
+const dollars = (n: number) => `${Math.round(n).toLocaleString("de-DE")} Dollar`;
+const spokenPct = (n: number) => `${n >= 0 ? "plus" : "minus"} ${Math.abs(n).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Prozent`;
+
+// Wie der Spielgeld-Handel steht. `short` ist die Fassung fürs Briefing.
+const count = (n: number, one: string, many: string) => (n === 1 ? `einen ${one}` : `${n} ${many}`);
+
+export function deskSentence(desk: DeskSnapshot | null, short = false): string {
+  if (!desk) return short ? "" : "Die Daten vom Trading-Desk laden noch.";
+  if (desk.status === "aus") return short ? "" : "Der Spielgeld-Handel ist noch nicht gestartet. Sag: starte den Handel, oder drück auf dem Trading-Desk auf Start.";
+  const day = `Tag ${Math.min(desk.testDay, SAFETY.testDays)} von ${SAFETY.testDays}`;
+  const state = desk.status === "laeuft" ? "" : desk.status === "notaus" ? " Achtung, der Not-Aus ist aktiv." : desk.status === "pausiert" ? " Er ist pausiert." : " Das Tageslimit ist erreicht, heute kauft er nichts mehr.";
+  if (short) return `Der Spielgeld-Handel steht bei ${spokenPct(desk.pnlPct)}, ${day}.${state}`;
+  const open = desk.positions.length === 0 ? "Gerade ist nichts gekauft." : desk.positions.length === 1 ? "Eine Position ist offen." : `${desk.positions.length} Positionen sind offen.`;
+  return `Das Spielgeld-Konto steht bei ${dollars(desk.equity)}, ${spokenPct(desk.pnlPct)} seit dem Start, ${day}. ${open} Der Crawler hat ${count(desk.stats.killed, "Coin", "Coins")} aussortiert und ${count(desk.stats.rugsStopped, "Rug", "Rugs")} gestoppt.${state}`;
+}
 
 function timeSentence(now: Date): string {
   return `Es ist ${now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr.`;
@@ -243,12 +262,15 @@ type Rule = { match: RegExp; run: (ctx: CommandContext, text: string, original: 
 
 // Der Not-Aus gilt immer sofort, egal wie lang der Satz ist.
 const EMERGENCY: Rule = {
-  match: /not-?aus|stopp alles|alles stoppen/,
-  run: () => ({ reply: "Der Not-Aus ist bereit. Sobald der Spielgeld-Handel läuft, stoppt er alle Agenten sofort." }),
+  match: /not-?aus|stopp? alles|alles stoppen/,
+  run: (ctx) => {
+    if (ctx.desk?.status === "aus") return { reply: "Der Spielgeld-Handel läuft gar nicht, es gibt nichts zu stoppen." };
+    if (ctx.desk?.status === "notaus") return { reply: "Der Not-Aus ist schon aktiv. Alle Agenten stehen.", navigate: "/trading" };
+    return { reply: "Not-Aus. Alle Agenten stehen.", effect: { type: "desk", action: "notaus" }, navigate: "/trading" };
+  },
 };
 
 const RULES: Rule[] = [
-  EMERGENCY,
   {
     match: ADD_TASK,
     run: (ctx, _text, original) => {
@@ -290,7 +312,7 @@ const RULES: Rule[] = [
       const hour = ctx.now.getHours();
       const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
       const w = ctx.weather ? `Draußen hat es ${Math.round(ctx.weather.temperature)} Grad, ${ctx.weather.description}.` : "";
-      const intro = [`${greeting}, ${ctx.name}.`, w, mailSentence(ctx.mail), taskSentence(ctx.tasks, today(ctx))].filter(Boolean).join(" ");
+      const intro = [`${greeting}, ${ctx.name}.`, w, mailSentence(ctx.mail), taskSentence(ctx.tasks, today(ctx)), deskSentence(ctx.desk, true)].filter(Boolean).join(" ");
       const mails = ctx.mail?.configured && !ctx.mail.error ? ctx.mail.importantUnread : 0;
       const tasks = ctx.tasks?.configured ? dueSoon(ctx.tasks.tasks, today(ctx)).length : 0;
       if (mails > 0) return startMail(ctx, `${intro} Fangen wir mit den Mails an.`, "aufgaben");
@@ -313,6 +335,25 @@ const RULES: Rule[] = [
       if (!ctx.tasks?.configured) return { reply: "Obsidian ist noch nicht verbunden. In der Aufgaben-Ansicht geht das mit einem Klick.", navigate: "/aufgaben" };
       return startTasks(ctx, taskSentence(ctx.tasks, today(ctx)));
     },
+  },
+  {
+    match: /(start|beginn).{0,20}(handel|trading|spielgeld)|(handel|trading).{0,12}(starten|beginnen)/,
+    run: (ctx) =>
+      ctx.desk && ctx.desk.status !== "aus"
+        ? { reply: `Der Handel ist schon gestartet. ${deskSentence(ctx.desk)}`, navigate: "/trading" }
+        : { reply: `Gestartet. Die Agenten handeln jetzt mit ${dollars(SAFETY.startCapitalUsd)} Spielgeld, die Testzeit läuft ${SAFETY.testDays} Tage.`, effect: { type: "desk", action: "start" }, navigate: "/trading" },
+  },
+  {
+    match: /(pausier|anhalten|pause|stopp?e?\b).{0,20}(handel|trading)|(handel|trading).{0,12}(pausieren|anhalten|stoppen)/,
+    run: () => ({ reply: "Pausiert. Ich kaufe nichts Neues, passe aber weiter auf die offenen Positionen auf.", effect: { type: "desk", action: "pause" } }),
+  },
+  {
+    match: /(handel|trading).{0,12}(fortsetzen|weiter)|weiter handeln/,
+    run: () => ({ reply: "Die Agenten laufen wieder.", effect: { type: "desk", action: "weiter" } }),
+  },
+  {
+    match: /(wie (läuft|steht|geht)).{0,20}(handel|trading|desk|spielgeld|konto)|spielgeld|handelsbericht|kontostand/,
+    run: (ctx) => ({ reply: deskSentence(ctx.desk), navigate: "/trading" }),
   },
   {
     match: /trading|desk|handel/,
@@ -356,13 +397,15 @@ const RULES: Rule[] = [
 export function decide(input: string, ctx: CommandContext, brain = false): Decision | null {
   const original = input.trim().replace(/[.!?]+$/, "");
   const text = original.toLowerCase();
+  // Der Not-Aus geht vor, auch mitten in einer Besprechung; die endet dann.
+  if (EMERGENCY.match.test(text)) return { ...EMERGENCY.run(ctx, text, original), ...(ctx.session ? { session: null } : {}) };
   if (ctx.session) {
     const inSession = sessionCommand(ctx, ctx.session, text);
     if (inSession) return inSession;
   }
   const short = original.split(/\s+/).length <= 4;
   const rule = RULES.find((r) => r.match.test(text));
-  if (rule && (!brain || short || rule === EMERGENCY)) return rule.run(ctx, text, original);
+  if (rule && (!brain || short)) return rule.run(ctx, text, original);
   if (brain) return null;
   if (ctx.session) {
     const hint = ctx.session.kind === "aufgaben" ? "Sag erledigt, verschieben auf einen Tag, weiter oder beenden." : "Sag vorlesen, Aufgabe, gelesen, weiter oder beenden.";
