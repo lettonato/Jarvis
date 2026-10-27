@@ -2,7 +2,7 @@
 
 Dein persönlicher Assistent mit Trading-Desk. Der Bauplan steht im Dokument „JARVIS Bauplan: Assistent und Trading-Desk“.
 
-**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails und deine Obsidian-Aufgaben, geht sie mit dir durch, zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain und Projektseite, und gehandelt wird mit 10.000 $ Spielgeld. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) versteht er freie Sätze und bewertet als Chief die Coins.
+**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails und deine Obsidian-Aufgaben, geht sie mit dir durch, zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain, Projektseite und mit Grok auch X, und gehandelt wird mit 10.000 $ Spielgeld. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) versteht er freie Sätze und bewertet als Chief die Coins. Sprechen geht ohne Knopf: „Jarvis, …“.
 
 ## Ansichten
 
@@ -11,12 +11,12 @@ Oben wechselst du zwischen den Ansichten:
 | Ansicht | Was du siehst |
 | --- | --- |
 | **JARVIS** (`/fokus`) | Nur JARVIS, groß, und das Gespräch mit ihm. Darüber steht, was ansteht (wichtige Mails, fällige Punkte, Wetter); ein Klick darauf, und er geht es mit dir durch. |
-| **Übersicht** (`/`) | JARVIS in der Mitte, alle Module als Kacheln wie im NEXUS-Video. Jede Kachel öffnet ihre Ansicht, ein Klick auf den Kopf führt in den Fokus. |
+| **Übersicht** (`/`) | JARVIS in der Mitte, alle Module als Kacheln wie im NEXUS-Video. Fährst du mit der Maus über eine Kachel, dreht sie sich zu dir und tritt heraus; ein Klick öffnet ihre Ansicht, ein Klick auf den Kopf führt in den Fokus. |
 | **Aufgaben** (`/aufgaben`) | Deine Aufgaben aus Obsidian nach Fälligkeit: abhaken, auf morgen oder eine Woche verschieben, neu notieren. |
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
 | **Trading** (`/trading`) | Der Trading-Desk: Agenten, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
-| **Einstellungen** (Zahnrad) | Name, Obsidian-Tresor, Postfach, KI-Gehirn, Stimme. |
+| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Crawler auf X, Obsidian-Tresor, Postfach, Sprache, Stimme. |
 
 Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Post, Trading und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
 
@@ -34,7 +34,18 @@ Sprichst du per Mikrofon, hört JARVIS nach seiner Frage gleich wieder zu. Statt
 
 Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichtig“**, **„Erinnere mich morgen an den Zahnarzt“**, **„Merke dir: …“**, **„Meine Mails“**, **„Meine Aufgaben“**, **„Zeig nur dich“**, **„Zeig alle Module“**, Wetter, Uhrzeit, Kurse, Memecoins. Alles andere beantwortet das KI-Gehirn, sobald es eingerichtet ist.
 
-**Tastatur:** Leertaste = sprechen, Escape = JARVIS unterbrechen.
+**Tastatur:** Leertaste = sprechen (auch ohne „Jarvis“), Escape = JARVIS unterbrechen.
+
+## Sprechen mit „Jarvis“
+
+JARVIS hört von selbst zu, ohne Knopf. Sag **„Jarvis“** und dann, was du brauchst: „Jarvis, Briefing“, „Jarvis, wie läuft der Handel?“. Ein kurzer Doppelton zeigt, dass er dich gehört hat, und während du sprichst, siehst du deine Worte mitlaufen. Sagst du nur „Jarvis“, wartet er ein paar Sekunden auf den Rest. Nach seiner Antwort hört er noch etwa acht Sekunden weiter zu; da reicht die nächste Frage ohne „Jarvis“, in der Besprechung zum Beispiel „erledigt“ oder „weiter“.
+
+- **Unterbrechen:** „Jarvis, stopp“ oder Escape.
+- **Ausschalten:** „Jarvis, Mikrofon aus“ oder der Schalter **Hört auf „Jarvis“** über dem Gespräch. Dann sprichst du über den Mikrofon-Knopf oder die Leertaste. Wieder an mit dem Schalter oder „Mikrofon an“.
+- **Beim ersten Mal** fragt der Browser, ob JARVIS das Mikrofon benutzen darf: **Zulassen**. Laut antworten darf er erst, wenn du einmal auf die Seite geklickt hast; das verlangt der Browser, JARVIS erinnert dich daran.
+- **Browser:** Chrome oder Safari. In Safari muss unter **Systemeinstellungen → Tastatur** das **Diktat** eingeschaltet sein.
+- **Datenschutz:** Hat Chrome das deutsche Sprachpaket, erkennt er die Sprache auf dem Mac selbst, dann steht neben dem Schalter „nur auf dem Mac“. Sonst schickt Chrome den Ton zur Erkennung an Google, Safari an Apple, auch während JARVIS auf „Jarvis“ wartet.
+- **Stimme:** unter **Einstellungen → Stimme**. Am besten klingen die erweiterten Stimmen vom Mac, zum Beispiel „Yannick (Erweitert)“: Systemeinstellungen → Bedienungshilfen → Gesprochene Inhalte → Systemstimme → Stimmen verwalten.
 
 ## KI-Gehirn (Claude)
 
@@ -83,6 +94,8 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 - Webseiten im Browser können JARVIS nicht fernsteuern: der Server nimmt nur Anfragen von JARVIS selbst an.
 - Einstellungen samt Mail-Passwort und Claude-Schlüssel liegen in `~/.jarvis/config.json`, lesbar nur für deinen Benutzer. Ein Update von JARVIS ändert daran nichts. Die Seite bekommt den Schlüssel nie zu sehen, nur seine letzten vier Zeichen.
 - Der Crawler liest nur öffentliche https-Seiten. Adressen im Heimnetz (Router, NAS) öffnet er nicht, auch nicht über Weiterleitungen. Texte auf Projektseiten sind für Claude nur Daten, keine Anweisungen.
+- Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt (siehe oben, wohin der Ton geht). Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
+- Mit Grok gehen Name, Symbol, Vertragsadresse und Konten der geprüften Coins an xAI, sonst nichts von dir.
 - Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
 
 ## Wetter
@@ -97,7 +110,7 @@ So läuft eine Runde, jede Minute (Reihenfolge aus `filter.py`: billige Prüfung
 
 1. **Scan** holt neue Solana-Coins von DexScreener.
 2. **Vet** prüft die harten Filter (Alter, Liquidität, Volumen, Marktwert, Trades).
-3. **Crawler** liest zuerst, dann handelt der Desk: Er holt den Blockchain-Bericht von RugCheck und sortiert aus, wenn der Entwickler noch Coins erzeugen oder Konten einfrieren kann, RugCheck vor Betrug warnt, eine Wallet mehr als 5 % hält oder die zehn größten mehr als 60 %. Hat ein Coin weder Webseite noch Konten, fliegt er auch raus. Sonst liest er die Projektseite.
+3. **Crawler** liest zuerst, dann handelt der Desk: Er holt den Blockchain-Bericht von RugCheck und sortiert aus, wenn der Entwickler noch Coins erzeugen oder Konten einfrieren kann, RugCheck vor Betrug warnt, eine Wallet mehr als 5 % hält oder die zehn größten mehr als 60 %. Hat ein Coin weder Webseite noch Konten, fliegt er auch raus. Sonst liest er die Projektseite und, mit xAI-Schlüssel, X (siehe unten).
 4. **Chief** schätzt die weichen Filter: Ist der Anstieg schon gelaufen, gehören Seite und Konten wirklich zum Coin, wurde das Konto schon für andere Coins benutzt? Mit KI-Gehirn macht das Claude (Haiku, Bruchteile eines Cents pro Runde), sonst Faustregeln. Was sich ausrechnen lässt (Liquidität, Konzentration, Anteil des Entwicklers), rechnet der Code; die Grenzen aus `thresholds.py` entscheiden, nicht die KI.
 5. **Size** setzt 2 % des Kontos ein, **Fills** kauft zum frischen Kurs, mit Gebühren und Kursrutsch wie auf einer echten Börse. Ist der Kurs seit der Prüfung um mehr als 5 % gestiegen, läuft Fills nicht hinterher.
 6. **Risk** und **Crawler** bewachen die gekauften Coins, auch in der Pause: Stop-Loss −15 %, Nachlauf-Stop 20 % unter dem Höchststand, Ziel +50 %, spätestens nach 24 Stunden raus. Fällt die Liquidität um die Hälfte, verschwindet das Handelspaar oder meldet RugCheck neue Rug-Zeichen, verkauft der Desk sofort.
@@ -113,7 +126,22 @@ Feste Regeln, die auch Claude nicht ändern kann (`src/lib/paper.ts`): höchsten
 
 Sind CoinGecko, DexScreener oder Open-Meteo nicht erreichbar, zeigt JARVIS oben **BEISPIELDATEN**. Diese Zahlen sind erfunden und nur zur Ansicht; mit ihnen handelt der Desk nicht.
 
-Nicht dabei: Beiträge auf X. Die X-Schnittstelle kostet monatlich; der Crawler liest stattdessen die Seiten und Konten, die das Projekt bei DexScreener angibt.
+### Crawler auf X (Grok)
+
+Wie im Video liest der Crawler vor jedem Kauf auch X. Das macht **Grok von xAI**: Er sucht die Beiträge der letzten drei Tage zum Coin (Cashtag und Vertragsadresse), schätzt, wie viele davon nach Bots aussehen, und prüft das X-Konto des Projekts: passt es zum Coin, wie alt ist es, hat es schon andere Coins beworben? Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben.
+
+- Warnen auf X mehrere unabhängige Konten konkret vor dem Coin, fliegt er raus („X warnt“).
+- Passt das Konto nicht oder wurde es recycelt, sagt Chief nein.
+- Kann Grok gerade nicht lesen (kein Guthaben, Störung), kauft der Desk den Coin nicht.
+- Ohne xAI-Schlüssel läuft der Desk wie vorher, nur ohne X.
+
+**Einrichten** (einmalig):
+
+1. Auf [console.x.ai](https://console.x.ai) anmelden (mit X- oder Google-Konto).
+2. Guthaben aufladen, zum Beispiel 10 $. Mehr kann nie abgebucht werden.
+3. Unter **API Keys** einen Schlüssel erstellen (beginnt mit `xai-`) und in JARVIS unter **Einstellungen → Crawler auf X** einfügen. JARVIS prüft ihn, bevor er speichert.
+
+**Kosten:** xAI rechnet pro gelesenem Beitrag (0,5 Cent) und Profil (1 Cent), dazu Grok selbst. Ein Coin kostet so etwa 10 bis 30 Cent. Deshalb gibt es ein **Tagesbudget** (Standard 1 $, einstellbar bis 20 $). Ist es aufgebraucht, kauft der Desk bis morgen nichts Neues; die gekauften Coins bewacht er weiter. Wie viel heute verbraucht ist, steht auf dem Desk in der Social-Kachel.
 
 ## JARVIS starten
 
@@ -126,7 +154,7 @@ Einmalig:
 
 **Windows:** Doppelklick auf `start-jarvis.bat`.
 
-Beim ersten Start und nach jedem Update werden die Pakete installiert, das dauert ein bis zwei Minuten. Danach öffnet sich der Browser mit `http://localhost:3000`. Zum Sprechen am besten Chrome verwenden. Das Terminal-Fenster muss offen bleiben, solange JARVIS läuft; zum Beenden schließt du es.
+Beim ersten Start und nach jedem Update werden die Pakete installiert, das dauert ein bis zwei Minuten. Danach öffnet sich der Browser mit `http://localhost:3000`. Zum Sprechen Chrome oder Safari verwenden. Das Terminal-Fenster muss offen bleiben, solange JARVIS läuft; zum Beenden schließt du es.
 
 ## Für Entwickler
 
@@ -137,7 +165,7 @@ npm run lint
 npm run build
 ```
 
-Statt den Claude-Schlüssel in den Einstellungen zu speichern, kannst du ihn auch als Umgebungsvariable `ANTHROPIC_API_KEY` setzen; der Schlüssel aus den Einstellungen geht vor.
+Statt den Claude-Schlüssel in den Einstellungen zu speichern, kannst du ihn auch als Umgebungsvariable `ANTHROPIC_API_KEY` setzen, den xAI-Schlüssel als `XAI_API_KEY`; die Schlüssel aus den Einstellungen gehen vor.
 
 Aufbau:
 
@@ -158,14 +186,14 @@ Aufbau:
 | `src/lib/server/config.ts` | Einstellungen in `~/.jarvis/config.json` |
 | `src/lib/server/guard.ts` | Schutz: nur Anfragen von diesem Mac |
 | `src/app/api/` | Schnittstellen für Aufgaben, Post, Gehirn, Einstellungen, Kurse, Wetter |
-| `src/lib/useVoice.ts` | Spracherkennung und Sprachausgabe im Browser |
+| `src/lib/useVoice.ts`, `src/lib/voiceText.ts` | Spracherkennung und Sprachausgabe im Browser: Weckwort „Jarvis“, Nachfrage, Unterbrechen, was vorgelesen wird |
 | `src/lib/thresholds.ts`, `src/lib/vet.ts` | harte Filter aus dem Video und der Vet-Agent |
 | `src/lib/market.ts` | Kurse und Scanner (CoinGecko, DexScreener) |
 | `src/components/TradingDesk.tsx` | der Trading-Desk |
 | `src/lib/paper.ts` | Spielgeld: feste Sicherheitsregeln, Gebühren, Stop-Loss, Rechnungen |
-| `src/lib/server/desk/` | der Spielgeld-Handel: `engine.ts` (Takt, Konto, Kauf und Verkauf, Bericht), `crawler.ts` (RugCheck und Projektseite), `chief.ts` (weiche Filter mit Claude oder Faustregeln) |
+| `src/lib/server/desk/` | der Spielgeld-Handel: `engine.ts` (Takt, Konto, Kauf und Verkauf, Bericht), `crawler.ts` (RugCheck und Projektseite), `grok.ts` (X über Grok von xAI), `chief.ts` (weiche Filter mit Claude oder Faustregeln) |
 | `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart läuft sein Takt los |
 
-`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL` und `ANTHROPIC_BASE_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000).
+`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL` und `XAI_BASE_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000).
 
 API-Schlüssel gehören später in eine Datei `.env.local`. Sie wird nie hochgeladen.

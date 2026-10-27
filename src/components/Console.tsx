@@ -16,6 +16,12 @@ export const STATE_LABEL: Record<AvatarState, string> = {
   speaking: "Spreche …",
 };
 
+// Wartet das Mikrofon auf „Jarvis“, sagt die Anzeige das statt „Bereit“.
+export function useStateLabel(): string {
+  const { state, voice } = useJarvis();
+  return state === "idle" && voice.waiting ? "Sag „Jarvis“" : STATE_LABEL[state];
+}
+
 type Chip = { label: string; text?: string; fill?: string };
 
 const IDLE: Chip[] = [
@@ -68,6 +74,27 @@ export function MicButton({ big = false }: { big?: boolean }) {
       }`}
     >
       <Icon name="mic" className={big ? "h-7 w-7 text-sky-100" : "h-5 w-5 text-sky-100"} />
+    </button>
+  );
+}
+
+// Freihändig an oder aus. Läuft die Erkennung auf dem Mac selbst, steht das dabei.
+export function HandsFreeSwitch() {
+  const { voice } = useJarvis();
+  if (!voice.canListen) return null;
+  const on = voice.handsFree;
+  return (
+    <button
+      type="button"
+      onClick={() => voice.setHandsFree(!on)}
+      aria-pressed={on}
+      title={on ? "JARVIS hört auf „Jarvis“. Antippen zum Ausschalten." : "Antippen, dann hört JARVIS von selbst auf „Jarvis“."}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition ${
+        on ? "border-sky-300/50 bg-sky-400/10 text-sky-100 hover:bg-sky-400/20" : "border-line text-quiet hover:border-sky-300/40 hover:text-sky-100"
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${on && voice.waiting ? "animate-pulse bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.9)]" : on ? "bg-sky-300/60" : "bg-frame"}`} />
+      {on ? `Hört auf „Jarvis“${voice.local ? " · nur auf dem Mac" : ""}` : "Freihändig aus"}
     </button>
   );
 }
@@ -142,29 +169,43 @@ export function useDraft() {
 
 // Das Gespräch unter dem Kopf in Übersicht und Fokus. `large` zeigt mehr Verlauf.
 export function Console({ large = false }: { large?: boolean }) {
-  const { turns, voice, session } = useJarvis();
+  const { turns, voice, session, state } = useJarvis();
   const { draft, setDraft, inputRef, fill } = useDraft();
   const scroller = useRef<HTMLDivElement>(null);
   const shown = turns.slice(large ? -12 : -4);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
-  }, [turns.length]);
+  }, [turns.length, voice.interim]);
 
   return (
     <div className={`w-full rounded-xl border border-sky-300/20 bg-panel/70 p-3 backdrop-blur-sm ${large ? "max-w-[760px]" : "max-w-[640px]"}`}>
-      {session && <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-sky-300">{sessionLabel(session)}</p>}
+      {(session || voice.canListen) && (
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-[0.25em] text-sky-300">{sessionLabel(session)}</p>
+          <HandsFreeSwitch />
+        </div>
+      )}
       <div ref={scroller} className={`space-y-1.5 overflow-y-auto text-sm ${large ? "max-h-[24vh] min-h-20" : "max-h-40 min-h-16"}`}>
         {shown.length === 0 && (
           <p className="text-quiet">
-            {voice.canListen
-              ? "Tippe aufs Mikrofon oder drück die Leertaste und sprich mit mir. Sag zum Beispiel: Briefing."
-              : "Schreib mir unten. Sprechen geht in Chrome oder Edge."}
+            {voice.handsFree
+              ? "Sag „Jarvis“ und dann, was du brauchst. Zum Beispiel: Jarvis, Briefing."
+              : voice.canListen
+                ? "Tippe aufs Mikrofon oder drück die Leertaste und sprich mit mir. Sag zum Beispiel: Briefing."
+                : "Schreib mir unten. Sprechen geht in Chrome und Safari."}
           </p>
         )}
         {shown.map((t) => (
           <TurnLine key={t.id} turn={t} />
         ))}
+        {state === "listening" && (
+          <p className="italic text-quiet">
+            <span className="mr-2 text-[10px] font-bold not-italic tracking-widest text-frame">DU</span>
+            {voice.interim || "…"}
+          </p>
+        )}
+        {voice.hint && <p className="text-amber-200">{voice.hint}</p>}
         {voice.error && <p className="text-down">{voice.error}</p>}
       </div>
       <div className="mt-3 flex items-center gap-2">

@@ -13,7 +13,7 @@ import type { DeskSnapshot } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
 import type { TasksSnapshot } from "@/lib/tasks";
 import { usePolling } from "@/lib/usePolling";
-import { useVoice } from "@/lib/useVoice";
+import { setHandsFree, useVoice } from "@/lib/useVoice";
 import type { WeatherSnapshot } from "@/lib/weather";
 
 // JARVIS ist in jeder Ansicht derselbe: Gespräch, Stimme, Besprechung und Daten leben hier,
@@ -46,7 +46,22 @@ type Jarvis = {
   ask: (text: string) => void;
   discuss: (kind: Session["kind"], id: string | number) => void;
   run: (effect: Effect) => Promise<string | undefined>;
-  voice: { canListen: boolean; listening: boolean; error: string | null; toggle: () => void; stopSpeaking: () => void };
+  voice: {
+    canListen: boolean;
+    // Hört von selbst auf „Jarvis“.
+    handsFree: boolean;
+    // Wartet auf deinen Befehl; interim ist, was gerade ankommt.
+    listening: boolean;
+    waiting: boolean;
+    interim: string;
+    // Die Erkennung läuft auf dem Mac selbst.
+    local: boolean;
+    error: string | null;
+    hint: string | null;
+    toggle: () => void;
+    stopSpeaking: () => void;
+    setHandsFree: (on: boolean) => void;
+  };
 };
 
 const JarvisContext = createContext<Jarvis | null>(null);
@@ -85,14 +100,15 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const [spotlight, setSpotlight] = useState<{ uids: number[]; n: number }>({ uids: [], n: 0 });
 
   const sessionRef = useRef<Session | null>(null);
-  const handsFree = useRef(false);
+  // Kam der letzte Satz per Stimme, hört JARVIS nach seiner Antwort gleich weiter zu.
+  const byVoice = useRef(false);
   const heard = useRef<(text: string) => void>(() => {});
   const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null });
   const place = useRef(pathname);
   const history = useRef<Turn[]>([]);
   const brain = useRef(false);
 
-  const { canListen, listening, speaking, error, listen, stopListening, speak, stopSpeaking } = useVoice(
+  const { canListen, handsFree, listening, waiting, interim, local, speaking, error, hint, listen, stopListening, speak, stopSpeaking } = useVoice(
     useCallback((text: string) => heard.current(text), []),
   );
   const name = settings?.name ?? "Benedikt";
@@ -144,6 +160,10 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
           case "desk":
             setDesk(await postJson<DeskSnapshot>("/api/handel", { action: effect.action }));
             return;
+          case "voice":
+            if (effect.on && !canListen) throw new Error("Dieser Browser kann nicht zuhören. Nimm Chrome oder Safari.");
+            setHandsFree(effect.on);
+            return;
         }
       } catch (e) {
         // Hat jemand die Aufgabe in Obsidian geändert, frisch laden, damit die Liste wieder stimmt.
@@ -151,14 +171,14 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         throw e;
       }
     },
-    [setTasks, setMail, setDesk, reloadTasks],
+    [setTasks, setMail, setDesk, reloadTasks, canListen],
   );
 
   const speakThenMaybeListen = useCallback(
     (text: string) => {
       speak(text, () => {
-        // Im Gespräch per Stimme hört JARVIS nach seiner Frage gleich wieder zu.
-        if (sessionRef.current && handsFree.current) listen();
+        // Im Gespräch per Stimme hört JARVIS nach seiner Antwort gleich wieder zu, ohne „Jarvis“.
+        if (byVoice.current) listen();
       });
     },
     [speak, listen],
@@ -232,7 +252,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     (text: string, fromVoice: boolean) => {
       const clean = text.trim();
       if (!clean) return;
-      handsFree.current = fromVoice;
+      byVoice.current = fromVoice;
       const earlier = history.current.slice(-12).map(({ who, text }) => ({ who, text }));
       addTurn("du", clean);
       setThinking(true);
@@ -253,7 +273,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
 
   const discuss = useCallback(
     (kind: Session["kind"], id: string | number) => {
-      handsFree.current = false;
+      byVoice.current = false;
       execute(discussDecision(context(), kind, id));
     },
     [execute, context],
@@ -304,9 +324,42 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       ask,
       discuss,
       run,
-      voice: { canListen, listening, error, toggle, stopSpeaking },
+      voice: { canListen, handsFree, listening, waiting, interim, local, error, hint, toggle, stopSpeaking, setHandsFree },
     }),
-    [name, market, weather, tasks, mail, settings, reloadTasks, loadMail, reloadSettings, setTasks, setMail, setSettings, desk, setDesk, mailText, spotlight, turns, state, session, ask, discuss, run, canListen, listening, error, toggle, stopSpeaking],
+    [
+      name,
+      market,
+      weather,
+      tasks,
+      mail,
+      settings,
+      reloadTasks,
+      loadMail,
+      reloadSettings,
+      setTasks,
+      setMail,
+      setSettings,
+      desk,
+      setDesk,
+      mailText,
+      spotlight,
+      turns,
+      state,
+      session,
+      ask,
+      discuss,
+      run,
+      canListen,
+      handsFree,
+      listening,
+      waiting,
+      interim,
+      local,
+      error,
+      hint,
+      toggle,
+      stopSpeaking,
+    ],
   );
 
   return <JarvisContext.Provider value={value}>{children}</JarvisContext.Provider>;

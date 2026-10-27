@@ -93,7 +93,7 @@ export const MODULES: JarvisModule[] = [
     href: "/trading",
     side: "rechts",
     about:
-      "Die Agenten aus dem GrokBot-Video: Scan findet neue Solana-Coins, Vet prüft sie mit harten Filtern, der Crawler liest Blockchain und Projektseite, Chief bewertet den Rest. Size, Fills und Risk handeln mit 10.000 $ Spielgeld und Stop-Loss, Crawler und Risk bewachen die gekauften Coins. Echtgeld erst nach vier Wochen und nur mit deiner Freigabe.",
+      "Die Agenten aus dem GrokBot-Video: Scan findet neue Solana-Coins, Vet prüft sie mit harten Filtern, der Crawler liest Blockchain, Projektseite und mit Grok auch X, Chief bewertet den Rest. Size, Fills und Risk handeln mit 10.000 $ Spielgeld und Stop-Loss, Crawler und Risk bewachen die gekauften Coins. Echtgeld erst nach vier Wochen und nur mit deiner Freigabe.",
   },
   {
     id: "markt",
@@ -123,7 +123,7 @@ export const MODULES: JarvisModule[] = [
     phase: 3,
     href: "/agenten#intel",
     side: "rechts",
-    about: "Liest Nachrichten, X und Telegram mit und meldet, wenn sich der Markt dreht oder ein Coin plötzlich Aufmerksamkeit bekommt. Projektseiten und Blockchain liest der Crawler im Trading-Desk schon heute.",
+    about: "Liest Nachrichten, X und Telegram mit und meldet, wenn sich der Markt dreht oder ein Coin plötzlich Aufmerksamkeit bekommt. Projektseiten, Blockchain und X-Beiträge zu Coins liest der Crawler im Trading-Desk schon heute.",
   },
   {
     id: "cognition",
