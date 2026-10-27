@@ -6,6 +6,7 @@ import { Holo } from "./HoloView";
 import { useJarvis } from "./JarvisProvider";
 import { ModuleCard, type Telemetry } from "./ModuleCard";
 import { ParticleHead } from "./ParticleHead";
+import { clock, eventsOn, nextEvent, type CalendarSnapshot } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
 import { formatEur, formatPct, formatSignedUsd } from "@/lib/format";
 import type { MailSnapshot } from "@/lib/mail";
@@ -18,9 +19,30 @@ import type { WeatherSnapshot } from "@/lib/weather";
 
 // Die Übersicht wie im NEXUS-Video: JARVIS in der Mitte, die Module als Kacheln links und rechts.
 
-type Data = { market: MarketSnapshot | null; desk: DeskSnapshot | null; weather: WeatherSnapshot | null; tasks: TasksSnapshot | null; mail: MailSnapshot | null; brain: boolean | null; today: string | null };
+type Data = {
+  market: MarketSnapshot | null;
+  desk: DeskSnapshot | null;
+  weather: WeatherSnapshot | null;
+  tasks: TasksSnapshot | null;
+  mail: MailSnapshot | null;
+  calendar: CalendarSnapshot | null;
+  brain: boolean | null;
+  now: Date | null;
+};
 
-function telemetryFor({ market, desk, weather, tasks, mail, brain, today }: Data): Partial<Record<ModuleId, Telemetry>> {
+function calendarTelemetry(calendar: CalendarSnapshot | null, now: Date | null): Telemetry | undefined {
+  if (!calendar || !now) return undefined;
+  if (calendar.access === "offen") return { value: "einrichten", detail: "Kalender verbinden" };
+  if (calendar.access === "kein-mac") return { value: "–", detail: "nur auf dem Mac" };
+  if (calendar.access !== "ok") return { value: "!", detail: "kein Zugriff auf den Kalender", alert: true };
+  const rest = eventsOn(calendar.events, isoDate(now)).filter((e) => e.allDay || e.end > now.getTime());
+  const next = nextEvent(calendar.events, now.getTime());
+  const soon = next && isoDate(new Date(next.start)) === isoDate(now) ? `als Nächstes ${clock(next.start)} ${next.title}` : "heute keine Termine mehr";
+  return { value: String(rest.length), detail: soon };
+}
+
+function telemetryFor({ market, desk, weather, tasks, mail, calendar, brain, now }: Data): Partial<Record<ModuleId, Telemetry>> {
+  const today = now ? isoDate(now) : null;
   const btc = market?.majors.quotes.find((q) => q.symbol === "BTC");
   const passed = market?.scan.candidates.filter((c) => c.passed).length ?? 0;
   const soon = tasks?.configured && today ? dueSoon(tasks.tasks, today) : [];
@@ -38,6 +60,7 @@ function telemetryFor({ market, desk, weather, tasks, mail, brain, today }: Data
         : mail.error
           ? { value: "!", detail: "Postfach antwortet nicht", alert: true }
           : { value: String(mail.importantUnread), detail: "neue wichtige Mails", alert: mail.importantUnread > 0 },
+    kalender: calendarTelemetry(calendar, now),
     // Sobald der Spielgeld-Handel einmal gestartet wurde, zeigt die Kachel Gewinn und Testtag statt des Scanners.
     trading:
       desk && desk.status !== "aus"
@@ -56,11 +79,11 @@ function telemetryFor({ market, desk, weather, tasks, mail, brain, today }: Data
 }
 
 export function CommandCenter() {
-  const { market, desk, weather, tasks, mail, settings, state } = useJarvis();
+  const { market, desk, weather, tasks, mail, calendar, settings, state } = useJarvis();
   const label = useStateLabel();
   const now = useNow();
   const brain = settings ? settings.brain.configured : null;
-  const telemetry = telemetryFor({ market, desk, weather, tasks, mail, brain, today: now ? isoDate(now) : null });
+  const telemetry = telemetryFor({ market, desk, weather, tasks, mail, calendar, brain, now });
   const left = MODULES.filter((m) => m.side === "links");
   const right = MODULES.filter((m) => m.side === "rechts");
 

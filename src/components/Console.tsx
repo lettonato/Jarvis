@@ -28,7 +28,9 @@ const IDLE: Chip[] = [
   { label: "Briefing", text: "Briefing" },
   { label: "Meine Mails", text: "Meine Mails" },
   { label: "Meine Aufgaben", text: "Meine Aufgaben" },
+  { label: "Meine Termine", text: "Meine Termine" },
   { label: "Notiere …", fill: "Notiere " },
+  { label: "Termin …", fill: "Neuer Termin morgen um 9 Uhr: " },
   { label: "Wetter", text: "Wie ist das Wetter?" },
   { label: "Bitcoin-Kurs", text: "Bitcoin-Kurs" },
 ];

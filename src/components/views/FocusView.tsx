@@ -6,6 +6,7 @@ import { Holo } from "../HoloView";
 import { Icon, type IconName } from "../icons";
 import { useJarvis } from "../JarvisProvider";
 import { ParticleHead } from "../ParticleHead";
+import { clock, eventsOn, nextEvent } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
 import { dateOf, dueSoon } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
@@ -18,7 +19,7 @@ const DATE = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric",
 type Item = { icon: IconName; text: string; ask?: string; href?: string; alert?: boolean };
 
 export function FocusView() {
-  const { name, tasks, mail, weather, state, ask, voice } = useJarvis();
+  const { name, tasks, mail, calendar, weather, state, ask, voice } = useJarvis();
   const label = useStateLabel();
   const now = useNow();
   const today = now ? isoDate(now) : null;
@@ -26,6 +27,14 @@ export function FocusView() {
   const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
 
   const items: Item[] = [];
+  if (calendar?.access === "offen") items.push({ icon: "kalender", text: "Kalender verbinden", href: "/kalender" });
+  else if (calendar && calendar.access !== "ok" && calendar.access !== "kein-mac") items.push({ icon: "kalender", text: "Kein Zugriff auf den Kalender", href: "/kalender", alert: true });
+  else if (calendar?.access === "ok" && now && today) {
+    const rest = eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime());
+    const next = nextEvent(calendar.events, now.getTime());
+    const soon = next && isoDate(new Date(next.start)) === today ? `, als Nächstes ${clock(next.start)} ${next.title}` : "";
+    items.push({ icon: "kalender", text: rest.length ? `${rest.length} ${rest.length === 1 ? "Termin" : "Termine"} heute${soon}` : "Heute keine Termine mehr", ask: "Meine Termine" });
+  }
   if (mail && !mail.configured) items.push({ icon: "post", text: "Postfach verbinden", href: "/post" });
   else if (mail?.error) items.push({ icon: "post", text: "Postfach antwortet nicht", href: "/post", alert: true });
   else if (mail) {

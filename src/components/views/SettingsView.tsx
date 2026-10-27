@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
-import { MailSetup, VaultSetup } from "../setup";
+import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import type { Settings } from "@/lib/settings";
@@ -38,6 +38,13 @@ export function SettingsView() {
           </Section>
           <Section title="Obsidian" text="Aus diesem Tresor liest JARVIS deine Aufgaben. Neue Aufgaben landen in JARVIS/Eingang.md, Notizen in JARVIS/Notizen.md.">
             <VaultSetup />
+          </Section>
+          <Section
+            id="kalender"
+            title="Kalender"
+            text="JARVIS liest die Kalender-App auf deinem Mac und trägt neue Termine auf Zuruf ein. Ändern oder löschen kann er nichts. Einen Schlüssel braucht es nicht, nur einmal die Freigabe von macOS."
+          >
+            <CalendarSetup />
           </Section>
           <Section title="E-Mail" text="JARVIS liest deinen Posteingang über IMAP. Er löscht nichts und verschickt nichts; markieren als gelesen geht nur auf deinen Zuruf.">
             <MailSetup />

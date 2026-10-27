@@ -6,7 +6,7 @@ import { testGrokKey } from "@/lib/server/desk/grok";
 import { brainKey, testKey } from "@/lib/server/brain";
 import { guard, readBody } from "@/lib/server/guard";
 import { testMail } from "@/lib/server/mail";
-import { createVault, detectVaults } from "@/lib/server/obsidian";
+import { createVault, detectVaults, vaultProblem } from "@/lib/server/obsidian";
 import { providerById } from "@/lib/mailProviders";
 import type { Settings } from "@/lib/settings";
 
@@ -87,7 +87,13 @@ export async function POST(request: Request) {
     const vault = path.resolve(expandHome(body.path?.trim() ?? ""));
     const ok = await fs.stat(vault).then((s) => s.isDirectory()).catch(() => false);
     if (!body.path?.trim() || !ok) return Response.json({ error: `Den Ordner ${vault} gibt es nicht.` }, { status: 400 });
+    // Sperrt macOS den Ordner, merkt sich JARVIS ihn trotzdem; nach der Freigabe geht es dann sofort.
     config.vaultPath = vault;
+    const problem = await vaultProblem(vault);
+    if (problem) {
+      await writeConfig(config);
+      return Response.json({ ...(await settings(config)), warning: problem });
+    }
   } else if (body.action === "createVault") {
     config.vaultPath = await createVault();
   } else if (body.action === "mail") {

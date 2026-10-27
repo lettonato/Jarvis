@@ -1,3 +1,4 @@
+import { accessProblem, briefingSentence, confirmSentence, daySentence, eventFromSpeech, nextSentence, type CalendarSnapshot, type NewEvent } from "./calendar";
 import { addDays, findDate, isoDate, spokenDay, spokenDue } from "./dates";
 import { formatEur, formatPct } from "./format";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
@@ -24,7 +25,11 @@ export type Effect =
   | { type: "markSeen"; uid: number }
   | { type: "readMail"; uid: number }
   | { type: "desk"; action: "start" | "pause" | "weiter" | "notaus" }
-  | { type: "voice"; on: boolean };
+  | { type: "voice"; on: boolean }
+  // Trägt einen Termin in den Apple-Kalender ein und zeigt den Tag in der Kalender-App.
+  | { type: "addEvent"; event: NewEvent }
+  | { type: "openCalendar"; date?: string }
+  | { type: "openObsidian"; what: "tresor" | "eingang" | "notizen" };
 
 export type Decision = {
   // Gesprochen, nachdem die Änderung geklappt hat. Bei „Mail vorlesen“ folgt direkt der Text der Mail.
@@ -45,6 +50,7 @@ export type CommandContext = {
   tasks: TasksSnapshot | null;
   mail: MailSnapshot | null;
   desk: DeskSnapshot | null;
+  calendar?: CalendarSnapshot | null;
   session: Session | null;
 };
 
@@ -257,6 +263,20 @@ function taskFromSpeech(input: string, day: string): { text: string; due?: strin
   return { text: capitalize(text), due: date?.iso, important };
 }
 
+// ---------- Kalender ----------
+
+// „Trag morgen um 9 Zahnarzt ein“, „neuer Termin …“, „schreib in den Kalender: …“, „Termin am Freitag um 3 mit Max“.
+const ADD_EVENT =
+  /^(?:bitte\s+)?trage?\b.*\bein$|termine?\s+(?:eintragen|anlegen)|\bneue[nr]?\s+termin|\b(?:in\s+(?:den|meinen)|ins)\s+kalender\b.*(?:\bein$|eintragen|schreiben|:)|^(?:bitte\s+)?(?:schreib|setz|leg|mach|erstell|plan)\w*\b.{0,20}\btermin|^termin\s+(?:am|um|für|morgen|übermorgen|heute|nächste)/;
+
+const CALENDAR_QUERY =
+  /termin|kalender|was (habe|hab) ich (heute|morgen|übermorgen|am|nächste|diese)|was steht (heute|morgen|übermorgen|am \S+|nächste[nr]? \S+)( so)? an|wie sieht (mein|der) (tag|morgen|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag) aus|bin ich .{0,20}(frei|verplant)|hab(e)? ich .{0,25}zeit/;
+
+function calendarQuery(ctx: CommandContext, text: string): Decision {
+  const day = findDate(text, today(ctx))?.iso ?? today(ctx);
+  return { reply: daySentence(ctx.calendar ?? null, day, today(ctx)), navigate: "/kalender" };
+}
+
 // ---------- Regeln ----------
 
 type Rule = { match: RegExp; run: (ctx: CommandContext, text: string, original: string) => Decision };
@@ -300,6 +320,45 @@ const RULES: Rule[] = [
     run: () => ({ reply: "Ich höre wieder zu. Sag einfach Jarvis und dann, was du brauchst.", effect: { type: "voice", on: true } }),
   },
   {
+    match: /(öffne|öffnen|starte|starten)\w*\b.{0,30}\bkalender|kalender(-?app)?\b.{0,12}\b(öffnen|starten)/,
+    run: (ctx, text) => {
+      if (ctx.calendar?.access === "kein-mac") return { reply: accessProblem(ctx.calendar)! };
+      const date = findDate(text, today(ctx))?.iso;
+      const day = date && date !== today(ctx) ? ` für ${spokenDay(date, today(ctx))}` : "";
+      return { reply: `Ich öffne deinen Kalender${day}.`, effect: { type: "openCalendar", date }, navigate: "/kalender" };
+    },
+  },
+  {
+    match: /(öffne|öffnen|zeig)\w*\b.{0,30}\b(obsidian|tresor|notizen|eingang)|\b(obsidian|tresor)\b.{0,12}\böffnen/,
+    run: (ctx, text) => {
+      if (!ctx.tasks?.configured) return { reply: "Dafür brauche ich zuerst deinen Obsidian-Tresor. Ich öffne die Einstellungen.", navigate: "/einstellungen" };
+      const what = /notiz/.test(text) ? "notizen" : /eingang/.test(text) ? "eingang" : "tresor";
+      const label = what === "notizen" ? "deine JARVIS-Notizen" : what === "eingang" ? "deinen JARVIS-Eingang" : "deinen Tresor";
+      return { reply: `Ich öffne ${label} in Obsidian.`, effect: { type: "openObsidian", what } };
+    },
+  },
+  {
+    match: ADD_EVENT,
+    run: (ctx, text, original) => {
+      const event = eventFromSpeech(original, ctx.now);
+      if (!event) {
+        if (/^termin\b/.test(text)) return calendarQuery(ctx, text);
+        return { reply: "Wann und was soll ich eintragen? Sag zum Beispiel: Trag morgen um 9 Uhr Zahnarzt ein." };
+      }
+      const blocked = ctx.calendar?.access === "ok" || ctx.calendar?.access === "nur-schreiben" ? null : accessProblem(ctx.calendar ?? null);
+      if (blocked) return { reply: blocked, navigate: "/kalender" };
+      return { reply: confirmSentence(event, today(ctx), ctx.calendar?.target), effect: { type: "addEvent", event }, navigate: "/kalender" };
+    },
+  },
+  {
+    match: /nächste[rnm]? termin|wann (ist|hab|habe) ich.{0,20}termin|was (ist|steht|kommt) als nächstes/,
+    run: (ctx) => ({ reply: nextSentence(ctx.calendar ?? null, today(ctx)), navigate: "/kalender" }),
+  },
+  {
+    match: CALENDAR_QUERY,
+    run: (ctx, text) => calendarQuery(ctx, text),
+  },
+  {
     match: /\b(fokus|nur (dich|jarvis)|zeig dich)\b/,
     run: () => ({ reply: "Ich bin ganz bei dir.", navigate: "/fokus" }),
   },
@@ -321,7 +380,16 @@ const RULES: Rule[] = [
       const hour = ctx.now.getHours();
       const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
       const w = ctx.weather ? `Draußen hat es ${Math.round(ctx.weather.temperature)} Grad, ${ctx.weather.description}.` : "";
-      const intro = [`${greeting}, ${ctx.name}.`, w, mailSentence(ctx.mail), taskSentence(ctx.tasks, today(ctx)), deskSentence(ctx.desk, true)].filter(Boolean).join(" ");
+      const intro = [
+        `${greeting}, ${ctx.name}.`,
+        w,
+        briefingSentence(ctx.calendar ?? null, today(ctx)),
+        mailSentence(ctx.mail),
+        taskSentence(ctx.tasks, today(ctx)),
+        deskSentence(ctx.desk, true),
+      ]
+        .filter(Boolean)
+        .join(" ");
       const mails = ctx.mail?.configured && !ctx.mail.error ? ctx.mail.importantUnread : 0;
       const tasks = ctx.tasks?.configured ? dueSoon(ctx.tasks.tasks, today(ctx)).length : 0;
       if (mails > 0) return startMail(ctx, `${intro} Fangen wir mit den Mails an.`, "aufgaben");
@@ -390,10 +458,6 @@ const RULES: Rule[] = [
   {
     match: /anruf|telefon|ruf .* an/,
     run: () => ({ reply: "Telefonieren lerne ich in einer späteren Phase. Dafür bekomme ich eine eigene Telefonnummer.", navigate: "/agenten#telefon" }),
-  },
-  {
-    match: /kalender|termin/,
-    run: () => ({ reply: "Den Kalender verbinde ich in Phase 4. Fristen kannst du schon jetzt als Aufgaben mit Datum notieren.", navigate: "/agenten#kalender" }),
   },
   {
     match: /such|recherch|finde/,

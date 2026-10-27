@@ -2,7 +2,7 @@
 
 Dein persönlicher Assistent mit Trading-Desk. Der Bauplan steht im Dokument „JARVIS Bauplan: Assistent und Trading-Desk“.
 
-**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails und deine Obsidian-Aufgaben, geht sie mit dir durch, zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain, Projektseite und mit Grok auch X, und gehandelt wird mit 10.000 $ Spielgeld. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) versteht er freie Sätze und bewertet als Chief die Coins. Sprechen geht ohne Knopf: „Jarvis, …“.
+**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails, deine Obsidian-Aufgaben und den Apple-Kalender auf deinem Mac, geht sie mit dir durch, trägt Termine auf Zuruf ein und zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain, Projektseite und mit Grok auch X, und gehandelt wird mit 10.000 $ Spielgeld. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) versteht er freie Sätze und bewertet als Chief die Coins. Sprechen geht ohne Knopf: „Jarvis, …“.
 
 ## Ansichten
 
@@ -13,18 +13,19 @@ Oben wechselst du zwischen den Ansichten:
 | **JARVIS** (`/fokus`) | Nur JARVIS, groß, und das Gespräch mit ihm. Darüber steht, was ansteht (wichtige Mails, fällige Punkte, Wetter); ein Klick darauf, und er geht es mit dir durch. |
 | **Übersicht** (`/`) | JARVIS in der Mitte, alle Module als Kacheln wie im NEXUS-Video. Fährst du mit der Maus über eine Kachel, dreht sie sich zu dir und tritt heraus; ein Klick öffnet ihre Ansicht, ein Klick auf den Kopf führt in den Fokus. |
 | **Aufgaben** (`/aufgaben`) | Deine Aufgaben aus Obsidian nach Fälligkeit: abhaken, auf morgen oder eine Woche verschieben, neu notieren. |
+| **Kalender** (`/kalender`) | Deine Termine der nächsten zwei Wochen aus der Kalender-App, neue Termine eintragen, jeden Tag mit einem Klick in der Kalender-App zeigen. |
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
 | **Trading** (`/trading`) | Der Trading-Desk: Agenten, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
-| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Crawler auf X, Obsidian-Tresor, Postfach, Sprache, Stimme. |
+| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Crawler auf X, Obsidian-Tresor, Kalender, Postfach, Sprache, Stimme. |
 
-Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Post, Trading und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
+Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Kalender, Post, Trading und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
 
 In allen Arbeitsansichten ist JARVIS unten klein dabei. Du sprichst einfach weiter, er wechselt die Ansicht selbst.
 
 ## Briefing: JARVIS geht den Tag mit dir durch
 
-Sag **„Guten Morgen“** oder drück **Briefing starten**. JARVIS sagt zum Beispiel: „Du hast 4 neue wichtige Mails. Bis nächste Woche müssen noch 2 Punkte erledigt werden, einer davon ist überfällig. Fangen wir mit den Mails an.“ Dann springt er in die Post, danach in die Aufgaben, und bespricht Punkt für Punkt mit dir:
+Sag **„Guten Morgen“** oder drück **Briefing starten**. JARVIS sagt zum Beispiel: „Im Kalender hast du heute noch 2 Termine, als Nächstes um 14 Uhr Meeting. Du hast 4 neue wichtige Mails. Bis nächste Woche müssen noch 2 Punkte erledigt werden, einer davon ist überfällig. Fangen wir mit den Mails an.“ Dann springt er in die Post, danach in die Aufgaben, und bespricht Punkt für Punkt mit dir:
 
 - bei Mails: **vorlesen**, **Aufgabe daraus machen** (auch „bis Freitag“), **gelesen**, **weiter**
 - bei Aufgaben: **erledigt**, **verschieben auf morgen / Montag / nächste Woche / den 5. November**, **weiter**, **zurück**
@@ -32,7 +33,7 @@ Sag **„Guten Morgen“** oder drück **Briefing starten**. JARVIS sagt zum Bei
 
 Sprichst du per Mikrofon, hört JARVIS nach seiner Frage gleich wieder zu. Statt zu sprechen kannst du auch die Knöpfe unten antippen.
 
-Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichtig“**, **„Erinnere mich morgen an den Zahnarzt“**, **„Merke dir: …“**, **„Meine Mails“**, **„Meine Aufgaben“**, **„Zeig nur dich“**, **„Zeig alle Module“**, Wetter, Uhrzeit, Kurse, Memecoins. Alles andere beantwortet das KI-Gehirn, sobald es eingerichtet ist.
+Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichtig“**, **„Erinnere mich morgen an den Zahnarzt“**, **„Merke dir: …“**, **„Meine Mails“**, **„Meine Aufgaben“**, **„Was habe ich morgen?“**, **„Trag morgen um 9 Uhr Zahnarzt ein“**, **„Öffne den Kalender“**, **„Öffne Obsidian“**, **„Zeig nur dich“**, **„Zeig alle Module“**, Wetter, Uhrzeit, Kurse, Memecoins. Alles andere beantwortet das KI-Gehirn, sobald es eingerichtet ist.
 
 **Tastatur:** Leertaste = sprechen (auch ohne „Jarvis“), Escape = JARVIS unterbrechen.
 
@@ -75,6 +76,27 @@ Unter **Aufgaben** oder **Einstellungen**: JARVIS zeigt die Tresore, die Obsidia
 - Abhaken setzt `[x]` und `✅ Datum`, verschieben ändert das `📅`-Datum. Wiederkehrende Aufgaben (`🔁`) hakst du in Obsidian ab, damit der nächste Termin entsteht.
 - Neue Aufgaben landen in `JARVIS/Eingang.md`, Notizen in `JARVIS/Notizen.md`.
 
+Sperrt macOS den Ordner (Tresore in Dokumente, Schreibtisch oder iCloud Drive), sagt JARVIS das, statt einfach keine Aufgaben zu zeigen. Dann **Systemeinstellungen → Datenschutz & Sicherheit → Dateien und Ordner → Terminal** und den Ordner freischalten (steht Terminal dort nicht: unter **Festplattenvollzugriff** einschalten), danach JARVIS neu starten.
+
+**„Öffne Obsidian“**, **„Öffne meine Notizen“** oder **„Öffne den Eingang“** öffnet Obsidian an der richtigen Stelle.
+
+## Kalender verbinden
+
+JARVIS liest die **Kalender-App** auf deinem Mac, also alle Kalender, die dort eingerichtet sind (iCloud, Google, Exchange). Einen Schlüssel braucht es nicht.
+
+1. In JARVIS auf **Kalender** und dort auf **Kalender verbinden** tippen.
+2. macOS fragt, ob **„Terminal“** auf deine Kalender zugreifen darf (JARVIS läuft im Terminal): **Erlauben** bzw. **Vollzugriff**.
+3. Beim ersten „Öffne den Kalender“ fragt macOS noch, ob Terminal die App **Kalender** steuern darf: **Erlauben**. Dann springt die Kalender-App direkt zum richtigen Tag.
+
+Danach:
+
+- **Lesen:** „Was habe ich morgen?“, „Habe ich am Freitag Termine?“, „Wann ist mein nächster Termin?“. Im Briefing nennt JARVIS die Termine von heute, eine Viertelstunde vor jedem Termin erinnert er dich.
+- **Eintragen:** „Trag morgen um 9 Uhr Zahnarzt ein“, „Neuer Termin am 5. November um halb drei Friseur“, „Trag Donnerstag von 9 bis 11 Uhr Schulung ein“, „Trag Samstag Geburtstag Oma ein“ (ohne Uhrzeit ganztägig). Danach zeigt die Kalender-App den Tag mit dem neuen Termin. In welchen Kalender er einträgt, stellst du unter **Einstellungen → Kalender** ein.
+- **Öffnen:** „Öffne den Kalender“, „Öffne den Kalender für Freitag“.
+- Bestehende Termine **ändert oder löscht JARVIS nicht**, dafür gibt es keinen Befehl. Das machst du in der Kalender-App.
+
+Hast du bei der Rückfrage „Nicht erlauben“ gewählt: **Systemeinstellungen → Datenschutz & Sicherheit → Kalender → Terminal** auf **Vollzugriff** stellen und in JARVIS **Neu laden** tippen.
+
 ## Postfach verbinden
 
 Unter **Post** oder **Einstellungen** den Anbieter wählen, Adresse und Passwort eintragen. JARVIS prüft die Verbindung, bevor er speichert.
@@ -96,7 +118,8 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 - Der Crawler liest nur öffentliche https-Seiten. Adressen im Heimnetz (Router, NAS) öffnet er nicht, auch nicht über Weiterleitungen. Texte auf Projektseiten sind für Claude nur Daten, keine Anweisungen.
 - Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt (siehe oben, wohin der Ton geht). Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
 - Mit Grok gehen Name, Symbol, Vertragsadresse und Konten der geprüften Coins an xAI, sonst nichts von dir.
-- Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
+- Den Kalender liest JARVIS über die Schnittstelle von macOS, nur auf deinem Mac. Er trägt nur auf deinen Zuruf ein und kann Termine weder ändern noch löschen.
+- Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails, Termine), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
 
 ## Wetter
 

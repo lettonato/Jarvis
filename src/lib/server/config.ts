@@ -14,7 +14,11 @@ export type ClaudeConfig = { apiKey: string };
 // Grok von xAI liest für den Crawler X mit. Das Tagesbudget begrenzt, was das kosten darf.
 export type XaiConfig = { apiKey: string; dailyBudgetUsd?: number };
 
-export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig; claude?: ClaudeConfig; xai?: XaiConfig };
+// Der Apple-Kalender braucht keinen Schlüssel, nur die Freigabe von macOS. Hier steht nur, in welchen
+// Kalender JARVIS neue Termine einträgt (leer: der Standardkalender des Macs).
+export type CalendarConfig = { target?: string };
+
+export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig; claude?: ClaudeConfig; xai?: XaiConfig; calendar?: CalendarConfig };
 
 export const DEFAULT_X_BUDGET_USD = 1;
 
