@@ -9,6 +9,7 @@ import { VIEWS, type BrainReply, type BrainRequest, type BrainTurn } from "@/lib
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
+import type { DeskSnapshot } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
 import type { TasksSnapshot } from "@/lib/tasks";
 import { usePolling } from "@/lib/usePolling";
@@ -33,6 +34,9 @@ type Jarvis = {
   setTasks: (t: TasksSnapshot) => void;
   setMail: (m: MailSnapshot) => void;
   setSettings: (s: Settings) => void;
+  // Der Spielgeld-Desk: Kontostand, Positionen, Protokoll.
+  desk: DeskSnapshot | null;
+  setDesk: (d: DeskSnapshot) => void;
   mailText: Record<number, MailMessage>;
   // Die Mails, die Claude zuletzt geöffnet hat; n zählt mit, damit dieselbe Mail wieder aufklappt.
   spotlight: { uids: number[]; n: number };
@@ -73,6 +77,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const { data: tasks, reload: reloadTasks, set: setTasks } = usePolling<TasksSnapshot>("/api/aufgaben", 60_000);
   const { data: mail, reload: loadMail, set: setMail } = usePolling<MailSnapshot>("/api/post", 2 * 60_000);
   const { data: settings, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
+  const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 15_000);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [session, setSessionState] = useState<Session | null>(null);
@@ -82,7 +87,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<Session | null>(null);
   const handsFree = useRef(false);
   const heard = useRef<(text: string) => void>(() => {});
-  const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null });
+  const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null });
   const place = useRef(pathname);
   const history = useRef<Turn[]>([]);
   const brain = useRef(false);
@@ -93,7 +98,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const name = settings?.name ?? "Benedikt";
 
   useEffect(() => {
-    latest.current = { name, market, weather, tasks, mail };
+    latest.current = { name, market, weather, tasks, mail, desk };
     place.current = pathname;
     history.current = turns;
     brain.current = Boolean(settings?.brain.configured);
@@ -136,6 +141,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
             setMailText((prev) => ({ ...prev, [effect.uid]: message }));
             return speakable(message.text);
           }
+          case "desk":
+            setDesk(await postJson<DeskSnapshot>("/api/handel", { action: effect.action }));
+            return;
         }
       } catch (e) {
         // Hat jemand die Aufgabe in Obsidian geändert, frisch laden, damit die Liste wieder stimmt.
@@ -143,7 +151,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         throw e;
       }
     },
-    [setTasks, setMail, reloadTasks],
+    [setTasks, setMail, setDesk, reloadTasks],
   );
 
   const speakThenMaybeListen = useCallback(
@@ -199,12 +207,13 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         const result = await postJson<BrainReply>("/api/gehirn", request);
         if (result.tasks) setTasks(result.tasks);
         if (result.mail) setMail(result.mail);
+        if (result.desk) setDesk(result.desk);
         if (result.opened) {
           const opened = result.opened;
           setMailText((prev) => ({ ...prev, ...Object.fromEntries(opened.map((m) => [m.uid, m])) }));
           setSpotlight((prev) => ({ uids: opened.map((m) => m.uid), n: prev.n + 1 }));
         }
-        const fresh = { ...ctx, tasks: result.tasks ?? ctx.tasks, mail: result.mail ?? ctx.mail };
+        const fresh = { ...ctx, tasks: result.tasks ?? ctx.tasks, mail: result.mail ?? ctx.mail, desk: result.desk ?? ctx.desk };
         // Führt Claude dich während einer Besprechung in eine andere Ansicht, endet die Besprechung.
         const leaves = Boolean(s && result.navigate && result.navigate !== VIEWS[s.kind]);
         await execute(
@@ -216,7 +225,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         await execute({ reply: e instanceof Error ? e.message : String(e) });
       }
     },
-    [context, execute, setTasks, setMail],
+    [context, execute, setTasks, setMail, setDesk],
   );
 
   const handle = useCallback(
@@ -285,6 +294,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setTasks,
       setMail,
       setSettings,
+      desk,
+      setDesk,
       mailText,
       spotlight,
       turns,
@@ -295,7 +306,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       run,
       voice: { canListen, listening, error, toggle, stopSpeaking },
     }),
-    [name, market, weather, tasks, mail, settings, reloadTasks, loadMail, reloadSettings, setTasks, setMail, setSettings, mailText, spotlight, turns, state, session, ask, discuss, run, canListen, listening, error, toggle, stopSpeaking],
+    [name, market, weather, tasks, mail, settings, reloadTasks, loadMail, reloadSettings, setTasks, setMail, setSettings, desk, setDesk, mailText, spotlight, turns, state, session, ask, discuss, run, canListen, listening, error, toggle, stopSpeaking],
   );
 
   return <JarvisContext.Provider value={value}>{children}</JarvisContext.Provider>;

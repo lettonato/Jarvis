@@ -22,5 +22,7 @@ fi
 rm -rf .next/dev
 
 echo "JARVIS startet. Der Browser öffnet sich gleich mit http://localhost:3000"
+echo "Solange dieses Fenster offen ist, schläft der Mac nicht ein, damit der Spielgeld-Handel weiterläuft."
 (sleep 8 && open http://localhost:3000) &
-npm run dev
+# caffeinate hält den Mac wach, solange JARVIS läuft; der Bildschirm darf trotzdem ausgehen.
+caffeinate -i npm run dev

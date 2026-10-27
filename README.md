@@ -2,7 +2,7 @@
 
 Dein persönlicher Assistent mit Trading-Desk. Der Bauplan steht im Dokument „JARVIS Bauplan: Assistent und Trading-Desk“.
 
-**Stand: Phase 1, dazu das KI-Gehirn aus Phase 2.** JARVIS liest deine Mails und deine Obsidian-Aufgaben, geht sie mit dir durch, zeigt Live-Kurse und Wetter und prüft neue Solana-Memecoins mit den harten Filtern aus dem GrokBot-Video. Mit dem KI-Gehirn (Claude) versteht er auch freie Sätze. Er kauft und verkauft nichts.
+**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails und deine Obsidian-Aufgaben, geht sie mit dir durch, zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain und Projektseite, und gehandelt wird mit 10.000 $ Spielgeld. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) versteht er freie Sätze und bewertet als Chief die Coins.
 
 ## Ansichten
 
@@ -14,7 +14,7 @@ Oben wechselst du zwischen den Ansichten:
 | **Übersicht** (`/`) | JARVIS in der Mitte, alle Module als Kacheln wie im NEXUS-Video. Jede Kachel öffnet ihre Ansicht, ein Klick auf den Kopf führt in den Fokus. |
 | **Aufgaben** (`/aufgaben`) | Deine Aufgaben aus Obsidian nach Fälligkeit: abhaken, auf morgen oder eine Woche verschieben, neu notieren. |
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
-| **Trading** (`/trading`) | Der Trading-Desk mit Agenten, Kursen und Scanner. |
+| **Trading** (`/trading`) | Der Trading-Desk: Agenten, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
 | **Einstellungen** (Zahnrad) | Name, Obsidian-Tresor, Postfach, KI-Gehirn, Stimme. |
 
@@ -82,20 +82,38 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 - JARVIS läuft nur auf deinem Mac (`127.0.0.1`), andere Geräte im WLAN erreichen ihn nicht.
 - Webseiten im Browser können JARVIS nicht fernsteuern: der Server nimmt nur Anfragen von JARVIS selbst an.
 - Einstellungen samt Mail-Passwort und Claude-Schlüssel liegen in `~/.jarvis/config.json`, lesbar nur für deinen Benutzer. Ein Update von JARVIS ändert daran nichts. Die Seite bekommt den Schlüssel nie zu sehen, nur seine letzten vier Zeichen.
+- Der Crawler liest nur öffentliche https-Seiten. Adressen im Heimnetz (Router, NAS) öffnet er nicht, auch nicht über Weiterleitungen. Texte auf Projektseiten sind für Claude nur Daten, keine Anweisungen.
 - Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
 
 ## Wetter
 
 Standard ist Deggendorf. Ändern über `JARVIS_WEATHER_PLACE`, `JARVIS_WEATHER_LAT` und `JARVIS_WEATHER_LON` in `.env.local`.
 
-## Trading-Desk (`/trading`)
+## Spielgeld-Handel (`/trading`)
 
-- **Agenten-Kacheln:** Scan und Vet arbeiten schon. Chief kommt in Phase 2, die übrigen Agenten mit dem Spielgeld-Handel in Phase 3.
-- **Kurse:** Bitcoin, Ethereum und Solana in Euro (Quelle: CoinGecko).
-- **Scanner:** neue Solana-Coins von DexScreener, geprüft mit den Filtern aus `src/lib/thresholds.ts`.
-- **Protokoll:** was die Agenten bei jeder Aktualisierung gefunden haben. Die Daten werden alle 30 Sekunden neu geladen.
+Die Agenten aus dem GrokBot-Video handeln mit **10.000 $ erfundenem Geld**, um 28 Tage lang zu testen, ob sich der Desk nach Kosten lohnt. Gestartet wird mit **Spielgeld-Handel starten** auf dem Trading-Desk oder mit „Starte den Handel“. Echtes Geld gibt es erst nach den 28 Tagen, wenn der Desk im Plus ist, und nur mit deiner Zustimmung.
 
-Sind CoinGecko, DexScreener oder Open-Meteo nicht erreichbar, zeigt JARVIS oben **BEISPIELDATEN**. Diese Zahlen sind erfunden und nur zur Ansicht.
+So läuft eine Runde, jede Minute (Reihenfolge aus `filter.py`: billige Prüfungen zuerst):
+
+1. **Scan** holt neue Solana-Coins von DexScreener.
+2. **Vet** prüft die harten Filter (Alter, Liquidität, Volumen, Marktwert, Trades).
+3. **Crawler** liest zuerst, dann handelt der Desk: Er holt den Blockchain-Bericht von RugCheck und sortiert aus, wenn der Entwickler noch Coins erzeugen oder Konten einfrieren kann, RugCheck vor Betrug warnt, eine Wallet mehr als 5 % hält oder die zehn größten mehr als 60 %. Hat ein Coin weder Webseite noch Konten, fliegt er auch raus. Sonst liest er die Projektseite.
+4. **Chief** schätzt die weichen Filter: Ist der Anstieg schon gelaufen, gehören Seite und Konten wirklich zum Coin, wurde das Konto schon für andere Coins benutzt? Mit KI-Gehirn macht das Claude (Haiku, Bruchteile eines Cents pro Runde), sonst Faustregeln. Was sich ausrechnen lässt (Liquidität, Konzentration, Anteil des Entwicklers), rechnet der Code; die Grenzen aus `thresholds.py` entscheiden, nicht die KI.
+5. **Size** setzt 2 % des Kontos ein, **Fills** kauft zum frischen Kurs, mit Gebühren und Kursrutsch wie auf einer echten Börse. Ist der Kurs seit der Prüfung um mehr als 5 % gestiegen, läuft Fills nicht hinterher.
+6. **Risk** und **Crawler** bewachen die gekauften Coins, auch in der Pause: Stop-Loss −15 %, Nachlauf-Stop 20 % unter dem Höchststand, Ziel +50 %, spätestens nach 24 Stunden raus. Fällt die Liquidität um die Hälfte, verschwindet das Handelspaar oder meldet RugCheck neue Rug-Zeichen, verkauft der Desk sofort.
+
+Feste Regeln, die auch Claude nicht ändern kann (`src/lib/paper.ts`): höchstens 5 Coins gleichzeitig, höchstens 5 % Verlust am Tag (danach kauft er bis morgen nichts), 24 Stunden Pause für einen verkauften Coin, nie Käufe mit Beispieldaten.
+
+- **Not-Aus:** Knopf unten rechts oder „Stopp alles“. Alle Agenten stehen sofort, auch der Stop-Loss. Mit **Weitermachen** oder „Handel fortsetzen“ geht es weiter.
+- **Protokoll:** Jede Entscheidung steht im Protokoll auf dem Desk, jeder Trade mit Begründung. In der Scan-Tabelle siehst du pro Coin, wie weit er gekommen ist.
+- **Obsidian:** Jeden Tag schreibt JARVIS einen Bericht nach `JARVIS/Handel/JJJJ-MM-TT.md` in deinen Tresor. Alle Trades stehen zusätzlich in `~/.jarvis/spielgeld-trades.jsonl`.
+- **JARVIS fragen:** „Wie läuft der Handel?“, „Pausiere den Handel“. Im Briefing nennt er den Stand, die Übersicht zeigt ihn auf der Trading-Kachel.
+- **Mac wach halten:** Der Desk handelt nur, solange JARVIS läuft. `start-jarvis.command` hält den Mac wach, solange das Fenster offen ist. Klappst du ein MacBook zu, schläft es trotzdem; offene Positionen bewacht dann niemand, bis du es wieder aufklappst.
+- **Kurse oben:** Bitcoin, Ethereum und Solana in Euro (CoinGecko).
+
+Sind CoinGecko, DexScreener oder Open-Meteo nicht erreichbar, zeigt JARVIS oben **BEISPIELDATEN**. Diese Zahlen sind erfunden und nur zur Ansicht; mit ihnen handelt der Desk nicht.
+
+Nicht dabei: Beiträge auf X. Die X-Schnittstelle kostet monatlich; der Crawler liest stattdessen die Seiten und Konten, die das Projekt bei DexScreener angibt.
 
 ## JARVIS starten
 
@@ -144,7 +162,10 @@ Aufbau:
 | `src/lib/thresholds.ts`, `src/lib/vet.ts` | harte Filter aus dem Video und der Vet-Agent |
 | `src/lib/market.ts` | Kurse und Scanner (CoinGecko, DexScreener) |
 | `src/components/TradingDesk.tsx` | der Trading-Desk |
+| `src/lib/paper.ts` | Spielgeld: feste Sicherheitsregeln, Gebühren, Stop-Loss, Rechnungen |
+| `src/lib/server/desk/` | der Spielgeld-Handel: `engine.ts` (Takt, Konto, Kauf und Verkauf, Bericht), `crawler.ts` (RugCheck und Projektseite), `chief.ts` (weiche Filter mit Claude oder Faustregeln) |
+| `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart läuft sein Takt los |
 
-`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`).
+`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL` und `ANTHROPIC_BASE_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000).
 
 API-Schlüssel gehören später in eine Datei `.env.local`. Sie wird nie hochgeladen.

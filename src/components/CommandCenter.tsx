@@ -7,19 +7,20 @@ import { useJarvis } from "./JarvisProvider";
 import { ModuleCard, type Telemetry } from "./ModuleCard";
 import { ParticleHead } from "./ParticleHead";
 import { isoDate } from "@/lib/dates";
-import { formatEur, formatPct } from "@/lib/format";
+import { formatEur, formatPct, formatSignedUsd } from "@/lib/format";
 import type { MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
 import { MODULES, type ModuleId } from "@/lib/modules";
+import { SAFETY, STATUS_LABEL, type DeskSnapshot } from "@/lib/paper";
 import { dateOf, dueSoon, type TasksSnapshot } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
 import type { WeatherSnapshot } from "@/lib/weather";
 
 // Die Übersicht wie im NEXUS-Video: JARVIS in der Mitte, die Module als Kacheln links und rechts.
 
-type Data = { market: MarketSnapshot | null; weather: WeatherSnapshot | null; tasks: TasksSnapshot | null; mail: MailSnapshot | null; brain: boolean | null; today: string | null };
+type Data = { market: MarketSnapshot | null; desk: DeskSnapshot | null; weather: WeatherSnapshot | null; tasks: TasksSnapshot | null; mail: MailSnapshot | null; brain: boolean | null; today: string | null };
 
-function telemetryFor({ market, weather, tasks, mail, brain, today }: Data): Partial<Record<ModuleId, Telemetry>> {
+function telemetryFor({ market, desk, weather, tasks, mail, brain, today }: Data): Partial<Record<ModuleId, Telemetry>> {
   const btc = market?.majors.quotes.find((q) => q.symbol === "BTC");
   const passed = market?.scan.candidates.filter((c) => c.passed).length ?? 0;
   const soon = tasks?.configured && today ? dueSoon(tasks.tasks, today) : [];
@@ -37,7 +38,17 @@ function telemetryFor({ market, weather, tasks, mail, brain, today }: Data): Par
         : mail.error
           ? { value: "!", detail: "Postfach antwortet nicht", alert: true }
           : { value: String(mail.importantUnread), detail: "neue wichtige Mails", alert: mail.importantUnread > 0 },
-    trading: market ? { value: `${passed}/${market.scan.candidates.length}`, detail: "Coins bestehen die Filter" } : undefined,
+    // Sobald der Spielgeld-Handel einmal gestartet wurde, zeigt die Kachel Gewinn und Testtag statt des Scanners.
+    trading:
+      desk && desk.status !== "aus"
+        ? {
+            value: formatSignedUsd(desk.pnlUsd),
+            detail: `${desk.status === "laeuft" ? "Spielgeld" : STATUS_LABEL[desk.status]} · Tag ${Math.min(desk.testDay, SAFETY.testDays)}/${SAFETY.testDays}`,
+            alert: desk.status === "notaus" || desk.status === "tageslimit",
+          }
+        : market
+          ? { value: `${passed}/${market.scan.candidates.length}`, detail: "Coins bestehen die Filter" }
+          : undefined,
     markt: btc ? { value: formatEur(btc.eur), detail: `BTC ${formatPct(btc.change24h)} in 24 Std` } : undefined,
     wetter: weather ? { value: `${Math.round(weather.temperature)} °C`, detail: `${weather.place}, ${weather.description}` } : undefined,
     cognition: brain === null ? undefined : brain ? { value: "AN", detail: "Claude versteht freie Sätze" } : { value: "einrichten", detail: "Claude-Schlüssel eintragen" },
@@ -45,10 +56,10 @@ function telemetryFor({ market, weather, tasks, mail, brain, today }: Data): Par
 }
 
 export function CommandCenter() {
-  const { market, weather, tasks, mail, settings, state } = useJarvis();
+  const { market, desk, weather, tasks, mail, settings, state } = useJarvis();
   const now = useNow();
   const brain = settings ? settings.brain.configured : null;
-  const telemetry = telemetryFor({ market, weather, tasks, mail, brain, today: now ? isoDate(now) : null });
+  const telemetry = telemetryFor({ market, desk, weather, tasks, mail, brain, today: now ? isoDate(now) : null });
   const left = MODULES.filter((m) => m.side === "links");
   const right = MODULES.filter((m) => m.side === "rechts");
 

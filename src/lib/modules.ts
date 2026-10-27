@@ -88,12 +88,12 @@ export const MODULES: JarvisModule[] = [
     id: "trading",
     code: "M-06",
     name: "Trading",
-    tagline: "Scan, Vet, Risk und Fills",
+    tagline: "Spielgeld-Handel mit Crawler",
     phase: 1,
     href: "/trading",
     side: "rechts",
     about:
-      "Die Agenten aus dem GrokBot-Video: Scan findet neue Solana-Coins, Vet prüft sie mit harten Filtern. Ab Phase 3 handeln Size, Risk und Fills mit Spielgeld und Stop-Loss, live erst nach vier Wochen und deiner Freigabe.",
+      "Die Agenten aus dem GrokBot-Video: Scan findet neue Solana-Coins, Vet prüft sie mit harten Filtern, der Crawler liest Blockchain und Projektseite, Chief bewertet den Rest. Size, Fills und Risk handeln mit 10.000 $ Spielgeld und Stop-Loss, Crawler und Risk bewachen die gekauften Coins. Echtgeld erst nach vier Wochen und nur mit deiner Freigabe.",
   },
   {
     id: "markt",
@@ -119,11 +119,11 @@ export const MODULES: JarvisModule[] = [
     id: "intel",
     code: "M-09",
     name: "Intel",
-    tagline: "Crawler liest News und Social",
+    tagline: "News, X und Telegram",
     phase: 3,
     href: "/agenten#intel",
     side: "rechts",
-    about: "Der Crawler liest Nachrichten, X und Telegram mit und meldet, wenn sich der Markt dreht oder ein Coin plötzlich Aufmerksamkeit bekommt.",
+    about: "Liest Nachrichten, X und Telegram mit und meldet, wenn sich der Markt dreht oder ein Coin plötzlich Aufmerksamkeit bekommt. Projektseiten und Blockchain liest der Crawler im Trading-Desk schon heute.",
   },
   {
     id: "cognition",
