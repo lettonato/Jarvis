@@ -1,3 +1,4 @@
+import type { CalendarSnapshot } from "./calendar";
 import type { MailMessage, MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
 import type { TasksSnapshot } from "./tasks";
@@ -31,12 +32,15 @@ export type BrainReply = {
   opened?: MailMessage[];
   // Neuer Stand des Spielgeld-Desks, wenn Claude ihn gesteuert hat.
   desk?: DeskSnapshot;
+  // Der Kalender, wenn Claude einen Termin eingetragen hat.
+  calendar?: CalendarSnapshot;
 };
 
 export const VIEWS = {
   fokus: "/fokus",
   uebersicht: "/",
   aufgaben: "/aufgaben",
+  kalender: "/kalender",
   post: "/post",
   trading: "/trading",
   agenten: "/agenten",

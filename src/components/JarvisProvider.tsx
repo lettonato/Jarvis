@@ -6,6 +6,7 @@ import type { AvatarState } from "./ParticleHead";
 import { ApiError, getJson, postJson } from "@/lib/api";
 import { holoTypes } from "@/lib/holo";
 import { VIEWS, type BrainReply, type BrainRequest, type BrainTurn } from "@/lib/brain";
+import type { CalendarSnapshot } from "@/lib/calendar";
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
@@ -37,6 +38,10 @@ type Jarvis = {
   // Der Spielgeld-Desk: Kontostand, Positionen, Protokoll.
   desk: DeskSnapshot | null;
   setDesk: (d: DeskSnapshot) => void;
+  // Der Apple-Kalender auf dem Mac.
+  calendar: CalendarSnapshot | null;
+  setCalendar: (c: CalendarSnapshot) => void;
+  reloadCalendar: () => Promise<void>;
   mailText: Record<number, MailMessage>;
   // Die Mails, die Claude zuletzt geöffnet hat; n zählt mit, damit dieselbe Mail wieder aufklappt.
   spotlight: { uids: number[]; n: number };
@@ -74,6 +79,9 @@ export function useJarvis(): Jarvis {
 
 let turnId = 0;
 
+// So lange vor einem Termin erinnert JARVIS daran.
+const REMIND_MS = 15 * 60_000;
+
 // Höchstens etwa fünf Sätze vorlesen, der Rest steht auf dem Bildschirm.
 function speakable(text: string): string {
   const clean = text.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
@@ -93,6 +101,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const { data: mail, reload: loadMail, set: setMail } = usePolling<MailSnapshot>("/api/post", 2 * 60_000);
   const { data: settings, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
   const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 15_000);
+  const { data: calendar, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [session, setSessionState] = useState<Session | null>(null);
@@ -103,7 +112,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   // Kam der letzte Satz per Stimme, hört JARVIS nach seiner Antwort gleich weiter zu.
   const byVoice = useRef(false);
   const heard = useRef<(text: string) => void>(() => {});
-  const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null });
+  const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null, calendar: null });
   const place = useRef(pathname);
   const history = useRef<Turn[]>([]);
   const brain = useRef(false);
@@ -114,7 +123,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const name = settings?.name ?? "Benedikt";
 
   useEffect(() => {
-    latest.current = { name, market, weather, tasks, mail, desk };
+    latest.current = { name, market, weather, tasks, mail, desk, calendar };
     place.current = pathname;
     history.current = turns;
     brain.current = Boolean(settings?.brain.configured);
@@ -164,6 +173,20 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
             if (effect.on && !canListen) throw new Error("Dieser Browser kann nicht zuhören. Nimm Chrome oder Safari.");
             setHandsFree(effect.on);
             return;
+          // Nach dem Eintragen zeigt die Kalender-App gleich den Tag mit dem neuen Termin.
+          case "addEvent": {
+            const result = await postJson<CalendarSnapshot & { note?: string }>("/api/kalender", { action: "neu", event: effect.event, open: true });
+            setCalendar(result);
+            return result.note;
+          }
+          case "openCalendar": {
+            const result = await postJson<CalendarSnapshot & { note?: string }>("/api/kalender", { action: "oeffnen", date: effect.date });
+            setCalendar(result);
+            return result.note;
+          }
+          case "openObsidian":
+            await postJson("/api/aufgaben", { action: "open", what: effect.what });
+            return;
         }
       } catch (e) {
         // Hat jemand die Aufgabe in Obsidian geändert, frisch laden, damit die Liste wieder stimmt.
@@ -171,7 +194,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         throw e;
       }
     },
-    [setTasks, setMail, setDesk, reloadTasks, canListen],
+    [setTasks, setMail, setDesk, setCalendar, reloadTasks, canListen],
   );
 
   const speakThenMaybeListen = useCallback(
@@ -228,12 +251,13 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         if (result.tasks) setTasks(result.tasks);
         if (result.mail) setMail(result.mail);
         if (result.desk) setDesk(result.desk);
+        if (result.calendar) setCalendar(result.calendar);
         if (result.opened) {
           const opened = result.opened;
           setMailText((prev) => ({ ...prev, ...Object.fromEntries(opened.map((m) => [m.uid, m])) }));
           setSpotlight((prev) => ({ uids: opened.map((m) => m.uid), n: prev.n + 1 }));
         }
-        const fresh = { ...ctx, tasks: result.tasks ?? ctx.tasks, mail: result.mail ?? ctx.mail, desk: result.desk ?? ctx.desk };
+        const fresh = { ...ctx, tasks: result.tasks ?? ctx.tasks, mail: result.mail ?? ctx.mail, desk: result.desk ?? ctx.desk, calendar: result.calendar ?? ctx.calendar };
         // Führt Claude dich während einer Besprechung in eine andere Ansicht, endet die Besprechung.
         const leaves = Boolean(s && result.navigate && result.navigate !== VIEWS[s.kind]);
         await execute(
@@ -245,7 +269,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         await execute({ reply: e instanceof Error ? e.message : String(e) });
       }
     },
-    [context, execute, setTasks, setMail, setDesk],
+    [context, execute, setTasks, setMail, setDesk, setCalendar],
   );
 
   const handle = useCallback(
@@ -298,6 +322,33 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggle, stopSpeaking, canListen]);
 
+  // Erinnert einmal, kurz bevor ein Termin beginnt. Redet JARVIS gerade oder hört zu, wartet er damit.
+  const reminded = useRef(new Set<string>());
+  const busy = useRef(false);
+  useEffect(() => {
+    busy.current = listening || thinking || speaking;
+  });
+  useEffect(() => {
+    if (calendar?.access !== "ok") return;
+    const check = () => {
+      if (busy.current) return;
+      const now = Date.now();
+      const due = calendar.events.find((e) => !e.allDay && !reminded.current.has(e.id) && e.start >= now - 60_000 && e.start - now <= REMIND_MS);
+      if (!due) return;
+      reminded.current.add(due.id);
+      const minutes = Math.round((due.start - now) / 60_000);
+      const text = minutes <= 1 ? `Jetzt beginnt ${due.title}.` : `In ${minutes} Minuten: ${due.title}.`;
+      addTurn("jarvis", text);
+      speak(text);
+    };
+    const first = setTimeout(check, 2000);
+    const timer = setInterval(check, 30_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, [calendar, addTurn, speak]);
+
   const state: AvatarState = listening ? "listening" : thinking ? "thinking" : speaking ? "speaking" : "idle";
 
   const value = useMemo<Jarvis>(
@@ -316,6 +367,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setSettings,
       desk,
       setDesk,
+      calendar,
+      setCalendar,
+      reloadCalendar: () => loadCalendar("?force=1"),
       mailText,
       spotlight,
       turns,
@@ -341,6 +395,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setSettings,
       desk,
       setDesk,
+      calendar,
+      setCalendar,
+      loadCalendar,
       mailText,
       spotlight,
       turns,

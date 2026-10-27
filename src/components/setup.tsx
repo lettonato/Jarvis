@@ -3,15 +3,16 @@
 import { useState, type FormEvent } from "react";
 import { useJarvis } from "./JarvisProvider";
 import { Button, inputClass, Notice } from "./ui";
-import { postJson } from "@/lib/api";
+import { getJson, postJson } from "@/lib/api";
+import type { CalendarSnapshot } from "@/lib/calendar";
 import { MAIL_PROVIDERS, providerById } from "@/lib/mailProviders";
 import type { Settings } from "@/lib/settings";
 
-// Einrichten von Obsidian und Postfach. Steht in den Einstellungen und dort, wo es fehlt
+// Einrichten von Obsidian, Postfach und Kalender. Steht in den Einstellungen und dort, wo es fehlt
 // (leere Aufgaben- oder Post-Ansicht), damit du nicht suchen musst.
 
 export function VaultSetup() {
-  const { settings, setSettings, reloadTasks } = useJarvis();
+  const { settings, setSettings, reloadTasks, tasks } = useJarvis();
   const [path, setPath] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,11 +40,12 @@ export function VaultSetup() {
 
   return (
     <div className="space-y-3 text-sm">
-      {settings?.vaultPath && (
+      {settings?.vaultPath && !tasks?.error && (
         <Notice tone="ok">
           Verbunden mit <b>{settings.vaultPath}</b>
         </Notice>
       )}
+      {settings?.vaultPath && tasks?.error && <Notice tone="error">{tasks.error}</Notice>}
       {detected.length > 0 && (
         <div>
           <p className="mb-1.5 text-xs text-quiet">Diese Tresore kennt Obsidian auf deinem Mac:</p>
@@ -174,5 +176,97 @@ export function MailSetup() {
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
       <p className="text-[11px] text-quiet">Das Passwort bleibt auf deinem Mac in {settings?.configFile ?? "~/.jarvis/config.json"} und wird nie hochgeladen.</p>
     </form>
+  );
+}
+
+// Der Apple-Kalender braucht keinen Schlüssel, nur die Freigabe von macOS. Ein Klick löst die
+// Rückfrage aus; danach wählst du, in welchen Kalender JARVIS neue Termine einträgt.
+export function CalendarSetup() {
+  const { calendar, setCalendar } = useJarvis();
+  const [busy, setBusy] = useState<"zugriff" | "ziel" | "einstellungen" | "laden" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send(action: "zugriff" | "ziel" | "einstellungen", extra: object = {}) {
+    setBusy(action);
+    setError(null);
+    try {
+      setCalendar(await postJson<CalendarSnapshot>("/api/kalender", { action, ...extra }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function reload() {
+    setBusy("laden");
+    setError(null);
+    try {
+      setCalendar(await getJson<CalendarSnapshot>("/api/kalender?force=1"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (!calendar) return <p className="text-sm text-quiet">Lade Kalender …</p>;
+  const writable = calendar.calendars.filter((c) => c.writable);
+
+  return (
+    <div className="space-y-3 text-sm">
+      {calendar.access === "ok" && (
+        <Notice tone="ok">
+          Verbunden: {calendar.calendars.length} Kalender, {calendar.events.length} Termine in den nächsten Wochen.
+        </Notice>
+      )}
+      {calendar.access === "offen" && (
+        <>
+          <p className="text-quiet">
+            Ein Klick, dann fragt macOS einmal, ob <b className="text-sky-100">Terminal</b> auf deine Kalender zugreifen darf (JARVIS läuft im Terminal). Wähle dort{" "}
+            <b className="text-sky-100">Erlauben</b> bzw. <b className="text-sky-100">Vollzugriff</b>.
+          </p>
+          <Button tone="primary" icon="kalender" disabled={busy !== null} onClick={() => send("zugriff")}>
+            {busy === "zugriff" ? "Warte auf deine Antwort am Mac …" : "Kalender verbinden"}
+          </Button>
+        </>
+      )}
+      {calendar.access !== "ok" && calendar.error && <Notice tone="error">{calendar.error}</Notice>}
+      {(calendar.access === "verweigert" || calendar.access === "nur-schreiben") && (
+        <div className="flex flex-wrap gap-2">
+          <Button icon="einstellungen" disabled={busy !== null} onClick={() => send("einstellungen")}>
+            Systemeinstellungen öffnen
+          </Button>
+          <Button icon="laden" disabled={busy !== null} onClick={reload}>
+            Neu laden
+          </Button>
+        </div>
+      )}
+      {calendar.access === "fehler" && (
+        <Button icon="laden" disabled={busy !== null} onClick={reload}>
+          Noch einmal versuchen
+        </Button>
+      )}
+      {(calendar.access === "ok" || calendar.access === "nur-schreiben") && writable.length > 0 && (
+        <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+          <span className="shrink-0 text-xs text-quiet">Neue Termine landen in</span>
+          <select
+            value={calendar.target ?? ""}
+            disabled={busy !== null}
+            onChange={(e) => send("ziel", { calendar: e.target.value })}
+            aria-label="Kalender für neue Termine"
+            className={`${inputClass} sm:w-64`}
+          >
+            {!calendar.target && <option value="">Standardkalender des Macs</option>}
+            {writable.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {error && <Notice tone="error">{error}</Notice>}
+    </div>
   );
 }

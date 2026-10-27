@@ -57,10 +57,11 @@ export const MODULES: JarvisModule[] = [
     code: "M-03",
     name: "Kalender",
     tagline: "Termine und Erinnerungen",
-    phase: 4,
-    href: "/agenten#kalender",
+    phase: 1,
+    href: "/kalender",
     side: "links",
-    about: "Liest deinen Kalender, erinnert dich an Termine und plant mit dir die Woche. Neue Termine trägt er auf Zuruf ein.",
+    about:
+      "Liest den Apple-Kalender auf deinem Mac mit allen Kalendern darin, nennt dir die Termine im Briefing und erinnert dich eine Viertelstunde vorher. Neue Termine trägt er auf Zuruf ein und zeigt dir den Tag in der Kalender-App. Ändern oder löschen kann er nichts.",
   },
   {
     id: "telefon",

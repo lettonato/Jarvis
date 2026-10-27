@@ -94,15 +94,28 @@ async function markdownFiles(root: string): Promise<string[]> {
   return found;
 }
 
+// macOS schützt Dokumente, Schreibtisch und iCloud Drive: Ohne Freigabe sieht JARVIS den Ordner,
+// darf aber nicht hineinschauen. Das soll nicht wie ein leerer Tresor aussehen.
+export async function vaultProblem(vault: string): Promise<string | null> {
+  try {
+    if (!(await fs.stat(vault)).isDirectory()) return `${vault} ist kein Ordner.`;
+    await fs.readdir(vault);
+    return null;
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === "EPERM" || code === "EACCES") {
+      return `macOS sperrt mir den Ordner ${vault}. Öffne Systemeinstellungen → Datenschutz & Sicherheit → Dateien und Ordner, klapp „Terminal“ auf und schalte den Ordner frei (Dokumente, Schreibtisch oder iCloud Drive). Steht Terminal dort nicht, schalte es unter „Festplattenvollzugriff“ ein. Danach JARVIS neu starten.`;
+    }
+    if (code === "ENOENT") return `Den Ordner ${vault} gibt es nicht.`;
+    return `Ich kann den Ordner ${vault} nicht lesen: ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+
 export async function readTasks(vault: string): Promise<TasksSnapshot> {
   const today = isoDate(new Date());
   const info = { name: path.basename(vault), path: vault };
-  try {
-    const stat = await fs.stat(vault);
-    if (!stat.isDirectory()) throw new Error();
-  } catch {
-    return { configured: true, vault: info, tasks: [], doneToday: 0, error: `Den Ordner ${vault} gibt es nicht mehr.` };
-  }
+  const problem = await vaultProblem(vault);
+  if (problem) return { configured: true, vault: info, tasks: [], doneToday: 0, error: problem };
   const tasks: Task[] = [];
   let doneToday = 0;
   for (const full of await markdownFiles(vault)) {
@@ -205,6 +218,12 @@ export async function writeVaultFile(vault: string, file: string, content: strin
   const full = await inside(vault, file);
   await fs.mkdir(path.dirname(full), { recursive: true });
   await fs.writeFile(full, content, "utf8");
+}
+
+// Ein Link, der Obsidian am Tresor oder an einer Datei darin öffnet (ohne .md).
+export function obsidianLink(vault: string, file?: string): string {
+  const name = encodeURIComponent(path.basename(vault));
+  return file ? `obsidian://open?vault=${name}&file=${encodeURIComponent(file.replace(/\.md$/, ""))}` : `obsidian://open?vault=${name}`;
 }
 
 // Tresore, die Obsidian auf diesem Rechner kennt.

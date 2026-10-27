@@ -8,6 +8,7 @@ import { Holo } from "./HoloView";
 import { Icon, type IconName } from "./icons";
 import { useJarvis } from "./JarvisProvider";
 import { Orb } from "./Orb";
+import { eventsOn } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
 import { formatClock } from "@/lib/format";
 import { dateOf, dueSoon } from "@/lib/tasks";
@@ -19,9 +20,10 @@ import { useNow } from "@/lib/useNow";
 type Tab = { href: string; label: string; icon: IconName; badge?: { value: number; alert: boolean } };
 
 function useTabs(): Tab[] {
-  const { tasks, mail } = useJarvis();
+  const { tasks, mail, calendar } = useJarvis();
   const now = useNow();
   const today = now ? isoDate(now) : null;
+  const events = now && today && calendar?.access === "ok" ? eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime()).length : 0;
   const soon = today && tasks?.configured ? dueSoon(tasks.tasks, today) : [];
   const overdue = today ? soon.filter((t) => dateOf(t)! < today).length : 0;
   const important = mail?.configured && !mail.error ? mail.importantUnread : 0;
@@ -29,6 +31,7 @@ function useTabs(): Tab[] {
     { href: "/fokus", label: "JARVIS", icon: "fokus" },
     { href: "/", label: "Übersicht", icon: "uebersicht" },
     { href: "/aufgaben", label: "Aufgaben", icon: "aufgaben", badge: soon.length ? { value: soon.length, alert: overdue > 0 } : undefined },
+    { href: "/kalender", label: "Kalender", icon: "kalender", badge: events ? { value: events, alert: false } : undefined },
     { href: "/post", label: "Post", icon: "post", badge: important ? { value: important, alert: true } : undefined },
     { href: "/trading", label: "Trading", icon: "trading" },
     { href: "/agenten", label: "Agenten", icon: "agenten" },
