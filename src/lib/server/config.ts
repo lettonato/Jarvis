@@ -11,7 +11,16 @@ export type MailConfig = { provider: MailProviderId; host: string; port: number;
 // Der Schlüssel für Claude (das KI-Gehirn) bleibt wie das Mail-Passwort nur hier.
 export type ClaudeConfig = { apiKey: string };
 
-export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig; claude?: ClaudeConfig };
+// Grok von xAI liest für den Crawler X mit. Das Tagesbudget begrenzt, was das kosten darf.
+export type XaiConfig = { apiKey: string; dailyBudgetUsd?: number };
+
+export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig; claude?: ClaudeConfig; xai?: XaiConfig };
+
+export const DEFAULT_X_BUDGET_USD = 1;
+
+// Der Schlüssel aus den Einstellungen geht vor, sonst XAI_API_KEY aus der Umgebung.
+export const grokKey = (config: JarvisConfig) => config.xai?.apiKey || process.env.XAI_API_KEY || null;
+export const xBudget = (config: JarvisConfig) => config.xai?.dailyBudgetUsd ?? DEFAULT_X_BUDGET_USD;
 
 export const CONFIG_DIR = process.env.JARVIS_CONFIG_DIR ?? path.join(os.homedir(), ".jarvis");
 const FILE = path.join(CONFIG_DIR, "config.json");

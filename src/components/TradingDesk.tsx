@@ -151,7 +151,9 @@ function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnap
       progress: snap && snap.scan.scanned ? candidates.length / snap.scan.scanned : 0,
     },
     vet: { value: snap ? `${passed}/${candidates.length}` : "…", detail: "bestehen die harten Filter", progress: candidates.length ? passed / candidates.length : 0 },
-    social: { value: stats ? formatCount(stats.pagesRead) : "–", detail: "Seiten und Konten gelesen" },
+    social: desk?.x.enabled
+      ? { value: stats ? formatCount(stats.postsRead) : "–", detail: `X-Beiträge gelesen · Grok heute ${formatUsd(desk.x.spentTodayUsd)} von ${formatUsd(desk.x.budgetUsd)}` }
+      : { value: stats ? formatCount(stats.pagesRead) : "–", detail: "Seiten gelesen · X ohne xAI-Schlüssel aus" },
     size: { value: lastBuy ? formatUsd(lastBuy.usd) : "–", detail: `Ticket, ${SAFETY.maxTradeShare * 100} % des Kontos` },
     fills: {
       value: lastFill ? `${lastFill.side === "kauf" ? "rein" : "raus"} $${lastFill.symbol}` : "–",
@@ -160,7 +162,9 @@ function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnap
     risk: { value: stats ? `${stats.wins}W ${stats.losses}L` : "–", detail: `Stop-Loss −${SAFETY.stopLoss * 100} %, Tageslimit −${SAFETY.dailyLossLimit * 100} %` },
     crawler: {
       value: stats ? `${stats.rugsStopped}` : "–",
-      detail: stats ? `Rugs gestoppt · ${formatCount(stats.killed)} aussortiert · ${formatCount(stats.reportsRead)} Prüfberichte` : "Rugs gestoppt",
+      detail: stats
+        ? `Rugs gestoppt · ${formatCount(stats.pagesRead)} Seiten · ${formatCount(stats.postsRead)} Beiträge · ${formatCount(stats.killed)} aussortiert`
+        : "Rugs gestoppt",
     },
   };
   return (
@@ -190,8 +194,8 @@ function AgentTile({ agent, metric, state }: { agent: Agent; metric?: Metric; st
       <p className="text-[11px] text-quiet">{agent.motto}</p>
       {/* Auf dem Handy sind die Kacheln schmal: dann steht der Wert unter der Erklärung. */}
       <div className="mt-auto flex flex-col gap-0.5 pt-2 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
-        <span className="text-[11px] text-quiet">{metric?.detail ?? "wartet"}</span>
-        <span className="max-w-full truncate font-bold sm:max-w-[60%] sm:text-right">{metric?.value ?? ""}</span>
+        <span className="min-w-0 text-[11px] text-quiet">{metric?.detail ?? "wartet"}</span>
+        <span className="max-w-full shrink-0 truncate font-bold sm:max-w-[60%] sm:text-right">{metric?.value ?? ""}</span>
       </div>
       {metric?.progress !== undefined && (
         <div className="h-1 overflow-hidden rounded bg-panel-2">
@@ -487,6 +491,7 @@ function ScannerTable({ snap, verdicts }: { snap: MarketSnapshot | null; verdict
 const VERDICT: Record<CoinVerdict["stage"], { label: string; tone: string }> = {
   chain_kill: { label: "Crawler: raus", tone: "bg-down/15 text-down" },
   skin_kill: { label: "Crawler: raus", tone: "bg-down/15 text-down" },
+  x_kill: { label: "X warnt", tone: "bg-down/15 text-down" },
   chief_nein: { label: "Chief: nein", tone: "bg-amber-500/15 text-amber-300" },
   nicht_gekauft: { label: "Fills: nein", tone: "bg-amber-500/15 text-amber-300" },
   nicht_geprueft: { label: "nicht geprüft", tone: "bg-panel-2 text-quiet" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Console, STATE_LABEL } from "./Console";
+import { Console, useStateLabel } from "./Console";
 import { HoloLink } from "./HoloLink";
 import { Holo } from "./HoloView";
 import { useJarvis } from "./JarvisProvider";
@@ -57,6 +57,7 @@ function telemetryFor({ market, desk, weather, tasks, mail, brain, today }: Data
 
 export function CommandCenter() {
   const { market, desk, weather, tasks, mail, settings, state } = useJarvis();
+  const label = useStateLabel();
   const now = useNow();
   const brain = settings ? settings.brain.configured : null;
   const telemetry = telemetryFor({ market, desk, weather, tasks, mail, brain, today: now ? isoDate(now) : null });
@@ -86,7 +87,7 @@ export function CommandCenter() {
           </HoloLink>
         </Holo>
         <p className="-mt-6 mb-3 rounded-full border border-sky-300/30 bg-desk/70 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-sky-200">
-          {STATE_LABEL[state]}
+          {label}
         </p>
         <Console />
       </section>

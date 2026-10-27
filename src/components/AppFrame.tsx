@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { AskForm, Chips, MicButton, sessionLabel, STATE_LABEL, useDraft } from "./Console";
+import { AskForm, Chips, HandsFreeSwitch, MicButton, sessionLabel, useDraft, useStateLabel } from "./Console";
 import { HoloLink } from "./HoloLink";
 import { Holo } from "./HoloView";
 import { Icon, type IconName } from "./icons";
@@ -43,6 +43,7 @@ function Clock() {
 function NavBar() {
   const pathname = usePathname();
   const { market, weather, state } = useJarvis();
+  const label = useStateLabel();
   const tabs = useTabs();
   const demo = market?.majors.source === "demo" || weather?.source === "demo";
   return (
@@ -52,7 +53,7 @@ function NavBar() {
           <Orb state={state} className="h-9 w-9" />
           <span className="hidden sm:block">
             <span className="block text-base font-bold leading-tight tracking-[0.35em] text-sky-100 group-hover:text-white">JARVIS</span>
-            <span className="block text-[9px] uppercase tracking-[0.3em] text-quiet">{STATE_LABEL[state]}</span>
+            <span className="block text-[9px] uppercase tracking-[0.3em] text-quiet">{label}</span>
           </span>
         </HoloLink>
         <nav className="-mx-1 flex min-w-0 flex-1 gap-1 overflow-x-auto px-1 [scrollbar-width:none] sm:justify-center" aria-label="Ansichten">
@@ -115,7 +116,8 @@ function ActiveGlow() {
 // Unten in Aufgaben, Post, Trading, Agenten und Einstellungen: JARVIS ist klein dabei und spricht weiter.
 // Beim Wechsel zwischen diesen Ansichten bleibt er stehen; der Kopf fliegt in den Fokus, wenn du ihn antippst.
 function Dock() {
-  const { turns, state, session } = useJarvis();
+  const { turns, state, session, voice } = useJarvis();
+  const label = useStateLabel();
   const { draft, setDraft, inputRef, fill } = useDraft();
   const last = [...turns].reverse().find((t) => t.who === "jarvis");
   return (
@@ -130,8 +132,17 @@ function Dock() {
             </Holo>
           </HoloLink>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-sky-300">{sessionLabel(session) ?? `JARVIS · ${STATE_LABEL[state]}`}</p>
-            <p className="line-clamp-2 text-sm text-sky-100">{last?.text ?? "Ich bin hier. Sprich mit mir oder tipp unten, was ich tun soll."}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-sky-300">{sessionLabel(session) ?? `JARVIS · ${label}`}</p>
+            {voice.error || voice.hint ? (
+              <p className={`line-clamp-2 text-sm ${voice.error ? "text-down" : "text-amber-200"}`}>{voice.error ?? voice.hint}</p>
+            ) : state === "listening" ? (
+              <p className="line-clamp-2 text-sm italic text-quiet">{voice.interim || "…"}</p>
+            ) : (
+              <p className="line-clamp-2 text-sm text-sky-100">{last?.text ?? "Ich bin hier. Sprich mit mir oder tipp unten, was ich tun soll."}</p>
+            )}
+          </div>
+          <div className="hidden sm:block">
+            <HandsFreeSwitch />
           </div>
           <MicButton />
         </div>

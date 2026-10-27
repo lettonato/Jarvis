@@ -23,7 +23,8 @@ export type Effect =
   | { type: "addNote"; text: string }
   | { type: "markSeen"; uid: number }
   | { type: "readMail"; uid: number }
-  | { type: "desk"; action: "start" | "pause" | "weiter" | "notaus" };
+  | { type: "desk"; action: "start" | "pause" | "weiter" | "notaus" }
+  | { type: "voice"; on: boolean };
 
 export type Decision = {
   // Gesprochen, nachdem die Änderung geklappt hat. Bei „Mail vorlesen“ folgt direkt der Text der Mail.
@@ -289,6 +290,14 @@ const RULES: Rule[] = [
       if (!note) return { reply: "Was soll ich mir merken?" };
       return { reply: "Gemerkt. Es steht in deinen JARVIS-Notizen in Obsidian.", effect: { type: "addNote", text: capitalize(note) } };
     },
+  },
+  {
+    match: /(hör|hoer)\w* (jetzt )?(auf zuzuhören|nicht mehr zu)|nicht mehr zuhören|(mikrofon|freihand|zuhören) aus\b|(schalt|mach)\w* (das )?(mikrofon|zuhören|freihand) aus/,
+    run: () => ({ reply: "Gut, ich höre nicht mehr von selbst zu. Tipp aufs Mikrofon oder drück die Leertaste, wenn du mich brauchst.", effect: { type: "voice", on: false } }),
+  },
+  {
+    match: /(mikrofon|freihand|zuhören) (an|ein)\b|(schalt|mach)\w* (das )?(mikrofon|zuhören|freihand) (an|ein)|hör (wieder|immer) zu|freihändig/,
+    run: () => ({ reply: "Ich höre wieder zu. Sag einfach Jarvis und dann, was du brauchst.", effect: { type: "voice", on: true } }),
   },
   {
     match: /\b(fokus|nur (dich|jarvis)|zeig dich)\b/,

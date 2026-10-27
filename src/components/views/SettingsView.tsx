@@ -29,17 +29,36 @@ export function SettingsView() {
           >
             <BrainSetup />
           </Section>
+          <Section
+            id="crawler"
+            title="Crawler auf X (Grok)"
+            text="Wie im GrokBot-Video liest der Crawler vor jedem Kauf, was auf X über den Coin geschrieben wird, und prüft das X-Konto des Projekts. Das macht Grok von xAI. Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben."
+          >
+            <CrawlerSetup />
+          </Section>
           <Section title="Obsidian" text="Aus diesem Tresor liest JARVIS deine Aufgaben. Neue Aufgaben landen in JARVIS/Eingang.md, Notizen in JARVIS/Notizen.md.">
             <VaultSetup />
           </Section>
           <Section title="E-Mail" text="JARVIS liest deinen Posteingang über IMAP. Er löscht nichts und verschickt nichts; markieren als gelesen geht nur auf deinen Zuruf.">
             <MailSetup />
           </Section>
+          <Section
+            id="sprache"
+            title="Sprache"
+            text="Sag „Jarvis“ und dann, was du brauchst, zum Beispiel „Jarvis, wie läuft der Handel?“. Nach seiner Antwort hört er noch ein paar Sekunden zu, da reicht die nächste Frage ohne „Jarvis“. „Jarvis, stopp“ unterbricht ihn."
+          >
+            <HandsFreeSetup />
+          </Section>
           <Section title="Stimme">
             <VoicePicker />
           </Section>
           <Section title="Sicherheit">
             <ul className="space-y-1.5 text-sm text-sky-50/85">
+              <li>
+                Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
+                ihn zur Erkennung an Google, Safari an Apple. Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
+              </li>
+              <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, sonst nichts von dir.</li>
               <li>
                 Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails), verschlüsselt an Anthropic. Claude
                 kann keine Mails schreiben oder löschen und ändert Aufgaben nur, wenn du es sagst.
@@ -164,6 +183,119 @@ function BrainSetup() {
       )}
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
     </form>
+  );
+}
+
+function CrawlerSetup() {
+  const { settings, setSettings } = useJarvis();
+  const crawler = settings?.crawler;
+  const [key, setKey] = useState("");
+  const [budget, setBudget] = useState(String(crawler?.budgetUsd ?? 1).replace(".", ","));
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  async function send(body: object, done?: string) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const next = await postJson<Settings & { message?: string }>("/api/einstellungen", body);
+      setSettings(next);
+      setKey("");
+      const text = next.message ?? done;
+      setMessage(text ? { tone: "ok", text } : null);
+    } catch (e) {
+      setMessage({ tone: "error", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    send({ action: "xai", apiKey: key });
+  };
+  const saveBudget = (e: FormEvent) => {
+    e.preventDefault();
+    send({ action: "xaiBudget", budgetUsd: Number(budget.replace(",", ".")) }, "Tagesbudget gespeichert.");
+  };
+
+  return (
+    <div className="space-y-3 text-sm">
+      {crawler?.configured && (
+        <Notice tone="ok">
+          {crawler.hint ? `Verbunden mit dem Schlüssel ${crawler.hint}.` : "Verbunden über XAI_API_KEY."} Grok darf am Tag bis zu{" "}
+          {crawler.budgetUsd.toLocaleString("de-DE", { minimumFractionDigits: 2 })} $ ausgeben.
+        </Notice>
+      )}
+      <form onSubmit={submit} className="space-y-3">
+        <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+          <li>
+            Auf{" "}
+            <a href="https://console.x.ai" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+              console.x.ai
+            </a>{" "}
+            anmelden, am einfachsten mit deinem X-Konto.
+          </li>
+          <li>Unter „API Keys“ einen Schlüssel erstellen und hier einfügen. Er beginnt mit xai-.</li>
+          <li>Unter „Billing“ Guthaben aufladen, zum Beispiel 10 $, und dort ein Limit setzen.</li>
+        </ol>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            type="password"
+            autoComplete="off"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder={crawler?.hint ? `gespeichert (${crawler.hint}), zum Ändern neuen einfügen` : "xai-…"}
+            aria-label="xAI-Schlüssel"
+            className={inputClass}
+          />
+          <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+            {busy ? "Prüfe …" : "Prüfen und speichern"}
+          </Button>
+        </div>
+      </form>
+      {crawler?.configured && (
+        <form onSubmit={saveBudget} className="flex flex-wrap items-center gap-2">
+          <label htmlFor="x-budget" className="text-xs text-quiet">
+            Tagesbudget für Grok in Dollar
+          </label>
+          <input id="x-budget" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} className={`${inputClass} w-24`} />
+          <Button type="submit" disabled={busy}>
+            Speichern
+          </Button>
+        </form>
+      )}
+      <p className="text-xs text-quiet">
+        Grok berechnet pro gelesenem X-Beitrag einen halben Cent, dazu ein wenig für die Auswertung. Ein Coin kostet meist 10 bis 30 Cent. Ist das Tagesbudget
+        aufgebraucht, prüft der Crawler bis morgen keine neuen Coins, und der Desk kauft nichts Neues. Gekaufte Coins bewacht er weiter.
+      </p>
+      {crawler?.hint && (
+        <Button tone="danger" disabled={busy} onClick={() => send({ action: "removeXai" })}>
+          Schlüssel entfernen
+        </Button>
+      )}
+      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+    </div>
+  );
+}
+
+function HandsFreeSetup() {
+  const { voice } = useJarvis();
+  if (!voice.canListen) return <p className="text-sm text-quiet">Dieser Browser kann nicht zuhören. Öffne JARVIS in Chrome oder Safari.</p>;
+  return (
+    <div className="space-y-2">
+      <label className="flex items-center gap-3 text-sm text-sky-50/85">
+        <input type="checkbox" checked={voice.handsFree} onChange={(e) => voice.setHandsFree(e.target.checked)} className="h-4 w-4 accent-sky-400" />
+        Freihändig: auf „Jarvis“ hören, ohne Knopf
+      </label>
+      <p className="text-xs text-quiet">
+        {voice.local
+          ? "Die Spracherkennung läuft auf diesem Mac, der Ton bleibt hier."
+          : "Die Spracherkennung macht der Browser: Chrome schickt den Ton dafür an Google, Safari an Apple."}{" "}
+        Ohne Freihändig sprichst du über das Mikrofon oder die Leertaste.
+      </p>
+      {voice.error && <Notice tone="error">{voice.error}</Notice>}
+    </div>
   );
 }
 

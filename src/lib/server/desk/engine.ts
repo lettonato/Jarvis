@@ -25,10 +25,11 @@ import {
 } from "../../paper";
 import { SOFT_FILTERS, SOFT_KEYS, type SoftKey } from "../../thresholds";
 import { brainKey, explainBrainError } from "../brain";
-import { CONFIG_DIR, readConfig } from "../config";
+import { CONFIG_DIR, grokKey, readConfig, xBudget } from "../config";
 import { writeVaultFile } from "../obsidian";
 import { judgeByRules, judgeWithClaude, type ChiefInput, type Verdict } from "./chief";
 import { crawl, guard } from "./crawler";
+import { GrokError, readX, TYPICAL_COST_USD, type XReport } from "./grok";
 
 // Der Motor des Spielgeld-Desks. Er läuft jede Minute, solange JARVIS auf dem Mac läuft:
 // 1. Risk und Crawler bewachen die offenen Positionen (Stop-Loss, Ziel, Rug-Zeichen).
@@ -62,7 +63,7 @@ type State = {
   startCapital: number;
   cash: number;
   positions: StoredPosition[];
-  day: { date: string; startEquity: number; trades: number; limitHit: boolean; chiefCalls: number };
+  day: { date: string; startEquity: number; trades: number; limitHit: boolean; chiefCalls: number; xSpentUsd: number };
   days: DayRecord[];
   // Wann ein Coin zuletzt geprüft wurde und bis wann er nach einem Verkauf gesperrt ist.
   seen: Record<string, string>;
@@ -84,12 +85,12 @@ const freshState = (): State => ({
   startCapital: SAFETY.startCapitalUsd,
   cash: SAFETY.startCapitalUsd,
   positions: [],
-  day: { date: isoDate(new Date()), startEquity: SAFETY.startCapitalUsd, trades: 0, limitHit: false, chiefCalls: 0 },
+  day: { date: isoDate(new Date()), startEquity: SAFETY.startCapitalUsd, trades: 0, limitHit: false, chiefCalls: 0, xSpentUsd: 0 },
   days: [],
   seen: {},
   cooldown: {},
   verdicts: {},
-  stats: { scanned: 0, vetPassed: 0, pagesRead: 0, reportsRead: 0, killed: 0, rugsStopped: 0, chiefCalls: 0, wins: 0, losses: 0 },
+  stats: { scanned: 0, vetPassed: 0, pagesRead: 0, reportsRead: 0, postsRead: 0, xReads: 0, xCostUsd: 0, killed: 0, rugsStopped: 0, chiefCalls: 0, wins: 0, losses: 0 },
   trades: [],
   log: [],
   equityHistory: [],
@@ -300,8 +301,19 @@ async function hunt(state: State, now: Date) {
     .slice(0, MAX_CRAWLS_PER_TICK);
   if (fresh.length === 0) return;
 
+  const config = await readConfig();
+  const xKey = grokKey(config);
+  const xLeft = () => xBudget(config) - state.day.xSpentUsd;
+  // Der Crawler liest zuerst, dann handelt der Desk: Ist das X-Budget für heute weg, prüft er nichts Neues.
+  if (xKey && xLeft() < TYPICAL_COST_USD) {
+    warnOnce(state, "Crawler", `Das X-Budget von ${formatUsd(xBudget(config))} für heute ist aufgebraucht. Morgen liest Grok weiter, bis dahin kauft der Desk nichts Neues`);
+    return;
+  }
+
   const survivors: ChiefInput[] = [];
   for (const c of fresh) {
+    // Grok braucht pro Coin einige Sekunden; eine Pause oder der Not-Aus gilt sofort.
+    if (state.status !== "laeuft") return;
     state.seen[c.address] = now.toISOString();
     try {
       const report = await crawl(c);
@@ -315,15 +327,32 @@ async function hunt(state: State, now: Date) {
       }
       const site = report.site ? ("title" in report.site ? `Seite „${report.site.title || report.site.url}“ gelesen` : `Seite: ${report.site.error}`) : "keine Seite";
       log(state, "Crawler", `$${c.symbol}: Blockchain sauber, Top 10 halten ${report.chain.top10Pct?.toLocaleString("de-DE")} %, ${site}`);
-      survivors.push({ candidate: c, crawl: report, ticket });
+      let x: XReport | null = null;
+      if (xKey) {
+        // Reicht das Budget nicht mehr, kommt der Coin morgen wieder dran.
+        if (xLeft() < TYPICAL_COST_USD) {
+          delete state.seen[c.address];
+          break;
+        }
+        x = await readXFor(state, xKey, c, now);
+        if (!x) continue;
+        if (x.rugWarnings) {
+          const why = `Auf X warnen mehrere Konten vor $${c.symbol}`;
+          state.verdicts[c.address] = { at: now.toISOString(), stage: "x_kill", text: x.summary || why };
+          state.stats.killed++;
+          log(state, "Crawler", `$${c.symbol} aussortiert: ${why}. ${x.summary}`, "kill");
+          continue;
+        }
+      }
+      survivors.push({ candidate: c, crawl: report, ticket, x });
     } catch (e) {
       state.verdicts[c.address] = { at: now.toISOString(), stage: "nicht_geprueft", text: "RugCheck nicht erreichbar, also kein Kauf" };
       log(state, "Crawler", `$${c.symbol} nicht geprüft (${e instanceof Error ? e.message : e}), also kein Kauf`, "warn");
     }
   }
-  if (survivors.length === 0) return;
+  if (survivors.length === 0 || state.status !== "laeuft") return;
 
-  const key = brainKey(await readConfig());
+  const key = brainKey(config);
   let verdicts: Verdict[];
   if (key && state.day.chiefCalls < MAX_CHIEF_CALLS_PER_DAY) {
     try {
@@ -380,13 +409,41 @@ async function hunt(state: State, now: Date) {
 
 const NO_LIVE = "Keine Live-Daten von DexScreener. Mit Beispieldaten kaufe ich nichts";
 
+// Grok liest X zu einem Coin. Kosten zählen auch, wenn etwas schiefgeht; dann wird nicht gekauft.
+async function readXFor(state: State, apiKey: string, c: Candidate, now: Date): Promise<XReport | null> {
+  try {
+    const x = await readX(apiKey, c, now);
+    state.day.xSpentUsd += x.costUsd;
+    state.stats.xCostUsd += x.costUsd;
+    state.stats.xReads++;
+    state.stats.postsRead += Math.max(0, x.posts);
+    log(state, "Crawler", xLine(c, x));
+    return x;
+  } catch (e) {
+    const cost = e instanceof GrokError ? e.costUsd : 0;
+    state.day.xSpentUsd += cost;
+    state.stats.xCostUsd += cost;
+    const why = e instanceof Error ? e.message : String(e);
+    state.verdicts[c.address] = { at: now.toISOString(), stage: "nicht_geprueft", text: `X nicht gelesen: ${why}` };
+    log(state, "Crawler", `$${c.symbol}: X nicht gelesen (${why}), also kein Kauf`, "warn");
+    return null;
+  }
+}
+
+function xLine(c: Candidate, x: XReport): string {
+  const posts = x.posts >= 0 ? `${x.posts} Beiträge${x.accounts >= 0 ? ` von ${x.accounts} Konten` : ""}` : "Beiträge";
+  const bots = x.botShare >= 0 ? `, etwa ${Math.round(x.botShare * 100)} % wirken wie Bots` : "";
+  const account = !x.account.found ? "kein Projektkonto gefunden" : `Konto @${x.account.handle}${x.account.fits >= 0 ? (x.account.fits >= 0.7 ? " passt" : " passt nicht sicher") : ""}`;
+  return `$${c.symbol} auf X: ${posts} gelesen, Stimmung ${x.mood}${bots}, ${account}. ${x.summary} (${formatUsd(x.costUsd)})`.trim();
+}
+
 async function rollDay(state: State, now: Date) {
   const today = isoDate(now);
   if (state.day.date === today) return;
   const closed: DayRecord = { date: state.day.date, startEquity: state.day.startEquity, endEquity: equity(state), trades: state.day.trades };
   state.days.push(closed);
   await writeReport(state, closed.date, closed);
-  state.day = { date: today, startEquity: equity(state), trades: 0, limitHit: false, chiefCalls: 0 };
+  state.day = { date: today, startEquity: equity(state), trades: 0, limitHit: false, chiefCalls: 0, xSpentUsd: 0 };
   if (state.status === "tageslimit") {
     state.status = "laeuft";
     state.statusReason = null;
@@ -515,6 +572,7 @@ function downsample<T>(list: T[], max: number): T[] {
 
 export async function deskSnapshot(now = new Date()): Promise<DeskSnapshot> {
   const state = await load();
+  const config = await readConfig();
   const total = equity(state);
   return {
     status: state.status,
@@ -536,7 +594,8 @@ export async function deskSnapshot(now = new Date()): Promise<DeskSnapshot> {
     lastPick: state.lastPick,
     lastTickAt: state.lastTickAt,
     verdicts: Object.fromEntries(Object.entries(state.verdicts).filter(([, v]) => now.getTime() - Date.parse(v.at) < SAFETY.recheckHours * HOUR)),
-    chief: brainKey(await readConfig()) ? "claude" : "regeln",
+    chief: brainKey(config) ? "claude" : "regeln",
+    x: { enabled: Boolean(grokKey(config)), spentTodayUsd: state.day.xSpentUsd, budgetUsd: xBudget(config) },
   };
 }
 
@@ -558,7 +617,8 @@ async function writeReport(state: State, date: string, closed?: DayRecord) {
     `- Konto ${closed ? "am Tagesende" : "jetzt"}: ${formatUsd(end)} (${formatSignedUsd(end - start)})`,
     `- Seit dem Start: ${formatSignedUsd(end - state.startCapital)}`,
     `- Offene Positionen: ${state.positions.map((p) => `$${p.symbol}`).join(", ") || "keine"}`,
-    `- Crawler: ${state.stats.killed} Coins aussortiert, ${state.stats.rugsStopped} Rugs gestoppt (seit dem Start)`,
+    `- Crawler: ${state.stats.killed} Coins aussortiert, ${state.stats.rugsStopped} Rugs gestoppt, ${state.stats.postsRead} Beiträge auf X gelesen (seit dem Start)`,
+    ...(state.stats.xReads ? [`- Grok auf X: ${formatUsd(state.stats.xCostUsd)} seit dem Start`] : []),
     "",
     "## Trades",
     "",

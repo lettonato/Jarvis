@@ -1,7 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { connection } from "next/server";
-import { CONFIG_DIR, expandHome, readConfig, writeConfig, type JarvisConfig, type MailConfig } from "@/lib/server/config";
+import { CONFIG_DIR, expandHome, grokKey, readConfig, writeConfig, xBudget, type JarvisConfig, type MailConfig } from "@/lib/server/config";
+import { testGrokKey } from "@/lib/server/desk/grok";
 import { brainKey, testKey } from "@/lib/server/brain";
 import { guard, readBody } from "@/lib/server/guard";
 import { testMail } from "@/lib/server/mail";
@@ -23,6 +24,12 @@ async function settings(config: JarvisConfig): Promise<Settings> {
       hint: config.claude?.apiKey ? `…${config.claude.apiKey.slice(-4)}` : null,
       fromEnv: !config.claude?.apiKey && Boolean(process.env.ANTHROPIC_API_KEY),
     },
+    crawler: {
+      configured: Boolean(grokKey(config)),
+      hint: config.xai?.apiKey ? `…${config.xai.apiKey.slice(-4)}` : null,
+      fromEnv: !config.xai?.apiKey && Boolean(process.env.XAI_API_KEY),
+      budgetUsd: xBudget(config),
+    },
     configFile: path.join(CONFIG_DIR, "config.json"),
   };
 }
@@ -43,7 +50,13 @@ type Action =
   | { action: "mail"; mail: MailInput }
   | { action: "removeMail" }
   | { action: "claude"; apiKey: string }
-  | { action: "removeClaude" };
+  | { action: "removeClaude" }
+  | { action: "xai"; apiKey: string }
+  | { action: "xaiBudget"; budgetUsd: number }
+  | { action: "removeXai" };
+
+// Mehr als 20 $ am Tag sind für einen Spielgeld-Test sicher ein Tippfehler.
+const MAX_X_BUDGET_USD = 20;
 
 // Ergänzt Server und Port aus der Anbieterliste; ein leeres Passwort heißt „das gespeicherte behalten“.
 function mailConfig(input: MailInput, saved?: MailConfig): MailConfig | string {
@@ -97,6 +110,23 @@ export async function POST(request: Request) {
     return Response.json({ ...(await settings(config)), message: "Verbunden. Ab jetzt verstehe ich auch freie Sätze." });
   } else if (body.action === "removeClaude") {
     delete config.claude;
+  } else if (body.action === "xai") {
+    const apiKey = body.apiKey?.trim() ?? "";
+    if (!apiKey.startsWith("xai-")) return Response.json({ error: "Ein xAI-Schlüssel beginnt mit xai-. Bitte den ganzen Schlüssel einfügen." }, { status: 400 });
+    const result = await testGrokKey(apiKey);
+    if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+    config.xai = { ...config.xai, apiKey };
+    await writeConfig(config);
+    return Response.json({ ...(await settings(config)), message: "Verbunden. Ab jetzt liest der Crawler mit Grok auch X." });
+  } else if (body.action === "xaiBudget") {
+    const budget = Math.round(Number(body.budgetUsd) * 100) / 100;
+    if (!(budget >= 0.2 && budget <= MAX_X_BUDGET_USD)) {
+      return Response.json({ error: `Bitte einen Betrag zwischen 0,20 und ${MAX_X_BUDGET_USD} Dollar eintragen.` }, { status: 400 });
+    }
+    if (!grokKey(config)) return Response.json({ error: "Bitte zuerst den xAI-Schlüssel eintragen." }, { status: 400 });
+    config.xai = { apiKey: config.xai?.apiKey ?? "", dailyBudgetUsd: budget };
+  } else if (body.action === "removeXai") {
+    delete config.xai;
   } else {
     return Response.json({ error: "Unbekannte Aktion." }, { status: 400 });
   }

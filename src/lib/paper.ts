@@ -91,13 +91,17 @@ export type Trade = {
 export type LogEntry = { at: string; agent: DeskAgent | "Desk"; text: string; tone?: "kill" | "buy" | "sell" | "warn" };
 
 // Was Crawler und Chief zuletzt über einen Coin entschieden haben, für die Scan-Tabelle.
-export type CoinVerdict = { at: string; stage: "chain_kill" | "skin_kill" | "chief_nein" | "gekauft" | "nicht_gekauft" | "nicht_geprueft"; text: string };
+export type CoinVerdict = { at: string; stage: "chain_kill" | "skin_kill" | "x_kill" | "chief_nein" | "gekauft" | "nicht_gekauft" | "nicht_geprueft"; text: string };
 
 export type DeskStats = {
   scanned: number;
   vetPassed: number;
   pagesRead: number;
   reportsRead: number;
+  // Was Grok auf X gelesen hat und was das insgesamt gekostet hat.
+  postsRead: number;
+  xReads: number;
+  xCostUsd: number;
   killed: number;
   rugsStopped: number;
   chiefCalls: number;
@@ -130,6 +134,8 @@ export type DeskSnapshot = {
   verdicts: Record<string, CoinVerdict>;
   // Mit KI-Gehirn bewertet Claude die weichen Filter, sonst feste Faustregeln.
   chief: "claude" | "regeln";
+  // Grok liest X nur mit xAI-Schlüssel und innerhalb des Tagesbudgets.
+  x: { enabled: boolean; spentTodayUsd: number; budgetUsd: number };
 };
 
 const HOUR = 3_600_000;

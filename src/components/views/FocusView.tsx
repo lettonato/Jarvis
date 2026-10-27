@@ -1,6 +1,6 @@
 "use client";
 
-import { Console, STATE_LABEL } from "../Console";
+import { Console, useStateLabel } from "../Console";
 import { HoloLink } from "../HoloLink";
 import { Holo } from "../HoloView";
 import { Icon, type IconName } from "../icons";
@@ -19,6 +19,7 @@ type Item = { icon: IconName; text: string; ask?: string; href?: string; alert?:
 
 export function FocusView() {
   const { name, tasks, mail, weather, state, ask, voice } = useJarvis();
+  const label = useStateLabel();
   const now = useNow();
   const today = now ? isoDate(now) : null;
   const hour = now?.getHours() ?? 12;
@@ -65,7 +66,7 @@ export function FocusView() {
       </Holo>
 
       <p className="-mt-8 mb-3 rounded-full border border-sky-300/30 bg-desk/70 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-sky-200">
-        {STATE_LABEL[state]}
+        {label}
       </p>
 
       <div className="mb-3 flex flex-wrap justify-center gap-2">
