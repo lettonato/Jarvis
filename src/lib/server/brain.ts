@@ -217,11 +217,12 @@ export async function think(
     return cal;
   };
 
+  // strict prüft die Eingaben genau. Anthropic erlaubt höchstens 20 solcher Werkzeuge pro Anfrage;
+  // Werkzeuge ohne Eingaben brauchen es nicht und laufen ohne.
   const tools = [
     betaTool({
       name: "aufgaben_lesen",
       description: "Liest alle offenen Aufgaben aus dem Obsidian-Tresor, sortiert nach Datum. Liefert id, Text, Fälligkeit, geplantes Datum und ob sie wichtig oder wiederkehrend ist.",
-      strict: true,
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       run: async () => {
         const snap = await readTasks(needVault());
@@ -390,7 +391,6 @@ export async function think(
     betaTool({
       name: "mails_lesen",
       description: "Liest die ungelesenen und markierten Mails der letzten 14 Tage aus dem Posteingang: uid, Absender, Betreff, Datum und ob sie wichtig, ungelesen, markiert oder ein Newsletter ist.",
-      strict: true,
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       run: async () => {
         const snap = await readMail(needMail());
@@ -450,7 +450,6 @@ export async function think(
       name: "handel_status",
       description:
         "Liest den Stand des Spielgeld-Handels: Status, Kontostand, Ergebnis seit dem Start und heute, Testtag, offene Positionen mit Stop und Ziel, die letzten Trades mit Begründung und was Crawler und Chief zuletzt gemeldet haben.",
-      strict: true,
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       run: async () => {
         const d = await deskSnapshot();
@@ -508,7 +507,6 @@ export async function think(
       name: "nachrichten_lesen",
       description:
         "Liest das letzte Lagebild von Intel (Nachrichten und X zu Bitcoin, Ethereum, Solana und den eigenen Themen) samt Meldungen mit Quelle, die letzte gezielte Suche und ob Intel den Trading-Desk gerade bremst. Kostet nichts.",
-      strict: true,
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       run: async () => {
         const intel = await intelSnapshot();
