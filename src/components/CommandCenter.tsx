@@ -45,13 +45,11 @@ export function CommandCenter() {
         </ul>
       </nav>
 
-      <div ref={worldAnchor} className="relative min-h-0 w-full flex-1">
-        <p className="absolute inset-x-0 bottom-0 text-center text-[10px] uppercase tracking-[0.3em] text-sky-200/55">
-          <span className="pointer-fine:hidden">Tippe einen Felsen an · wischen dreht den Kreis</span>
-          <span className="hidden pointer-fine:inline">Klick auf einen Felsen öffnet das Modul · ziehen dreht den Kreis · Kopf für den Fokus</span>
-        </p>
-      </div>
-
+      <div ref={worldAnchor} className="min-h-0 w-full flex-1" />
+      <p className="mt-1 text-center text-[10px] uppercase tracking-[0.3em] text-sky-200/55">
+        <span className="pointer-fine:hidden">Felsen antippen · wischen dreht</span>
+        <span className="hidden pointer-fine:inline">Klick auf einen Felsen öffnet das Modul · ziehen dreht den Kreis · Kopf für den Fokus</span>
+      </p>
       <p className="mt-2 mb-2 shrink-0 rounded-full border border-sky-300/30 bg-desk/70 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-sky-200">{label}</p>
       <div className="pointer-events-auto flex w-full justify-center">
         <Console />

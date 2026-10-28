@@ -164,46 +164,45 @@ export function createPanel(module: JarvisModule, accent: string): Panel {
     ctx.fillStyle = active ? "#4ade80" : "#94a3b8";
     spaced(ctx, active ? "● AKTIV" : module.phase >= 6 ? "SPÄTER" : `PHASE ${module.phase}`, W - pad, 70, 4, "right");
 
-    // Symbol mit Leuchten.
+    // Symbol mit Leuchten, daneben der Name, darunter wofür das Modul da ist.
     const img = icon(module.id, "#e0f2fe", () => draw(...last));
     ctx.save();
     ctx.shadowColor = "rgba(125,211,252,0.95)";
-    ctx.shadowBlur = 26;
-    ctx.drawImage(img, pad - 8, 104, 132, 132);
+    ctx.shadowBlur = 24;
+    ctx.drawImage(img, pad - 8, 100, 104, 104);
     ctx.restore();
 
     ctx.fillStyle = "#f0f9ff";
-    const size = fit(ctx, module.name.toUpperCase(), W - pad - 190, "bold", 54, 34);
+    const size = fit(ctx, module.name.toUpperCase(), W - pad - 150, "bold", 62, 36);
     ctx.font = `bold ${size}px ${FONT}`;
-    spaced(ctx, module.name.toUpperCase(), pad + 150, 168, 3, "left");
-    ctx.fillStyle = "rgba(165,180,252,0.9)";
-    ctx.font = `26px ${FONT}`;
-    const tag = wrap(ctx, module.tagline, W - pad - 190, 2);
-    tag.forEach((l, i) => spaced(ctx, l, pad + 150, 208 + i * 32, 0, "left"));
+    spaced(ctx, module.name.toUpperCase(), pad + 116, 172, 2, "left");
+    ctx.fillStyle = "rgba(165,180,252,0.95)";
+    ctx.font = `30px ${FONT}`;
+    spaced(ctx, wrap(ctx, module.tagline, W - 2 * pad, 1)[0] ?? "", pad, 250, 0, "left");
 
     ctx.fillStyle = "rgba(125,211,252,0.35)";
-    ctx.fillRect(pad, 288, W - 2 * pad, 2);
+    ctx.fillRect(pad, 280, W - 2 * pad, 2);
 
     const value = data?.value ?? (active ? "lädt …" : "–");
     ctx.fillStyle = data?.alert ? "#f9a8d4" : "#ffffff";
-    const vs = fit(ctx, value, W - 2 * pad, "bold", 104, 48);
+    const vs = fit(ctx, value, W - 2 * pad, "bold", 124, 52);
     ctx.font = `bold ${vs}px ${FONT}`;
     ctx.save();
     ctx.shadowColor = data?.alert ? "rgba(236,72,153,0.9)" : "rgba(125,211,252,0.8)";
     ctx.shadowBlur = 20;
-    spaced(ctx, value, pad, 410, 0, "left");
+    spaced(ctx, value, pad, 402, 0, "left");
     ctx.restore();
 
-    ctx.fillStyle = "rgba(203,213,225,0.92)";
-    ctx.font = `28px ${FONT}`;
+    ctx.fillStyle = "rgba(226,232,240,0.95)";
+    ctx.font = `38px ${FONT}`;
     const detail = data?.detail ?? (active ? "" : "ansehen, was kommt");
-    wrap(ctx, detail, W - 2 * pad, 3).forEach((l, i) => spaced(ctx, l, pad, 466 + i * 36, 0, "left"));
+    wrap(ctx, detail, W - 2 * pad, 2).forEach((l, i) => spaced(ctx, l, pad, 466 + i * 46, 0, "left"));
 
     ctx.fillStyle = "rgba(125,211,252,0.35)";
     ctx.fillRect(pad, H - 112, W - 2 * pad, 2);
     ctx.fillStyle = "rgba(186,230,253,0.9)";
-    ctx.font = `bold 28px ${FONT}`;
-    spaced(ctx, "ÖFFNEN ›", W - pad, H - 60, 6, "right");
+    ctx.font = `bold 32px ${FONT}`;
+    spaced(ctx, "ÖFFNEN ›", W - pad, H - 58, 6, "right");
     ctx.fillStyle = accent;
     ctx.beginPath();
     ctx.arc(pad + 8, H - 70, 8, 0, Math.PI * 2);

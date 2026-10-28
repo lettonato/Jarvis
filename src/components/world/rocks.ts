@@ -5,8 +5,8 @@ import { createPanel, PANEL_H, PANEL_W, type Panel } from "./panel";
 import type { ModuleId, JarvisModule } from "@/lib/modules";
 
 // Die schwebenden Felsen der Übersicht. Jeder trägt die Glas-Tafel eines Moduls; ein Lichtkegel
-// projiziert sie aus dem Stein. Auf dem großen Bildschirm stehen sie im Bogen um JARVIS wie in einem
-// Amphitheater, auf dem Handy links und rechts von ihm übereinander.
+// projiziert sie aus dem Stein. Auf dem großen Bildschirm stehen sie links und rechts von JARVIS in zwei
+// Reihen, die sich zu dir hin wölben; auf dem Handy kreisen sie wie ein Karussell um ihn.
 
 // Zufall mit festem Startwert: Jeder Fels sieht bei jedem Laden gleich aus.
 export function seeded(seed: number): () => number {
@@ -86,7 +86,7 @@ export function beam(color: THREE.Color, bottom: number, top: number, height: nu
   return { mesh, uniforms };
 }
 
-export const PANEL_WIDTH = 1.3;
+export const PANEL_WIDTH = 1.5;
 const PANEL_HEIGHT = (PANEL_WIDTH * PANEL_H) / PANEL_W;
 // So weit über dem Stein schwebt die Mitte der Tafel.
 export const PANEL_LIFT = 0.3 + PANEL_HEIGHT / 2;
@@ -165,34 +165,44 @@ export function createRock(module: JarvisModule, accent: string, index: number):
   return { module, root, body, panel, edges, beam: light.uniforms, hit, base: new THREE.Vector3(), phase: random() * Math.PI * 2, hover: 0, flare: 0, draw, painted: "" };
 }
 
-// Wo die Felsen stehen. Vorne, also nah an dir und groß im Bild, die wichtigsten Module.
-const ORDER: Record<"links" | "rechts", ModuleId[]> = {
+// Wo die Felsen stehen. Unten und innen, also nah an JARVIS und groß im Bild, die wichtigsten Module.
+const SLOTS: Record<"links" | "rechts", ModuleId[]> = {
   links: ["aufgaben", "kalender", "post", "telefon", "browser"],
   rechts: ["trading", "intel", "markt", "cognition", "wetter"],
 };
+// Reihenfolge im Karussell auf dem Handy, einmal rundherum.
+const CAROUSEL: ModuleId[] = ["aufgaben", "kalender", "post", "telefon", "browser", "wetter", "cognition", "markt", "intel", "trading"];
+export const CAROUSEL_RADIUS = 3.5;
+export const CAROUSEL_STEP = (Math.PI * 2) / CAROUSEL.length;
 
 export function layoutRocks(rocks: Rock[], portrait: boolean) {
   for (const rock of rocks) {
-    const side = rock.module.side;
-    const k = ORDER[side].indexOf(rock.module.id);
-    const s = side === "links" ? -1 : 1;
     if (portrait) {
-      // Zwei Säulen neben dem Kopf, leicht versetzt, damit sie räumlich wirken.
-      rock.base.set(s * (k % 2 ? 2.05 : 2.55), 2.7 - k * 1.62, k % 2 ? -0.6 : 0.35);
-    } else {
-      // Der Bogen öffnet sich zu dir; hinten stehen die Felsen höher, damit die vorderen sie nicht verdecken.
-      const a = THREE.MathUtils.degToRad(114 - k * 21);
-      const r = 6.4;
-      rock.base.set(s * Math.sin(a) * r, -0.55 + k * 0.42, -Math.cos(a) * r);
+      const a = CAROUSEL.indexOf(rock.module.id) * CAROUSEL_STEP;
+      rock.base.set(Math.sin(a) * CAROUSEL_RADIUS, -2.5, Math.cos(a) * CAROUSEL_RADIUS);
+      continue;
     }
+    const s = rock.module.side === "links" ? -1 : 1;
+    const k = SLOTS[rock.module.side].indexOf(rock.module.id);
+    // Untere Reihe drei Felsen, obere zwei dazwischen und weiter hinten. Außen kommen sie dir näher.
+    const top = k >= 3;
+    const u = top ? k - 2.5 : k;
+    rock.base.set(s * (2.3 + u * 1.75), top ? 2.05 : -0.35, (top ? -1.7 : 0.5) + u * 0.5);
   }
 }
 
-// Die Eckpunkte, die auf jeden Fall im Bild sein sollen: Kopf, Tafeln und Steine.
-export function stagePoints(rocks: Rock[]): THREE.Vector3[] {
+// Die Punkte, die auf jeden Fall im Bild sein sollen: Kopf, Tafeln und Steine. Im Karussell zählen
+// nur Kopf und der vordere Fels; die seitlichen dürfen über den Rand hinausragen.
+export function stagePoints(rocks: Rock[], portrait: boolean): THREE.Vector3[] {
   const points = [new THREE.Vector3(-1.4, -0.6, 0), new THREE.Vector3(1.4, -0.6, 0), new THREE.Vector3(0, 2.6, 0)];
+  const top = PANEL_LIFT + PANEL_HEIGHT / 2;
+  if (portrait) {
+    const r = CAROUSEL_RADIUS;
+    points.push(new THREE.Vector3(-PANEL_WIDTH / 2, -2.5 - 0.85, r), new THREE.Vector3(PANEL_WIDTH / 2, -2.5 - 0.85, r));
+    points.push(new THREE.Vector3(-r * 0.59, -2.5 + top, r * 0.81), new THREE.Vector3(r * 0.59, -2.5 + top, r * 0.81));
+    return points;
+  }
   for (const r of rocks) {
-    const top = PANEL_LIFT + PANEL_HEIGHT / 2;
     for (const dx of [-PANEL_WIDTH / 2, PANEL_WIDTH / 2]) points.push(r.base.clone().add(new THREE.Vector3(dx, top, 0)));
     points.push(r.base.clone().add(new THREE.Vector3(0, -0.85, 0)));
   }

@@ -66,8 +66,8 @@ void main() {
   vec2 ground = p.xz + uOffset;
   float h = level(ground * uScale);
   // In der Mitte ein flaches Tal, zu den Seiten und nach hinten steigen die Berge.
-  float side = smoothstep(uValley, uValley * 2.6 + 6.0, abs(p.x));
-  float far = smoothstep(14.0, 70.0, -p.z);
+  float side = smoothstep(uValley, uValley * 2.2 + 4.0, abs(p.x));
+  float far = smoothstep(10.0, 55.0, -p.z);
   float lift = max(side, far * 0.9);
   p.y = h * uHeight * mix(0.1, 1.0, lift) - 5.0;
   vLevel = h * mix(0.35, 1.0, lift);
@@ -107,9 +107,8 @@ void main() {
   // Eine Lichtwelle läuft über das Land, wie ein Scan.
   float wave = fract((dist - uTime * 7.0) / 55.0);
   col += uGrid * smoothstep(0.96, 1.0, wave) * 0.35 * near;
-  col *= uLight;
-  float fog = 1.0 - exp(-pow(dist * 0.0105, 2.0));
-  gl_FragColor = vec4(mix(col, uFog, fog), 1.0);
+  float fog = 1.0 - exp(-pow(dist * 0.0085, 2.0));
+  gl_FragColor = vec4(mix(col, uFog, fog) * uLight, 1.0);
 }
 `;
 

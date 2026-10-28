@@ -43,7 +43,7 @@ const WORK = { light: 0.62, eye: [0, 1.2, 9] as [number, number, number], look: 
 
 export const BIOMES: Record<BiomeId, Biome> = {
   uebersicht: {
-    height: 9,
+    height: 11,
     scale: 0.035,
     ridge: 0.45,
     terrace: 0,
@@ -57,8 +57,8 @@ export const BIOMES: Record<BiomeId, Biome> = {
     aurora: "#c026d3",
     accent: "#38bdf8",
     light: 1,
-    eye: [0, 2.6, 11],
-    look: [0, 1.3, 0],
+    eye: [0, 2.1, 11],
+    look: [0, 1.5, 0],
     frame: "buehne",
     head: 1,
     rocks: 1,

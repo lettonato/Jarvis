@@ -37,6 +37,7 @@ export function World() {
         api = createWorld(mount, {
           initial: biomeOf(place.current),
           onOpen: (href) => router.push(href, { transitionTypes: holoTypes(place.current, href) }),
+          onLost: (lost) => setWorldStatus(lost ? "aus" : "laeuft"),
         });
         world.current = api;
         const { state: s, telemetry: t, brain: b } = latest.current;
@@ -68,5 +69,5 @@ export function World() {
     world.current?.setPanels(telemetry, brain);
   }, [telemetry, brain]);
 
-  return <div ref={mountRef} aria-hidden className="fixed inset-0 -z-10 overflow-hidden" />;
+  return <div ref={mountRef} aria-hidden className="fixed inset-0 z-0 overflow-hidden" />;
 }

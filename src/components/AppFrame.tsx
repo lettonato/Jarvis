@@ -207,7 +207,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
   return (
     <>
       <World />
-      <div className={`flex flex-col ${fit ? "h-dvh flex-none overflow-hidden" : "min-h-full flex-1"} ${stage ? "pointer-events-none" : ""}`}>
+      <div className={`relative z-10 flex flex-col ${fit ? "h-dvh flex-none overflow-hidden" : "min-h-full flex-1"} ${stage ? "pointer-events-none" : ""}`}>
         <NavBar />
         <div className={`flex min-h-0 flex-1 flex-col ${dock ? "pb-40 lg:pb-32" : ""}`}>{children}</div>
         {dock && <Dock />}

@@ -424,7 +424,7 @@ export function Console() {
           </div>
         </div>
       )}
-      <Messages limit={6} className={`transition-[height] duration-500 ${talking ? "h-32 sm:h-44" : "h-12"}`} />
+      {(talking || voice.error || voice.hint) && <Messages limit={6} className={talking ? "h-32 animate-[jarvis-sheet_260ms_cubic-bezier(0.16,1,0.3,1)] sm:h-44" : "h-auto"} />}
       <div className="mt-2">
         <Composer inputRef={inputRef} draft={draft} setDraft={setDraft} />
       </div>

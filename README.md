@@ -10,8 +10,8 @@ Oben wechselst du zwischen den Ansichten:
 
 | Ansicht | Was du siehst |
 | --- | --- |
-| **JARVIS** (`/fokus`) | Nur JARVIS, groß, und das Gespräch mit ihm. Darunter steht, was ansteht (wichtige Mails, fällige Punkte, Wetter); ein Klick darauf, und er geht es mit dir durch. Sobald ihr redet, rückt der Kopf nach oben, das Gespräch füllt den Bildschirm wie bei Claude, und das Eingabefeld bleibt unten. |
-| **Übersicht** (`/`) | JARVIS in der Mitte, alle Module als Kacheln wie im NEXUS-Video. Fährst du mit der Maus über eine Kachel, dreht sie sich zu dir und tritt heraus; ein Klick öffnet ihre Ansicht, ein Klick auf den Kopf führt in den Fokus. |
+| **JARVIS** (`/fokus`) | Nur JARVIS, groß, mit Kreiselringen um den Kopf, und das Gespräch mit ihm. Darunter steht, was ansteht (wichtige Mails, fällige Punkte, Wetter); ein Klick darauf, und er geht es mit dir durch. Sobald ihr redet, gleitet der Kopf nach oben, das Gespräch füllt den Bildschirm wie bei Claude, und das Eingabefeld bleibt unten. |
+| **Übersicht** (`/`) | JARVIS schwebt auf einer Felsinsel über einem Tal aus leuchtenden Bergen. Die Module stehen links und rechts als schwebende Felsen mit Glas-Tafeln, auf denen ihre aktuelle Zahl steht. Fährst du mit der Maus über einen Felsen, hebt er sich und leuchtet auf; ein Klick fliegt dich in seine Landschaft. Ziehen schwenkt den Kreis, ein Klick auf den Kopf führt in den Fokus. Auf dem Handy kreisen die Felsen wie ein Karussell um JARVIS: wischen dreht, antippen öffnet. Mit der Tab-Taste gehst du die Felsen auch ohne Maus durch. |
 | **Aufgaben** (`/aufgaben`) | Deine Aufgaben aus Obsidian nach Fälligkeit: abhaken, auf morgen oder eine Woche verschieben, neu notieren. |
 | **Kalender** (`/kalender`) | Deine Termine der nächsten zwei Wochen aus der Kalender-App, neue Termine eintragen, jeden Tag mit einem Klick in der Kalender-App zeigen. |
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
@@ -20,7 +20,23 @@ Oben wechselst du zwischen den Ansichten:
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
 | **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Grok (Crawler auf X und Intel), Obsidian-Tresor, Kalender, Postfach, Sprache, Stimme. |
 
-Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Kalender, Post, Trading, Intel und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
+Hinter allen Ansichten liegt eine 3D-Welt, und jede Ansicht hat ihre eigene Landschaft. Wechselst du die Ansicht, fliegt die Kamera über das Gebirge in die neue Landschaft, während Farben, Berge und Himmel ineinander übergehen:
+
+| Landschaft | So sieht sie aus |
+| --- | --- |
+| Übersicht | blaues Tal mit Polarlicht, JARVIS auf seiner Insel, die Felsen der Module |
+| Fokus | ruhiges Tal, JARVIS groß mit Kreiselringen und einem Kranz aus Lichtpunkten |
+| Aufgaben | grüne Terrassen, aus denen Leuchtfeuer in den Himmel steigen |
+| Kalender | sanfte türkise Hügel, am Himmel drehen sich Zeitringe wie ein Uhrwerk |
+| Post | schroffe Eisberge, in der Luft schweben Kristalle |
+| Trading | magentafarbene Schlucht, gesäumt von grünen und roten Kurs-Säulen |
+| Intel | flaches oranges Land mit einem riesigen Radarschirm |
+| Agenten | violettes Gebirge unter einem Sternbild, durch dessen Fäden Lichtpunkte laufen |
+| Einstellungen | stilles graues Hochland |
+
+Hinter Text ist die Welt gedämpft, damit alles lesbar bleibt. Die Ansichten selbst wechseln weiter wie Hologramme im Film: Öffnest du ein Modul, faltet sich seine Ansicht aus einer Lichtlinie in der Tiefe auf; zwischen Aufgaben, Kalender, Post, Trading, Intel und Agenten schwenken sie wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Flug.
+
+Die Welt passt sich deinem Rechner an: Ruckelt es, schaltet sie von selbst eine Stufe herunter (erst gröberes Bild, dann ohne Nachleuchten) und merkt sich das. Sie zeichnet höchstens 60 Bilder pro Sekunde, hinter den Arbeitsansichten 30. Kann der Browser gar kein 3D (WebGL aus), zeigt die Übersicht die Module als einfache Kacheln.
 
 In allen Arbeitsansichten ist JARVIS unten klein dabei. Du sprichst einfach weiter, er wechselt die Ansicht selbst. Dort siehst du immer die letzten zwei Zeilen seiner Antwort; ein Klick darauf klappt das ganze Gespräch auf.
 
@@ -154,7 +170,7 @@ Feste Regeln, die auch Claude nicht ändern kann (`src/lib/paper.ts`): höchsten
 - **Not-Aus:** Knopf unten rechts oder „Stopp alles“. Alle Agenten stehen sofort, auch der Stop-Loss. Mit **Weitermachen** oder „Handel fortsetzen“ geht es weiter.
 - **Protokoll:** Jede Entscheidung steht im Protokoll auf dem Desk, jeder Trade mit Begründung. In der Scan-Tabelle siehst du pro Coin, wie weit er gekommen ist.
 - **Obsidian:** Jeden Tag schreibt JARVIS einen Bericht nach `JARVIS/Handel/JJJJ-MM-TT.md` in deinen Tresor. Alle Trades stehen zusätzlich in `~/.jarvis/spielgeld-trades.jsonl`.
-- **JARVIS fragen:** „Wie läuft der Handel?“, „Pausiere den Handel“. Im Briefing nennt er den Stand, die Übersicht zeigt ihn auf der Trading-Kachel.
+- **JARVIS fragen:** „Wie läuft der Handel?“, „Pausiere den Handel“. Im Briefing nennt er den Stand, die Übersicht zeigt ihn auf dem Trading-Felsen.
 - **Mac wach halten:** Der Desk handelt nur, solange JARVIS läuft. `start-jarvis.command` hält den Mac wach, solange das Fenster offen ist. Klappst du ein MacBook zu, schläft es trotzdem; offene Positionen bewacht dann niemand, bis du es wieder aufklappst.
 - **Kurse oben:** Bitcoin, Ethereum und Solana in Euro (CoinGecko).
 
@@ -228,8 +244,9 @@ Aufbau:
 | `src/components/AppFrame.tsx` | Navigation oben und der kleine JARVIS unten |
 | `src/lib/holo.ts`, `src/components/HoloView.tsx` | welche Übergangs-Animation bei welchem Wechsel läuft; die Animationen selbst stehen in `src/app/globals.css` |
 | `src/components/views/` | die Ansichten Fokus, Aufgaben, Post, Agenten, Einstellungen |
-| `src/components/CommandCenter.tsx` | die Übersicht mit den Modul-Kacheln |
-| `src/components/ParticleHead.tsx` | der 3D-Kopf aus Partikeln (three.js) |
+| `src/components/CommandCenter.tsx` | die Übersicht: Platz für Kopf und Felsen, Modul-Liste für die Tastatur, Konsole |
+| `src/lib/world.ts` | die Landschaften: Form der Berge, Farben, Kamera und Besonderheit je Ansicht |
+| `src/components/world/` | die 3D-Welt mit three.js: `scene.ts` (Kamera, Flug, Maus, Qualität), `terrain.ts` (Gebirge im Shader), `sky.ts` (Himmel, Polarlicht, Sterne), `rocks.ts` und `panel.ts` (Felsen mit Glas-Tafeln), `features.ts` (Zeitringe, Kurs-Säulen …), `bust.ts` (der Kopf aus Partikeln), `anchor.ts` (wohin eine Ansicht den Kopf legt) |
 | `src/lib/commands.ts` | was JARVIS ohne KI-Gehirn versteht, Briefing und Besprechung |
 | `src/lib/server/brain.ts`, `src/app/api/gehirn/` | das KI-Gehirn: Claude mit Werkzeugen für Aufgaben, Mails und Ansichten, Websuche und Gedächtnis. Die Antwort kommt Stück für Stück (eine Zeile JSON pro Ereignis) |
 | `src/lib/server/memory.ts`, `src/app/api/gedaechtnis/` | das Gedächtnis in `~/.jarvis/gedaechtnis.json` |

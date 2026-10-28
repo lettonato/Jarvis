@@ -7,7 +7,7 @@ import { anchorRect } from "./anchor";
 import { bust } from "./bust";
 import { createFeatures } from "./features";
 import type { PanelData } from "./panel";
-import { beam, createRock, layoutRocks, rockGeometry, stagePoints, type Rock } from "./rocks";
+import { beam, CAROUSEL_STEP, createRock, layoutRocks, rockGeometry, stagePoints, type Rock } from "./rocks";
 import { createSky } from "./sky";
 import { createTerrain } from "./terrain";
 import type { AvatarState } from "@/lib/avatar";
@@ -27,7 +27,7 @@ export type World = {
   dispose: () => void;
 };
 
-type Options = { initial: BiomeId; onOpen: (href: string) => void };
+type Options = { initial: BiomeId; onOpen: (href: string) => void; onLost: (lost: boolean) => void };
 
 // Die Werte einer Landschaft, die beim Flug ineinander übergehen.
 type Look = {
@@ -124,7 +124,7 @@ void main() {
 }
 `;
 
-export function createWorld(container: HTMLElement, { initial, onOpen }: Options): World {
+export function createWorld(container: HTMLElement, { initial, onOpen, onLost }: Options): World {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const small = Math.min(window.innerWidth, window.innerHeight) < 600;
   const quality = readQuality();
@@ -181,7 +181,7 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
   const bustGeometry = new THREE.BufferGeometry();
   bustGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   bustGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  const bustMaterial = new THREE.PointsMaterial({ size: 0.03, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  const bustMaterial = new THREE.PointsMaterial({ size: 0.03, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
   const face = new THREE.Points(bustGeometry, bustMaterial);
   head.add(face);
   const restY = mouthWeight.map((_, k) => positions[(mouthStart + k) * 3 + 1]);
@@ -191,16 +191,16 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
   // Er schwebt über einer Felsinsel, aus der ihn ein Lichtkegel projiziert.
   const island = new THREE.Group();
   island.position.y = -0.62;
-  const islandGeometry = rockGeometry(4711, 2.1);
+  const islandGeometry = rockGeometry(4711, 1.45);
   island.add(new THREE.Mesh(islandGeometry, new THREE.MeshStandardMaterial({ color: "#111936", emissive: "#050a1d", roughness: 0.8, metalness: 0.2, flatShading: true })));
   const islandEdges = new THREE.LineBasicMaterial({ color: "#38bdf8", transparent: true, opacity: 0.5 });
   island.add(new THREE.LineSegments(new THREE.EdgesGeometry(islandGeometry, 28), islandEdges));
   const projector = new THREE.Group();
-  projector.position.y = 0.24;
+  projector.position.y = 0.16;
   for (const [r, w, o] of [
-    [1.15, 0.035, 0.95],
-    [1.45, 0.012, 0.6],
-    [0.55, 0.02, 0.8],
+    [0.82, 0.03, 0.95],
+    [1.04, 0.01, 0.6],
+    [0.4, 0.018, 0.8],
   ]) {
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(r - w, r + w, 96),
@@ -210,9 +210,9 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
     projector.add(ring);
   }
   island.add(projector);
-  const headBeam = beam(new THREE.Color("#38bdf8"), 1.1, 1.5, 1.4);
-  headBeam.uniforms.uOpacity.value = 0.18;
-  headBeam.mesh.position.y = 0.24;
+  const headBeam = beam(new THREE.Color("#38bdf8"), 0.75, 1.4, 1.3);
+  headBeam.uniforms.uOpacity.value = 0.12;
+  headBeam.mesh.position.y = 0.16;
   island.add(headBeam.mesh);
   head.add(island);
   const headHit = new THREE.Mesh(new THREE.SphereGeometry(1.25, 12, 8), new THREE.MeshBasicMaterial({ visible: false }));
@@ -238,10 +238,11 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
   };
 
   // ───────── Nachleuchten ─────────
-  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: quality.level === 2 ? 4 : 0 });
+  // Kantenglättung nur, wo die Pixel grob sind; auf scharfen Bildschirmen kostet sie viel und bringt wenig.
+  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: quality.level === 2 && window.devicePixelRatio < 1.5 ? 4 : 0 });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.85, 0.55, 0.62);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.5, 0.7);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
@@ -270,12 +271,16 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
       portrait = nextPortrait;
       layoutDone = true;
       layoutRocks(rocks, portrait);
-      stage = stagePoints(rocks);
+      stage = stagePoints(rocks, portrait);
+      ringYaw = ringYawTarget = 0;
       fitCache.clear();
       paint();
     }
   };
-  window.addEventListener("resize", applySize);
+  // Beim Ziehen am Fensterrand kommen viele Größenänderungen; angepasst wird einmal pro Bild.
+  let resized = false;
+  const onResize = () => (resized = true);
+  window.addEventListener("resize", onResize);
 
   // ───────── Kamera rahmen ─────────
   // Kopf und Felsen sollen genau in den Platz passen, den die Ansicht dafür frei lässt. Dazu wird die Kamera
@@ -422,7 +427,8 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
     if (drag && drag.id === e.pointerId) {
       const dx = e.clientX - drag.x;
       if (Math.abs(dx) > 6) drag.moved = true;
-      if (drag.moved) ringYawTarget = THREE.MathUtils.clamp(drag.yaw + dx * 0.0032, -0.55, 0.55);
+      // Auf dem Handy dreht sich das Karussell ganz herum, am großen Bildschirm schwenkt der Kreis nur etwas.
+      if (drag.moved) ringYawTarget = portrait ? drag.yaw + dx * 0.008 : THREE.MathUtils.clamp(drag.yaw + dx * 0.0032, -0.45, 0.45);
       return;
     }
     hoverId = pick(e.clientX, e.clientY);
@@ -438,6 +444,8 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
     if (!drag || drag.id !== e.pointerId) return;
     const wasDrag = drag.moved;
     drag = null;
+    // Das Karussell rastet so ein, dass ein Fels genau vorne steht.
+    if (portrait) ringYawTarget = Math.round(ringYawTarget / CAROUSEL_STEP) * CAROUSEL_STEP;
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     if (wasDrag) return;
     const id = pick(e.clientX, e.clientY);
@@ -447,6 +455,14 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
     if (!drag) hoverId = null;
     parallaxTarget.set(0, 0);
   };
+  // Verliert der Browser die Grafik (Treiber, zu viele offene Tabs), zeigt die Seite solange einfache Kacheln.
+  const onContextLost = (e: Event) => {
+    e.preventDefault();
+    onLost(true);
+  };
+  const onContextRestored = () => onLost(false);
+  canvas.addEventListener("webglcontextlost", onContextLost);
+  canvas.addEventListener("webglcontextrestored", onContextRestored);
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointerup", onUp);
@@ -474,11 +490,17 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
     frame = requestAnimationFrame(tick);
     const flying = progress < 1;
     // In den Arbeitsansichten steht die Welt meist still hinter dem Text: Dort reichen 30 Bilder pro Sekunde.
+    // Höchstens 60 Bilder pro Sekunde, auch auf 120-Hz-Bildschirmen. In den Arbeitsansichten steht die Welt
+    // meist still hinter dem Text: Dort reichen 30.
     const calm = biome.frame === "frei" && !flying && avatar === "idle";
-    if (calm && now - lastDraw < 32) return;
-    const dt = Math.min(0.1, (now - last) / 1000);
+    if (now - lastDraw < (calm ? 31 : 14)) return;
+    const dt = Math.min(0.25, (now - last) / 1000);
     last = now;
     lastDraw = now;
+    if (resized) {
+      resized = false;
+      applySize();
+    }
     time += dt * (reduced ? 0.25 : 1);
 
     // Ruckelt es länger, eine Stufe herunter.
@@ -530,8 +552,10 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
     headVis += (headGoal - headVis) * damp(headGoal < headVis ? 6 : 3, dt);
     rocksVis += (rocksGoal - rocksVis) * damp(rocksGoal < rocksVis ? 7 : 3, dt);
 
+    // Hinter Text bleibt das Besondere der Landschaft gedämpft, damit es nicht ablenkt.
+    const featureGoal = biome.frame === "frei" ? 0.5 : 1;
     for (const [name, f] of Object.entries(features) as [Feature, (typeof features)[Feature]][]) {
-      const goal = biome.feature === name && progress > 0.35 ? 1 : 0;
+      const goal = biome.feature === name && progress > 0.35 ? featureGoal : 0;
       strength[name] += (goal - strength[name]) * damp(goal ? 1.6 : 4, dt);
       if (strength[name] < 0.002 && goal === 0) strength[name] = 0;
       f.update(time, strength[name]);
@@ -544,13 +568,17 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
       face.position.y = Math.sin(time * 0.9) * (reduced ? 0 : 0.04);
       const hovered = hoverId === "fokus" || focusId === "fokus";
       bustMaterial.size = (avatar === "listening" ? 0.038 : 0.03) * (hovered ? 1.15 : 1);
-      bustMaterial.opacity = (avatar === "idle" ? 0.85 : 1) * headVis;
+      // Mit Nachleuchten addieren sich die Punkte schneller zu Weiß; dann etwas zurückhaltender.
+      bustMaterial.opacity = (avatar === "idle" ? 0.8 : 0.95) * headVis * (level > 0 ? 0.62 : 1);
       projector.rotation.y = time * (avatar === "thinking" ? 1.6 : 0.25);
       headBeam.uniforms.uTime.value = time;
-      headBeam.uniforms.uOpacity.value = (avatar === "speaking" ? 0.3 : 0.18) * headVis;
-      island.scale.setScalar(0.4 + 0.6 * headVis);
-      island.position.y = -0.62 - (1 - headVis) * 1.5;
-      islandEdges.opacity = 0.5 * headVis;
+      headBeam.uniforms.uOpacity.value = (avatar === "speaking" ? 0.2 : 0.1) * headVis;
+      // Die Insel gehört zur Bühne der Übersicht; im Fokus schwebt der Kopf frei.
+      const ground = Math.min(headVis, rocksVis);
+      island.visible = ground > 0.01;
+      island.scale.setScalar(0.4 + 0.6 * ground);
+      island.position.y = -0.62 - (1 - ground) * 1.5;
+      islandEdges.opacity = 0.5 * ground;
       const talk = avatar === "speaking" ? Math.abs(Math.sin(time * 9) * Math.sin(time * 2.7)) : 0;
       if (talk > 0 || mouthMoving) {
         for (let k = 0; k < mouthWeight.length; k++) mouth.setY(mouthStart + k, restY[k] - talk * 0.07 * mouthWeight[k]);
@@ -576,14 +604,17 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
         const vis = THREE.MathUtils.clamp((rocksVis - delay) / (1 - delay), 0, 1);
         const bob = reduced ? 0 : Math.sin(time * 0.7 + r.phase) * 0.09;
         r.root.position.set(r.base.x, r.base.y + bob + r.hover * 0.22 - (1 - vis) * 2.4, r.base.z);
-        r.root.scale.setScalar((0.55 + 0.45 * vis) * (1 + r.hover * 0.07 + r.flare * 0.12));
+        // Im Karussell treten die hinteren Felsen zurück, damit die vorderen lesbar bleiben.
+        const front = portrait ? Math.cos(Math.atan2(r.base.x, r.base.z) + ringYaw) : 1;
+        const depth = portrait ? THREE.MathUtils.clamp(0.5 + 0.5 * front, 0, 1) : 1;
+        r.root.scale.setScalar((0.55 + 0.45 * vis) * (1 + r.hover * 0.07 + r.flare * 0.12) * (0.75 + 0.25 * depth));
         r.root.visible = vis > 0.01;
         // Die Tafel dreht sich zur Kamera (nur um die Hochachse), der Stein ein wenig mit.
         r.root.getWorldPosition(tmp);
         const yaw = Math.atan2(camera.position.x - tmp.x, camera.position.z - tmp.z) - ringYaw;
         r.panel.rotation.y = yaw;
         r.body.rotation.y = yaw * 0.3 + r.phase;
-        r.panel.material.opacity = vis;
+        r.panel.material.opacity = vis * (0.12 + 0.88 * depth * depth);
         r.panel.material.color.setScalar(0.88 + r.hover * 0.4 + r.flare * 1.4);
         r.edges.opacity = (0.45 + r.hover * 0.5) * vis;
         r.beam.uTime.value = time;
@@ -597,7 +628,7 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
     const rect = biome.frame === "frei" ? null : anchorRect();
     if (biome.frame !== "frei" && rect && rect.width > 40 && rect.height > 40) {
       dir.set(...biome.look).sub(tmp.set(...biome.eye)).normalize();
-      if (portrait && biome.frame === "buehne") dir.set(0, -0.14, -1).normalize();
+      if (portrait && biome.frame === "buehne") dir.set(0, -0.3, -1).normalize();
       const fitted = fit(biome.frame === "kopf" ? HEAD_POINTS : stage, dir, rect.width, rect.height);
       goalEye.copy(fitted.eye);
       goalLook.copy(fitted.look);
@@ -658,7 +689,7 @@ export function createWorld(container: HTMLElement, { initial, onOpen }: Options
     },
     dispose() {
       cancelAnimationFrame(frame);
-      window.removeEventListener("resize", applySize);
+      window.removeEventListener("resize", onResize);
       scene.traverse((o) => {
         const mesh = o as THREE.Mesh;
         mesh.geometry?.dispose();
