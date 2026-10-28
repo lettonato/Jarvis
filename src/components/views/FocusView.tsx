@@ -127,7 +127,7 @@ export function FocusView() {
         </div>
       )}
 
-      <div className="sticky bottom-0 w-full max-w-[760px] shrink-0 bg-gradient-to-t from-desk/85 from-55% to-transparent pb-4 pt-2">
+      <div className="sticky bottom-0 w-full max-w-[760px] shrink-0 bg-[radial-gradient(ellipse_at_bottom,rgba(9,11,24,0.8),transparent_70%)] pb-4 pt-2">
         <Chips onFill={fill} scroll idle={!talking} />
         <div className={talking && !session ? "" : "mt-2"}>
           <Composer inputRef={inputRef} draft={draft} setDraft={setDraft} big />

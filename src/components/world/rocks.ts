@@ -87,6 +87,8 @@ export function beam(color: THREE.Color, bottom: number, top: number, height: nu
 }
 
 export const PANEL_WIDTH = 1.5;
+// So viel größer steht JARVIS in der Übersicht da als im Fokus.
+export const HEAD_STAGE = 1.3;
 const PANEL_HEIGHT = (PANEL_WIDTH * PANEL_H) / PANEL_W;
 // So weit über dem Stein schwebt die Mitte der Tafel.
 export const PANEL_LIFT = 0.3 + PANEL_HEIGHT / 2;
@@ -187,14 +189,15 @@ export function layoutRocks(rocks: Rock[], portrait: boolean) {
     // Untere Reihe drei Felsen, obere zwei dazwischen und weiter hinten. Außen kommen sie dir näher.
     const top = k >= 3;
     const u = top ? k - 2.5 : k;
-    rock.base.set(s * (2.3 + u * 1.75), top ? 2.05 : -0.35, (top ? -1.7 : 0.5) + u * 0.5);
+    rock.base.set(s * (2.6 + u * 1.75), top ? 2.15 : -0.35, (top ? -1.7 : 0.5) + u * 0.5);
   }
 }
 
 // Die Punkte, die auf jeden Fall im Bild sein sollen: Kopf, Tafeln und Steine. Im Karussell zählen
 // nur Kopf und der vordere Fels; die seitlichen dürfen über den Rand hinausragen.
 export function stagePoints(rocks: Rock[], portrait: boolean): THREE.Vector3[] {
-  const points = [new THREE.Vector3(-1.4, -0.6, 0), new THREE.Vector3(1.4, -0.6, 0), new THREE.Vector3(0, 2.6, 0)];
+  const k = HEAD_STAGE;
+  const points = [new THREE.Vector3(-1.4 * k, -0.6 * k, 0), new THREE.Vector3(1.4 * k, -0.6 * k, 0), new THREE.Vector3(0, 2.6 * k, 0)];
   const top = PANEL_LIFT + PANEL_HEIGHT / 2;
   if (portrait) {
     const r = CAROUSEL_RADIUS;

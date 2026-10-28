@@ -74,7 +74,7 @@ function Tiles() {
         </Holo>
         <p className="rounded-full border border-sky-300/30 bg-desk/70 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-sky-200">{label}</p>
         <Console />
-        <div className="grid w-full grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid w-full grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           {MODULES.map((m) => (
             <ModuleCard key={m.id} module={m} telemetry={telemetry[m.id]} brain={brain} />
           ))}

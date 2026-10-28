@@ -7,7 +7,7 @@ import { anchorRect } from "./anchor";
 import { bust } from "./bust";
 import { createFeatures } from "./features";
 import type { PanelData } from "./panel";
-import { beam, CAROUSEL_STEP, createRock, layoutRocks, rockGeometry, stagePoints, type Rock } from "./rocks";
+import { beam, CAROUSEL_STEP, createRock, HEAD_STAGE, layoutRocks, rockGeometry, stagePoints, type Rock } from "./rocks";
 import { createSky } from "./sky";
 import { createTerrain } from "./terrain";
 import type { AvatarState } from "@/lib/avatar";
@@ -451,6 +451,12 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
     const id = pick(e.clientX, e.clientY);
     if (id) open(id);
   };
+  // Übernimmt der Browser die Geste (etwa beim Scrollen), öffnet nichts.
+  const onCancel = (e: PointerEvent) => {
+    if (drag?.id !== e.pointerId) return;
+    drag = null;
+    if (portrait) ringYawTarget = Math.round(ringYawTarget / CAROUSEL_STEP) * CAROUSEL_STEP;
+  };
   const onLeave = () => {
     if (!drag) hoverId = null;
     parallaxTarget.set(0, 0);
@@ -466,7 +472,7 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointerup", onUp);
-  canvas.addEventListener("pointercancel", onUp);
+  canvas.addEventListener("pointercancel", onCancel);
   canvas.addEventListener("pointerleave", onLeave);
 
   // ───────── Schleife ─────────
@@ -475,6 +481,7 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
   let lastDraw = 0;
   let time = 0;
   const samples: number[] = [];
+  let warmup = 45;
   const roll = { value: 0 };
 
   function applyQuality(next: number) {
@@ -483,13 +490,18 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
       if (!quality.fixed) localStorage.setItem(QUALITY_KEY, String(level));
     } catch {}
     bloom.enabled = level > 0;
+    if (level < 2) {
+      for (const t of [composer.renderTarget1, composer.renderTarget2]) {
+        t.samples = 0;
+        t.dispose();
+      }
+    }
     applySize();
   }
 
   const tick = (now: number) => {
     frame = requestAnimationFrame(tick);
     const flying = progress < 1;
-    // In den Arbeitsansichten steht die Welt meist still hinter dem Text: Dort reichen 30 Bilder pro Sekunde.
     // Höchstens 60 Bilder pro Sekunde, auch auf 120-Hz-Bildschirmen. In den Arbeitsansichten steht die Welt
     // meist still hinter dem Text: Dort reichen 30.
     const calm = biome.frame === "frei" && !flying && avatar === "idle";
@@ -503,8 +515,9 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
     }
     time += dt * (reduced ? 0.25 : 1);
 
-    // Ruckelt es länger, eine Stufe herunter.
-    if (!calm && !quality.fixed && level > 0 && !document.hidden) {
+    // Ruckelt es länger, eine Stufe herunter. Die ersten Bilder zählen nicht, da wird noch aufgebaut.
+    if (warmup > 0) warmup--;
+    else if (!calm && !quality.fixed && level > 0 && !document.hidden) {
       samples.push(dt);
       if (samples.length >= 90) {
         const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
@@ -563,6 +576,8 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
 
     // JARVIS: dreht sich leicht, denkt mit schnellerer Drehung, hört mit größeren Punkten zu, spricht mit dem Mund.
     head.visible = headVis > 0.01;
+    // Auf der Bühne der Übersicht ist JARVIS größer als die Felsen um ihn; im Fokus rahmt ihn die Kamera.
+    head.scale.setScalar(head.scale.x + ((biome.frame === "buehne" ? HEAD_STAGE : 1) - head.scale.x) * damp(3, dt));
     if (head.visible) {
       face.rotation.y = Math.sin(time * 0.25) * 0.35 + (avatar === "thinking" ? time * 1.2 : 0);
       face.position.y = Math.sin(time * 0.9) * (reduced ? 0 : 0.04);
@@ -663,6 +678,20 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
   applySize();
   bloom.enabled = level > 0;
   paint();
+  // Alle Shader gleich am Anfang übersetzen, auch die der Landschaften, die noch nicht zu sehen sind.
+  // Sonst stockt der erste Flug dorthin kurz.
+  const hidden: THREE.Object3D[] = [];
+  scene.traverse((o) => {
+    if (!o.visible) {
+      hidden.push(o);
+      o.visible = true;
+    }
+  });
+  // Mit Nachleuchten wird erst in ein Zwischenbild gezeichnet; dafür braucht es eigene Shader-Varianten.
+  renderer.setRenderTarget(level > 0 ? composer.renderTarget1 : null);
+  renderer.compile(scene, camera);
+  renderer.setRenderTarget(null);
+  for (const o of hidden) o.visible = false;
   tick(performance.now());
 
   return {
