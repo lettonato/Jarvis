@@ -1,4 +1,5 @@
 import type { CalendarSnapshot } from "./calendar";
+import type { IntelSnapshot } from "./intel";
 import type { MailMessage, MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
 import type { TasksSnapshot } from "./tasks";
@@ -34,6 +35,8 @@ export type BrainReply = {
   desk?: DeskSnapshot;
   // Der Kalender, wenn Claude einen Termin eingetragen hat.
   calendar?: CalendarSnapshot;
+  // Intel, wenn Claude gezielt nach Nachrichten gesucht hat.
+  intel?: IntelSnapshot;
 };
 
 export const VIEWS = {
@@ -43,6 +46,7 @@ export const VIEWS = {
   kalender: "/kalender",
   post: "/post",
   trading: "/trading",
+  intel: "/intel",
   agenten: "/agenten",
   einstellungen: "/einstellungen",
 } as const;

@@ -111,6 +111,15 @@ export type DeskStats = {
 
 export type DayRecord = { date: string; startEquity: number; endEquity: number; trades: number };
 
+// Was der Crawler gerade tut, Schritt für Schritt: Daraus läuft die Spinne auf dem Trading-Desk.
+// scan: neue Runde, chain: RugCheck, site: Projektseite, x: Grok auf X, chief: weiche Filter,
+// fills: Kauf, guard: Wache bei gekauften Coins, intel: Warnung aus den Nachrichten.
+export type CrawlStep = "scan" | "chain" | "site" | "x" | "chief" | "fills" | "guard" | "intel";
+export type CrawlState = "laeuft" | "ok" | "raus" | "warn" | "gekauft";
+export type CrawlEvent = { seq: number; at: string; address: string; symbol: string; step: CrawlStep; state: CrawlState; text: string };
+// seq zählt jeden Schritt; die Seite fragt nur nach, was seit ihrem letzten Stand dazukam.
+export type CrawlTrail = { seq: number; events: CrawlEvent[]; status: DeskStatus; lastTickAt: string | null; tickMs: number };
+
 // Was die Seite vom Desk sieht.
 export type DeskSnapshot = {
   status: DeskStatus;
@@ -136,6 +145,8 @@ export type DeskSnapshot = {
   chief: "claude" | "regeln";
   // Grok liest X nur mit xAI-Schlüssel und innerhalb des Tagesbudgets.
   x: { enabled: boolean; spentTodayUsd: number; budgetUsd: number };
+  // Meldet Intel ein ernstes Ereignis, kauft der Desk bis dahin nichts Neues.
+  intelWarning: { text: string; until: string } | null;
 };
 
 const HOUR = 3_600_000;

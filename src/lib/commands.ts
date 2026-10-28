@@ -1,6 +1,7 @@
 import { accessProblem, briefingSentence, confirmSentence, daySentence, eventFromSpeech, nextSentence, type CalendarSnapshot, type NewEvent } from "./calendar";
 import { addDays, findDate, isoDate, spokenDay, spokenDue } from "./dates";
 import { formatEur, formatPct } from "./format";
+import { intelBriefing, intelSentence, itemsAbout, searchSentence, type IntelSnapshot } from "./intel";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { MarketSnapshot } from "./market";
 import { SAFETY, type DeskSnapshot } from "./paper";
@@ -29,7 +30,9 @@ export type Effect =
   // Trägt einen Termin in den Apple-Kalender ein und zeigt den Tag in der Kalender-App.
   | { type: "addEvent"; event: NewEvent }
   | { type: "openCalendar"; date?: string }
-  | { type: "openObsidian"; what: "tresor" | "eingang" | "notizen" };
+  | { type: "openObsidian"; what: "tresor" | "eingang" | "notizen" }
+  // Grok liest die Nachrichten neu, mit Thema gezielt dazu. Kostet etwa 40 Cent.
+  | { type: "intel"; topic?: string };
 
 export type Decision = {
   // Gesprochen, nachdem die Änderung geklappt hat. Bei „Mail vorlesen“ folgt direkt der Text der Mail.
@@ -51,6 +54,7 @@ export type CommandContext = {
   mail: MailSnapshot | null;
   desk: DeskSnapshot | null;
   calendar?: CalendarSnapshot | null;
+  intel?: IntelSnapshot | null;
   session: Session | null;
 };
 
@@ -277,6 +281,39 @@ function calendarQuery(ctx: CommandContext, text: string): Decision {
   return { reply: daySentence(ctx.calendar ?? null, day, today(ctx)), navigate: "/kalender" };
 }
 
+// ---------- Nachrichten (Intel) ----------
+
+// „Such Nachrichten zu Tesla“, „Was gibt's Neues bei Solana?“, „News über Nvidia“.
+const NEWS_ABOUT = /(?:nachrichten|news|neuigkeiten|neues)\s+(?:zu|zum|zur|über|von|bei|aus|in|vom)\s+(?:dem |der |den |die |das )?(.+)$/i;
+const SEARCH_NEWS = /^(?:bitte\s+)?(?:such|recherchier|schau)\w*\b.{0,20}\b(?:nachrichten|news|neuigkeiten)/;
+const REFRESH_NEWS = /(aktualisier|erneuer|hol)\w*\b.{0,25}\b(nachrichten|news|lagebild|intel)|(nachrichten|news|lagebild)\b.{0,12}\b(aktualisieren|neu laden|neu holen)/;
+const READ_NEWS =
+  /\bnews\b|schlagzeilen|in den nachrichten|die nachrichten|nachrichtenlage|lagebild|\bintel\b|neuigkeiten|was (sagt|schreibt|redet) (man )?(auf |bei )?x\b|stimmung auf x|was ist (heute )?los (am|im|auf dem) (markt|krypto)/;
+
+function newsNeedsKey(ctx: CommandContext): Decision | null {
+  if (ctx.intel && !ctx.intel.configured) return { reply: intelSentence(ctx.intel, ctx.now), navigate: "/intel" };
+  if (ctx.intel?.running) return { reply: "Ich lese die Nachrichten gerade schon. Gleich sage ich dir, was drinsteht.", navigate: "/intel" };
+  return null;
+}
+
+function newsAbout(ctx: CommandContext, topic: string, search: boolean): Decision {
+  const clean = topic.replace(/[?.!]+$/, "").trim();
+  if (!clean) return { reply: intelSentence(ctx.intel ?? null, ctx.now), navigate: "/intel" };
+  const known = itemsAbout(ctx.intel?.report ?? null, clean);
+  const last = ctx.intel?.search;
+  // Was schon im Lagebild steht oder eben gesucht wurde, kostet nichts.
+  if (!search && last?.focus && last.focus.toLowerCase() === clean.toLowerCase() && ctx.now.getTime() - Date.parse(last.at) < 3 * 3_600_000) {
+    return { reply: searchSentence(last), navigate: "/intel" };
+  }
+  if (!search && known.length) {
+    const lines = known.slice(0, 2).map((i) => `${i.title.replace(/[.!?]$/, "")}: ${i.summary}`);
+    return { reply: `Im Lagebild steht zu ${clean}: ${lines.join(" ")}`, navigate: "/intel" };
+  }
+  const blocked = newsNeedsKey(ctx);
+  if (blocked) return blocked;
+  return { reply: `Ich lasse Grok gezielt nach ${clean} suchen. Das dauert etwa eine halbe Minute.`, effect: { type: "intel", topic: clean }, navigate: "/intel" };
+}
+
 // ---------- Regeln ----------
 
 type Rule = { match: RegExp; run: (ctx: CommandContext, text: string, original: string) => Decision };
@@ -375,6 +412,35 @@ const RULES: Rule[] = [
     run: () => ({ reply: "Hier sind alle meine Agenten und was sie können.", navigate: "/agenten" }),
   },
   {
+    match: REFRESH_NEWS,
+    run: (ctx, _text, original) => {
+      const about = original.match(NEWS_ABOUT);
+      if (about) return newsAbout(ctx, about[1], true);
+      const blocked = newsNeedsKey(ctx);
+      if (blocked) return blocked;
+      return { reply: "Ich lasse Grok die Nachrichten und X neu lesen. Das dauert etwa eine halbe Minute.", effect: { type: "intel" }, navigate: "/intel" };
+    },
+  },
+  {
+    match: SEARCH_NEWS,
+    run: (ctx, _text, original) => {
+      const about = original.match(NEWS_ABOUT);
+      if (!about) return { reply: "Wozu soll ich suchen? Sag zum Beispiel: Such Nachrichten zu Tesla.", navigate: "/intel" };
+      return newsAbout(ctx, about[1], true);
+    },
+  },
+  {
+    match: /(?:nachrichten|news|neuigkeiten|neues)\s+(?:zu|zum|zur|über|von|bei|vom)\s/,
+    run: (ctx, _text, original) => newsAbout(ctx, original.match(NEWS_ABOUT)?.[1] ?? "", false),
+  },
+  {
+    match: READ_NEWS,
+    run: (ctx) => {
+      const blocked = ctx.intel && !ctx.intel.configured ? newsNeedsKey(ctx) : null;
+      return blocked ?? { reply: intelSentence(ctx.intel ?? null, ctx.now), navigate: "/intel" };
+    },
+  },
+  {
     match: /guten morgen|guten tag|guten abend|\bhallo\b|\bhey\b|\bservus\b|briefing|was steht an|was gibt.{0,3} neues|\blage\b|lagebericht/,
     run: (ctx) => {
       const hour = ctx.now.getHours();
@@ -384,6 +450,7 @@ const RULES: Rule[] = [
         `${greeting}, ${ctx.name}.`,
         w,
         briefingSentence(ctx.calendar ?? null, today(ctx)),
+        intelBriefing(ctx.intel ?? null, ctx.now),
         mailSentence(ctx.mail),
         taskSentence(ctx.tasks, today(ctx)),
         deskSentence(ctx.desk, true),

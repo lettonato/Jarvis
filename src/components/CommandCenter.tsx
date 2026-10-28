@@ -9,6 +9,7 @@ import { ParticleHead } from "./ParticleHead";
 import { clock, eventsOn, nextEvent, type CalendarSnapshot } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
 import { formatEur, formatPct, formatSignedUsd } from "@/lib/format";
+import { MOOD_LABEL, type IntelSnapshot } from "@/lib/intel";
 import type { MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
 import { MODULES, type ModuleId } from "@/lib/modules";
@@ -26,6 +27,7 @@ type Data = {
   tasks: TasksSnapshot | null;
   mail: MailSnapshot | null;
   calendar: CalendarSnapshot | null;
+  intel: IntelSnapshot | null;
   brain: boolean | null;
   now: Date | null;
 };
@@ -41,7 +43,16 @@ function calendarTelemetry(calendar: CalendarSnapshot | null, now: Date | null):
   return { value: String(rest.length), detail: soon };
 }
 
-function telemetryFor({ market, desk, weather, tasks, mail, calendar, brain, now }: Data): Partial<Record<ModuleId, Telemetry>> {
+function intelTelemetry(intel: IntelSnapshot | null): Telemetry | undefined {
+  if (!intel) return undefined;
+  if (!intel.configured) return { value: "einrichten", detail: "xAI-Schlüssel eintragen" };
+  if (intel.warning) return { value: "WARNUNG", detail: intel.warning.text, alert: true };
+  if (intel.running && !intel.report) return { value: "liest …", detail: "Grok liest Nachrichten und X" };
+  if (!intel.report) return { value: "–", detail: "noch kein Lagebild" };
+  return { value: MOOD_LABEL[intel.report.mood], detail: intel.report.items[0]?.title ?? "nichts Wichtiges in den Nachrichten" };
+}
+
+function telemetryFor({ market, desk, weather, tasks, mail, calendar, intel, brain, now }: Data): Partial<Record<ModuleId, Telemetry>> {
   const today = now ? isoDate(now) : null;
   const btc = market?.majors.quotes.find((q) => q.symbol === "BTC");
   const passed = market?.scan.candidates.filter((c) => c.passed).length ?? 0;
@@ -73,17 +84,18 @@ function telemetryFor({ market, desk, weather, tasks, mail, calendar, brain, now
           ? { value: `${passed}/${market.scan.candidates.length}`, detail: "Coins bestehen die Filter" }
           : undefined,
     markt: btc ? { value: formatEur(btc.eur), detail: `BTC ${formatPct(btc.change24h)} in 24 Std` } : undefined,
+    intel: intelTelemetry(intel),
     wetter: weather ? { value: `${Math.round(weather.temperature)} °C`, detail: `${weather.place}, ${weather.description}` } : undefined,
     cognition: brain === null ? undefined : brain ? { value: "AN", detail: "Claude versteht freie Sätze" } : { value: "einrichten", detail: "Claude-Schlüssel eintragen" },
   };
 }
 
 export function CommandCenter() {
-  const { market, desk, weather, tasks, mail, calendar, settings, state } = useJarvis();
+  const { market, desk, weather, tasks, mail, calendar, intel, settings, state } = useJarvis();
   const label = useStateLabel();
   const now = useNow();
   const brain = settings ? settings.brain.configured : null;
-  const telemetry = telemetryFor({ market, desk, weather, tasks, mail, calendar, brain, now });
+  const telemetry = telemetryFor({ market, desk, weather, tasks, mail, calendar, intel, brain, now });
   const left = MODULES.filter((m) => m.side === "links");
   const right = MODULES.filter((m) => m.side === "rechts");
 

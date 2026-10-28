@@ -184,12 +184,14 @@ async function readLimited(res: Response): Promise<string> {
 }
 
 // Die beiden Crawler-Stufen aus filter.py: chain_kill (Blockchain), dann skin_kill (Projekt lesen).
-export async function crawl(c: Candidate): Promise<CrawlReport> {
+// onSite meldet, dass die Blockchain bestanden ist und jetzt die Seite gelesen wird, für die Spinne.
+export async function crawl(c: Candidate, onSite?: (chain: ChainCheck, url: string) => void): Promise<CrawlReport> {
   const chain = await checkChain(c.address);
   if (chain.kill) return { chain, site: null, socials: c.socials, kill: chain.kill, stage: "chain_kill", pages: 1 };
   if (c.websites.length === 0 && c.socials.length === 0) {
     return { chain, site: null, socials: [], kill: "Keine Webseite und keine Konten: da steht kein Projekt dahinter", stage: "skin_kill", pages: 1 };
   }
+  if (c.websites.length) onSite?.(chain, c.websites[0]);
   const site = c.websites.length ? await readSite(c.websites[0]) : null;
   // Gezählt wird, was wirklich gelesen wurde: der RugCheck-Bericht und die Seite, wenn sie antwortet.
   return { chain, site, socials: c.socials, kill: null, stage: null, pages: site && !site.error ? 2 : 1 };

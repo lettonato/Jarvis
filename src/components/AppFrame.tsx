@@ -20,7 +20,7 @@ import { useNow } from "@/lib/useNow";
 type Tab = { href: string; label: string; icon: IconName; badge?: { value: number; alert: boolean } };
 
 function useTabs(): Tab[] {
-  const { tasks, mail, calendar } = useJarvis();
+  const { tasks, mail, calendar, intel } = useJarvis();
   const now = useNow();
   const today = now ? isoDate(now) : null;
   const events = now && today && calendar?.access === "ok" ? eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime()).length : 0;
@@ -34,6 +34,7 @@ function useTabs(): Tab[] {
     { href: "/kalender", label: "Kalender", icon: "kalender", badge: events ? { value: events, alert: false } : undefined },
     { href: "/post", label: "Post", icon: "post", badge: important ? { value: important, alert: true } : undefined },
     { href: "/trading", label: "Trading", icon: "trading" },
+    { href: "/intel", label: "Intel", icon: "intel", badge: intel?.warning ? { value: 1, alert: true } : undefined },
     { href: "/agenten", label: "Agenten", icon: "agenten" },
   ];
 }

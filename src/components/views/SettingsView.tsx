@@ -31,8 +31,8 @@ export function SettingsView() {
           </Section>
           <Section
             id="crawler"
-            title="Crawler auf X (Grok)"
-            text="Wie im GrokBot-Video liest der Crawler vor jedem Kauf, was auf X über den Coin geschrieben wird, und prüft das X-Konto des Projekts. Das macht Grok von xAI. Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben."
+            title="Grok: Crawler auf X und Intel"
+            text="Wie im GrokBot-Video liest der Crawler vor jedem Kauf, was auf X über den Coin geschrieben wird, und prüft das X-Konto des Projekts. Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben. Mit demselben Schlüssel liest Intel die Nachrichten und X für dein Briefing; Themen und Budget dafür stellst du in der Intel-Ansicht ein."
           >
             <CrawlerSetup />
           </Section>
@@ -65,7 +65,7 @@ export function SettingsView() {
                 Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
                 ihn zur Erkennung an Google, Safari an Apple. Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
               </li>
-              <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, sonst nichts von dir.</li>
+              <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, und für Intel deine Themen. Sonst nichts von dir.</li>
               <li>
                 Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails), verschlüsselt an Anthropic. Claude
                 kann keine Mails schreiben oder löschen und ändert Aufgaben nur, wenn du es sagst.
@@ -231,7 +231,7 @@ function CrawlerSetup() {
       {crawler?.configured && (
         <Notice tone="ok">
           {crawler.hint ? `Verbunden mit dem Schlüssel ${crawler.hint}.` : "Verbunden über XAI_API_KEY."} Grok darf am Tag bis zu{" "}
-          {crawler.budgetUsd.toLocaleString("de-DE", { minimumFractionDigits: 2 })} $ ausgeben.
+          {crawler.budgetUsd.toLocaleString("de-DE", { minimumFractionDigits: 2 })} $ für den Crawler ausgeben.
         </Notice>
       )}
       <form onSubmit={submit} className="space-y-3">
@@ -264,7 +264,7 @@ function CrawlerSetup() {
       {crawler?.configured && (
         <form onSubmit={saveBudget} className="flex flex-wrap items-center gap-2">
           <label htmlFor="x-budget" className="text-xs text-quiet">
-            Tagesbudget für Grok in Dollar
+            Tagesbudget für den Crawler in Dollar
           </label>
           <input id="x-budget" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} className={`${inputClass} w-24`} />
           <Button type="submit" disabled={busy}>
