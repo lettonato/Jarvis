@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 
 // Strich-Symbole im Stil der NEXUS-Oberfläche. Alle 24×24, Farbe kommt von der Schrift.
 
@@ -116,4 +116,20 @@ export function Icon({ name, className = "h-5 w-5" }: { name: IconName; classNam
       {PATHS[name]}
     </svg>
   );
+}
+
+// Dasselbe Symbol als SVG-Text, zum Zeichnen auf die Glas-Tafeln der 3D-Welt.
+function markup(node: ReactNode): string {
+  if (Array.isArray(node)) return node.map(markup).join("");
+  if (!isValidElement<Record<string, unknown> & { children?: ReactNode }>(node)) return "";
+  const { children, ...attrs } = node.props;
+  if (typeof node.type !== "string") return markup(children);
+  const list = Object.entries(attrs)
+    .map(([k, v]) => `${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}="${String(v)}"`)
+    .join(" ");
+  return `<${node.type} ${list}>${markup(children)}</${node.type}>`;
+}
+
+export function iconSvg(name: IconName, color: string, width = 1.6): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round">${markup(PATHS[name])}</svg>`;
 }

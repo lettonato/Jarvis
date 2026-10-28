@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { Icon } from "./icons";
 import { useConversation, useJarvis, type Turn } from "./JarvisProvider";
-import type { AvatarState } from "./ParticleHead";
+import type { AvatarState } from "@/lib/avatar";
 import type { Session } from "@/lib/commands";
 import type { Source } from "@/lib/brain";
 
@@ -408,11 +408,13 @@ export function Messages({ limit, className = "" }: { limit?: number; className?
 
 // Das Gespräch unter dem Kopf in der Übersicht: die letzten Nachrichten, Eingabe und Vorschläge.
 export function Console() {
-  const { session, voice } = useJarvis();
-  const { turns } = useConversation();
+  const { session, voice, state } = useJarvis();
+  const { turns, interim } = useConversation();
   const { draft, setDraft, inputRef, fill } = useDraft();
+  // Solange ihr nicht redet, bleibt die Konsole flach und lässt der Landschaft Platz.
+  const talking = turns.length > 0 || Boolean(interim) || state === "listening";
   return (
-    <div className="w-full max-w-[640px] rounded-2xl border border-sky-300/20 bg-panel/90 p-3">
+    <div className="w-full max-w-[640px] rounded-2xl border border-sky-300/25 bg-panel/80 p-3 shadow-[0_0_40px_rgba(9,11,24,0.6)]">
       {(session || voice.canListen || turns.length > 0) && (
         <div className="mb-1 flex items-center justify-between gap-2">
           <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-[0.25em] text-sky-300">{sessionLabel(session)}</p>
@@ -422,7 +424,7 @@ export function Console() {
           </div>
         </div>
       )}
-      <Messages limit={6} className="h-48" />
+      <Messages limit={6} className={`transition-[height] duration-500 ${talking ? "h-32 sm:h-44" : "h-12"}`} />
       <div className="mt-2">
         <Composer inputRef={inputRef} draft={draft} setDraft={setDraft} />
       </div>
