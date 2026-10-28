@@ -4,8 +4,8 @@ import type { MailMessage, MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
 import type { TasksSnapshot } from "./tasks";
 
-// Das KI-Gehirn: Sätze, die keine feste Regel versteht, beantwortet Claude. Hier steht, was die
-// Seite an den Server schickt und was zurückkommt; die Arbeit macht src/lib/server/brain.ts.
+// Das KI-Gehirn: Claude führt das Gespräch. Hier steht, was die Seite an den Server schickt und was
+// zurückkommt; die Arbeit macht src/lib/server/brain.ts.
 
 export type BrainTurn = { who: "du" | "jarvis"; text: string };
 
@@ -21,8 +21,18 @@ export type BrainRequest = {
   extra: string[];
 };
 
+// Ein Eintrag im Gedächtnis von JARVIS.
+export type MemoryFact = { id: string; text: string; at: string };
+
+// Eine Webseite, aus der Claude etwas hat.
+export type Source = { title: string; url: string };
+
 export type BrainReply = {
   reply: string;
+  // Woher Claude sein Wissen aus dem Web hat.
+  sources?: Source[];
+  // Das Gedächtnis, wenn Claude sich etwas gemerkt oder etwas vergessen hat.
+  memory?: MemoryFact[];
   navigate?: string;
   // Claude möchte die Mails oder Aufgaben Punkt für Punkt mit dir durchgehen.
   session?: "post" | "aufgaben";
@@ -38,6 +48,15 @@ export type BrainReply = {
   // Intel, wenn Claude gezielt nach Nachrichten gesucht hat.
   intel?: IntelSnapshot;
 };
+
+// Der Server schickt die Antwort Stück für Stück, eine Zeile JSON pro Ereignis.
+export type BrainEvent =
+  // Was JARVIS gerade tut, etwa „Ich suche im Web“.
+  | { type: "status"; text: string }
+  // Das nächste Stück der Antwort.
+  | { type: "text"; text: string }
+  | { type: "done"; reply: BrainReply }
+  | { type: "error"; error: string };
 
 export const VIEWS = {
   fokus: "/fokus",

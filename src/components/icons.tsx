@@ -86,6 +86,9 @@ const PATHS = {
   haken: <path d="M5 12.5l4.5 4.5L19 7" />,
   laden: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />,
   extern: <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />,
+  stopp: <rect x="7" y="7" width="10" height="10" rx="1.5" />,
+  hoch: <path d="M6 15l6-6 6 6" />,
+  runter: <path d="M12 5v14M6 13l6 6 6-6" />,
   uhr: (
     <>
       <circle cx="12" cy="12" r="9" />

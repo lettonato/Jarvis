@@ -145,6 +145,12 @@ export type VoiceState = {
   hint: string | null;
 };
 
+export type SpeechStream = {
+  push: (text: string) => void;
+  end: (onDone?: () => void) => void;
+  cancelled: () => boolean;
+};
+
 const QUIET: VoiceState = { listening: false, waiting: false, interim: "", speaking: false, local: false, error: null, hint: null };
 
 // Mikrofon und Stimme als kleine Maschine außerhalb von React; die Seite bekommt nur den Zustand.
@@ -496,6 +502,82 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
     }, 3000);
   }
 
+  // Spricht eine Antwort, die noch entsteht: Jeder fertige Satz kommt mit push in die Schlange, end sagt,
+  // dass nichts mehr kommt. Unterbrichst du JARVIS, ist der Strom vorbei (cancelled) und push tut nichts mehr.
+  function speakStream(): SpeechStream {
+    const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
+    synth?.cancel();
+    if (speakingText) ended(false);
+    const run = ++speechRun;
+    const voice = synth ? pickVoice(synth) : undefined;
+    let open = 0;
+    let finished = false;
+    let started = false;
+    let mute = !synth;
+    let onDone: (() => void) | undefined;
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    const live = () => run === speechRun;
+    const done = () => {
+      clearTimeout(watchdog);
+      if (!live()) return;
+      speechRun++;
+      if (speakingText) ended(true);
+      onDone?.();
+    };
+    const settle = () => {
+      if (finished && open === 0) done();
+    };
+    return {
+      push(text: string) {
+        const said = forSpeech(text);
+        if (!live() || mute || !said || !synth) return;
+        if (!speakingText) emit({ speaking: true });
+        speakingText = `${speakingText} ${said}`.trim();
+        for (const chunk of sentences(said)) {
+          const u = new SpeechSynthesisUtterance(chunk);
+          u.lang = LANG;
+          if (voice) u.voice = voice;
+          u.rate = 1.03;
+          u.onstart = () => {
+            started = true;
+          };
+          u.onend = () => {
+            open = Math.max(0, open - 1);
+            settle();
+          };
+          u.onerror = (e) => {
+            open = Math.max(0, open - 1);
+            if (e.error === "not-allowed" && live()) {
+              hinted = true;
+              mute = true;
+              emit({ hint: "Klick einmal irgendwo auf die Seite, dann darf ich dir auch laut antworten." });
+            }
+            settle();
+          };
+          open++;
+          utterances.push(u);
+          synth.speak(u);
+        }
+        // Hat der Browser keine Stimme, beginnt er nie zu sprechen: dann still weiter, nur auf dem Bildschirm.
+        if (!started && !watchdog)
+          watchdog = setTimeout(() => {
+            if (started || !live()) return;
+            mute = true;
+            open = 0;
+            synth.cancel();
+            settle();
+          }, 3000);
+      },
+      end(callback?: () => void) {
+        onDone = callback;
+        finished = true;
+        if (!live()) return;
+        settle();
+      },
+      cancelled: () => !live(),
+    };
+  }
+
   function dispose() {
     handsFree = false;
     commanding = false;
@@ -512,6 +594,7 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
     listen,
     stopListening: () => command(false),
     speak,
+    speakStream,
     stopSpeaking: () => stopSpeaking(true),
     gesture,
     visible,
@@ -552,6 +635,7 @@ export function useVoice(onHeard: (text: string) => void) {
     listen: voice.listen,
     stopListening: voice.stopListening,
     speak: voice.speak,
+    speakStream: voice.speakStream,
     stopSpeaking: voice.stopSpeaking,
   };
 }

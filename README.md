@@ -2,7 +2,7 @@
 
 Dein persönlicher Assistent mit Trading-Desk. Der Bauplan steht im Dokument „JARVIS Bauplan: Assistent und Trading-Desk“.
 
-**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails, deine Obsidian-Aufgaben und den Apple-Kalender auf deinem Mac, geht sie mit dir durch, trägt Termine auf Zuruf ein und zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain, Projektseite und mit Grok auch X, du siehst ihm dabei als Spinne im Netz zu, und gehandelt wird mit 10.000 $ Spielgeld. Intel liest mit Grok die Nachrichten und X und fasst sie dir im Briefing zusammen. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) versteht er freie Sätze und bewertet als Chief die Coins. Sprechen geht ohne Knopf: „Jarvis, …“.
+**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails, deine Obsidian-Aufgaben und den Apple-Kalender auf deinem Mac, geht sie mit dir durch, trägt Termine auf Zuruf ein und zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain, Projektseite und mit Grok auch X, du siehst ihm dabei als Spinne im Netz zu, und gehandelt wird mit 10.000 $ Spielgeld. Intel liest mit Grok die Nachrichten und X und fasst sie dir im Briefing zusammen. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) redest du mit ihm wie mit Claude: Er beantwortet jede Frage, sieht bei Aktuellem im Web nach, merkt sich Dinge über dich, versteht freie Sätze und bewertet als Chief die Coins. Sprechen geht ohne Knopf: „Jarvis, …“.
 
 ## Ansichten
 
@@ -10,7 +10,7 @@ Oben wechselst du zwischen den Ansichten:
 
 | Ansicht | Was du siehst |
 | --- | --- |
-| **JARVIS** (`/fokus`) | Nur JARVIS, groß, und das Gespräch mit ihm. Darüber steht, was ansteht (wichtige Mails, fällige Punkte, Wetter); ein Klick darauf, und er geht es mit dir durch. |
+| **JARVIS** (`/fokus`) | Nur JARVIS, groß, und das Gespräch mit ihm. Darunter steht, was ansteht (wichtige Mails, fällige Punkte, Wetter); ein Klick darauf, und er geht es mit dir durch. Sobald ihr redet, rückt der Kopf nach oben, das Gespräch füllt den Bildschirm wie bei Claude, und das Eingabefeld bleibt unten. |
 | **Übersicht** (`/`) | JARVIS in der Mitte, alle Module als Kacheln wie im NEXUS-Video. Fährst du mit der Maus über eine Kachel, dreht sie sich zu dir und tritt heraus; ein Klick öffnet ihre Ansicht, ein Klick auf den Kopf führt in den Fokus. |
 | **Aufgaben** (`/aufgaben`) | Deine Aufgaben aus Obsidian nach Fälligkeit: abhaken, auf morgen oder eine Woche verschieben, neu notieren. |
 | **Kalender** (`/kalender`) | Deine Termine der nächsten zwei Wochen aus der Kalender-App, neue Termine eintragen, jeden Tag mit einem Klick in der Kalender-App zeigen. |
@@ -22,7 +22,7 @@ Oben wechselst du zwischen den Ansichten:
 
 Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Kalender, Post, Trading, Intel und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
 
-In allen Arbeitsansichten ist JARVIS unten klein dabei. Du sprichst einfach weiter, er wechselt die Ansicht selbst.
+In allen Arbeitsansichten ist JARVIS unten klein dabei. Du sprichst einfach weiter, er wechselt die Ansicht selbst. Dort siehst du immer die letzten zwei Zeilen seiner Antwort; ein Klick darauf klappt das ganze Gespräch auf.
 
 ## Briefing: JARVIS geht den Tag mit dir durch
 
@@ -36,7 +36,7 @@ Sprichst du per Mikrofon, hört JARVIS nach seiner Frage gleich wieder zu. Statt
 
 Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichtig“**, **„Erinnere mich morgen an den Zahnarzt“**, **„Merke dir: …“**, **„Meine Mails“**, **„Meine Aufgaben“**, **„Was habe ich morgen?“**, **„Trag morgen um 9 Uhr Zahnarzt ein“**, **„Öffne den Kalender“**, **„Öffne Obsidian“**, **„Was gibt es in den Nachrichten?“**, **„Nachrichten zu Tesla“**, **„Zeig nur dich“**, **„Zeig alle Module“**, Wetter, Uhrzeit, Kurse, Memecoins. Alles andere beantwortet das KI-Gehirn, sobald es eingerichtet ist.
 
-**Tastatur:** Leertaste = sprechen (auch ohne „Jarvis“), Escape = JARVIS unterbrechen.
+**Tastatur:** Leertaste = sprechen (auch ohne „Jarvis“), Escape = JARVIS anhalten. Im Eingabefeld schickt Enter ab, Umschalt+Enter macht eine neue Zeile.
 
 ## Sprechen mit „Jarvis“
 
@@ -51,7 +51,15 @@ JARVIS hört von selbst zu, ohne Knopf. Sag **„Jarvis“** und dann, was du br
 
 ## KI-Gehirn (Claude)
 
-Ohne KI-Gehirn kennt JARVIS nur die Befehle oben. Mit ihm versteht er, was du frei sagst, und erledigt es selbst:
+Ohne KI-Gehirn kennt JARVIS nur die Befehle oben. Mit ihm redest du mit JARVIS wie mit Claude, mit demselben Wissen:
+
+- **Jede Frage:** erklären, beraten, rechnen, übersetzen, formulieren, Ideen sammeln oder einfach plaudern. „Hallo Jarvis“, „Was ist Bitcoin?“ oder „Erklär mir den Stop-Loss“ beantwortet Claude; kurze Befehle wie „Bitcoin-Kurs“ oder „Wetter“ erledigt JARVIS weiter sofort selbst.
+- **Flüssig wie bei Claude:** Die Antwort erscheint Wort für Wort, und JARVIS spricht schon den ersten Satz, während Claude noch am Rest schreibt. Anhalten mit dem Stopp-Knopf im Eingabefeld, Escape oder „Jarvis, stopp“. Eine neue Frage beendet die alte Antwort.
+- **Aktuelles aus dem Web:** Bei Fragen wie „Wie wird das Wetter am Wochenende?“ oder „Was ist heute in der Welt passiert?“ sucht er im Web und sagt, woher er es hat. Die Quellen stehen als Links unter der Antwort.
+- **Gedächtnis:** Erzählst du ihm etwas, das länger gilt („Ich trinke meinen Kaffee schwarz“, „Meine Frau heißt Anna“), merkt er es sich und weiß es im nächsten Gespräch noch. „Merk dir …“ und „Vergiss …“ gehen auch. Was er weiß, siehst und löschst du unter **Einstellungen → Was JARVIS über dich weiß**. Passwörter und Kontonummern merkt er sich nie.
+- **Gesprächsverlauf:** Das Gespräch bleibt auch nach dem Neuladen der Seite stehen, und Claude kennt die letzten 24 Zeilen davon. **Neues Gespräch** über dem Verlauf fängt frisch an; das Gedächtnis bleibt.
+
+Und er erledigt, was du frei sagst:
 
 - „Was muss ich bis Freitag noch erledigen?“
 - „Schieb die Winterreifen auf den 2. November.“
@@ -67,7 +75,7 @@ Kurze Befehle wie **Briefing**, **weiter** oder **erledigt** erledigt JARVIS wei
 2. Unter **Billing** Guthaben aufladen, zum Beispiel 10 Euro, und ein **Monatslimit** setzen. Mehr kann dann nie abgebucht werden.
 3. Unter **API Keys** einen Schlüssel erstellen (beginnt mit `sk-ant-`) und in JARVIS unter **Einstellungen → KI-Gehirn** einfügen. JARVIS prüft ihn, bevor er speichert.
 
-JARVIS nutzt Claude Opus 5.5. Eine Frage kostet meist ein bis drei Cent. Lehnt Opus eine harmlose Frage versehentlich aus Sicherheitsgründen ab, beantwortet Anthropic sie automatisch mit einem Ersatzmodell.
+JARVIS nutzt Claude Opus 5.5. Eine Frage kostet meist ein bis drei Cent; sucht er im Web, kommt etwa ein Cent pro Suche dazu. Lehnt Opus eine harmlose Frage versehentlich aus Sicherheitsgründen ab, beantwortet Anthropic sie automatisch mit einem Ersatzmodell.
 
 ## Obsidian verbinden
 
@@ -120,7 +128,9 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 - Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt (siehe oben, wohin der Ton geht). Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
 - Mit Grok gehen Name, Symbol, Vertragsadresse und Konten der geprüften Coins an xAI, für Intel deine Themen, sonst nichts von dir. Was Grok in Nachrichten und auf X liest, ist für JARVIS nur Daten, keine Anweisungen.
 - Den Kalender liest JARVIS über die Schnittstelle von macOS, nur auf deinem Mac. Er trägt nur auf deinen Zuruf ein und kann Termine weder ändern noch löschen.
-- Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails, Termine), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
+- Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben, Mails, Termine), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
+- Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche. Eine Webseite öffnet er nur, wenn die Adresse von dir, aus seiner Websuche oder aus Intel stammt; Links aus deinen Mails ruft er nicht auf. Was auf Webseiten steht, ist für ihn nur Daten, keine Anweisungen.
+- Das Gedächtnis liegt in `~/.jarvis/gedaechtnis.json`, lesbar nur für deinen Benutzer; der Gesprächsverlauf nur im Browser auf diesem Mac.
 
 ## Wetter
 
@@ -221,7 +231,9 @@ Aufbau:
 | `src/components/CommandCenter.tsx` | die Übersicht mit den Modul-Kacheln |
 | `src/components/ParticleHead.tsx` | der 3D-Kopf aus Partikeln (three.js) |
 | `src/lib/commands.ts` | was JARVIS ohne KI-Gehirn versteht, Briefing und Besprechung |
-| `src/lib/server/brain.ts`, `src/app/api/gehirn/` | das KI-Gehirn: Claude mit Werkzeugen für Aufgaben, Mails und Ansichten |
+| `src/lib/server/brain.ts`, `src/app/api/gehirn/` | das KI-Gehirn: Claude mit Werkzeugen für Aufgaben, Mails und Ansichten, Websuche und Gedächtnis. Die Antwort kommt Stück für Stück (eine Zeile JSON pro Ereignis) |
+| `src/lib/server/memory.ts`, `src/app/api/gedaechtnis/` | das Gedächtnis in `~/.jarvis/gedaechtnis.json` |
+| `src/components/Console.tsx` | das Gespräch: Verlauf, Eingabefeld, Vorschläge |
 | `src/lib/dates.ts` | Datumsangaben wie „bis Freitag“ oder „in drei Tagen“ |
 | `src/lib/modules.ts` | Module und Agenten, hier kommen neue dazu |
 | `src/lib/server/obsidian.ts` | Aufgaben im Obsidian-Tresor lesen und ändern |

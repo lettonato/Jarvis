@@ -51,3 +51,31 @@ export function sentences(text: string): string[] {
   }
   return chunks;
 }
+
+// Nach diesen Abkürzungen endet kein Satz, auch wenn ein Punkt folgt.
+const ABBREVIATIONS = new Set(["bzw", "ca", "nr", "dr", "hr", "fr", "st", "str", "usw", "etc", "evtl", "ggf", "inkl", "max", "min", "mio", "mrd", "tsd", "vgl", "std", "bspw", "zb", "prof", "jh", "jhd", "mind", "sog", "abs"]);
+
+// Eine Antwort, die noch entsteht, in fertige Sätze und den Rest teilen, damit JARVIS den ersten Satz schon
+// spricht, während Claude den zweiten schreibt. last: Die Antwort ist komplett, der Rest ist auch ein Satz.
+export function takeSentences(buffer: string, last = false): { ready: string[]; rest: string } {
+  const ready: string[] = [];
+  let start = 0;
+  const end = /[.!?…]+["“”»)]*(?=\s)|\n+/g;
+  for (let m = end.exec(buffer); m; m = end.exec(buffer)) {
+    const stop = m.index + m[0].length;
+    if (m[0][0] === ".") {
+      const word = /([\p{L}\d]+)$/u.exec(buffer.slice(start, m.index))?.[1] ?? "";
+      // „z. B.“, „Dr.“, „30. Oktober“: hier geht der Satz weiter.
+      if (word.length === 1 || ABBREVIATIONS.has(word.toLowerCase()) || /^\d{1,2}$/.test(word)) continue;
+    }
+    const sentence = buffer.slice(start, stop).trim();
+    if (sentence) ready.push(sentence);
+    start = stop;
+  }
+  let rest = buffer.slice(start);
+  if (last) {
+    if (rest.trim()) ready.push(rest.trim());
+    rest = "";
+  }
+  return { ready, rest };
+}

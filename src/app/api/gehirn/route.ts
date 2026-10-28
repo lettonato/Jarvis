@@ -1,11 +1,12 @@
 import { connection } from "next/server";
-import type { BrainRequest } from "@/lib/brain";
+import type { BrainEvent, BrainRequest } from "@/lib/brain";
 import { brainKey, explainBrainError, think } from "@/lib/server/brain";
 import { readConfig } from "@/lib/server/config";
 import { guard, readBody } from "@/lib/server/guard";
 
 // Ein Satz, den keine feste Regel versteht, geht hierher: Claude antwortet und ändert, wenn du es
-// sagst, Aufgaben und Mails. Wie die Schreib-Schnittstellen nur von diesem Mac aus erreichbar.
+// sagst, Aufgaben und Mails. Die Antwort kommt Stück für Stück, eine Zeile JSON pro Ereignis, damit
+// JARVIS schon spricht, während Claude noch schreibt. Wie die Schreib-Schnittstellen nur von diesem Mac aus.
 
 export async function POST(request: Request) {
   await connection();
@@ -23,9 +24,33 @@ export async function POST(request: Request) {
     focus: body.focus && (body.focus.kind === "post" || body.focus.kind === "aufgaben") ? body.focus : null,
     extra: Array.isArray(body.extra) ? body.extra.filter((l): l is string => typeof l === "string") : [],
   };
-  try {
-    return Response.json(await think(config, apiKey, input));
-  } catch (e) {
-    return Response.json({ error: explainBrainError(e) }, { status: 502 });
-  }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let open = true;
+      const send = (event: BrainEvent) => {
+        if (!open) return;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        } catch {
+          open = false;
+        }
+      };
+      try {
+        send({ type: "done", reply: await think(config, apiKey, input, send, request.signal) });
+      } catch (e) {
+        // Hat die Seite abgebrochen („Jarvis, stopp“), hört niemand mehr zu.
+        if (!request.signal.aborted) send({ type: "error", error: explainBrainError(e) });
+      } finally {
+        open = false;
+        try {
+          controller.close();
+        } catch {
+          // Schon zu.
+        }
+      }
+    },
+  });
+  return new Response(stream, { headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" } });
 }

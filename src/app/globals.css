@@ -46,6 +46,40 @@ body {
   }
 }
 
+/* Das Gespräch: Nachrichten gleiten herein, drei Punkte warten auf Claude, der Strich blinkt beim Schreiben. */
+@keyframes jarvis-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes jarvis-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes jarvis-caret {
+  to {
+    visibility: hidden;
+  }
+}
+
+@keyframes jarvis-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

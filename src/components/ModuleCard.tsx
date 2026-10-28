@@ -19,7 +19,7 @@ export function ModuleCard({ module, telemetry, tilt, brain }: { module: JarvisM
         className="group relative block h-full rounded-xl [transform-style:preserve-3d] hover:z-20 focus-visible:z-20 focus-visible:outline-none"
       >
         <div
-          className={`relative h-full rounded-xl border border-sky-300/25 bg-sky-400/[0.05] p-3.5 shadow-[0_0_30px_rgba(56,189,248,0.10)] backdrop-blur-sm transition duration-300 ease-out group-hover:border-sky-200/90 group-hover:bg-sky-400/[0.14] group-hover:shadow-[0_0_48px_rgba(56,189,248,0.45)] group-focus-visible:border-sky-200/90 group-focus-visible:shadow-[0_0_48px_rgba(56,189,248,0.45)] group-active:scale-[0.98] motion-safe:group-hover:[transform:translateZ(40px)_scale(1.05)] ${
+          className={`relative h-full rounded-xl border border-sky-300/25 bg-sky-400/[0.05] p-3.5 shadow-[0_0_30px_rgba(56,189,248,0.10)] transition duration-300 ease-out group-hover:border-sky-200/90 group-hover:bg-sky-400/[0.14] group-hover:shadow-[0_0_48px_rgba(56,189,248,0.45)] group-focus-visible:border-sky-200/90 group-focus-visible:shadow-[0_0_48px_rgba(56,189,248,0.45)] group-active:scale-[0.98] motion-safe:group-hover:[transform:translateZ(40px)_scale(1.05)] ${
             // Die Kachel wächst zur Mitte hin, damit sie nicht über den Bildschirmrand ragt.
             tilt === "left"
               ? "origin-left lg:[transform:rotateY(16deg)] lg:motion-safe:group-hover:[transform:rotateY(0deg)_translateX(16px)_translateZ(50px)_scale(1.07)]"

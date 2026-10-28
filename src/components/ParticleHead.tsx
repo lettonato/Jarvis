@@ -9,7 +9,9 @@ export type AvatarState = "idle" | "listening" | "thinking" | "speaking";
 // Die Punkte liegen auf einfachen Formen (Kopf, Hals, Schultern); Augen, Nase und Mund sind
 // kleine Ein- und Ausbuchtungen. Beim Sprechen bewegen sich die Punkte am Mund.
 
-type Bust = { positions: Float32Array; colors: Float32Array; mouth: number[]; mouthWeight: number[] };
+// Die Punkte am Mund liegen am Ende der Liste (ab mouthStart): Beim Sprechen muss nur dieses kurze Stück
+// neu zur Grafikkarte, nicht die ganze Büste.
+type Bust = { positions: Float32Array; colors: Float32Array; mouthStart: number; mouthWeight: Float32Array };
 
 const BLUE = new THREE.Color("#3f7bff");
 const CYAN = new THREE.Color("#8fdcff");
@@ -85,12 +87,14 @@ function buildBust(): Bust {
     particles.push({ p: new THREE.Vector3(n.x * 1.35, 0.05 + n.y * 0.62, n.z * 0.5), glow: 1 - Math.abs(n.z) * 0.5, feature: 0, mouth: 0 });
   }
 
-  const positions = new Float32Array(particles.length * 3);
-  const colors = new Float32Array(particles.length * 3);
-  const mouth: number[] = [];
-  const mouthWeight: number[] = [];
+  const moves = (q: Particle) => Math.abs(q.mouth) > 0.1;
+  const ordered = [...particles.filter((q) => !moves(q)), ...particles.filter(moves)];
+  const mouthStart = ordered.length - particles.filter(moves).length;
+  const positions = new Float32Array(ordered.length * 3);
+  const colors = new Float32Array(ordered.length * 3);
+  const mouthWeight = new Float32Array(ordered.length - mouthStart);
   const c = new THREE.Color();
-  particles.forEach(({ p, glow, feature, mouth: m }, i) => {
+  ordered.forEach(({ p, glow, feature, mouth: m }, i) => {
     p.toArray(positions, i * 3);
     // Rote Akzente auf der rechten Schulter, wie im Video.
     const accent = p.x > 0.55 && p.y < 0.75 && Math.random() < 0.35;
@@ -99,12 +103,17 @@ function buildBust(): Bust {
     // Kanten leuchten, die Fläche zur Kamera bleibt dunkler: so wirkt der Kopf räumlich.
     c.multiplyScalar(0.3 + 0.7 * Math.max(glow * glow, feature));
     c.toArray(colors, i * 3);
-    if (Math.abs(m) > 0.1) {
-      mouth.push(i);
-      mouthWeight.push(m);
-    }
+    if (i >= mouthStart) mouthWeight[i - mouthStart] = m;
   });
-  return { positions, colors, mouth, mouthWeight };
+  return { positions, colors, mouthStart, mouthWeight };
+}
+
+// Die Büste wird nur einmal berechnet; jeder Kopf auf der Seite bekommt eine eigene Kopie der Punkte,
+// weil sich der Mund beim Sprechen bewegt.
+let built: Bust | null = null;
+function bust(): Bust {
+  built ??= buildBust();
+  return { ...built, positions: built.positions.slice() };
 }
 
 function buildDust(count: number): THREE.Points {
@@ -133,8 +142,10 @@ export function ParticleHead({ state }: { state: AvatarState }) {
     const mount = mountRef.current;
     if (!mount) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Auf scharfen Bildschirmen braucht es keine Kantenglättung; das spart viel Rechenzeit.
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    const renderer = new THREE.WebGLRenderer({ antialias: dpr < 2, alpha: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(dpr);
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -143,10 +154,10 @@ export function ParticleHead({ state }: { state: AvatarState }) {
     camera.position.set(0, 1.35, 6.4);
     camera.lookAt(0, 1.05, 0);
 
-    const bust = buildBust();
+    const { positions, colors, mouthStart, mouthWeight } = bust();
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(bust.positions, 3));
-    geometry.setAttribute("color", new THREE.BufferAttribute(bust.colors, 3));
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     const material = new THREE.PointsMaterial({
       size: 0.03,
       vertexColors: true,
@@ -158,7 +169,7 @@ export function ParticleHead({ state }: { state: AvatarState }) {
     const head = new THREE.Points(geometry, material);
     scene.add(head);
 
-    const restY = bust.mouth.map((i) => bust.positions[i * 3 + 1]);
+    const restY = mouthWeight.map((_, k) => positions[(mouthStart + k) * 3 + 1]);
     const dust = buildDust(500);
     scene.add(dust);
 
@@ -182,6 +193,7 @@ export function ParticleHead({ state }: { state: AvatarState }) {
     const start = performance.now();
     let frame = 0;
     let spin = 0;
+    let moving = false;
     const position = geometry.getAttribute("position") as THREE.BufferAttribute;
 
     const animate = () => {
@@ -196,20 +208,35 @@ export function ParticleHead({ state }: { state: AvatarState }) {
       material.opacity = s === "idle" ? 0.85 : 1;
 
       // Beim Sprechen öffnet sich der Mund: die Unterlippe geht nach unten, die Oberlippe leicht nach oben.
+      // Schweigt er, bleibt der Mund einmal in Ruhe stehen und die Punkte werden nicht mehr hochgeladen.
       const talk = s === "speaking" ? Math.abs(Math.sin(t * 9) * Math.sin(t * 2.7)) : 0;
-      bust.mouth.forEach((i, k) => {
-        position.setY(i, restY[k] - talk * 0.07 * bust.mouthWeight[k]);
-      });
-      position.needsUpdate = true;
+      if (talk > 0 || moving) {
+        for (let k = 0; k < mouthWeight.length; k++) position.setY(mouthStart + k, restY[k] - talk * 0.07 * mouthWeight[k]);
+        position.clearUpdateRanges();
+        position.addUpdateRange(mouthStart * 3, mouthWeight.length * 3);
+        position.needsUpdate = true;
+        moving = talk > 0;
+      }
 
       dust.rotation.y = t * 0.02;
       renderer.render(scene, camera);
     };
     animate();
 
+    // Ist der Kopf nicht zu sehen (weggescrollt), ruht die Animation.
+    let visible = true;
+    const watcher = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting === visible) return;
+      visible = entry.isIntersecting;
+      cancelAnimationFrame(frame);
+      if (visible) frame = requestAnimationFrame(animate);
+    });
+    watcher.observe(mount);
+
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      watcher.disconnect();
       geometry.dispose();
       material.dispose();
       dust.geometry.dispose();

@@ -11,7 +11,9 @@ export function usePolling<T>(url: string, intervalMs: number) {
   const reload = useCallback(
     async (query = "") => {
       try {
-        setData(await getJson<T>(url + query));
+        const next = await getJson<T>(url + query);
+        // Hat sich nichts geändert, bleibt alles stehen: Sonst zeichnet jede Abfrage die ganze Seite neu.
+        setData((prev) => (prev !== null && JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
       } catch {
         // Beim nächsten Durchlauf erneut versuchen.
       }
