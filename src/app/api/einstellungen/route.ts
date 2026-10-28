@@ -6,8 +6,10 @@ import { testGrokKey } from "@/lib/server/desk/grok";
 import { brainKey, testKey } from "@/lib/server/brain";
 import { guard, readBody } from "@/lib/server/guard";
 import { testMail } from "@/lib/server/mail";
+import { explainTelegramError, prefsOf, renewCode, resetTelegram, sendTest, telegramStatus, testTelegramToken, unpairTelegram, wakeTelegram } from "@/lib/server/telegram";
 import { createVault, detectVaults, vaultProblem } from "@/lib/server/obsidian";
 import { providerById } from "@/lib/mailProviders";
+import { isClock, TOKEN_PATTERN } from "@/lib/telegram";
 import type { Settings } from "@/lib/settings";
 
 // Das Passwort verlässt den Server nie: die Seite erfährt nur, ob eines gespeichert ist.
@@ -30,6 +32,7 @@ async function settings(config: JarvisConfig): Promise<Settings> {
       fromEnv: !config.xai?.apiKey && Boolean(process.env.XAI_API_KEY),
       budgetUsd: xBudget(config),
     },
+    telegram: telegramStatus(config),
     configFile: path.join(CONFIG_DIR, "config.json"),
   };
 }
@@ -53,7 +56,13 @@ type Action =
   | { action: "removeClaude" }
   | { action: "xai"; apiKey: string }
   | { action: "xaiBudget"; budgetUsd: number }
-  | { action: "removeXai" };
+  | { action: "removeXai" }
+  | { action: "telegram"; token: string }
+  | { action: "telegramCode" }
+  | { action: "telegramPrefs"; trades?: boolean; warnings?: boolean; reminders?: boolean; briefing?: string | null }
+  | { action: "telegramTest" }
+  | { action: "telegramUnpair" }
+  | { action: "removeTelegram" };
 
 // Mehr als 20 $ am Tag sind für einen Spielgeld-Test sicher ein Tippfehler.
 const MAX_X_BUDGET_USD = 20;
@@ -133,6 +142,50 @@ export async function POST(request: Request) {
     config.xai = { apiKey: config.xai?.apiKey ?? "", dailyBudgetUsd: budget };
   } else if (body.action === "removeXai") {
     delete config.xai;
+  } else if (body.action === "telegram") {
+    const token = body.token?.trim() ?? "";
+    if (!TOKEN_PATTERN.test(token)) return Response.json({ error: "Ein Bot-Schlüssel sieht so aus: 123456789:AAH… Bitte den ganzen Schlüssel aus dem Chat mit dem BotFather einfügen." }, { status: 400 });
+    const result = await testTelegramToken(token);
+    if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+    // Derselbe Schlüssel noch einmal: Kopplung und Einstellungen bleiben. Ein neuer Bot braucht eine neue Kopplung.
+    const same = config.telegram?.token === token;
+    const prefs = config.telegram ? prefsOf(config.telegram) : undefined;
+    config.telegram = same ? { ...config.telegram!, bot: result.bot } : { token, bot: result.bot, ...prefs };
+    await writeConfig(config);
+    if (same) wakeTelegram();
+    else await resetTelegram();
+    // Bei einem neuen Bot erklärt die Seite das Koppeln selbst, eine zweite Meldung wäre doppelt.
+    return Response.json({ ...(await settings(config)), ...(same ? { message: `Verbunden mit @${result.bot}.` } : {}) });
+  } else if (body.action === "telegramCode") {
+    if (!config.telegram) return Response.json({ error: "Bitte zuerst den Bot-Schlüssel eintragen." }, { status: 400 });
+    renewCode();
+    return Response.json(await settings(config));
+  } else if (body.action === "telegramPrefs") {
+    if (!config.telegram) return Response.json({ error: "Bitte zuerst den Bot-Schlüssel eintragen." }, { status: 400 });
+    const next = { ...config.telegram };
+    for (const key of ["trades", "warnings", "reminders"] as const) if (typeof body[key] === "boolean") next[key] = body[key];
+    if (body.briefing !== undefined) {
+      if (body.briefing !== null && !isClock(String(body.briefing))) return Response.json({ error: "Bitte eine Uhrzeit wie 07:30 eintragen." }, { status: 400 });
+      next.briefing = body.briefing;
+    }
+    config.telegram = next;
+  } else if (body.action === "telegramTest") {
+    try {
+      await sendTest();
+    } catch (e) {
+      return Response.json({ error: explainTelegramError(e) }, { status: 400 });
+    }
+    return Response.json({ ...(await settings(config)), message: "Gesendet. Sieh auf dein Handy." });
+  } else if (body.action === "telegramUnpair") {
+    await unpairTelegram();
+    return Response.json(await settings(await readConfig()));
+  } else if (body.action === "removeTelegram") {
+    if (config.telegram?.chatId) await unpairTelegram();
+    const fresh = await readConfig();
+    delete fresh.telegram;
+    await writeConfig(fresh);
+    wakeTelegram();
+    return Response.json(await settings(fresh));
   } else {
     return Response.json({ error: "Unbekannte Aktion." }, { status: 400 });
   }

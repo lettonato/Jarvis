@@ -15,6 +15,7 @@ import {
 } from "../intel";
 import { CONFIG_DIR, grokKey, readConfig, writeConfig, type JarvisConfig } from "./config";
 import { askGrok, GrokError } from "./desk/grok";
+import { notify } from "./notify";
 
 // Intel: Grok liest Nachrichten im Web und Beiträge auf X und schreibt ein kurzes Lagebild. Morgens ab
 // 6 Uhr und acht Stunden später noch einmal von selbst (bis 22 Uhr), sonst auf Zuruf, immer innerhalb des
@@ -147,10 +148,15 @@ export async function refreshIntel(focus: string | null, opts: { wait?: boolean;
   const done = runIntel(key, focus ? [topic!] : intelTopics(config), topic, now)
     .then(async (report) => {
       addCost(state, report.costUsd, now);
+      const before = activeWarning(state, new Date());
       if (topic) state.search = report;
       else state.report = report;
       state.error = null;
       await save(state);
+      // Eine neue Warnung kommt aufs Handy; dieselbe Warnung im nächsten Lagebild nicht noch einmal.
+      if (report.deskWarning && report.deskWarning !== before?.text) {
+        notify({ kind: "warnung", text: `⚠️ Intel warnt: ${report.deskWarning.replace(/[.!]?$/, ".")} Der Desk kauft die nächsten ${WARNING_HOURS} Stunden nichts Neues.` });
+      }
       return report;
     })
     .catch(async (e) => {

@@ -135,6 +135,28 @@ Unter **Post** oder **Einstellungen** den Anbieter wählen, Adresse und Passwort
 
 Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische Nachricht. JARVIS liest nur, er löscht und verschickt nichts. Outlook.com und Hotmail gehen erst später, Microsoft verlangt dafür eine eigene Anmeldung.
 
+## JARVIS aufs Handy (Telegram)
+
+Über **Telegram** hast du JARVIS auch unterwegs dabei. Er läuft weiter auf deinem Mac und holt die Nachrichten an deinen eigenen Bot selbst bei Telegram ab; von außen muss niemand an den Mac heran.
+
+**Einrichten** unter **Einstellungen → Handy (Telegram)**, einmalig, etwa fünf Minuten:
+
+1. In Telegram den [BotFather](https://t.me/BotFather) öffnen (der mit dem blauen Haken) und `/newbot` schicken.
+2. Einen Namen wählen, zum Beispiel „Jarvis“, und einen Benutzernamen, der auf „bot“ endet, zum Beispiel `benedikt_jarvis_bot`.
+3. Den Schlüssel, den der BotFather schickt (`123456789:AAH…`), in JARVIS einfügen. JARVIS prüft ihn.
+4. **Koppeln:** Den QR-Code in JARVIS mit der Handy-Kamera scannen und in Telegram auf **Starten** tippen. Oder dem Bot den achtstelligen Code schicken. Ab dann antwortet JARVIS nur diesem einen Chat; alle anderen übergeht er.
+
+**Was dann aufs Handy kommt** (einzeln abschaltbar):
+
+- **Briefing** jeden Morgen zur eingestellten Zeit (Standard 7:30 Uhr): Wetter, Termine, wichtige Mails, fällige Aufgaben, Nachrichten und Spielgeld-Stand.
+- **Erinnerung** eine Viertelstunde vor jedem Termin.
+- **Warnungen:** Intel bremst den Desk, oder das Tageslimit ist erreicht.
+- **Trades:** jeder Kauf und Verkauf des Spielgeld-Desks mit Begründung.
+
+**Schreiben:** Mit KI-Gehirn schreibst du JARVIS wie in der App, etwa „Was steht morgen an?“, „Trag Freitag 15 Uhr Friseur ein“ oder „Fass mir die Mail von Anna zusammen“. Dazu gibt es feste Befehle, auch ohne KI-Gehirn: `/briefing`, `/handel`, `/pause` (oder einfach „Stopp“: keine neuen Käufe, der Stop-Loss passt weiter auf), `/weiter`, `/notaus`, `/hilfe`. Sprachnachrichten versteht er noch nicht; das Mikrofon der Handy-Tastatur macht aus Sprache Text.
+
+Schläft der Mac, antwortet JARVIS, sobald er wieder wach ist. Ist eine Nachricht dann älter als eine halbe Stunde, führt er sie nicht mehr blind aus und fragt nach; nur „Stopp“ und `/notaus` gelten auch verspätet. Das Briefing kommt noch bis drei Stunden nach der eingestellten Zeit. Damit Meldungen zuverlässig ankommen, sollte der Mac nicht schlafen: In den **Systemeinstellungen** unter **Batterie → Optionen** (MacBook) bzw. **Energie** (iMac, Mac mini) einschalten, dass er am Netzteil nicht von selbst in den Ruhezustand geht, wenn der Bildschirm aus ist.
+
 ## Sicherheit
 
 - JARVIS läuft nur auf deinem Mac (`127.0.0.1`), andere Geräte im WLAN erreichen ihn nicht.
@@ -146,6 +168,7 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 - Den Kalender liest JARVIS über die Schnittstelle von macOS, nur auf deinem Mac. Er trägt nur auf deinen Zuruf ein und kann Termine weder ändern noch löschen.
 - Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben, Mails, Termine), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
 - Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche. Eine Webseite öffnet er nur, wenn die Adresse von dir, aus seiner Websuche oder aus Intel stammt; Links aus deinen Mails ruft er nicht auf. Was auf Webseiten steht, ist für ihn nur Daten, keine Anweisungen.
+- Mit Telegram laufen die Nachrichten zwischen dir und JARVIS über die Server von Telegram und sind dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem gekoppelten Chat, kann auch von dort keine Mails schreiben oder löschen, und Termine nur eintragen. Der Bot-Schlüssel liegt wie die anderen in `~/.jarvis/config.json`; wer ihn hat, kann Nachrichten an deinen Bot mitlesen, deshalb nie weitergeben (im BotFather lässt er sich mit `/revoke` erneuern).
 - Das Gedächtnis liegt in `~/.jarvis/gedaechtnis.json`, lesbar nur für deinen Benutzer; der Gesprächsverlauf nur im Browser auf diesem Mac.
 
 ## Wetter
@@ -265,8 +288,10 @@ Aufbau:
 | `src/lib/paper.ts` | Spielgeld: feste Sicherheitsregeln, Gebühren, Stop-Loss, Rechnungen |
 | `src/lib/server/desk/` | der Spielgeld-Handel: `engine.ts` (Takt, Konto, Kauf und Verkauf, Bericht), `crawler.ts` (RugCheck und Projektseite), `grok.ts` (X über Grok von xAI), `chief.ts` (weiche Filter mit Claude oder Faustregeln) |
 | `src/lib/intel.ts`, `src/lib/server/intel.ts`, `src/app/api/intel/` | Intel: Lagebild aus Nachrichten und X mit Grok, Sätze fürs Briefing, Warnung an den Desk |
-| `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart läuft sein Takt los |
+| `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart laufen sein Takt, Intel und Telegram los |
+| `src/lib/telegram.ts`, `src/lib/server/telegram.ts`, `src/components/TelegramSetup.tsx` | JARVIS auf dem Handy: Texte und Befehle, die Verbindung zu Telegram (Abholen, Koppeln, Gespräch mit Claude, Briefing, Erinnerungen), die Einstellungen mit QR-Code |
+| `src/lib/server/notify.ts` | Meldungen von Desk und Intel an alle, die zuhören (Telegram) |
 
-`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL` und `XAI_BASE_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000).
+`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000).
 
 API-Schlüssel gehören später in eine Datei `.env.local`. Sie wird nie hochgeladen.

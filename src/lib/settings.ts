@@ -1,4 +1,5 @@
 import type { MailProviderId } from "./mailProviders";
+import type { TelegramStatus } from "./telegram";
 
 // Was die Einstellungen-Seite vom Server bekommt. Ein Passwort ist nie dabei.
 export type Settings = {
@@ -10,5 +11,7 @@ export type Settings = {
   brain: { configured: boolean; hint: string | null; fromEnv: boolean };
   // Grok für den Crawler: ob ein xAI-Schlüssel da ist und wie viel er am Tag ausgeben darf.
   crawler: { configured: boolean; hint: string | null; fromEnv: boolean; budgetUsd: number };
+  // JARVIS auf dem Handy über Telegram.
+  telegram: TelegramStatus;
   configFile: string;
 };

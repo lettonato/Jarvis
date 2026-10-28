@@ -19,6 +19,8 @@ export type BrainRequest = {
   focus: { kind: "post" | "aufgaben"; id: string | number } | null;
   // Kurze Lagezeilen, die nur die Seite kennt (Wetter, Kurse).
   extra: string[];
+  // Kommt die Frage per Telegram vom Handy, liest du die Antwort, statt sie zu hören.
+  channel?: "telegram";
 };
 
 // Ein Eintrag im Gedächtnis von JARVIS.
