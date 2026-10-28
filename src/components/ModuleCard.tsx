@@ -2,14 +2,14 @@ import { HoloLink } from "./HoloLink";
 import { Holo } from "./HoloView";
 import { Icon } from "./icons";
 import { Brackets } from "./ui";
+import type { Telemetry } from "./useTelemetry";
 import { isActive, type JarvisModule } from "@/lib/modules";
 
-export type Telemetry = { value: string; detail: string; alert?: boolean };
-
-// Eine schwebende Glas-Kachel wie in der NEXUS-Oberfläche. Jede Kachel öffnet ihre Ansicht.
+// Eine Glas-Kachel wie in der NEXUS-Oberfläche. Jede Kachel öffnet ihre Ansicht.
+// Sie erscheint nur, wenn die 3D-Welt nicht laufen kann; sonst stehen die Module dort als Felsen.
 // Der Link selbst bleibt still stehen und fängt die Maus; nur die Glasplatte darin dreht sich zu dir,
 // kommt nach vorn und leuchtet auf. So flackert die Kachel nicht, wenn sie sich unter der Maus bewegt.
-export function ModuleCard({ module, telemetry, tilt, brain }: { module: JarvisModule; telemetry?: Telemetry; tilt: "left" | "right"; brain: boolean }) {
+export function ModuleCard({ module, telemetry, brain }: { module: JarvisModule; telemetry?: Telemetry; brain: boolean }) {
   const active = isActive(module, brain);
   return (
     <Holo name={`modul-${module.id}`}>
@@ -19,12 +19,7 @@ export function ModuleCard({ module, telemetry, tilt, brain }: { module: JarvisM
         className="group relative block h-full rounded-xl [transform-style:preserve-3d] hover:z-20 focus-visible:z-20 focus-visible:outline-none"
       >
         <div
-          className={`relative h-full rounded-xl border border-sky-300/25 bg-sky-400/[0.05] p-3.5 shadow-[0_0_30px_rgba(56,189,248,0.10)] transition duration-300 ease-out group-hover:border-sky-200/90 group-hover:bg-sky-400/[0.14] group-hover:shadow-[0_0_48px_rgba(56,189,248,0.45)] group-focus-visible:border-sky-200/90 group-focus-visible:shadow-[0_0_48px_rgba(56,189,248,0.45)] group-active:scale-[0.98] motion-safe:group-hover:[transform:translateZ(40px)_scale(1.05)] ${
-            // Die Kachel wächst zur Mitte hin, damit sie nicht über den Bildschirmrand ragt.
-            tilt === "left"
-              ? "origin-left lg:[transform:rotateY(16deg)] lg:motion-safe:group-hover:[transform:rotateY(0deg)_translateX(16px)_translateZ(50px)_scale(1.07)]"
-              : "origin-right lg:[transform:rotateY(-16deg)] lg:motion-safe:group-hover:[transform:rotateY(0deg)_translateX(-16px)_translateZ(50px)_scale(1.07)]"
-          } ${active ? "" : "opacity-60 group-hover:opacity-100"}`}
+          className={`relative h-full rounded-xl border border-sky-300/25 bg-sky-400/[0.05] p-3.5 shadow-[0_0_30px_rgba(56,189,248,0.10)] transition duration-300 ease-out group-hover:border-sky-200/90 group-hover:bg-sky-400/[0.14] group-hover:shadow-[0_0_48px_rgba(56,189,248,0.45)] group-focus-visible:border-sky-200/90 group-focus-visible:shadow-[0_0_48px_rgba(56,189,248,0.45)] group-active:scale-[0.98] motion-safe:group-hover:[transform:translateZ(40px)_scale(1.05)] ${active ? "" : "opacity-60 group-hover:opacity-100"}`}
         >
           <Brackets />
           <div className="flex items-center justify-between text-[10px] tracking-widest">

@@ -13,6 +13,7 @@ import { isoDate } from "@/lib/dates";
 import { formatClock } from "@/lib/format";
 import { dateOf, dueSoon } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
+import { World } from "./world/World";
 
 // Der Rahmen um alle Ansichten: oben die Navigation, unten in den Arbeitsansichten der kleine JARVIS,
 // mit dem du jederzeit weitersprichst. Ein Klick auf JARVIS führt in den Fokus, wo nur er zu sehen ist.
@@ -51,7 +52,10 @@ function NavBar() {
   const tabs = useTabs();
   const demo = market?.majors.source === "demo" || weather?.source === "demo";
   return (
-    <header className="sticky top-0 z-30 shrink-0 border-b border-sky-300/10 bg-desk/95" style={{ viewTransitionName: "jarvis-nav" }}>
+    <header
+      className="pointer-events-auto sticky top-0 z-30 shrink-0 border-b border-sky-300/10 bg-gradient-to-b from-desk/90 to-desk/55"
+      style={{ viewTransitionName: "jarvis-nav" }}
+    >
       <div className="flex items-center gap-3 px-3 py-2 sm:px-5">
         <HoloLink href="/fokus" className="group flex shrink-0 items-center gap-2.5" aria-label="JARVIS im Fokus">
           <Orb state={state} className="h-9 w-9" />
@@ -195,13 +199,19 @@ function Dock() {
 export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const dock = pathname !== "/" && pathname !== "/fokus";
-  // Im Fokus passt alles genau in den Bildschirm: Nur das Gespräch scrollt, das Eingabefeld bleibt unten.
-  const fit = pathname === "/fokus";
+  // In Übersicht und Fokus passt alles genau in den Bildschirm: Nur das Gespräch scrollt, das Eingabefeld bleibt unten.
+  const fit = pathname === "/fokus" || pathname === "/";
+  // In der Übersicht gehen Maus und Finger durch die Seite hindurch an die Felsen in der 3D-Welt;
+  // nur Navigation und Konsole fangen sie selbst.
+  const stage = pathname === "/";
   return (
-    <div className={`flex flex-col bg-[radial-gradient(ellipse_at_top,_#16204a_0%,_#090b18_62%)] ${fit ? "h-dvh flex-none overflow-hidden" : "min-h-full flex-1"}`}>
-      <NavBar />
-      <div className={`flex min-h-0 flex-1 flex-col ${dock ? "pb-40 lg:pb-32" : ""}`}>{children}</div>
-      {dock && <Dock />}
-    </div>
+    <>
+      <World />
+      <div className={`relative z-10 flex flex-col ${fit ? "h-dvh flex-none overflow-hidden" : "min-h-full flex-1"} ${stage ? "pointer-events-none" : ""}`}>
+        <NavBar />
+        <div className={`flex min-h-0 flex-1 flex-col ${dock ? "pb-40 lg:pb-32" : ""}`}>{children}</div>
+        {dock && <Dock />}
+      </div>
+    </>
   );
 }

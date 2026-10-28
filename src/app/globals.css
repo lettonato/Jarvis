@@ -13,8 +13,9 @@
   --font-mono: ui-monospace, "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace;
 }
 
+/* Hinter allem liegt die 3D-Welt. Läuft sie nicht (kein WebGL), bleibt dieser Verlauf. */
 body {
-  background: var(--color-desk);
+  background: radial-gradient(ellipse at top, #16204a 0%, var(--color-desk) 62%) fixed var(--color-desk);
   color: var(--color-ink);
   font-family: var(--font-mono);
 }

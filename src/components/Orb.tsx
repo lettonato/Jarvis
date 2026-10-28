@@ -1,4 +1,4 @@
-import type { AvatarState } from "./ParticleHead";
+import type { AvatarState } from "@/lib/avatar";
 
 // Der kleine JARVIS für die Leiste unten: ein leuchtender Kern, der zeigt, ob er zuhört, denkt oder spricht.
 export function Orb({ state, className = "h-14 w-14" }: { state: AvatarState; className?: string }) {

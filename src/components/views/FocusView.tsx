@@ -5,7 +5,8 @@ import { HoloLink } from "../HoloLink";
 import { Holo } from "../HoloView";
 import { Icon, type IconName } from "../icons";
 import { useConversation, useJarvis } from "../JarvisProvider";
-import { ParticleHead } from "../ParticleHead";
+import { Orb } from "../Orb";
+import { useWorldStatus, worldAnchor } from "../world/anchor";
 import { clock, eventsOn, nextEvent } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
 import { dateOf, dueSoon } from "@/lib/tasks";
@@ -24,6 +25,7 @@ export function FocusView() {
   const { turns, interim } = useConversation();
   const { draft, setDraft, inputRef, fill } = useDraft();
   const label = useStateLabel();
+  const world = useWorldStatus();
   // Sobald ihr redet, rückt der Kopf nach oben und macht dem Gespräch Platz.
   const talking = turns.length > 0 || Boolean(interim) || session !== null;
   const now = useNow();
@@ -69,22 +71,22 @@ export function FocusView() {
         </div>
       </div>
 
-      {/* Der Kopf behält seine Größe und wird nur kleiner skaliert: So muss das 3D-Bild nie neu aufgebaut werden. */}
-      <div className={`relative w-full max-w-[980px] shrink-0 transition-[height] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${talking ? "h-[calc(var(--head)*0.42)]" : "h-[var(--head)]"}`}>
-        <div
-          className={`absolute inset-x-0 top-0 h-[var(--head)] origin-top transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${talking ? "scale-[0.42]" : ""}`}
-        >
-          <Holo name="jarvis-kopf">
-            <button
-              type="button"
-              onClick={voice.canListen ? voice.toggle : () => ask("Briefing")}
-              aria-label={voice.canListen ? "Mit JARVIS sprechen" : "Briefing starten"}
-              className="relative block h-full w-full cursor-pointer [mask-image:radial-gradient(ellipse_at_center,black_55%,transparent_78%)]"
-            >
-              <ParticleHead state={state} />
-            </button>
-          </Holo>
-        </div>
+      {/* Der Kopf schwebt in der 3D-Welt hinter der Seite; dieser Platz sagt der Kamera, wohin sie ihn rahmt.
+          Sobald ihr redet, wird der Platz kleiner und der Kopf gleitet mit nach oben. */}
+      <div
+        ref={worldAnchor}
+        className={`relative w-full max-w-[980px] shrink-0 transition-[height] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${talking ? "h-[calc(var(--head)*0.42)]" : "h-[var(--head)]"}`}
+      >
+        <Holo name="jarvis-kopf">
+          <button
+            type="button"
+            onClick={voice.canListen ? voice.toggle : () => ask("Briefing")}
+            aria-label={voice.canListen ? "Mit JARVIS sprechen" : "Briefing starten"}
+            className="absolute inset-y-0 left-1/2 block aspect-square max-w-full -translate-x-1/2 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/60"
+          >
+            {world === "aus" && <Orb state={state} className="h-full w-full p-[12%]" />}
+          </button>
+        </Holo>
       </div>
 
       <p className={`relative mb-3 shrink-0 rounded-full border border-sky-300/30 bg-desk px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-sky-200 ${talking ? "-mt-2" : "-mt-8"}`}>
@@ -125,7 +127,7 @@ export function FocusView() {
         </div>
       )}
 
-      <div className="sticky bottom-0 w-full max-w-[760px] shrink-0 bg-gradient-to-t from-desk from-70% to-transparent pb-4 pt-2">
+      <div className="sticky bottom-0 w-full max-w-[760px] shrink-0 bg-[radial-gradient(ellipse_at_bottom,rgba(9,11,24,0.8),transparent_70%)] pb-4 pt-2">
         <Chips onFill={fill} scroll idle={!talking} />
         <div className={talking && !session ? "" : "mt-2"}>
           <Composer inputRef={inputRef} draft={draft} setDraft={setDraft} big />
