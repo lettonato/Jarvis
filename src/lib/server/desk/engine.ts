@@ -14,6 +14,10 @@ import {
   testDayOf,
   ticketSize,
   type CoinVerdict,
+  type CrawlEvent,
+  type CrawlState,
+  type CrawlStep,
+  type CrawlTrail,
   type DayRecord,
   type DeskAgent,
   type DeskSnapshot,
@@ -26,9 +30,10 @@ import {
 import { SOFT_FILTERS, SOFT_KEYS, type SoftKey } from "../../thresholds";
 import { brainKey, explainBrainError } from "../brain";
 import { CONFIG_DIR, grokKey, readConfig, xBudget } from "../config";
+import { intelWarning } from "../intel";
 import { writeVaultFile } from "../obsidian";
 import { judgeByRules, judgeWithClaude, type ChiefInput, type Verdict } from "./chief";
-import { crawl, guard } from "./crawler";
+import { crawl, guard, type ChainCheck } from "./crawler";
 import { GrokError, readX, TYPICAL_COST_USD, type XReport } from "./grok";
 
 // Der Motor des Spielgeld-Desks. Er läuft jede Minute, solange JARVIS auf dem Mac läuft:
@@ -52,6 +57,7 @@ const LOG_LIMIT = 150;
 const TRADE_LIMIT = 200;
 const HISTORY_EVERY_MS = 5 * TICK_MS;
 const HISTORY_LIMIT = 3000;
+const TRAIL_LIMIT = 200;
 
 type StoredPosition = Position & { missed?: number };
 
@@ -99,8 +105,16 @@ const freshState = (): State => ({
 });
 
 // Next.js lädt diesen Code unter Umständen in mehreren Bündeln. Damit es trotzdem nur einen Desk
-// gibt, liegen Stand und Takt an einer gemeinsamen Stelle.
-type Shared = { state: State | null; loading: Promise<State> | null; saving: Promise<void>; timer: ReturnType<typeof setInterval> | null; ticking: boolean };
+// gibt, liegen Stand und Takt an einer gemeinsamen Stelle. Die Spur der Spinne lebt nur im Speicher.
+type Shared = {
+  state: State | null;
+  loading: Promise<State> | null;
+  saving: Promise<void>;
+  timer: ReturnType<typeof setInterval> | null;
+  ticking: boolean;
+  trail?: CrawlEvent[];
+  seq?: number;
+};
 const holder = globalThis as typeof globalThis & { __jarvisDesk?: Shared };
 const shared: Shared = (holder.__jarvisDesk ??= { state: null, loading: null, saving: Promise.resolve(), timer: null, ticking: false });
 
@@ -136,10 +150,38 @@ function log(state: State, agent: LogEntry["agent"], text: string, tone?: LogEnt
 }
 
 // Warnungen wie „keine Kurse“ nur einmal in 10 Minuten, sonst füllt ein Ausfall das ganze Protokoll.
-function warnOnce(state: State, agent: LogEntry["agent"], text: string) {
+function warnOnce(state: State, agent: LogEntry["agent"], text: string): boolean {
   const recent = state.log.some((l) => l.text === text && Date.now() - Date.parse(l.at) < 10 * 60_000);
   if (!recent) log(state, agent, text, "warn");
+  return !recent;
 }
+
+// Ein Schritt für die Spinne: welcher Coin, welche Prüfung, wie sie ausging.
+function trace(coin: { address: string; symbol: string } | null, step: CrawlStep, state: CrawlState, text: string) {
+  const trail = (shared.trail ??= []);
+  shared.seq = (shared.seq ?? 0) + 1;
+  trail.push({ seq: shared.seq, at: new Date().toISOString(), address: coin?.address ?? "", symbol: coin?.symbol ?? "", step, state, text });
+  if (trail.length > TRAIL_LIMIT) trail.splice(0, trail.length - TRAIL_LIMIT);
+}
+
+export async function crawlTrail(after = 0): Promise<CrawlTrail> {
+  const state = await load();
+  const seq = shared.seq ?? 0;
+  // Ist die Seite weiter als der Server, wurde er neu gestartet: dann alles von vorn.
+  const from = after > seq ? 0 : after;
+  return { seq, events: (shared.trail ?? []).filter((e) => e.seq > from).slice(-80), status: state.status, lastTickAt: state.lastTickAt, tickMs: TICK_MS };
+}
+
+const chainText = (chain: ChainCheck) =>
+  `Blockchain sauber, Top 10 halten ${chain.top10Pct?.toLocaleString("de-DE") ?? "?"} %${chain.lpLockedPct !== null ? `, Pool zu ${chain.lpLockedPct.toLocaleString("de-DE")} % gesperrt` : ""}`;
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+};
 
 const equity = (state: State) => equityOf(state.cash, state.positions);
 
@@ -242,17 +284,21 @@ async function watch(state: State, now: Date) {
     p.peakPrice = Math.max(p.peakPrice, price);
 
     if (now.getTime() - Date.parse(p.guardedAt) >= GUARD_MS) {
+      trace(p, "guard", "laeuft", "bewacht den gekauften Coin, liest RugCheck");
       try {
         const danger = await guard(p.address);
         p.guardedAt = now.toISOString();
         state.stats.reportsRead++;
         if (danger && !halted(state) && state.positions.includes(p)) {
+          trace(p, "guard", "raus", `Rug-Zeichen: ${danger}. Sofort verkauft`);
           sell(state, p, price, p.lastLiquidity, "Crawler", `Rug-Zeichen: ${danger}`, now);
           state.stats.rugsStopped++;
           continue;
         }
+        trace(p, "guard", "ok", "keine neuen Rug-Zeichen");
       } catch {
         // RugCheck gerade nicht erreichbar: beim nächsten Durchlauf wieder.
+        trace(p, "guard", "warn", "RugCheck gerade nicht erreichbar, nächste Runde wieder");
       }
     }
 
@@ -286,7 +332,16 @@ async function hunt(state: State, now: Date) {
   state.stats.scanned = market.scan.scanned;
   state.stats.vetPassed = candidates.filter((c) => c.passed).length;
   if (market.scan.source !== "live") {
-    warnOnce(state, "Scan", NO_LIVE);
+    if (warnOnce(state, "Scan", NO_LIVE)) trace(null, "scan", "warn", NO_LIVE);
+    return;
+  }
+  trace(null, "scan", "ok", `${market.scan.scanned} neue Coins gescannt, ${state.stats.vetPassed} bestehen die harten Filter`);
+  // Intel darf den Desk nur bremsen: Bei einer ernsten Meldung kauft er eine Weile nichts Neues.
+  const caution = await intelWarning(now).catch(() => null);
+  if (caution) {
+    const until = new Date(caution.until).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    const text = `Intel warnt: ${caution.text.replace(/[.!]?$/, "")}. Bis ${until} Uhr kaufe ich nichts Neues, Stop-Loss bleibt aktiv`;
+    if (warnOnce(state, "Risk", text)) trace(null, "intel", "warn", text);
     return;
   }
   if (state.positions.length >= SAFETY.maxOpenPositions) return;
@@ -306,7 +361,8 @@ async function hunt(state: State, now: Date) {
   const xLeft = () => xBudget(config) - state.day.xSpentUsd;
   // Der Crawler liest zuerst, dann handelt der Desk: Ist das X-Budget für heute weg, prüft er nichts Neues.
   if (xKey && xLeft() < TYPICAL_COST_USD) {
-    warnOnce(state, "Crawler", `Das X-Budget von ${formatUsd(xBudget(config))} für heute ist aufgebraucht. Morgen liest Grok weiter, bis dahin kauft der Desk nichts Neues`);
+    const text = `Das X-Budget von ${formatUsd(xBudget(config))} für heute ist aufgebraucht. Morgen liest Grok weiter, bis dahin kauft der Desk nichts Neues`;
+    if (warnOnce(state, "Crawler", text)) trace(null, "x", "warn", text);
     return;
   }
 
@@ -315,37 +371,53 @@ async function hunt(state: State, now: Date) {
     // Grok braucht pro Coin einige Sekunden; eine Pause oder der Not-Aus gilt sofort.
     if (state.status !== "laeuft") return;
     state.seen[c.address] = now.toISOString();
+    trace(c, "chain", "laeuft", "liest die Blockchain bei RugCheck");
+    let chainShown = false;
     try {
-      const report = await crawl(c);
+      const report = await crawl(c, (chain, url) => {
+        chainShown = true;
+        trace(c, "chain", "ok", chainText(chain));
+        trace(c, "site", "laeuft", `liest die Projektseite ${hostOf(url)}`);
+      });
       state.stats.reportsRead++;
       state.stats.pagesRead += report.pages;
       if (report.kill) {
+        trace(c, report.stage === "skin_kill" ? "site" : "chain", "raus", report.kill);
         state.verdicts[c.address] = { at: now.toISOString(), stage: report.stage ?? "chain_kill", text: report.kill };
         state.stats.killed++;
         log(state, "Crawler", `$${c.symbol} aussortiert: ${report.kill}`, "kill");
         continue;
       }
+      if (!chainShown) trace(c, "chain", "ok", chainText(report.chain));
+      if (!report.site) trace(c, "site", "warn", "keine Webseite, nur Konten angegeben");
+      else if ("title" in report.site) trace(c, "site", "ok", `Seite „${report.site.title || hostOf(report.site.url)}“ gelesen`);
+      else trace(c, "site", "warn", `Seite: ${report.site.error}`);
       const site = report.site ? ("title" in report.site ? `Seite „${report.site.title || report.site.url}“ gelesen` : `Seite: ${report.site.error}`) : "keine Seite";
       log(state, "Crawler", `$${c.symbol}: Blockchain sauber, Top 10 halten ${report.chain.top10Pct?.toLocaleString("de-DE")} %, ${site}`);
       let x: XReport | null = null;
       if (xKey) {
         // Reicht das Budget nicht mehr, kommt der Coin morgen wieder dran.
         if (xLeft() < TYPICAL_COST_USD) {
+          trace(c, "x", "warn", "X-Budget für heute aufgebraucht, morgen geht es weiter");
           delete state.seen[c.address];
           break;
         }
+        trace(c, "x", "laeuft", "Grok liest die Beiträge auf X und das Projektkonto");
         x = await readXFor(state, xKey, c, now);
         if (!x) continue;
         if (x.rugWarnings) {
           const why = `Auf X warnen mehrere Konten vor $${c.symbol}`;
+          trace(c, "x", "raus", why);
           state.verdicts[c.address] = { at: now.toISOString(), stage: "x_kill", text: x.summary || why };
           state.stats.killed++;
           log(state, "Crawler", `$${c.symbol} aussortiert: ${why}. ${x.summary}`, "kill");
           continue;
         }
+        trace(c, "x", "ok", `${x.posts >= 0 ? `${x.posts} Beiträge` : "Beiträge"} gelesen, Stimmung ${x.mood}`);
       }
       survivors.push({ candidate: c, crawl: report, ticket, x });
     } catch (e) {
+      trace(c, "chain", "warn", "RugCheck nicht erreichbar, also kein Kauf");
       state.verdicts[c.address] = { at: now.toISOString(), stage: "nicht_geprueft", text: "RugCheck nicht erreichbar, also kein Kauf" };
       log(state, "Crawler", `$${c.symbol} nicht geprüft (${e instanceof Error ? e.message : e}), also kein Kauf`, "warn");
     }
@@ -353,13 +425,16 @@ async function hunt(state: State, now: Date) {
   if (survivors.length === 0 || state.status !== "laeuft") return;
 
   const key = brainKey(config);
+  const withClaude = Boolean(key && state.day.chiefCalls < MAX_CHIEF_CALLS_PER_DAY);
+  for (const s of survivors) trace(s.candidate, "chief", "laeuft", withClaude ? "Chief fragt Claude nach den weichen Filtern" : "Chief prüft die weichen Filter mit Faustregeln");
   let verdicts: Verdict[];
-  if (key && state.day.chiefCalls < MAX_CHIEF_CALLS_PER_DAY) {
+  if (withClaude) {
     try {
       state.day.chiefCalls++;
       state.stats.chiefCalls++;
-      verdicts = await judgeWithClaude(key, survivors);
+      verdicts = await judgeWithClaude(key!, survivors);
     } catch (e) {
+      for (const s of survivors) trace(s.candidate, "chief", "warn", "Claude antwortet nicht, in dieser Runde kein Kauf");
       log(state, "Chief", `Claude antwortet nicht: ${explainBrainError(e)} Ich kaufe in dieser Runde nichts`, "warn");
       return;
     }
@@ -367,6 +442,7 @@ async function hunt(state: State, now: Date) {
     verdicts = judgeByRules(survivors);
   }
   for (const v of verdicts) {
+    trace(v, "chief", v.buy ? "ok" : "raus", v.buy ? `ja: ${v.why}` : v.why);
     log(state, "Chief", `$${v.symbol}: ${v.buy ? "ja. " : ""}${v.why}`);
     if (!v.buy) state.verdicts[v.address] = { at: now.toISOString(), stage: "chief_nein", text: v.why };
   }
@@ -383,6 +459,7 @@ async function hunt(state: State, now: Date) {
     return;
   }
   const pass = (v: Verdict, why: string) => {
+    trace(v, "fills", "warn", why);
     state.verdicts[v.address] = { at: now.toISOString(), stage: "nicht_gekauft", text: why };
     log(state, "Fills", `$${v.symbol}: ${why}`, "warn");
   };
@@ -404,6 +481,7 @@ async function hunt(state: State, now: Date) {
     }
     state.verdicts[v.address] = { at: now.toISOString(), stage: "gekauft", text: v.why };
     buy(state, live, size, v.why, now);
+    trace(live, "fills", "gekauft", `gekauft für ${formatUsd(size)}`);
   }
 }
 
@@ -424,6 +502,7 @@ async function readXFor(state: State, apiKey: string, c: Candidate, now: Date): 
     state.day.xSpentUsd += cost;
     state.stats.xCostUsd += cost;
     const why = e instanceof Error ? e.message : String(e);
+    trace(c, "x", "warn", `X nicht gelesen: ${why}. Also kein Kauf`);
     state.verdicts[c.address] = { at: now.toISOString(), stage: "nicht_geprueft", text: `X nicht gelesen: ${why}` };
     log(state, "Crawler", `$${c.symbol}: X nicht gelesen (${why}), also kein Kauf`, "warn");
     return null;
@@ -596,6 +675,9 @@ export async function deskSnapshot(now = new Date()): Promise<DeskSnapshot> {
     verdicts: Object.fromEntries(Object.entries(state.verdicts).filter(([, v]) => now.getTime() - Date.parse(v.at) < SAFETY.recheckHours * HOUR)),
     chief: brainKey(config) ? "claude" : "regeln",
     x: { enabled: Boolean(grokKey(config)), spentTodayUsd: state.day.xSpentUsd, budgetUsd: xBudget(config) },
+    intelWarning: await intelWarning(now)
+      .then((w) => (w ? { text: w.text, until: w.until } : null))
+      .catch(() => null),
   };
 }
 

@@ -8,6 +8,7 @@ import { holoTypes } from "@/lib/holo";
 import { VIEWS, type BrainReply, type BrainRequest, type BrainTurn } from "@/lib/brain";
 import type { CalendarSnapshot } from "@/lib/calendar";
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
+import { intelSentence, searchSentence, type IntelSnapshot } from "@/lib/intel";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
 import type { DeskSnapshot } from "@/lib/paper";
@@ -42,6 +43,9 @@ type Jarvis = {
   calendar: CalendarSnapshot | null;
   setCalendar: (c: CalendarSnapshot) => void;
   reloadCalendar: () => Promise<void>;
+  // Intel: das Lagebild aus Nachrichten und X.
+  intel: IntelSnapshot | null;
+  setIntel: (i: IntelSnapshot) => void;
   mailText: Record<number, MailMessage>;
   // Die Mails, die Claude zuletzt geöffnet hat; n zählt mit, damit dieselbe Mail wieder aufklappt.
   spotlight: { uids: number[]; n: number };
@@ -102,6 +106,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const { data: settings, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
   const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 15_000);
   const { data: calendar, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
+  const { data: intel, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [session, setSessionState] = useState<Session | null>(null);
@@ -112,7 +117,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   // Kam der letzte Satz per Stimme, hört JARVIS nach seiner Antwort gleich weiter zu.
   const byVoice = useRef(false);
   const heard = useRef<(text: string) => void>(() => {});
-  const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null, calendar: null });
+  const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null, calendar: null, intel: null });
+  // Hast du nach den Nachrichten gefragt, sagt JARVIS Bescheid, sobald Grok fertig ist.
+  const announce = useRef<{ focus: string | null; since: string } | null>(null);
   const place = useRef(pathname);
   const history = useRef<Turn[]>([]);
   const brain = useRef(false);
@@ -123,7 +130,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const name = settings?.name ?? "Benedikt";
 
   useEffect(() => {
-    latest.current = { name, market, weather, tasks, mail, desk, calendar };
+    latest.current = { name, market, weather, tasks, mail, desk, calendar, intel };
     place.current = pathname;
     history.current = turns;
     brain.current = Boolean(settings?.brain.configured);
@@ -187,6 +194,13 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
           case "openObsidian":
             await postJson("/api/aufgaben", { action: "open", what: effect.what });
             return;
+          // Grok braucht eine halbe Minute oder mehr; die Antwort kommt, sobald das Lagebild da ist.
+          case "intel": {
+            const result = await postJson<IntelSnapshot>("/api/intel", { action: "aktualisieren", thema: effect.topic });
+            setIntel(result);
+            if (result.running) announce.current = { focus: result.running.focus, since: result.running.since };
+            return;
+          }
         }
       } catch (e) {
         // Hat jemand die Aufgabe in Obsidian geändert, frisch laden, damit die Liste wieder stimmt.
@@ -194,7 +208,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         throw e;
       }
     },
-    [setTasks, setMail, setDesk, setCalendar, reloadTasks, canListen],
+    [setTasks, setMail, setDesk, setCalendar, setIntel, reloadTasks, canListen],
   );
 
   const speakThenMaybeListen = useCallback(
@@ -252,12 +266,20 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         if (result.mail) setMail(result.mail);
         if (result.desk) setDesk(result.desk);
         if (result.calendar) setCalendar(result.calendar);
+        if (result.intel) setIntel(result.intel);
         if (result.opened) {
           const opened = result.opened;
           setMailText((prev) => ({ ...prev, ...Object.fromEntries(opened.map((m) => [m.uid, m])) }));
           setSpotlight((prev) => ({ uids: opened.map((m) => m.uid), n: prev.n + 1 }));
         }
-        const fresh = { ...ctx, tasks: result.tasks ?? ctx.tasks, mail: result.mail ?? ctx.mail, desk: result.desk ?? ctx.desk, calendar: result.calendar ?? ctx.calendar };
+        const fresh = {
+          ...ctx,
+          tasks: result.tasks ?? ctx.tasks,
+          mail: result.mail ?? ctx.mail,
+          desk: result.desk ?? ctx.desk,
+          calendar: result.calendar ?? ctx.calendar,
+          intel: result.intel ?? ctx.intel,
+        };
         // Führt Claude dich während einer Besprechung in eine andere Ansicht, endet die Besprechung.
         const leaves = Boolean(s && result.navigate && result.navigate !== VIEWS[s.kind]);
         await execute(
@@ -269,7 +291,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         await execute({ reply: e instanceof Error ? e.message : String(e) });
       }
     },
-    [context, execute, setTasks, setMail, setDesk, setCalendar],
+    [context, execute, setTasks, setMail, setDesk, setCalendar, setIntel],
   );
 
   const handle = useCallback(
@@ -349,6 +371,25 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     };
   }, [calendar, addTurn, speak]);
 
+  // Während Grok liest, alle drei Sekunden nachsehen, sonst reicht jede Minute.
+  useEffect(() => {
+    if (!intel?.running) return;
+    const timer = setTimeout(() => void loadIntel(), 3000);
+    return () => clearTimeout(timer);
+  }, [intel, loadIntel]);
+
+  // Ist das Lagebild fertig, das du angefordert hast, sagt JARVIS es dir.
+  useEffect(() => {
+    const asked = announce.current;
+    if (!asked || !intel || intel.running) return;
+    announce.current = null;
+    const result = asked.focus ? intel.search : intel.report;
+    const done = result && Date.parse(result.at) >= Date.parse(asked.since) - 1000;
+    const text = done ? (asked.focus ? searchSentence(result) : intelSentence(intel, new Date())) : `Das hat nicht geklappt. ${intel.error ?? "Grok hat nicht geantwortet."}`;
+    addTurn("jarvis", text);
+    speak(text);
+  }, [intel, addTurn, speak]);
+
   const state: AvatarState = listening ? "listening" : thinking ? "thinking" : speaking ? "speaking" : "idle";
 
   const value = useMemo<Jarvis>(
@@ -370,6 +411,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       calendar,
       setCalendar,
       reloadCalendar: () => loadCalendar("?force=1"),
+      intel,
+      setIntel,
       mailText,
       spotlight,
       turns,
@@ -398,6 +441,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       calendar,
       setCalendar,
       loadCalendar,
+      intel,
+      setIntel,
       mailText,
       spotlight,
       turns,

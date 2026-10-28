@@ -2,7 +2,7 @@
 
 Dein persönlicher Assistent mit Trading-Desk. Der Bauplan steht im Dokument „JARVIS Bauplan: Assistent und Trading-Desk“.
 
-**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails, deine Obsidian-Aufgaben und den Apple-Kalender auf deinem Mac, geht sie mit dir durch, trägt Termine auf Zuruf ein und zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain, Projektseite und mit Grok auch X, und gehandelt wird mit 10.000 $ Spielgeld. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) versteht er freie Sätze und bewertet als Chief die Coins. Sprechen geht ohne Knopf: „Jarvis, …“.
+**Stand: Phase 1, das KI-Gehirn aus Phase 2 und der Spielgeld-Handel aus Phase 3.** JARVIS liest deine Mails, deine Obsidian-Aufgaben und den Apple-Kalender auf deinem Mac, geht sie mit dir durch, trägt Termine auf Zuruf ein und zeigt Live-Kurse und Wetter. Auf dem Trading-Desk prüfen die Agenten aus dem GrokBot-Video neue Solana-Memecoins, der Crawler liest Blockchain, Projektseite und mit Grok auch X, du siehst ihm dabei als Spinne im Netz zu, und gehandelt wird mit 10.000 $ Spielgeld. Intel liest mit Grok die Nachrichten und X und fasst sie dir im Briefing zusammen. Echtes Geld bewegt JARVIS nicht. Mit dem KI-Gehirn (Claude) versteht er freie Sätze und bewertet als Chief die Coins. Sprechen geht ohne Knopf: „Jarvis, …“.
 
 ## Ansichten
 
@@ -15,17 +15,18 @@ Oben wechselst du zwischen den Ansichten:
 | **Aufgaben** (`/aufgaben`) | Deine Aufgaben aus Obsidian nach Fälligkeit: abhaken, auf morgen oder eine Woche verschieben, neu notieren. |
 | **Kalender** (`/kalender`) | Deine Termine der nächsten zwei Wochen aus der Kalender-App, neue Termine eintragen, jeden Tag mit einem Klick in der Kalender-App zeigen. |
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
-| **Trading** (`/trading`) | Der Trading-Desk: Agenten, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
+| **Trading** (`/trading`) | Der Trading-Desk: Agenten, die Crawler-Spinne live, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
+| **Intel** (`/intel`) | Das Lagebild aus Nachrichten und X, die wichtigsten Meldungen mit Quelle, deine Themen und das Budget. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
-| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Crawler auf X, Obsidian-Tresor, Kalender, Postfach, Sprache, Stimme. |
+| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Grok (Crawler auf X und Intel), Obsidian-Tresor, Kalender, Postfach, Sprache, Stimme. |
 
-Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Kalender, Post, Trading und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
+Die Wechsel zwischen den Ansichten laufen wie Hologramme im Film: Von der Übersicht in den Fokus fliegt die Kamera auf JARVIS zu und die Kacheln rauschen vorbei. Öffnest du eine Kachel, fliegt sie an den Kopf der neuen Ansicht, die sich aus einer Lichtlinie in der Tiefe auffaltet. Zwischen Aufgaben, Kalender, Post, Trading, Intel und Agenten schwenken die Ansichten wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Animation.
 
 In allen Arbeitsansichten ist JARVIS unten klein dabei. Du sprichst einfach weiter, er wechselt die Ansicht selbst.
 
 ## Briefing: JARVIS geht den Tag mit dir durch
 
-Sag **„Guten Morgen“** oder drück **Briefing starten**. JARVIS sagt zum Beispiel: „Im Kalender hast du heute noch 2 Termine, als Nächstes um 14 Uhr Meeting. Du hast 4 neue wichtige Mails. Bis nächste Woche müssen noch 2 Punkte erledigt werden, einer davon ist überfällig. Fangen wir mit den Mails an.“ Dann springt er in die Post, danach in die Aufgaben, und bespricht Punkt für Punkt mit dir:
+Sag **„Guten Morgen“** oder drück **Briefing starten**. JARVIS sagt zum Beispiel: „Im Kalender hast du heute noch 2 Termine, als Nächstes um 14 Uhr Meeting. In den Nachrichten: Bitcoin bewegt sich seitwärts, auf X ist die Stimmung ruhig. Du hast 4 neue wichtige Mails. Bis nächste Woche müssen noch 2 Punkte erledigt werden, einer davon ist überfällig. Fangen wir mit den Mails an.“ Dann springt er in die Post, danach in die Aufgaben, und bespricht Punkt für Punkt mit dir:
 
 - bei Mails: **vorlesen**, **Aufgabe daraus machen** (auch „bis Freitag“), **gelesen**, **weiter**
 - bei Aufgaben: **erledigt**, **verschieben auf morgen / Montag / nächste Woche / den 5. November**, **weiter**, **zurück**
@@ -33,7 +34,7 @@ Sag **„Guten Morgen“** oder drück **Briefing starten**. JARVIS sagt zum Bei
 
 Sprichst du per Mikrofon, hört JARVIS nach seiner Frage gleich wieder zu. Statt zu sprechen kannst du auch die Knöpfe unten antippen.
 
-Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichtig“**, **„Erinnere mich morgen an den Zahnarzt“**, **„Merke dir: …“**, **„Meine Mails“**, **„Meine Aufgaben“**, **„Was habe ich morgen?“**, **„Trag morgen um 9 Uhr Zahnarzt ein“**, **„Öffne den Kalender“**, **„Öffne Obsidian“**, **„Zeig nur dich“**, **„Zeig alle Module“**, Wetter, Uhrzeit, Kurse, Memecoins. Alles andere beantwortet das KI-Gehirn, sobald es eingerichtet ist.
+Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichtig“**, **„Erinnere mich morgen an den Zahnarzt“**, **„Merke dir: …“**, **„Meine Mails“**, **„Meine Aufgaben“**, **„Was habe ich morgen?“**, **„Trag morgen um 9 Uhr Zahnarzt ein“**, **„Öffne den Kalender“**, **„Öffne Obsidian“**, **„Was gibt es in den Nachrichten?“**, **„Nachrichten zu Tesla“**, **„Zeig nur dich“**, **„Zeig alle Module“**, Wetter, Uhrzeit, Kurse, Memecoins. Alles andere beantwortet das KI-Gehirn, sobald es eingerichtet ist.
 
 **Tastatur:** Leertaste = sprechen (auch ohne „Jarvis“), Escape = JARVIS unterbrechen.
 
@@ -117,7 +118,7 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 - Einstellungen samt Mail-Passwort und Claude-Schlüssel liegen in `~/.jarvis/config.json`, lesbar nur für deinen Benutzer. Ein Update von JARVIS ändert daran nichts. Die Seite bekommt den Schlüssel nie zu sehen, nur seine letzten vier Zeichen.
 - Der Crawler liest nur öffentliche https-Seiten. Adressen im Heimnetz (Router, NAS) öffnet er nicht, auch nicht über Weiterleitungen. Texte auf Projektseiten sind für Claude nur Daten, keine Anweisungen.
 - Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt (siehe oben, wohin der Ton geht). Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
-- Mit Grok gehen Name, Symbol, Vertragsadresse und Konten der geprüften Coins an xAI, sonst nichts von dir.
+- Mit Grok gehen Name, Symbol, Vertragsadresse und Konten der geprüften Coins an xAI, für Intel deine Themen, sonst nichts von dir. Was Grok in Nachrichten und auf X liest, ist für JARVIS nur Daten, keine Anweisungen.
 - Den Kalender liest JARVIS über die Schnittstelle von macOS, nur auf deinem Mac. Er trägt nur auf deinen Zuruf ein und kann Termine weder ändern noch löschen.
 - Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails, Termine), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
 
@@ -149,6 +150,12 @@ Feste Regeln, die auch Claude nicht ändern kann (`src/lib/paper.ts`): höchsten
 
 Sind CoinGecko, DexScreener oder Open-Meteo nicht erreichbar, zeigt JARVIS oben **BEISPIELDATEN**. Diese Zahlen sind erfunden und nur zur Ansicht; mit ihnen handelt der Desk nicht.
 
+### Die Spinne: dem Crawler live zusehen
+
+Unter den Agenten-Kacheln auf dem Trading-Desk sitzt der Crawler als Spinne in seinem Netz. Jeder Coin, den der Scan findet, hängt außen im Netz und wandert nach innen, so weit er kommt: Vet, Blockchain (RugCheck), Projektseite, X und zuletzt Chief in der Mitte. Die Spinne läuft dabei zu dem Coin, den sie gerade prüft, und spannt einen Faden zur Quelle, die sie liest. Grün heißt bestanden, Rot rausgeflogen, Gelb nicht sicher prüfbar (dann kauft der Desk nicht), Blau in der Mitte gekauft. Daneben (auf dem Handy darunter) steht jeder Schritt in Worten.
+
+Was du siehst, passiert wirklich in dem Moment, nichts ist nachgespielt. Bevor der Spielgeld-Handel gestartet ist und nach dem Not-Aus schläft die Spinne, in der Pause bewacht sie nur die gekauften Coins. Mit „Bewegung reduzieren“ im System bewegt sie sich nicht, die Liste läuft weiter.
+
 ### Crawler auf X (Grok)
 
 Wie im Video liest der Crawler vor jedem Kauf auch X. Das macht **Grok von xAI**: Er sucht die Beiträge der letzten drei Tage zum Coin (Cashtag und Vertragsadresse), schätzt, wie viele davon nach Bots aussehen, und prüft das X-Konto des Projekts: passt es zum Coin, wie alt ist es, hat es schon andere Coins beworben? Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben.
@@ -162,9 +169,22 @@ Wie im Video liest der Crawler vor jedem Kauf auch X. Das macht **Grok von xAI**
 
 1. Auf [console.x.ai](https://console.x.ai) anmelden (mit X- oder Google-Konto).
 2. Guthaben aufladen, zum Beispiel 10 $. Mehr kann nie abgebucht werden.
-3. Unter **API Keys** einen Schlüssel erstellen (beginnt mit `xai-`) und in JARVIS unter **Einstellungen → Crawler auf X** einfügen. JARVIS prüft ihn, bevor er speichert.
+3. Unter **API Keys** einen Schlüssel erstellen (beginnt mit `xai-`) und in JARVIS unter **Einstellungen → Grok** einfügen. JARVIS prüft ihn, bevor er speichert.
 
 **Kosten:** xAI rechnet pro gelesenem Beitrag (0,5 Cent) und Profil (1 Cent), dazu Grok selbst. Ein Coin kostet so etwa 10 bis 30 Cent. Deshalb gibt es ein **Tagesbudget** (Standard 1 $, einstellbar bis 20 $). Ist es aufgebraucht, kauft der Desk bis morgen nichts Neues; die gekauften Coins bewacht er weiter. Wie viel heute verbraucht ist, steht auf dem Desk in der Social-Kachel.
+
+## Intel: Nachrichten und X im Briefing
+
+**Grok von xAI** liest die Nachrichten im Web und die Beiträge auf X zu Bitcoin, Ethereum, Solana, Solana-Memecoins und bis zu sechs eigenen Themen (zum Beispiel „Tesla“ oder „Zinsen“). Daraus macht JARVIS ein kurzes Lagebild: Stimmung, die wichtigsten Meldungen mit Quelle, und was davon für dich zählt.
+
+- **Im Briefing** sagt JARVIS einen Satz dazu, etwa „In den Nachrichten: …“.
+- **Fragen:** „Was gibt es in den Nachrichten?“ oder „Was sagt man auf X?“ liest das letzte Lagebild vor (kostet nichts). „Aktualisiere die Nachrichten“ holt ein neues. „Nachrichten zu Tesla“ sucht gezielt, wenn im letzten Lagebild nichts dazu steht.
+- **Von selbst** liest Intel tagsüber zweimal: morgens ab 6 Uhr und acht Stunden später. Abschalten in der Intel-Ansicht.
+- **Warnung an den Desk:** Meldet Intel ein ernstes, marktweites Ereignis (Börsen-Hack, Ausfall von Solana, Absturz), kauft der Trading-Desk sechs Stunden lang nichts Neues. Stop-Loss und Verkäufe laufen weiter. Intel kann den Desk nur bremsen, nie kaufen lassen; das steht fest im Code.
+
+**Einrichten:** Intel nutzt denselben xAI-Schlüssel wie der Crawler auf X (siehe oben). Themen, Tagesbudget und das automatische Lesen stellst du in der **Intel-Ansicht** ein.
+
+**Kosten:** Ein Lagebild kostet meist 25 bis 45 Cent, vor allem für die gelesenen X-Beiträge. Das **Tagesbudget** für Intel ist eigen (Standard 1 $, einstellbar bis 10 $), damit es dem Crawler nichts wegnimmt. Reicht es nicht mehr für ein Lagebild, liest Intel bis morgen nichts Neues.
 
 ## JARVIS starten
 
@@ -212,9 +232,10 @@ Aufbau:
 | `src/lib/useVoice.ts`, `src/lib/voiceText.ts` | Spracherkennung und Sprachausgabe im Browser: Weckwort „Jarvis“, Nachfrage, Unterbrechen, was vorgelesen wird |
 | `src/lib/thresholds.ts`, `src/lib/vet.ts` | harte Filter aus dem Video und der Vet-Agent |
 | `src/lib/market.ts` | Kurse und Scanner (CoinGecko, DexScreener) |
-| `src/components/TradingDesk.tsx` | der Trading-Desk |
+| `src/components/TradingDesk.tsx`, `src/components/CrawlerWeb.tsx` | der Trading-Desk und die Crawler-Spinne (SVG, liest `/api/handel/spur` jede Sekunde) |
 | `src/lib/paper.ts` | Spielgeld: feste Sicherheitsregeln, Gebühren, Stop-Loss, Rechnungen |
 | `src/lib/server/desk/` | der Spielgeld-Handel: `engine.ts` (Takt, Konto, Kauf und Verkauf, Bericht), `crawler.ts` (RugCheck und Projektseite), `grok.ts` (X über Grok von xAI), `chief.ts` (weiche Filter mit Claude oder Faustregeln) |
+| `src/lib/intel.ts`, `src/lib/server/intel.ts`, `src/app/api/intel/` | Intel: Lagebild aus Nachrichten und X mit Grok, Sätze fürs Briefing, Warnung an den Desk |
 | `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart läuft sein Takt los |
 
 `JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL` und `XAI_BASE_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000).

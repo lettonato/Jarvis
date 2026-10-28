@@ -120,11 +120,12 @@ export const MODULES: JarvisModule[] = [
     id: "intel",
     code: "M-09",
     name: "Intel",
-    tagline: "News, X und Telegram",
-    phase: 3,
-    href: "/agenten#intel",
+    tagline: "Nachrichten und X, gelesen von Grok",
+    phase: 1,
+    href: "/intel",
     side: "rechts",
-    about: "Liest Nachrichten, X und Telegram mit und meldet, wenn sich der Markt dreht oder ein Coin plötzlich Aufmerksamkeit bekommt. Projektseiten, Blockchain und X-Beiträge zu Coins liest der Crawler im Trading-Desk schon heute.",
+    about:
+      "Grok von xAI liest morgens und am Nachmittag die Nachrichten und X zu Bitcoin, Ethereum, Solana und deinen eigenen Themen. JARVIS sagt dir im Briefing, was davon zählt, und sucht auf Zuruf gezielt zu einem Thema. Bei einem ernsten Ereignis, etwa einem Börsen-Hack oder einem Ausfall von Solana, warnt Intel den Trading-Desk: Der kauft dann ein paar Stunden nichts Neues. Kaufen lassen kann Intel ihn nie. Telegram kommt später.",
   },
   {
     id: "cognition",

@@ -20,7 +20,7 @@ import { useNow } from "@/lib/useNow";
 type Tab = { href: string; label: string; icon: IconName; badge?: { value: number; alert: boolean } };
 
 function useTabs(): Tab[] {
-  const { tasks, mail, calendar } = useJarvis();
+  const { tasks, mail, calendar, intel } = useJarvis();
   const now = useNow();
   const today = now ? isoDate(now) : null;
   const events = now && today && calendar?.access === "ok" ? eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime()).length : 0;
@@ -34,6 +34,7 @@ function useTabs(): Tab[] {
     { href: "/kalender", label: "Kalender", icon: "kalender", badge: events ? { value: events, alert: false } : undefined },
     { href: "/post", label: "Post", icon: "post", badge: important ? { value: important, alert: true } : undefined },
     { href: "/trading", label: "Trading", icon: "trading" },
+    { href: "/intel", label: "Intel", icon: "intel", badge: intel?.warning ? { value: 1, alert: true } : undefined },
     { href: "/agenten", label: "Agenten", icon: "agenten" },
   ];
 }
@@ -67,13 +68,13 @@ function NavBar() {
                 key={t.href}
                 href={t.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-widest transition ${
+                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest transition ${
                   active ? "border-transparent text-sky-50" : "border-transparent text-sky-200/70 hover:border-sky-300/30 hover:text-sky-100"
                 }`}
               >
                 {active && <ActiveGlow />}
                 <Icon name={t.icon} className="relative h-4 w-4" />
-                <span className={`relative ${active ? "" : "sr-only sm:not-sr-only"}`}>{t.label}</span>
+                <span className={`relative ${active ? "" : "sr-only xl:not-sr-only"}`}>{t.label}</span>
                 {t.badge && (
                   <span className={`relative grid min-w-5 place-items-center rounded-full px-1.5 text-[10px] leading-5 ${t.badge.alert ? "bg-frame text-white" : "bg-sky-400/30 text-sky-50"}`}>
                     {t.badge.value}

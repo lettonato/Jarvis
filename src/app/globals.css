@@ -395,3 +395,43 @@ body {
     animation-delay: 0s !important;
   }
 }
+
+/* Die Spinne auf dem Trading-Desk: der Faden zur Quelle läuft, der Radar fegt bei jeder neuen Runde
+   einmal über das Netz, der Coin in Arbeit pulsiert. */
+@media (prefers-reduced-motion: no-preference) {
+  .spider-silk {
+    animation: spider-silk 0.7s linear infinite;
+  }
+  .spider-sweep {
+    animation: spider-sweep 1.6s cubic-bezier(0.45, 0, 0.25, 1) both;
+  }
+  .spider-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: spider-pulse 1.1s ease-in-out infinite;
+  }
+}
+
+@keyframes spider-silk {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+
+@keyframes spider-sweep {
+  from {
+    transform: rotate(0deg);
+    opacity: 0.9;
+  }
+  to {
+    transform: rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes spider-pulse {
+  50% {
+    transform: scale(1.9);
+    opacity: 0.35;
+  }
+}

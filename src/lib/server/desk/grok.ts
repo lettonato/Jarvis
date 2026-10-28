@@ -79,6 +79,8 @@ type GrokResponse = {
   status?: string;
   output?: { type: string; content?: { type: string; text?: string }[] }[];
   usage?: {
+    // Was xAI selbst abrechnet, in Zehnmilliardstel Dollar. Fehlt es, rechnet JARVIS selbst.
+    cost_in_usd_ticks?: number;
     input_tokens?: number;
     output_tokens?: number;
     input_tokens_details?: { cached_tokens?: number };
@@ -102,6 +104,7 @@ const count = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n 
 
 // Was ein Aufruf gekostet hat. Fehlen die Zähler, wird vorsichtig mit 40 Beiträgen gerechnet.
 export function grokCost(usage: GrokResponse["usage"]): number {
+  if (typeof usage?.cost_in_usd_ticks === "number" && usage.cost_in_usd_ticks >= 0) return usage.cost_in_usd_ticks / 1e10;
   const input = usage?.input_tokens ?? 0;
   const cached = usage?.input_tokens_details?.cached_tokens ?? 0;
   const tools = usage?.server_side_tool_usage_details;
@@ -133,34 +136,13 @@ export async function readX(apiKey: string, c: Candidate, now = new Date()): Pro
     webseite: c.websites[0] ?? "keine",
     andere_konten: c.socials.filter((s) => s.type !== "twitter" && s.type !== "x").map((s) => s.url),
   };
-  const res = await fetch(`${XAI}/v1/responses`, {
-    method: "POST",
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: GROK_MODEL,
-      store: false,
-      max_turns: 3,
-      input: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: `<coin>\n${JSON.stringify(coin, null, 1)}\n</coin>` },
-      ],
-      tools: [{ type: "x_search", from_date: isoDate(new Date(now.getTime() - 3 * 86_400_000)) }],
-      text: { format: { type: "json_schema", name: "x_bericht", strict: true, schema: SCHEMA } },
-    }),
-  }).catch((e) => {
-    throw new GrokError(e instanceof Error && e.name === "TimeoutError" ? "Grok antwortet nicht" : "xAI nicht erreichbar");
+  const { answer, costUsd } = await askGrok<GrokAnswer>(apiKey, {
+    system: SYSTEM,
+    user: `<coin>\n${JSON.stringify(coin, null, 1)}\n</coin>`,
+    tools: [{ type: "x_search", from_date: isoDate(new Date(now.getTime() - 3 * 86_400_000)) }],
+    schema: { name: "x_bericht", schema: SCHEMA },
+    maxTurns: 3,
   });
-  const body = (await res.json().catch(() => ({}))) as GrokResponse;
-  if (!res.ok) throw new GrokError(explainGrokStatus(res.status, body));
-  const costUsd = grokCost(body.usage);
-  const text = body.output?.flatMap((o) => (o.type === "message" ? (o.content ?? []) : [])).find((p) => p.type === "output_text")?.text;
-  let answer: GrokAnswer;
-  try {
-    answer = JSON.parse(text ?? "") as GrokAnswer;
-  } catch {
-    throw new GrokError(body.status === "incomplete" ? "Grok ist nicht fertig geworden" : "Grok hat keinen lesbaren Bericht geliefert", costUsd);
-  }
   const acc = answer.projekt_konto ?? ({} as GrokAnswer["projekt_konto"]);
   return {
     posts: count(answer.beitraege_gelesen),
@@ -179,6 +161,41 @@ export async function readX(apiKey: string, c: Candidate, now = new Date()): Pro
     summary: String(answer.zusammenfassung ?? "").replace(/\s+/g, " ").slice(0, 400),
     costUsd,
   };
+}
+
+// Eine Anfrage an Grok mit Werkzeugen (Suche auf X oder im Web) und fester JSON-Antwort.
+// Auch der Intel-Agent fragt so; die Kosten kommen immer mit, auch wenn die Antwort unbrauchbar ist.
+export async function askGrok<T>(
+  apiKey: string,
+  req: { system: string; user: string; tools: object[]; schema: { name: string; schema: object }; maxTurns: number; timeoutMs?: number },
+): Promise<{ answer: T; costUsd: number }> {
+  const res = await fetch(`${XAI}/v1/responses`, {
+    method: "POST",
+    signal: AbortSignal.timeout(req.timeoutMs ?? TIMEOUT_MS),
+    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: GROK_MODEL,
+      store: false,
+      max_turns: req.maxTurns,
+      input: [
+        { role: "system", content: req.system },
+        { role: "user", content: req.user },
+      ],
+      tools: req.tools,
+      text: { format: { type: "json_schema", name: req.schema.name, strict: true, schema: req.schema.schema } },
+    }),
+  }).catch((e) => {
+    throw new GrokError(e instanceof Error && e.name === "TimeoutError" ? "Grok antwortet nicht" : "xAI nicht erreichbar");
+  });
+  const body = (await res.json().catch(() => ({}))) as GrokResponse;
+  if (!res.ok) throw new GrokError(explainGrokStatus(res.status, body));
+  const costUsd = grokCost(body.usage);
+  const text = body.output?.flatMap((o) => (o.type === "message" ? (o.content ?? []) : [])).find((p) => p.type === "output_text")?.text;
+  try {
+    return { answer: JSON.parse(text ?? "") as T, costUsd };
+  } catch {
+    throw new GrokError(body.status === "incomplete" ? "Grok ist nicht fertig geworden" : "Grok hat keinen lesbaren Bericht geliefert", costUsd);
+  }
 }
 
 function explainGrokStatus(status: number, body: GrokResponse): string {

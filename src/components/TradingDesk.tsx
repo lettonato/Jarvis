@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { CrawlerWeb } from "./CrawlerWeb";
 import { Holo } from "./HoloView";
 import { useJarvis } from "./JarvisProvider";
 import { AGENTS, type Agent } from "@/lib/agents";
@@ -66,6 +67,7 @@ export function TradingDesk() {
     <main className="m-2 flex flex-1 flex-col gap-3 rounded-lg border-2 border-frame/80 bg-desk/60 p-3 sm:m-4 sm:p-4">
       <Header now={now} isDemo={isDemo} loading={!snap} desk={desk} />
       <AgentGrid snap={snap} desk={desk} />
+      <CrawlerWeb snap={snap} desk={desk} />
       <section className="grid gap-3 lg:grid-cols-3">
         <Account desk={desk} isDemo={isDemo} controls={controls} />
         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
@@ -272,6 +274,12 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
         </div>
       )}
       {desk?.statusReason && <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{desk.statusReason}</p>}
+      {desk?.intelWarning && (
+        <p className="rounded border border-down/50 bg-down/10 px-3 py-2 text-xs text-red-200">
+          Intel warnt: {desk.intelWarning.text} Bis {new Date(desk.intelWarning.until).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr kauft der Desk nichts Neues,
+          Stop-Loss bleibt aktiv.
+        </p>
+      )}
       {started && isDemo && (
         <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           Gerade keine Live-Daten von DexScreener. Mit Beispieldaten kauft der Desk nichts.
@@ -618,7 +626,7 @@ function Footer({ desk, controls }: { desk: DeskSnapshot | null; controls: Contr
   const armed = desk && desk.status !== "aus" && desk.status !== "notaus";
   return (
     <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-[11px] text-quiet">
-      <span>Daten: CoinGecko, DexScreener und RugCheck · der Desk arbeitet jede Minute, die Seite aktualisiert alle 15 Sekunden</span>
+      <span>Daten: CoinGecko, DexScreener, RugCheck und Grok · der Desk arbeitet jede Minute, die Spinne zeigt jeden Schritt sofort</span>
       <button
         type="button"
         disabled={!armed || controls.busy}

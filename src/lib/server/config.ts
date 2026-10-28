@@ -18,7 +18,10 @@ export type XaiConfig = { apiKey: string; dailyBudgetUsd?: number };
 // Kalender JARVIS neue Termine einträgt (leer: der Standardkalender des Macs).
 export type CalendarConfig = { target?: string };
 
-export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig; claude?: ClaudeConfig; xai?: XaiConfig; calendar?: CalendarConfig };
+// Intel liest mit demselben xAI-Schlüssel Nachrichten und X. Eigene Themen und ein eigenes Tagesbudget.
+export type IntelConfig = { topics?: string[]; budgetUsd?: number; auto?: boolean };
+
+export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig; claude?: ClaudeConfig; xai?: XaiConfig; calendar?: CalendarConfig; intel?: IntelConfig };
 
 export const DEFAULT_X_BUDGET_USD = 1;
 
