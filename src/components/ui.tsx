@@ -20,7 +20,7 @@ export function Panel({ children, className = "", glow = false, id }: { children
   return (
     <section
       id={id}
-      className={`relative scroll-mt-20 rounded-xl border bg-panel/70 p-4 backdrop-blur-sm ${
+      className={`relative scroll-mt-20 rounded-xl border bg-panel/85 p-4 ${
         glow ? "border-sky-300/70 shadow-[0_0_28px_rgba(56,189,248,0.28)]" : "border-sky-300/20"
       } ${className}`}
     >

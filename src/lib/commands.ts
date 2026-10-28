@@ -316,7 +316,8 @@ function newsAbout(ctx: CommandContext, topic: string, search: boolean): Decisio
 
 // ---------- Regeln ----------
 
-type Rule = { match: RegExp; run: (ctx: CommandContext, text: string, original: string) => Decision };
+// talk: Mit KI-Gehirn beantwortet Claude das besser, bei einer Frage („frage“) oder immer („immer“).
+type Rule = { match: RegExp; run: (ctx: CommandContext, text: string, original: string) => Decision; talk?: "frage" | "immer" };
 
 // Der Not-Aus gilt immer sofort, egal wie lang der Satz ist.
 const EMERGENCY: Rule = {
@@ -341,6 +342,8 @@ const RULES: Rule[] = [
   },
   {
     match: ADD_NOTE,
+    // Mit KI-Gehirn entscheidet Claude: Was dich betrifft, kommt ins Gedächtnis, Codes und Ideen in die Notizen.
+    talk: "immer",
     run: (ctx, _text, original) => {
       if (!ctx.tasks?.configured) return { reply: "Dafür brauche ich zuerst deinen Obsidian-Tresor. Ich öffne die Einstellungen.", navigate: "/einstellungen" };
       const note = original.replace(ADD_NOTE, "").trim();
@@ -502,10 +505,12 @@ const RULES: Rule[] = [
   {
     match: /trading|desk|handel/,
     run: () => ({ reply: "Ich öffne den Trading-Desk.", navigate: "/trading" }),
+    talk: "frage",
   },
   {
     match: /meme|scan|\bcoins?\b|krypto-?markt/,
     run: (ctx) => ({ reply: scanSentence(ctx.market) }),
+    talk: "frage",
   },
   {
     match: /bitcoin|btc|ethereum|eth\b|solana|sol\b|kurs|preis/,
@@ -513,10 +518,12 @@ const RULES: Rule[] = [
       const asked = COINS.filter((c) => c.words.test(text)).map((c) => c.symbol);
       return { reply: priceSentence(ctx.market, asked.length ? asked : ["BTC", "ETH", "SOL"]) };
     },
+    talk: "frage",
   },
   {
     match: /wetter|temperatur|regen|grad\b/,
     run: (ctx) => ({ reply: weatherSentence(ctx.weather) }),
+    talk: "frage",
   },
   {
     match: /\buhr\b|uhrzeit|wie spät/,
@@ -525,15 +532,23 @@ const RULES: Rule[] = [
   {
     match: /anruf|telefon|ruf .* an/,
     run: () => ({ reply: "Telefonieren lerne ich in einer späteren Phase. Dafür bekomme ich eine eigene Telefonnummer.", navigate: "/agenten#telefon" }),
+    talk: "frage",
   },
   {
     match: /such|recherch|finde/,
-    run: () => ({ reply: "Selbstständig im Web suchen kann ich, sobald der Browser-Agent fertig ist.", navigate: "/agenten#browser" }),
+    run: () => ({ reply: "Im Web suchen kann ich, sobald in den Einstellungen das KI-Gehirn eingerichtet ist." }),
+    talk: "immer",
   },
 ];
 
+// Eine Frage, kein Befehl: „Was ist Bitcoin?“, „Wie wird das Wetter am Wochenende?“. Gesprochenes hat oft kein Fragezeichen.
+const QUESTION = /\?|^(was|wie|warum|wieso|weshalb|wer|wem|wen|wessen|wo|woher|wohin|wann|welche\w*|kannst|könntest|würdest|erklär\w*|erzähl\w*|meinst|glaubst|findest|hast|bist|ist|sind|gibt|lohnt|soll|sollte)\b/;
+// Nur ein Gruß, ohne Briefing-Wunsch: Mit KI-Gehirn grüßt Claude zurück, statt gleich den Tag durchzugehen.
+const GREETING = /^(hallo|hey|hi|servus|moin|grüß dich|grüß gott|guten tag|guten abend|na)( jarvis)?( wie geht'?s( dir)?)?$/;
+
 // Mit KI-Gehirn (brain) greifen die Regeln nur bei kurzen Befehlen bis vier Wörter und bei den Antworten
-// in einer Besprechung; längere Sätze versteht Claude besser. null heißt: frag das KI-Gehirn.
+// in einer Besprechung; längere Sätze, Fragen zu allgemeinen Themen und Grüße beantwortet Claude.
+// null heißt: frag das KI-Gehirn.
 export function decide(input: string, ctx: CommandContext, brain = false): Decision | null {
   const original = input.trim().replace(/[.!?]+$/, "");
   const text = original.toLowerCase();
@@ -545,7 +560,9 @@ export function decide(input: string, ctx: CommandContext, brain = false): Decis
   }
   const short = original.split(/\s+/).length <= 4;
   const rule = RULES.find((r) => r.match.test(text));
-  if (rule && (!brain || short)) return rule.run(ctx, text, original);
+  const talk =
+    brain && (GREETING.test(text.replace(/[,.!?]/g, "").replace(/\s+/g, " ")) || rule?.talk === "immer" || (rule?.talk === "frage" && QUESTION.test(input.trim().toLowerCase())));
+  if (rule && !talk && (!brain || short)) return rule.run(ctx, text, original);
   if (brain) return null;
   if (ctx.session) {
     const hint = ctx.session.kind === "aufgaben" ? "Sag erledigt, verschieben auf einen Tag, weiter oder beenden." : "Sag vorlesen, Aufgabe, gelesen, weiter oder beenden.";

@@ -5,6 +5,7 @@ import { useJarvis } from "../JarvisProvider";
 import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
+import type { MemoryFact } from "@/lib/brain";
 import type { Settings } from "@/lib/settings";
 import { VOICE_KEY } from "@/lib/useVoice";
 
@@ -25,10 +26,19 @@ export function SettingsView() {
           <Section
             id="gehirn"
             title="KI-Gehirn (Claude)"
-            text="Mit dem KI-Gehirn versteht JARVIS freie Sätze: „Was muss ich bis Freitag noch erledigen?“, „Fass mir die Mail von Anna zusammen“ oder „Schieb den Zahnarzt auf nächsten Dienstag“. Kurze Befehle wie Briefing oder Weiter erledigt er weiter sofort selbst."
+            text="Mit dem KI-Gehirn redest du mit JARVIS wie mit Claude: Er beantwortet jede Frage, sieht bei Aktuellem im Web nach und versteht freie Sätze wie „Was muss ich bis Freitag noch erledigen?“, „Fass mir die Mail von Anna zusammen“ oder „Schieb den Zahnarzt auf nächsten Dienstag“. Kurze Befehle wie Briefing oder Weiter erledigt er weiter sofort selbst."
           >
             <BrainSetup />
           </Section>
+          {settings.brain.configured && (
+            <Section
+              id="gedaechtnis"
+              title="Was JARVIS über dich weiß"
+              text="Erzählst du JARVIS etwas, das länger gilt (Vorlieben, Namen, Umstände), merkt er es sich hier und weiß es im nächsten Gespräch noch. Du kannst auch sagen „Merk dir, dass …“ oder „Vergiss, dass …“. Das Gedächtnis liegt nur auf diesem Mac."
+            >
+              <MemorySetup />
+            </Section>
+          )}
           <Section
             id="crawler"
             title="Grok: Crawler auf X und Intel"
@@ -67,8 +77,9 @@ export function SettingsView() {
               </li>
               <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, und für Intel deine Themen. Sonst nichts von dir.</li>
               <li>
-                Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs und das, was Claude dafür nachliest (Aufgaben, Mails), verschlüsselt an Anthropic. Claude
-                kann keine Mails schreiben oder löschen und ändert Aufgaben nur, wenn du es sagst.
+                Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben,
+                Mails), verschlüsselt an Anthropic. Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche; Links aus deinen Mails ruft er nicht auf. Claude kann
+                keine Mails schreiben oder löschen und ändert Aufgaben nur, wenn du es sagst.
               </li>
               <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
               <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
@@ -180,8 +191,8 @@ function BrainSetup() {
         </Button>
       </div>
       <p className="text-xs text-quiet">
-        JARVIS nutzt Claude Opus 5.5. Eine Frage kostet meist ein bis drei Cent, je nachdem, wie viel er dafür nachlesen muss. Der Schlüssel bleibt in deiner
-        Einstellungsdatei auf diesem Mac.
+        JARVIS nutzt Claude Opus 5.5. Eine Frage kostet meist ein bis drei Cent, je nachdem, wie viel er dafür nachlesen muss; sucht er im Web, kommt etwa ein Cent
+        pro Suche dazu. Der Schlüssel bleibt in deiner Einstellungsdatei auf diesem Mac.
       </p>
       {brain?.hint && (
         <Button tone="danger" disabled={busy} onClick={() => send({ action: "removeClaude" })}>
@@ -190,6 +201,79 @@ function BrainSetup() {
       )}
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
     </form>
+  );
+}
+
+const SINCE = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" });
+
+function MemorySetup() {
+  const { memory, setMemory } = useJarvis();
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sure, setSure] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send(body: object) {
+    setBusy(true);
+    setError(null);
+    try {
+      setMemory((await postJson<{ facts: MemoryFact[] }>("/api/gedaechtnis", body)).facts);
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    if (await send({ action: "merken", text })) setText("");
+  };
+
+  if (!memory) return <p className="text-sm text-quiet">Lade …</p>;
+  return (
+    <div className="space-y-3 text-sm">
+      {memory.length === 0 ? (
+        <p className="text-quiet">Noch nichts. Erzähl ihm einfach von dir, zum Beispiel: „Ich trinke meinen Kaffee schwarz.“</p>
+      ) : (
+        <ul className="divide-y divide-line rounded-lg border border-line">
+          {[...memory].reverse().map((f) => (
+            <li key={f.id} className="flex items-start gap-3 px-3 py-2">
+              <span className="min-w-0 flex-1 text-sky-50/90">
+                {f.text}
+                <span className="ml-2 text-[11px] text-quiet">seit {SINCE.format(new Date(f.at))}</span>
+              </span>
+              <Button small tone="ghost" disabled={busy} onClick={() => send({ action: "vergessen", id: f.id })} title="Diesen Eintrag vergessen">
+                Vergessen
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={add} className="flex flex-col gap-2 sm:flex-row">
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Selbst etwas eintragen, zum Beispiel: Meine Frau heißt Anna." aria-label="Neuer Eintrag" className={inputClass} />
+        <Button type="submit" tone="primary" disabled={busy || !text.trim()}>
+          Merken
+        </Button>
+      </form>
+      {memory.length > 0 &&
+        (sure ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-red-200">Wirklich alles vergessen?</span>
+            <Button tone="danger" disabled={busy} onClick={() => send({ action: "alles" }).then(() => setSure(false))}>
+              Ja, alles vergessen
+            </Button>
+            <Button onClick={() => setSure(false)}>Abbrechen</Button>
+          </div>
+        ) : (
+          <Button tone="danger" onClick={() => setSure(true)}>
+            Alles vergessen
+          </Button>
+        ))}
+      {error && <Notice tone="error">{error}</Notice>}
+    </div>
   );
 }
 
