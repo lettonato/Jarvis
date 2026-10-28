@@ -68,13 +68,13 @@ function NavBar() {
                 key={t.href}
                 href={t.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-widest transition ${
+                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest transition ${
                   active ? "border-transparent text-sky-50" : "border-transparent text-sky-200/70 hover:border-sky-300/30 hover:text-sky-100"
                 }`}
               >
                 {active && <ActiveGlow />}
                 <Icon name={t.icon} className="relative h-4 w-4" />
-                <span className={`relative ${active ? "" : "sr-only sm:not-sr-only"}`}>{t.label}</span>
+                <span className={`relative ${active ? "" : "sr-only xl:not-sr-only"}`}>{t.label}</span>
                 {t.badge && (
                   <span className={`relative grid min-w-5 place-items-center rounded-full px-1.5 text-[10px] leading-5 ${t.badge.alert ? "bg-frame text-white" : "bg-sky-400/30 text-sky-50"}`}>
                     {t.badge.value}
