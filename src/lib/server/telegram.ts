@@ -148,7 +148,7 @@ async function call<T>(token: string, method: string, body: object = {}, signal?
 
 export function explainTelegramError(e: unknown): string {
   if (e instanceof TelegramError) {
-    if (e.code === 401 || e.code === 404) return "Telegram kennt diesen Schlüssel nicht. Kopier ihn bitte noch einmal ganz aus dem Chat mit dem BotFather.";
+    if (e.code === 401 || e.code === 404) return "Telegram kennt diesen Schlüssel nicht. Beim Abtippen verrutscht leicht ein Zeichen (O und 0, l und 1). Am besten am iPhone im Chat mit dem BotFather einmal kurz auf den Schlüssel tippen und ihn hier einfügen.";
     if (e.code === 409) return "Ein anderes Programm liest diesen Bot schon mit, vielleicht ein zweites JARVIS. Schließ es, dann geht es hier weiter.";
     if (e.code === 403) return "Du hast den Bot in Telegram blockiert. Öffne den Chat mit ihm und tippe auf „Neu starten“.";
     if (e.code === 429) return "Telegram bremst gerade. Gleich geht es weiter.";

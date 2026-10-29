@@ -9,7 +9,7 @@ import { testMail } from "@/lib/server/mail";
 import { explainTelegramError, prefsOf, renewCode, resetTelegram, sendTest, telegramStatus, testTelegramToken, unpairTelegram, wakeTelegram } from "@/lib/server/telegram";
 import { createVault, detectVaults, vaultProblem } from "@/lib/server/obsidian";
 import { providerById } from "@/lib/mailProviders";
-import { isClock, TOKEN_PATTERN } from "@/lib/telegram";
+import { findToken, isClock } from "@/lib/telegram";
 import type { Settings } from "@/lib/settings";
 
 // Das Passwort verlässt den Server nie: die Seite erfährt nur, ob eines gespeichert ist.
@@ -143,8 +143,14 @@ export async function POST(request: Request) {
   } else if (body.action === "removeXai") {
     delete config.xai;
   } else if (body.action === "telegram") {
-    const token = body.token?.trim() ?? "";
-    if (!TOKEN_PATTERN.test(token)) return Response.json({ error: "Ein Bot-Schlüssel sieht so aus: 123456789:AAH… Bitte den ganzen Schlüssel aus dem Chat mit dem BotFather einfügen." }, { status: 400 });
+    const pasted = body.token?.trim() ?? "";
+    const token = findToken(pasted);
+    // Die Zeichenzahl hilft beim Suchen, ohne etwas vom Eingefügten zu zeigen. Ein Schlüssel hat rund 46 Zeichen.
+    if (!token)
+      return Response.json(
+        { error: `Darin finde ich keinen Bot-Schlüssel (eingefügt: ${pasted.length} Zeichen, ein Schlüssel hat etwa 46). Er sieht so aus: 123456789:AAH… Am iPhone im Chat mit dem BotFather einmal kurz auf den Schlüssel tippen, dann ist er kopiert.` },
+        { status: 400 },
+      );
     const result = await testTelegramToken(token);
     if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
     // Derselbe Schlüssel noch einmal: Kopplung und Einstellungen bleiben. Ein neuer Bot braucht eine neue Kopplung.

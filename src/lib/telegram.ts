@@ -35,6 +35,16 @@ export const REMINDER_MINUTES = 15;
 // Ein Bot-Schlüssel vom BotFather sieht so aus: 123456789:AAH-Buchstaben.
 export const TOKEN_PATTERN = /^\d{5,12}:[A-Za-z0-9_-]{30,60}$/;
 
+// Fischt den Schlüssel aus dem, was eingefügt wurde: auch aus der ganzen Nachricht des BotFathers, mit
+// unsichtbaren Zeichen vom Kopieren oder mit Leerzeichen mittendrin, wenn er abgetippt wurde.
+export function findToken(text: string): string | null {
+  const clean = text.normalize("NFKC").replace(/[\u200B-\u200D\u2060\uFEFF]/g, "");
+  const found = clean.match(/(?<!\d)\d{5,12}:[A-Za-z0-9_-]{30,60}(?![A-Za-z0-9_-])/);
+  if (found) return found[0];
+  const squeezed = clean.replace(/\s+/g, "");
+  return TOKEN_PATTERN.test(squeezed) ? squeezed : null;
+}
+
 export const isClock = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
 // Der Link, der den Bot auf dem Handy öffnet und den Code gleich mitschickt.

@@ -6,7 +6,7 @@ import { useJarvis } from "./JarvisProvider";
 import { Button, inputClass, Notice } from "./ui";
 import { getJson, postJson } from "@/lib/api";
 import type { Settings } from "@/lib/settings";
-import { pairLink, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
+import { findToken, pairLink, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
 
 // Einstellungen → Handy: Bot-Schlüssel eintragen, Handy koppeln, festlegen, was aufs Handy kommt.
 
@@ -109,25 +109,47 @@ function TokenForm({ busy, onSave }: { busy: boolean; onSave: (token: string) =>
         <li>Einen Namen wählen, zum Beispiel „Jarvis“, und einen Benutzernamen, der auf „bot“ endet, zum Beispiel „benedikt_jarvis_bot“.</li>
         <li>Der BotFather schickt dir einen Schlüssel wie 123456789:AAH… Den hier einfügen.</li>
       </ol>
+      {/* Sichtbar statt Punkte, damit du beim Abtippen siehst, was im Feld steht. Gespeichert wird er nur am Mac,
+          danach zeigt die Seite nur noch die letzten Zeichen. Als Textfeld füllt auch kein Passwort-Speicher etwas hinein. */}
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
-          type="password"
+          type="text"
+          name="telegram-bot-schluessel"
           autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          data-1p-ignore
+          data-lpignore="true"
           value={token}
           onChange={(e) => setToken(e.target.value)}
           placeholder="123456789:AAH…"
           aria-label="Bot-Schlüssel von Telegram"
-          className={inputClass}
+          className={`${inputClass} font-mono`}
         />
         <Button type="submit" tone="primary" disabled={busy || !token.trim()}>
           {busy ? "Prüfe …" : "Prüfen und speichern"}
         </Button>
       </div>
+      {token.trim() && <TokenCheck text={token} />}
       <p className="text-xs text-quiet">
         Am einfachsten geht das mit Telegram am Mac (App oder web.telegram.org). Kopierst du den Schlüssel auf dem iPhone, kannst du ihn dank Handoff direkt hier
         einfügen. Telegram kostet nichts.
       </p>
     </form>
+  );
+}
+
+// Schon beim Tippen sagen, ob das wie ein ganzer Schlüssel aussieht. Er hat rund 46 Zeichen.
+function TokenCheck({ text }: { text: string }) {
+  const found = findToken(text);
+  if (found) return <p className="text-xs text-emerald-300">Sieht aus wie ein Bot-Schlüssel ({found.length} Zeichen).</p>;
+  const n = text.trim().length;
+  return (
+    <p className="text-xs text-amber-200">
+      Noch kein ganzer Schlüssel: {n} Zeichen, ein Schlüssel hat etwa 46. Er beginnt mit Ziffern, dann ein Doppelpunkt, dann Buchstaben und Ziffern ohne
+      Leerzeichen.
+    </p>
   );
 }
 
