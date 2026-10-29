@@ -7,10 +7,12 @@ import { useTelemetry } from "../useTelemetry";
 import { setFocusHandler, setWorldStatus } from "./anchor";
 import type { World as WorldApi } from "./scene";
 import { holoTypes } from "@/lib/holo";
+import { readWorldStyle, STYLE_EVENT, STYLE_KEY } from "@/lib/photos";
 import { biomeOf } from "@/lib/world";
 
 // Die 3D-Welt als Hintergrund hinter allen Ansichten. Sie bleibt beim Wechsel der Ansicht stehen und
-// fliegt nur in die neue Landschaft; three.js wird erst im Browser geladen.
+// fliegt nur in die neue Landschaft; three.js wird erst im Browser geladen. In den Einstellungen lässt sich
+// statt des gerechneten Gebirges die Fotowelt wählen (echte Landschaftsfotos).
 export function World() {
   const mountRef = useRef<HTMLDivElement>(null);
   const world = useRef<WorldApi | null>(null);
@@ -36,6 +38,7 @@ export function World() {
         if (gone) return;
         api = createWorld(mount, {
           initial: biomeOf(place.current),
+          photos: readWorldStyle() === "fotos",
           onOpen: (href) => router.push(href, { transitionTypes: holoTypes(place.current, href) }),
           onLost: (lost) => setWorldStatus(lost ? "aus" : "laeuft"),
         });
@@ -48,8 +51,16 @@ export function World() {
         setWorldStatus("laeuft");
       })
       .catch(() => setWorldStatus("aus"));
+    const restyle = () => api?.setPhotos(readWorldStyle() === "fotos");
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STYLE_KEY) restyle();
+    };
+    window.addEventListener(STYLE_EVENT, restyle);
+    window.addEventListener("storage", onStorage);
     return () => {
       gone = true;
+      window.removeEventListener(STYLE_EVENT, restyle);
+      window.removeEventListener("storage", onStorage);
       api?.dispose();
       world.current = null;
       setFocusHandler(null);

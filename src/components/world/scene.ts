@@ -6,6 +6,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { anchorRect } from "./anchor";
 import { bust } from "./bust";
 import { createFeatures } from "./features";
+import { createPhotos } from "./photos";
 import type { PanelData } from "./panel";
 import { beam, CAROUSEL_STEP, createRock, HEAD_STAGE, layoutRocks, rockGeometry, stagePoints, type Rock } from "./rocks";
 import { createSky } from "./sky";
@@ -23,11 +24,13 @@ export type World = {
   setPanels: (data: Partial<Record<ModuleId, PanelData>>, brain: boolean) => void;
   setAvatar: (state: AvatarState) => void;
   setInteractive: (on: boolean) => void;
+  // Echte Landschaftsfotos statt des gerechneten Gebirges.
+  setPhotos: (on: boolean) => void;
   focus: (id: string | null) => void;
   dispose: () => void;
 };
 
-type Options = { initial: BiomeId; onOpen: (href: string) => void; onLost: (lost: boolean) => void };
+type Options = { initial: BiomeId; photos: boolean; onOpen: (href: string) => void; onLost: (lost: boolean) => void };
 
 // Die Werte einer Landschaft, die beim Flug ineinander übergehen.
 type Look = {
@@ -124,7 +127,7 @@ void main() {
 }
 `;
 
-export function createWorld(container: HTMLElement, { initial, onOpen, onLost }: Options): World {
+export function createWorld(container: HTMLElement, { initial, photos: photosOn, onOpen, onLost }: Options): World {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const small = Math.min(window.innerWidth, window.innerHeight) < 600;
   const quality = readQuality();
@@ -161,6 +164,15 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
   );
   dust.frustumCulled = false;
   scene.add(dust);
+
+  // Die Fotowelt: ein Foto hinter allem, Gebirge, Himmel und Besonderheiten der Landschaft sind dann aus.
+  const photos = createPhotos(initial, reduced);
+  let usePhotos = photosOn;
+  const showLandscape = () => {
+    terrain.mesh.visible = !usePhotos;
+    sky.group.visible = !usePhotos;
+  };
+  showLandscape();
 
   const features = createFeatures();
   const strength = Object.fromEntries(Object.keys(features).map((k) => [k, 0])) as Record<Feature, number>;
@@ -241,7 +253,15 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
   // Kantenglättung nur, wo die Pixel grob sind; auf scharfen Bildschirmen kostet sie viel und bringt wenig.
   const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: quality.level === 2 && window.devicePixelRatio < 1.5 ? 4 : 0 });
   const composer = new EffectComposer(renderer, target);
-  composer.addPass(new RenderPass(scene, camera));
+  const photoPass = new RenderPass(photos.scene, photos.camera);
+  const mainPass = new RenderPass(scene, camera);
+  composer.addPass(photoPass);
+  composer.addPass(mainPass);
+  const passesFor = () => {
+    photoPass.enabled = usePhotos;
+    mainPass.clear = !usePhotos;
+  };
+  passesFor();
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.5, 0.7);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -262,6 +282,7 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
     composer.setPixelRatio(dpr);
     composer.setSize(W, H);
     camera.aspect = W / H;
+    photos.resize(W, H);
     sky.starUniforms.uPixel.value = dpr;
     dustUniforms.uPixel.value = dpr;
     const nextPortrait = W / H < 0.85;
@@ -395,6 +416,7 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
     const near = prev.frame !== "frei" && biome.frame !== "frei";
     offsetTo.set(t.x + side * 26, t.y - (near ? 18 : 84));
     duration = reduced ? 0 : near ? 1.4 : 2.1;
+    photos.set(id, side, duration);
     progress = reduced ? 1 : 0;
     if (reduced) {
       mixLook(look, from, to, 1);
@@ -565,10 +587,11 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
     headVis += (headGoal - headVis) * damp(headGoal < headVis ? 6 : 3, dt);
     rocksVis += (rocksGoal - rocksVis) * damp(rocksGoal < rocksVis ? 7 : 3, dt);
 
-    // Hinter Text bleibt das Besondere der Landschaft gedämpft, damit es nicht ablenkt.
+    // Hinter Text bleibt das Besondere der Landschaft gedämpft, damit es nicht ablenkt. Vor Fotos fehlt es,
+    // denn Säulen, Radar und Leuchtfeuer stehen auf dem gerechneten Gebirge; nur die Kreiselringe um den Kopf bleiben.
     const featureGoal = biome.frame === "frei" ? 0.5 : 1;
     for (const [name, f] of Object.entries(features) as [Feature, (typeof features)[Feature]][]) {
-      const goal = biome.feature === name && progress > 0.35 ? featureGoal : 0;
+      const goal = biome.feature === name && progress > 0.35 && (!usePhotos || name === "aura") ? featureGoal : 0;
       strength[name] += (goal - strength[name]) * damp(goal ? 1.6 : 4, dt);
       if (strength[name] < 0.002 && goal === 0) strength[name] = 0;
       f.update(time, strength[name]);
@@ -670,9 +693,15 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
     camera.rotateZ(roll.value);
     camera.setViewOffset(W, H, viewOffset.x, viewOffset.y, W, H);
     sky.group.position.copy(camera.position);
+    if (usePhotos) photos.update(dt, time, parallax, look.accent, look.light);
 
     if (level > 0) composer.render(dt);
-    else renderer.render(scene, camera);
+    else if (usePhotos) {
+      renderer.render(photos.scene, photos.camera);
+      renderer.autoClear = false;
+      renderer.render(scene, camera);
+      renderer.autoClear = true;
+    } else renderer.render(scene, camera);
   };
 
   applySize();
@@ -713,11 +742,17 @@ export function createWorld(container: HTMLElement, { initial, onOpen, onLost }:
         canvas.style.cursor = "";
       }
     },
+    setPhotos(on) {
+      usePhotos = on;
+      showLandscape();
+      passesFor();
+    },
     focus(id) {
       focusId = id;
     },
     dispose() {
       cancelAnimationFrame(frame);
+      photos.dispose();
       window.removeEventListener("resize", onResize);
       scene.traverse((o) => {
         const mesh = o as THREE.Mesh;
