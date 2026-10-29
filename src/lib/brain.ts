@@ -57,6 +57,8 @@ export type BrainEvent =
   | { type: "status"; text: string }
   // Das nächste Stück der Antwort.
   | { type: "text"; text: string }
+  // JARVIS führt dich schon während der Antwort in eine Ansicht, etwa in den Browser, wenn er dort loslegt.
+  | { type: "navigate"; href: string }
   | { type: "done"; reply: BrainReply }
   | { type: "error"; error: string };
 
@@ -68,6 +70,7 @@ export const VIEWS = {
   post: "/post",
   trading: "/trading",
   intel: "/intel",
+  browser: "/browser",
   agenten: "/agenten",
   einstellungen: "/einstellungen",
 } as const;

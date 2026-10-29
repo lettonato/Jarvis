@@ -34,6 +34,7 @@ function useTabs(): Tab[] {
     { href: "/aufgaben", label: "Aufgaben", icon: "aufgaben", badge: soon.length ? { value: soon.length, alert: overdue > 0 } : undefined },
     { href: "/kalender", label: "Kalender", icon: "kalender", badge: events ? { value: events, alert: false } : undefined },
     { href: "/post", label: "Post", icon: "post", badge: important ? { value: important, alert: true } : undefined },
+    { href: "/browser", label: "Browser", icon: "browser" },
     { href: "/trading", label: "Trading", icon: "trading" },
     { href: "/intel", label: "Intel", icon: "intel", badge: intel?.warning ? { value: 1, alert: true } : undefined },
     { href: "/agenten", label: "Agenten", icon: "agenten" },
@@ -64,7 +65,7 @@ function NavBar() {
             <span className="block text-[9px] uppercase tracking-[0.3em] text-quiet">{label}</span>
           </span>
         </HoloLink>
-        <nav className="-mx-1 flex min-w-0 flex-1 gap-1 overflow-x-auto px-1 [scrollbar-width:none] sm:justify-center" aria-label="Ansichten">
+        <nav className="-mx-1 flex min-w-0 flex-1 gap-1 overflow-x-auto xl:gap-0.5 px-1 [scrollbar-width:none] sm:justify-center" aria-label="Ansichten">
           {tabs.map((t) => {
             const active = pathname === t.href;
             return (
@@ -72,7 +73,7 @@ function NavBar() {
                 key={t.href}
                 href={t.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest transition ${
+                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest transition xl:px-1.5 xl:tracking-wider 2xl:tracking-widest ${
                   active ? "border-transparent text-sky-50" : "border-transparent text-sky-200/70 hover:border-sky-300/30 hover:text-sky-100"
                 }`}
               >

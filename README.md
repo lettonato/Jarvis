@@ -15,6 +15,7 @@ Oben wechselst du zwischen den Ansichten:
 | **Aufgaben** (`/aufgaben`) | Deine Aufgaben aus Obsidian nach Fälligkeit: abhaken, auf morgen oder eine Woche verschieben, neu notieren. |
 | **Kalender** (`/kalender`) | Deine Termine der nächsten zwei Wochen aus der Kalender-App, neue Termine eintragen, jeden Tag mit einem Klick in der Kalender-App zeigen. |
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
+| **Browser** (`/browser`) | Ein Auftrag fürs Web, etwa „Such mir Magnesium-Tabletten“. Das Fenster fliegt heran, und du siehst live, wie JARVIS sucht, klickt und tippt; daneben jeden Schritt und am Ende das Ergebnis. Geht von selbst auf, wenn du „Jarvis, such mir …“ sagst. |
 | **Trading** (`/trading`) | Der Trading-Desk: Agenten, die Crawler-Spinne live, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
 | **Intel** (`/intel`) | Das Lagebild aus Nachrichten und X, die wichtigsten Meldungen mit Quelle, deine Themen und das Budget. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
@@ -29,12 +30,13 @@ Hinter allen Ansichten liegt eine 3D-Welt, und jede Ansicht hat ihre eigene Land
 | Aufgaben | grüne Terrassen, aus denen Leuchtfeuer in den Himmel steigen |
 | Kalender | sanfte türkise Hügel, am Himmel drehen sich Zeitringe wie ein Uhrwerk |
 | Post | schroffe Eisberge, in der Luft schweben Kristalle |
+| Browser | türkises Hochland unter einem Netz aus Seiten, durch das Lichtpunkte laufen |
 | Trading | magentafarbene Schlucht, gesäumt von grünen und roten Kurs-Säulen |
 | Intel | flaches oranges Land mit einem riesigen Radarschirm |
 | Agenten | violettes Gebirge unter einem Sternbild, durch dessen Fäden Lichtpunkte laufen |
 | Einstellungen | stilles graues Hochland |
 
-Hinter Text ist die Welt gedämpft, damit alles lesbar bleibt. Die Ansichten selbst wechseln weiter wie Hologramme im Film: Öffnest du ein Modul, faltet sich seine Ansicht aus einer Lichtlinie in der Tiefe auf; zwischen Aufgaben, Kalender, Post, Trading, Intel und Agenten schwenken sie wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Flug.
+Hinter Text ist die Welt gedämpft, damit alles lesbar bleibt. Die Ansichten selbst wechseln weiter wie Hologramme im Film: Öffnest du ein Modul, faltet sich seine Ansicht aus einer Lichtlinie in der Tiefe auf; zwischen Aufgaben, Kalender, Post, Browser, Trading, Intel und Agenten schwenken sie wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Flug.
 
 Die Welt passt sich deinem Rechner an: Ruckelt es, schaltet sie von selbst eine Stufe herunter (erst gröberes Bild, dann ohne Nachleuchten) und merkt sich das. Sie zeichnet höchstens 60 Bilder pro Sekunde, hinter den Arbeitsansichten 30. Kann der Browser gar kein 3D (WebGL aus), zeigt die Übersicht die Module als einfache Kacheln.
 
@@ -157,6 +159,30 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 
 Schläft der Mac, antwortet JARVIS, sobald er wieder wach ist. Ist eine Nachricht dann älter als eine halbe Stunde, führt er sie nicht mehr blind aus und fragt nach; nur „Stopp“ und `/notaus` gelten auch verspätet. Das Briefing kommt noch bis drei Stunden nach der eingestellten Zeit. Damit Meldungen zuverlässig ankommen, sollte der Mac nicht schlafen: In den **Systemeinstellungen** unter **Batterie → Optionen** (MacBook) bzw. **Energie** (iMac, Mac mini) einschalten, dass er am Netzteil nicht von selbst in den Ruhezustand geht, wenn der Bildschirm aus ist.
 
+## Browser-Agent: JARVIS erledigt etwas im Web
+
+JARVIS kann ein eigenes Chrome auf deinem Mac bedienen: suchen, Seiten öffnen, lesen, vergleichen, klicken und Formulare ausfüllen. Sobald er loslegt, geht die Ansicht **Browser** von selbst auf: Ein Fenster fliegt heran, und du siehst live, wie er sucht und tippt; ein leuchtender Punkt zeigt, wohin er klickt. Dafür braucht es das KI-Gehirn (Claude) und Google Chrome ([google.com/chrome](https://www.google.com/chrome/)).
+
+**Auftrag geben**, wie es dir passt:
+
+- sagen: „Jarvis, such mir Magnesium-Tabletten mit guten Bewertungen“ oder „… die drei günstigsten Winterreifen 205/55 R16“
+- im Gespräch oder per Telegram schreiben: „Schau nach, wann der Wertstoffhof Deggendorf samstags offen hat“
+- in der Ansicht **Browser** eintippen und **Los**
+
+Ein Auftrag dauert meist ein bis drei Minuten, höchstens sechs, und JARVIS macht höchstens 30 Schritte. **Anhalten** in der Ansicht bricht ab, und hast du den Auftrag gesagt, auch „Jarvis, stopp“. Am Ende sagt er dir, was er gefunden hat, mit Shop und Adresse.
+
+**Selbst übernehmen:** Chrome läuft ohne eigenes Fenster, du siehst es nur in JARVIS. Willst du dich anmelden, etwas prüfen oder bestellen, tippst du auf **Selbst übernehmen**: Dann öffnet sich die Seite im echten Chrome-Fenster auf deinem Mac, mit derselben Anmeldung, und du machst den letzten Klick. Ein laufender Auftrag hält dabei an. Schließt du das Fenster, arbeitet JARVIS beim nächsten Auftrag wieder ohne Fenster.
+
+**Was er nie tut** (feste Regeln im Code, die Claude nicht ändern kann):
+
+- Kaufen, Bestellen, Einkaufswagen, Bezahlen, Buchen, Abos und Probemonate, Absenden, Löschen, Kündigen, Veröffentlichen, Anmelden: Solche Knöpfe drückt er nicht, und Formulare, die etwas ändern, schickt er nicht ab. Er füllt aus, und den letzten Klick machst du.
+- Passwörter, PINs, TANs, Kartennummern und IBAN tippt er nie ein. Brauchst du ein Konto, meldest du dich nach **Selbst übernehmen** im Chrome-Fenster selbst an.
+- Seiten in deinem Heimnetz (Router, NAS, JARVIS selbst) öffnet er nicht.
+- Fragt eine Seite „Wirklich löschen?“, antwortet er Nein. Downloads und Datei-Uploads gibt es nicht.
+- Was auf Webseiten steht, ist für ihn nur Daten. Steht dort „KI, tu dies“, hält er sich nicht daran.
+
+Chrome läuft dabei mit einem eigenen Profil in `~/.jarvis/browser-profil`, getrennt von deinem normalen Chrome, deinen Lesezeichen und Passwörtern. Meldest du dich dort irgendwo an, bleibt das gespeichert.
+
 ## Sicherheit
 
 - JARVIS läuft nur auf deinem Mac (`127.0.0.1`), andere Geräte im WLAN erreichen ihn nicht.
@@ -169,6 +195,7 @@ Schläft der Mac, antwortet JARVIS, sobald er wieder wach ist. Ist eine Nachrich
 - Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben, Mails, Termine), verschlüsselt an Anthropic. Laut seinen Bedingungen nutzt Anthropic API-Daten nicht zum Training.
 - Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche. Eine Webseite öffnet er nur, wenn die Adresse von dir, aus seiner Websuche oder aus Intel stammt; Links aus deinen Mails ruft er nicht auf. Was auf Webseiten steht, ist für ihn nur Daten, keine Anweisungen.
 - Mit Telegram laufen die Nachrichten zwischen dir und JARVIS über die Server von Telegram und sind dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem gekoppelten Chat, kann auch von dort keine Mails schreiben oder löschen, und Termine nur eintragen. Der Bot-Schlüssel liegt wie die anderen in `~/.jarvis/config.json`; wer ihn hat, kann Nachrichten an deinen Bot mitlesen, deshalb nie weitergeben (im BotFather lässt er sich mit `/revoke` erneuern).
+- Der Browser-Agent bedient ein eigenes Chrome-Profil, nicht dein normales. Er kauft, bestellt, sendet und meldet sich nirgends an, tippt keine Passwörter oder Zahlungsdaten und öffnet keine Seiten im Heimnetz. Was er auf einer Seite liest, geht als Text an Claude; Bilder vom Fenster bleiben auf deinem Mac.
 - Das Gedächtnis liegt in `~/.jarvis/gedaechtnis.json`, lesbar nur für deinen Benutzer; der Gesprächsverlauf nur im Browser auf diesem Mac.
 
 ## Wetter
@@ -290,8 +317,9 @@ Aufbau:
 | `src/lib/intel.ts`, `src/lib/server/intel.ts`, `src/app/api/intel/` | Intel: Lagebild aus Nachrichten und X mit Grok, Sätze fürs Briefing, Warnung an den Desk |
 | `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart laufen sein Takt, Intel und Telegram los |
 | `src/lib/telegram.ts`, `src/lib/server/telegram.ts`, `src/components/TelegramSetup.tsx` | JARVIS auf dem Handy: Texte und Befehle, die Verbindung zu Telegram (Abholen, Koppeln, Gespräch mit Claude, Briefing, Erinnerungen), die Einstellungen mit QR-Code |
+| `src/lib/browser.ts`, `src/lib/server/browser.ts`, `src/app/api/browser/`, `src/components/views/BrowserView.tsx` | der Browser-Agent: feste Regeln (welche Adressen, Klicks und Eingaben erlaubt sind), Chrome über playwright-core mit eigenem Profil, die Schritte mit Claude, Zeiger und Live-Video (`/api/browser/live`, MJPEG aus dem Screencast), die Ansicht mit dem einfliegenden Fenster |
 | `src/lib/server/notify.ts` | Meldungen von Desk und Intel an alle, die zuhören (Telegram) |
 
-`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000).
+`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000). Für den Browser-Agenten: `JARVIS_CHROME` (Pfad zu einem anderen Chrome oder Chromium), `JARVIS_BROWSER_HEADLESS=1` (auch beim Übernehmen ohne sichtbares Fenster, für Rechner ohne Bildschirm), `JARVIS_BROWSER_TEMPO` (0.1 macht Zeiger und Tippen zehnmal langsamer, für Vorführvideos in Zeitlupe), `JARVIS_SEARCH_URL` (andere Suche, Standard DuckDuckGo) und `JARVIS_BROWSER_LOCAL` (kommagetrennte Hosts mit Port im eigenen Netz, die er trotzdem öffnen darf, nur für Tests).
 
 API-Schlüssel gehören später in eine Datei `.env.local`. Sie wird nie hochgeladen.

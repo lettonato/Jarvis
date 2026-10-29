@@ -94,6 +94,10 @@ export function SettingsView() {
                 Server von Telegram und ist dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem einen gekoppelten Chat und kann auch von dort keine Mails
                 schreiben oder löschen.
               </li>
+              <li>
+                Der Browser-Agent bedient ein eigenes Chrome-Profil, getrennt von deinem normalen Chrome. Er kauft, bestellt, sendet und meldet sich nirgends an, tippt keine
+                Passwörter oder Zahlungsdaten und öffnet keine Seiten in deinem Heimnetz. Den letzten Klick machst immer du.
+              </li>
               <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
               <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
               <li>
