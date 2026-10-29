@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { Pass } from "three/addons/postprocessing/Pass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { anchorRect } from "./anchor";
@@ -8,7 +9,7 @@ import { bust } from "./bust";
 import { createFeatures } from "./features";
 import { createPhotos } from "./photos";
 import type { PanelData } from "./panel";
-import { beam, CAROUSEL_STEP, createRock, HEAD_STAGE, layoutRocks, rockGeometry, stagePoints, type Rock } from "./rocks";
+import { beam, CAROUSEL_STEP, createIsland, createRock, HEAD_STAGE, layoutRocks, PANEL_LAYER, stagePoints, type Rock } from "./rocks";
 import { createSky } from "./sky";
 import { createTerrain } from "./terrain";
 import type { AvatarState } from "@/lib/avatar";
@@ -127,6 +128,35 @@ void main() {
 }
 `;
 
+// Zeichnet nur eine Ebene der Szene in das fertige Bild, ohne es zu löschen. So kommen die Glas-Tafeln
+// nach dem Nachleuchten dazu; die Tiefe aus dem ersten Durchgang gilt weiter, Felsen davor verdecken sie.
+class LayerPass extends Pass {
+  scene: THREE.Scene;
+  camera: THREE.Camera;
+  layer: number;
+  constructor(scene: THREE.Scene, camera: THREE.Camera, layer: number) {
+    super();
+    this.scene = scene;
+    this.camera = camera;
+    this.layer = layer;
+    this.needsSwap = false;
+  }
+  render(renderer: THREE.WebGLRenderer, _writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
+    renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+    renderLayer(renderer, this.scene, this.camera, this.layer);
+  }
+}
+
+function renderLayer(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, layer: number) {
+  const mask = camera.layers.mask;
+  const clear = renderer.autoClear;
+  camera.layers.set(layer);
+  renderer.autoClear = false;
+  renderer.render(scene, camera);
+  renderer.autoClear = clear;
+  camera.layers.mask = mask;
+}
+
 export function createWorld(container: HTMLElement, { initial, photos: photosOn, onOpen, onLost }: Options): World {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const small = Math.min(window.innerWidth, window.innerHeight) < 600;
@@ -203,10 +233,9 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   // Er schwebt über einer Felsinsel, aus der ihn ein Lichtkegel projiziert.
   const island = new THREE.Group();
   island.position.y = -0.62;
-  const islandGeometry = rockGeometry(4711, 1.45);
-  island.add(new THREE.Mesh(islandGeometry, new THREE.MeshStandardMaterial({ color: "#111936", emissive: "#050a1d", roughness: 0.8, metalness: 0.2, flatShading: true })));
-  const islandEdges = new THREE.LineBasicMaterial({ color: "#38bdf8", transparent: true, opacity: 0.5 });
-  island.add(new THREE.LineSegments(new THREE.EdgesGeometry(islandGeometry, 28), islandEdges));
+  const headIsland = createIsland(4711, 1.45, new THREE.Color("#38bdf8"));
+  island.add(headIsland.group);
+  const islandEdges = headIsland.edges;
   const projector = new THREE.Group();
   projector.position.y = 0.16;
   for (const [r, w, o] of [
@@ -236,6 +265,9 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   const ring = new THREE.Group();
   scene.add(ring);
   const rocks: Rock[] = MODULES.map((m, i) => createRock(m, accentOf(m.id, m.href), i));
+  // Schräg gesehen bleibt die Schrift nur mit voller anisotroper Filterung scharf.
+  const anisotropy = renderer.capabilities.getMaxAnisotropy();
+  for (const r of rocks) r.panel.material.map!.anisotropy = anisotropy;
   for (const r of rocks) ring.add(r.root);
   let portrait = false;
   let panels: Partial<Record<ModuleId, PanelData>> = {};
@@ -264,6 +296,7 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   passesFor();
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.5, 0.7);
   composer.addPass(bloom);
+  composer.addPass(new LayerPass(scene, camera, PANEL_LAYER));
   composer.addPass(new OutputPass());
 
   type Fit = { eye: THREE.Vector3; look: THREE.Vector3; ex: number; ey: number };
@@ -276,7 +309,7 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   const applySize = () => {
     W = window.innerWidth;
     H = window.innerHeight;
-    const dpr = Math.min(window.devicePixelRatio, level === 2 ? 1.75 : level === 1 ? 1.25 : 1);
+    const dpr = Math.min(window.devicePixelRatio, level === 2 ? 2 : level === 1 ? 1.25 : 1);
     renderer.setPixelRatio(dpr);
     renderer.setSize(W, H, false);
     composer.setPixelRatio(dpr);
@@ -504,6 +537,7 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   let time = 0;
   const samples: number[] = [];
   let warmup = 45;
+  let climbed = false;
   const roll = { value: 0 };
 
   function applyQuality(next: number) {
@@ -538,13 +572,25 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
     time += dt * (reduced ? 0.25 : 1);
 
     // Ruckelt es länger, eine Stufe herunter. Die ersten Bilder zählen nicht, da wird noch aufgebaut.
+    // Läuft es auf einer niedrigeren Stufe lange flüssig (etwa nach einem Ruckler beim Start), einmal je
+    // Laden wieder eine Stufe hinauf, damit die Welt nicht dauerhaft grob bleibt.
     if (warmup > 0) warmup--;
-    else if (!calm && !quality.fixed && level > 0 && !document.hidden) {
+    else if (!calm && !quality.fixed && !document.hidden) {
       samples.push(dt);
-      if (samples.length >= 90) {
+      if (samples.length >= 90 && level > 0) {
+        const avg = samples.slice(-90).reduce((a, b) => a + b, 0) / 90;
+        if (avg > 1 / 38) {
+          samples.length = 0;
+          applyQuality(level - 1);
+        }
+      }
+      if (samples.length >= 240) {
         const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
         samples.length = 0;
-        if (avg > 1 / 38) applyQuality(level - 1);
+        if (level < 2 && !climbed && avg < 1 / 56) {
+          climbed = true;
+          applyQuality(level + 1);
+        }
       }
     }
 
@@ -606,8 +652,9 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
       face.position.y = Math.sin(time * 0.9) * (reduced ? 0 : 0.04);
       const hovered = hoverId === "fokus" || focusId === "fokus";
       bustMaterial.size = (avatar === "listening" ? 0.038 : 0.03) * (hovered ? 1.15 : 1);
-      // Mit Nachleuchten addieren sich die Punkte schneller zu Weiß; dann etwas zurückhaltender.
-      bustMaterial.opacity = (avatar === "idle" ? 0.8 : 0.95) * headVis * (level > 0 ? 0.62 : 1);
+      // Mit Nachleuchten addieren sich die Punkte schneller zu Weiß; dann etwas zurückhaltender, vor hellen
+      // Fotos (Wolken, Schnee) noch etwas mehr.
+      bustMaterial.opacity = (avatar === "idle" ? 0.8 : 0.95) * headVis * (level > 0 ? 0.62 : 1) * (usePhotos ? 0.78 : 1);
       projector.rotation.y = time * (avatar === "thinking" ? 1.6 : 0.25);
       headBeam.uniforms.uTime.value = time;
       headBeam.uniforms.uOpacity.value = (avatar === "speaking" ? 0.2 : 0.1) * headVis;
@@ -616,7 +663,9 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
       island.visible = ground > 0.01;
       island.scale.setScalar(0.4 + 0.6 * ground);
       island.position.y = -0.62 - (1 - ground) * 1.5;
-      islandEdges.opacity = 0.5 * ground;
+      islandEdges.opacity = 0.6 * ground;
+      headIsland.stone.uTime.value = time;
+      headIsland.debris.rotation.y = time * (reduced ? 0 : 0.08);
       const talk = avatar === "speaking" ? Math.abs(Math.sin(time * 9) * Math.sin(time * 2.7)) : 0;
       if (talk > 0 || mouthMoving) {
         for (let k = 0; k < mouthWeight.length; k++) mouth.setY(mouthStart + k, restY[k] - talk * 0.07 * mouthWeight[k]);
@@ -653,8 +702,11 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
         r.panel.rotation.y = yaw;
         r.body.rotation.y = yaw * 0.3 + r.phase;
         r.panel.material.opacity = vis * (0.12 + 0.88 * depth * depth);
-        r.panel.material.color.setScalar(0.88 + r.hover * 0.4 + r.flare * 1.4);
-        r.edges.opacity = (0.45 + r.hover * 0.5) * vis;
+        r.panel.material.color.setScalar(0.96 + r.hover * 0.3 + r.flare * 1.2);
+        r.edges.opacity = (0.5 + r.hover * 0.5) * vis;
+        r.stone.uTime.value = time;
+        r.stone.uGlow.value = r.hover + r.flare;
+        r.debris.rotation.y = r.phase + time * (reduced ? 0 : 0.12);
         r.beam.uTime.value = time;
         r.beam.uOpacity.value = (0.28 + r.hover * 0.4 + r.flare) * vis;
       });
@@ -696,12 +748,15 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
     if (usePhotos) photos.update(dt, time, parallax, look.accent, look.light);
 
     if (level > 0) composer.render(dt);
-    else if (usePhotos) {
-      renderer.render(photos.scene, photos.camera);
-      renderer.autoClear = false;
+    else {
+      if (usePhotos) {
+        renderer.render(photos.scene, photos.camera);
+        renderer.autoClear = false;
+      }
       renderer.render(scene, camera);
       renderer.autoClear = true;
-    } else renderer.render(scene, camera);
+      if (ring.visible) renderLayer(renderer, scene, camera, PANEL_LAYER);
+    }
   };
 
   applySize();
@@ -718,7 +773,9 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   });
   // Mit Nachleuchten wird erst in ein Zwischenbild gezeichnet; dafür braucht es eigene Shader-Varianten.
   renderer.setRenderTarget(level > 0 ? composer.renderTarget1 : null);
+  camera.layers.enable(PANEL_LAYER);
   renderer.compile(scene, camera);
+  camera.layers.disable(PANEL_LAYER);
   renderer.setRenderTarget(null);
   for (const o of hidden) o.visible = false;
   tick(performance.now());

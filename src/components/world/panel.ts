@@ -10,6 +10,9 @@ export type PanelData = { value: string; detail: string; alert?: boolean };
 
 export const PANEL_W = 512;
 export const PANEL_H = 688;
+// Gemalt wird in doppelter Auflösung, damit die Schrift auch auf Retina-Bildschirmen und groß unter der
+// Maus gestochen scharf ist.
+const SCALE = 2;
 const FONT = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
 
 const icons = new Map<string, HTMLImageElement>();
@@ -77,12 +80,12 @@ export type Panel = { texture: THREE.CanvasTexture; draw: (data: PanelData | und
 
 export function createPanel(module: JarvisModule, accent: string): Panel {
   const canvas = document.createElement("canvas");
-  canvas.width = PANEL_W;
-  canvas.height = PANEL_H;
+  canvas.width = PANEL_W * SCALE;
+  canvas.height = PANEL_H * SCALE;
   const ctx = canvas.getContext("2d")!;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
   let last: [PanelData | undefined, boolean, boolean] = [undefined, false, false];
 
   const draw = (data: PanelData | undefined, brain: boolean, compact: boolean) => {
@@ -90,6 +93,7 @@ export function createPanel(module: JarvisModule, accent: string): Panel {
     const active = isActive(module, brain);
     const W = PANEL_W;
     const H = PANEL_H;
+    ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
     ctx.clearRect(0, 0, W, H);
 
     // Glas: oben heller, unten fast durchsichtig, mit feinen Scanlinien.
@@ -168,7 +172,7 @@ export function createPanel(module: JarvisModule, accent: string): Panel {
     const img = icon(module.id, "#e0f2fe", () => draw(...last));
     ctx.save();
     ctx.shadowColor = "rgba(125,211,252,0.95)";
-    ctx.shadowBlur = 24;
+    ctx.shadowBlur = 24 * SCALE;
     ctx.drawImage(img, pad - 8, 100, 104, 104);
     ctx.restore();
 
@@ -189,7 +193,7 @@ export function createPanel(module: JarvisModule, accent: string): Panel {
     ctx.font = `bold ${vs}px ${FONT}`;
     ctx.save();
     ctx.shadowColor = data?.alert ? "rgba(236,72,153,0.9)" : "rgba(125,211,252,0.8)";
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur = 20 * SCALE;
     spaced(ctx, value, pad, 402, 0, "left");
     ctx.restore();
 
