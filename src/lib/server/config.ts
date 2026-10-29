@@ -21,7 +21,29 @@ export type CalendarConfig = { target?: string };
 // Intel liest mit demselben xAI-Schlüssel Nachrichten und X. Eigene Themen und ein eigenes Tagesbudget.
 export type IntelConfig = { topics?: string[]; budgetUsd?: number; auto?: boolean };
 
-export type JarvisConfig = { name: string; vaultPath?: string; mail?: MailConfig; claude?: ClaudeConfig; xai?: XaiConfig; calendar?: CalendarConfig; intel?: IntelConfig };
+// Telegram bringt JARVIS aufs Handy. Der Schlüssel gehört zu deinem eigenen Bot; JARVIS antwortet nur dem
+// einen Chat, der sich mit dem Code aus den Einstellungen gekoppelt hat. Briefing ist eine Uhrzeit (HH:MM) oder null.
+export type TelegramConfig = {
+  token: string;
+  bot: string;
+  chatId?: number;
+  chatName?: string;
+  trades?: boolean;
+  warnings?: boolean;
+  reminders?: boolean;
+  briefing?: string | null;
+};
+
+export type JarvisConfig = {
+  name: string;
+  vaultPath?: string;
+  mail?: MailConfig;
+  claude?: ClaudeConfig;
+  xai?: XaiConfig;
+  calendar?: CalendarConfig;
+  intel?: IntelConfig;
+  telegram?: TelegramConfig;
+};
 
 export const DEFAULT_X_BUDGET_USD = 1;
 

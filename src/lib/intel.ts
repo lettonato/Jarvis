@@ -66,7 +66,7 @@ const clockOf = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hou
 
 const firstSentences = (text: string, n: number) => {
   const parts = text.match(/[^.!?]+[.!?]+/g) ?? [text];
-  return parts.slice(0, n).join(" ").trim();
+  return parts.slice(0, n).map((p) => p.trim()).join(" ");
 };
 
 // Ein Lagebild gilt fürs Briefing, solange es höchstens einen Tag alt ist.

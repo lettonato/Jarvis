@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
 import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
+import { TelegramSetup } from "../TelegramSetup";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import type { MemoryFact } from "@/lib/brain";
@@ -39,6 +40,13 @@ export function SettingsView() {
               <MemorySetup />
             </Section>
           )}
+          <Section
+            id="handy"
+            title="Handy (Telegram)"
+            text="Über Telegram hast du JARVIS auch unterwegs dabei: Er schickt dir morgens das Briefing, erinnert dich an Termine, meldet Warnungen und Trades, und du kannst ihm schreiben wie in der App. Dafür legst du dir bei Telegram einen eigenen Bot an. JARVIS antwortet nur deinem Handy, und dein Mac bleibt von außen unerreichbar."
+          >
+            <TelegramSetup />
+          </Section>
           <Section
             id="crawler"
             title="Grok: Crawler auf X und Intel"
@@ -80,6 +88,11 @@ export function SettingsView() {
                 Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben,
                 Mails), verschlüsselt an Anthropic. Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche; Links aus deinen Mails ruft er nicht auf. Claude kann
                 keine Mails schreiben oder löschen und ändert Aufgaben nur, wenn du es sagst.
+              </li>
+              <li>
+                Mit Telegram holt JARVIS die Nachrichten an deinen Bot selbst bei Telegram ab; dafür muss niemand an deinen Mac heran. Was ihr schreibt, läuft über die
+                Server von Telegram und ist dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem einen gekoppelten Chat und kann auch von dort keine Mails
+                schreiben oder löschen.
               </li>
               <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
               <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>

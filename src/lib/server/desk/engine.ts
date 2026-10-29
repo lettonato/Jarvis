@@ -31,6 +31,7 @@ import { SOFT_FILTERS, SOFT_KEYS, type SoftKey } from "../../thresholds";
 import { brainKey, explainBrainError } from "../brain";
 import { CONFIG_DIR, grokKey, readConfig, xBudget } from "../config";
 import { intelWarning } from "../intel";
+import { notify } from "../notify";
 import { writeVaultFile } from "../obsidian";
 import { judgeByRules, judgeWithClaude, type ChiefInput, type Verdict } from "./chief";
 import { crawl, guard, type ChainCheck } from "./crawler";
@@ -222,6 +223,7 @@ function buy(state: State, c: Candidate, ticket: number, why: string, now: Date)
   state.lastPick = c.symbol;
   log(state, "Size", `$${c.symbol}: ${formatUsd(ticket)}, das sind ${SAFETY.maxTradeShare * 100} % des Kontos`);
   log(state, "Fills", `Kauf $${c.symbol} für ${formatUsd(ticket)}, davon ${formatUsd(feesUsd)} Gebühren`, "buy");
+  notify({ kind: "trade", text: `🟢 Spielgeld-Kauf: $${c.symbol} für ${formatUsd(ticket)}.\nWarum: ${why}` });
 }
 
 function sell(state: State, p: StoredPosition, price: number, liquidity: number, agent: DeskAgent, why: string, now: Date) {
@@ -251,6 +253,10 @@ function sell(state: State, p: StoredPosition, price: number, liquidity: number,
     why,
   });
   log(state, agent, `Verkauf $${p.symbol}: ${why}. Ergebnis ${formatSignedUsd(pnlUsd)}`, "sell");
+  // Was du selbst verkaufst, weißt du schon.
+  if (agent !== "Du") {
+    notify({ kind: "trade", text: `${pnlUsd >= 0 ? "🔵" : "🔴"} Spielgeld-Verkauf: $${p.symbol}, Ergebnis ${formatSignedUsd(pnlUsd)} (${formatPct((pnlUsd / p.costUsd) * 100)}).\nGrund: ${why}` });
+  }
 }
 
 // 1. Risk und Crawler bewachen, was gekauft ist. Das läuft auch in der Pause und am Tageslimit.
@@ -315,6 +321,7 @@ function dailyLimit(state: State) {
   if (!state.day.limitHit && equity(state) <= state.day.startEquity * (1 - SAFETY.dailyLossLimit)) {
     state.day.limitHit = true;
     log(state, "Risk", `Tageslimit: ${SAFETY.dailyLossLimit * 100} % Verlust heute. Bis morgen kaufe ich nichts mehr, Stop-Loss bleibt aktiv`, "warn");
+    notify({ kind: "warnung", text: `⚠️ Tageslimit: Der Spielgeld-Desk hat heute ${SAFETY.dailyLossLimit * 100} % verloren und kauft bis morgen nichts mehr. Der Stop-Loss passt weiter auf.` });
   }
   if (state.day.limitHit && state.status === "laeuft") {
     state.status = "tageslimit";
