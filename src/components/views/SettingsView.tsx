@@ -8,6 +8,7 @@ import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import type { MemoryFact } from "@/lib/brain";
 import type { Settings } from "@/lib/settings";
+import { PHOTOS, readWorldStyle, saveWorldStyle, type WorldStyle } from "@/lib/photos";
 import { VOICE_KEY } from "@/lib/useVoice";
 
 // Einstellungen: wie JARVIS dich nennt, welcher Obsidian-Tresor und welches Postfach, welche Stimme.
@@ -73,6 +74,13 @@ export function SettingsView() {
             text="Sag „Jarvis“ und dann, was du brauchst, zum Beispiel „Jarvis, wie läuft der Handel?“. Nach seiner Antwort hört er noch ein paar Sekunden zu, da reicht die nächste Frage ohne „Jarvis“. „Jarvis, stopp“ unterbricht ihn."
           >
             <HandsFreeSetup />
+          </Section>
+          <Section
+            id="aussehen"
+            title="Aussehen"
+            text="Hinter JARVIS liegt eine Landschaft, und bei jedem Wechsel der Ansicht fliegst du in die nächste. Wähle das gerechnete Gebirge oder echte Fotos. Gilt für diesen Browser."
+          >
+            <WorldStylePicker />
           </Section>
           <Section title="Stimme">
             <VoicePicker />
@@ -403,6 +411,77 @@ function HandsFreeSetup() {
         Ohne Freihändig sprichst du über das Mikrofon oder die Leertaste.
       </p>
       {voice.error && <Notice tone="error">{voice.error}</Notice>}
+    </div>
+  );
+}
+
+const STYLES: { id: WorldStyle; title: string; text: string; preview: string }[] = [
+  {
+    id: "gebirge",
+    title: "Gebirge (3D)",
+    text: "Gerechnete Landschaft mit Gitter, Nordlicht und Holo-Tafeln. Jede Ansicht hat ihre eigene.",
+    preview: "/welt/vorschau-gebirge.webp",
+  },
+  {
+    id: "fotos",
+    title: "Echte Fotos",
+    text: "Zehn echte Landschaftsfotos, eins je Ansicht, leicht abgedunkelt. Beim Wechsel fliegst du ins Bild hinein.",
+    preview: "/welt/vorschau-fotos.webp",
+  },
+];
+
+function WorldStylePicker() {
+  const [style, setStyle] = useState<WorldStyle | null>(null);
+
+  useEffect(() => {
+    const first = setTimeout(() => setStyle(readWorldStyle()), 0);
+    return () => clearTimeout(first);
+  }, []);
+
+  const choose = (next: WorldStyle) => {
+    setStyle(next);
+    saveWorldStyle(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Landschaft hinter JARVIS">
+        {STYLES.map((s) => {
+          const on = style === s.id;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => choose(s.id)}
+              className={`overflow-hidden rounded-xl border text-left transition ${
+                on ? "border-sky-300/80 bg-sky-400/15 shadow-[0_0_24px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 hover:border-sky-300/50"
+              }`}
+            >
+              <span aria-hidden className="block h-28 w-full bg-cover bg-center" style={{ backgroundImage: `url(${s.preview})` }} />
+              <span className="block p-3">
+                <span className="flex items-center justify-between gap-2 text-sm font-bold text-sky-50">
+                  {s.title}
+                  {on && <span className="rounded-full border border-sky-300/50 px-2 py-0.5 text-[10px] uppercase tracking-widest text-sky-200">Aktiv</span>}
+                </span>
+                <span className="mt-1 block text-xs text-quiet">{s.text}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <details className="text-xs text-quiet">
+        <summary className="cursor-pointer text-sky-200/80">Bildnachweis der Fotos</summary>
+        <p className="mt-2">Alle Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu.</p>
+        <ul className="mt-1.5 space-y-0.5">
+          {Object.values(PHOTOS).map((p) => (
+            <li key={p.src}>
+              {p.title}: {p.author}, {p.license}
+            </li>
+          ))}
+        </ul>
+      </details>
     </div>
   );
 }

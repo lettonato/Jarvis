@@ -21,8 +21,31 @@ fi
 # Zwischenspeicher leeren, damit nach einem Update sicher die neuen Dateien und Animationen gelten.
 rm -rf .next/dev
 
-echo "JARVIS startet. Der Browser öffnet sich gleich mit http://localhost:3000"
+# Läuft noch ein älteres JARVIS (etwa aus dem Ordner einer früheren Version), wird es beendet. Sonst
+# landet der Browser beim alten, und ist dessen Ordner schon gelöscht, bleibt die Seite schwarz.
+for pid in $(lsof -nP -iTCP:3000 -sTCP:LISTEN -t 2>/dev/null); do
+  if ps -o command= -p "$pid" | grep -q next; then
+    echo "Ein älteres JARVIS läuft noch, ich beende es ..."
+    parent=$(ps -o ppid= -p "$pid" | tr -d ' ')
+    kill "$pid" 2>/dev/null
+    if [ -n "$parent" ] && ps -o command= -p "$parent" | grep -q next; then kill "$parent" 2>/dev/null; fi
+    sleep 2
+  fi
+done
+if lsof -nP -iTCP:3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+  echo "Achtung: Ein anderes Programm belegt Port 3000. Bitte beenden und JARVIS neu starten."
+fi
+
+echo "JARVIS startet. Der Browser öffnet sich mit http://localhost:3000, sobald alles bereit ist."
+echo "Beim ersten Start nach einem Update dauert das etwa eine Minute."
 echo "Solange dieses Fenster offen ist, schläft der Mac nicht ein, damit der Spielgeld-Handel weiterläuft."
-(sleep 8 && open http://localhost:3000) &
+# Erst öffnen, wenn JARVIS antwortet: Die erste Anfrage baut die Seite zusammen, danach ist sie sofort da.
+(
+  for _ in $(seq 1 180); do
+    curl -s -o /dev/null --max-time 180 http://127.0.0.1:3000/ && break
+    sleep 1
+  done
+  open http://localhost:3000
+) &
 # caffeinate hält den Mac wach, solange JARVIS läuft; der Bildschirm darf trotzdem ausgehen.
 caffeinate -i npm run dev

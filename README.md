@@ -19,7 +19,7 @@ Oben wechselst du zwischen den Ansichten:
 | **Trading** (`/trading`) | Der Trading-Desk: Agenten, die Crawler-Spinne live, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
 | **Intel** (`/intel`) | Das Lagebild aus Nachrichten und X, die wichtigsten Meldungen mit Quelle, deine Themen und das Budget. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
-| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Grok (Crawler auf X und Intel), Obsidian-Tresor, Kalender, Postfach, Sprache, Stimme. |
+| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Grok (Crawler auf X und Intel), Obsidian-Tresor, Kalender, Postfach, Sprache, Aussehen (Gebirge oder echte Fotos), Stimme. |
 
 Hinter allen Ansichten liegt eine 3D-Welt, und jede Ansicht hat ihre eigene Landschaft. Wechselst du die Ansicht, fliegt die Kamera über das Gebirge in die neue Landschaft, während Farben, Berge und Himmel ineinander übergehen:
 
@@ -35,6 +35,12 @@ Hinter allen Ansichten liegt eine 3D-Welt, und jede Ansicht hat ihre eigene Land
 | Intel | flaches oranges Land mit einem riesigen Radarschirm |
 | Agenten | violettes Gebirge unter einem Sternbild, durch dessen Fäden Lichtpunkte laufen |
 | Einstellungen | stilles graues Hochland |
+
+### Fotowelt: echte Landschaften statt Gebirge
+
+Unter **Einstellungen → Aussehen** kannst du statt des gerechneten Gebirges **echte Fotos** wählen. Dann liegt hinter jeder Ansicht ein echtes Landschaftsfoto (Bergsee, Reisterrassen, Milchstraße, Alpen-Sonnenaufgang …), etwas abgedunkelt und in die Farbe der Ansicht getaucht, damit Text lesbar bleibt. Das Bild atmet langsam und folgt leicht der Maus. Beim Wechsel der Ansicht fliegst du ins alte Foto hinein, während das neue aus der Tiefe herankommt. JARVIS, die Felsen der Module und der Lichtstaub schweben davor wie gewohnt. Umschalten geht jederzeit ohne Neuladen; die Wahl gilt für diesen Browser.
+
+Alle zehn Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu. Wer sie gemacht hat, steht in den Einstellungen unter Bildnachweis und in [`public/welt/QUELLEN.md`](public/welt/QUELLEN.md).
 
 Hinter Text ist die Welt gedämpft, damit alles lesbar bleibt. Die Ansichten selbst wechseln weiter wie Hologramme im Film: Öffnest du ein Modul, faltet sich seine Ansicht aus einer Lichtlinie in der Tiefe auf; zwischen Aufgaben, Kalender, Post, Browser, Trading, Intel und Agenten schwenken sie wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Flug.
 
@@ -273,7 +279,7 @@ Einmalig:
 
 **Windows:** Doppelklick auf `start-jarvis.bat`.
 
-Beim ersten Start und nach jedem Update werden die Pakete installiert, das dauert ein bis zwei Minuten. Danach öffnet sich der Browser mit `http://localhost:3000`. Zum Sprechen Chrome oder Safari verwenden. Das Terminal-Fenster muss offen bleiben, solange JARVIS läuft; zum Beenden schließt du es.
+Beim ersten Start und nach jedem Update werden die Pakete installiert, das dauert ein bis zwei Minuten. Danach öffnet sich der Browser mit `http://localhost:3000`, sobald JARVIS bereit ist (nach einem Update etwa eine Minute). Läuft auf dem Mac noch ein älteres JARVIS, etwa aus dem Ordner einer früheren Version, beendet der Start es vorher; sonst bliebe der Browser beim alten hängen. Zum Sprechen Chrome oder Safari verwenden. Das Terminal-Fenster muss offen bleiben, solange JARVIS läuft; zum Beenden schließt du es.
 
 ## Für Entwickler
 
@@ -296,7 +302,7 @@ Aufbau:
 | `src/components/views/` | die Ansichten Fokus, Aufgaben, Post, Agenten, Einstellungen |
 | `src/components/CommandCenter.tsx` | die Übersicht: Platz für Kopf und Felsen, Modul-Liste für die Tastatur, Konsole |
 | `src/lib/world.ts` | die Landschaften: Form der Berge, Farben, Kamera und Besonderheit je Ansicht |
-| `src/components/world/` | die 3D-Welt mit three.js: `scene.ts` (Kamera, Flug, Maus, Qualität), `terrain.ts` (Gebirge im Shader), `sky.ts` (Himmel, Polarlicht, Sterne), `rocks.ts` und `panel.ts` (Felsen mit Glas-Tafeln), `features.ts` (Zeitringe, Kurs-Säulen …), `bust.ts` (der Kopf aus Partikeln), `anchor.ts` (wohin eine Ansicht den Kopf legt) |
+| `src/components/world/` | die 3D-Welt mit three.js: `scene.ts` (Kamera, Flug, Maus, Qualität), `terrain.ts` (Gebirge im Shader), `sky.ts` (Himmel, Polarlicht, Sterne), `rocks.ts` und `panel.ts` (Felsen mit Glas-Tafeln), `features.ts` (Zeitringe, Kurs-Säulen …), `bust.ts` (der Kopf aus Partikeln), `anchor.ts` (wohin eine Ansicht den Kopf legt), `photos.ts` (die Fotowelt: Foto im Shader, Flug von Foto zu Foto) |
 | `src/lib/commands.ts` | was JARVIS ohne KI-Gehirn versteht, Briefing und Besprechung |
 | `src/lib/server/brain.ts`, `src/app/api/gehirn/` | das KI-Gehirn: Claude mit Werkzeugen für Aufgaben, Mails und Ansichten, Websuche und Gedächtnis. Die Antwort kommt Stück für Stück (eine Zeile JSON pro Ereignis) |
 | `src/lib/server/memory.ts`, `src/app/api/gedaechtnis/` | das Gedächtnis in `~/.jarvis/gedaechtnis.json` |

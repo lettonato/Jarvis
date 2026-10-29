@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { SimplexNoise } from "three/addons/math/SimplexNoise.js";
-import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { mergeVertices, toCreasedNormals } from "three/addons/utils/BufferGeometryUtils.js";
 import { createPanel, PANEL_H, PANEL_W, type Panel } from "./panel";
+import { createStone, type StoneUniforms } from "./stone";
 import type { ModuleId, JarvisModule } from "@/lib/modules";
 
 // Die schwebenden Felsen der Übersicht. Jeder trägt die Glas-Tafel eines Moduls; ein Lichtkegel
@@ -20,11 +21,13 @@ export function seeded(seed: number): () => number {
   };
 }
 
-// Ein Felsbrocken: oben flach wie ein Sockel, unten zu einer Spitze ausgezogen, die Flächen kantig.
-export function rockGeometry(seed: number, size = 1): THREE.BufferGeometry {
+// Ein Felsbrocken: oben flach wie ein Sockel, unten zu einer Spitze ausgezogen. Fein unterteilt und mit
+// Kanten nur dort, wo der Stein wirklich abknickt (am Rand des Sockels), sonst weich schattiert; die
+// Körnung kommt aus dem Shader (stone.ts).
+function rockShape(seed: number, size: number, detail: number): THREE.BufferGeometry {
   const random = seeded(seed);
   const noise = new SimplexNoise({ random });
-  let geometry: THREE.BufferGeometry = new THREE.IcosahedronGeometry(1, 2);
+  let geometry: THREE.BufferGeometry = new THREE.IcosahedronGeometry(1, detail);
   geometry.deleteAttribute("normal");
   geometry.deleteAttribute("uv");
   geometry = mergeVertices(geometry);
@@ -32,19 +35,114 @@ export function rockGeometry(seed: number, size = 1): THREE.BufferGeometry {
   const v = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) {
     v.fromBufferAttribute(p, i);
-    v.multiplyScalar(1 + noise.noise3d(v.x * 1.4, v.y * 1.4, v.z * 1.4) * 0.26 + noise.noise3d(v.x * 3.3, v.y * 3.3, v.z * 3.3) * 0.08);
+    const n = noise.noise3d(v.x * 1.4, v.y * 1.4, v.z * 1.4) * 0.26 + noise.noise3d(v.x * 3.3, v.y * 3.3, v.z * 3.3) * 0.08 + noise.noise3d(v.x * 7.5, v.y * 7.5, v.z * 7.5) * 0.025;
+    v.multiplyScalar(1 + n);
     if (v.y > 0.2) v.y = 0.2 + (v.y - 0.2) * 0.12;
     if (v.y < 0) {
       v.y *= 1.9;
       const narrow = Math.max(0.12, 1 + v.y * 0.42);
-      v.x *= narrow;
-      v.z *= narrow;
+      // Abbruchkanten: der Fels springt in Stufen nach innen.
+      const ledge = 1 + 0.035 * Math.sin(v.y * 9 + noise.noise3d(v.x * 2, 0, v.z * 2) * 2.5);
+      v.x *= narrow * ledge;
+      v.z *= narrow * ledge;
     }
     v.set(v.x * 0.78 * size, v.y * 0.5 * size, v.z * 0.78 * size);
     p.setXYZ(i, v.x, v.y, v.z);
   }
-  geometry.computeVertexNormals();
   return geometry;
+}
+
+// Die Kante des Sockels als feine Leuchtlinie: je Winkel der äußerste Punkt oben auf dem Stein.
+function rimOf(geometry: THREE.BufferGeometry, size: number): THREE.BufferGeometry {
+  const p = geometry.getAttribute("position") as THREE.BufferAttribute;
+  const bins = 120;
+  const radius = new Array<number>(bins).fill(0);
+  const height = new Array<number>(bins).fill(0);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const y = p.getY(i);
+    const z = p.getZ(i);
+    if (y < 0.092 * size) continue;
+    const b = Math.floor(((Math.atan2(z, x) + Math.PI) / (Math.PI * 2)) * bins) % bins;
+    const d = Math.hypot(x, z);
+    if (d > radius[b]) {
+      radius[b] = d;
+      height[b] = y;
+    }
+  }
+  // Lücken schließen und glätten, damit die Linie ruhig läuft.
+  for (let pass = 0; pass < 3; pass++) {
+    const r = radius.slice();
+    const h = height.slice();
+    for (let b = 0; b < bins; b++) {
+      const prev = (b + bins - 1) % bins;
+      const next = (b + 1) % bins;
+      if (!r[b]) {
+        radius[b] = (r[prev] + r[next]) / 2;
+        height[b] = (h[prev] + h[next]) / 2;
+      } else if (pass > 0) {
+        radius[b] = (r[prev] + 2 * r[b] + r[next]) / 4;
+        height[b] = (h[prev] + 2 * h[b] + h[next]) / 4;
+      }
+    }
+  }
+  const points: THREE.Vector3[] = [];
+  for (let b = 0; b < bins; b++) {
+    const a = ((b + 0.5) / bins) * Math.PI * 2 - Math.PI;
+    points.push(new THREE.Vector3(Math.cos(a) * radius[b] * 1.004, height[b] + 0.004 * size, Math.sin(a) * radius[b] * 1.004));
+  }
+  return new THREE.BufferGeometry().setFromPoints(points);
+}
+
+let glowTexture: THREE.Texture | null = null;
+// Weicher Lichtpunkt für das Glimmen unter der Spitze, einmal gemalt und von allen Inseln geteilt.
+function glow(): THREE.Texture {
+  if (glowTexture) return glowTexture;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext("2d")!;
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.25, "rgba(255,255,255,0.45)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  glowTexture = new THREE.CanvasTexture(canvas);
+  return glowTexture;
+}
+
+export type Island = { group: THREE.Group; edges: THREE.LineBasicMaterial; stone: StoneUniforms; debris: THREE.Group };
+
+// Eine schwebende Insel: Stein, Leuchtkante am Sockel, ein Glimmen unter der Spitze und ein paar kleine
+// Brocken, die langsam um sie kreisen.
+export function createIsland(seed: number, size: number, accent: THREE.Color): Island {
+  const group = new THREE.Group();
+  const shape = rockShape(seed, size, 4);
+  const { material, uniforms: stone } = createStone(accent, size);
+  group.add(new THREE.Mesh(toCreasedNormals(shape, 0.9), material));
+
+  const edges = new THREE.LineBasicMaterial({ color: accent.clone().lerp(new THREE.Color("#7dd3fc"), 0.5), transparent: true, opacity: 0.55, toneMapped: false });
+  group.add(new THREE.LineLoop(rimOf(shape, size), edges));
+
+  shape.computeBoundingBox();
+  const tip = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow(), color: accent.clone().multiplyScalar(0.9), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }));
+  tip.position.y = shape.boundingBox!.min.y + 0.04 * size;
+  tip.scale.setScalar(0.42 * size);
+  group.add(tip);
+
+  const debris = new THREE.Group();
+  const random = seeded(seed * 3 + 1);
+  for (let k = 0; k < 3; k++) {
+    const piece = rockShape(seed + 101 * (k + 1), 0.14 + random() * 0.08, 2);
+    const mesh = new THREE.Mesh(toCreasedNormals(piece, 0.9), material);
+    const a = (k / 3) * Math.PI * 2 + random() * 1.2;
+    const r = (0.55 + random() * 0.2) * size;
+    mesh.position.set(Math.cos(a) * r, (-0.18 - random() * 0.3) * size, Math.sin(a) * r);
+    mesh.rotation.set(random() * 0.5, random() * 6, random() * 0.5);
+    debris.add(mesh);
+  }
+  group.add(debris);
+  return { group, edges, stone, debris };
 }
 
 const BEAM_VERTEX = /* glsl */ `
@@ -87,6 +185,9 @@ export function beam(color: THREE.Color, bottom: number, top: number, height: nu
 }
 
 export const PANEL_WIDTH = 1.5;
+// Die Tafeln liegen auf einer eigenen Ebene: Sie werden erst nach dem Nachleuchten gezeichnet, damit ihre
+// Schrift scharf bleibt und nicht im Schein verschwimmt.
+export const PANEL_LAYER = 1;
 // So viel größer steht JARVIS in der Übersicht da als im Fokus.
 export const HEAD_STAGE = 1.3;
 const PANEL_HEIGHT = (PANEL_WIDTH * PANEL_H) / PANEL_W;
@@ -99,6 +200,8 @@ export type Rock = {
   body: THREE.Group;
   panel: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   edges: THREE.LineBasicMaterial;
+  stone: StoneUniforms;
+  debris: THREE.Group;
   beam: { uOpacity: { value: number }; uTime: { value: number } };
   hit: THREE.Mesh;
   base: THREE.Vector3;
@@ -115,14 +218,8 @@ export function createRock(module: JarvisModule, accent: string, index: number):
   const body = new THREE.Group();
   root.add(body);
 
-  const geometry = rockGeometry(index * 7919 + 13);
-  const stone = new THREE.Mesh(
-    geometry,
-    new THREE.MeshStandardMaterial({ color: "#121a38", emissive: "#060b1f", roughness: 0.82, metalness: 0.15, flatShading: true }),
-  );
-  body.add(stone);
-  const edges = new THREE.LineBasicMaterial({ color: color.clone().lerp(new THREE.Color("#7dd3fc"), 0.4), transparent: true, opacity: 0.55 });
-  body.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 28), edges));
+  const island = createIsland(index * 7919 + 13, 1, color);
+  body.add(island.group);
 
   // Ein leuchtender Ring auf dem Sockel, aus dem die Tafel projiziert wird.
   const pad = new THREE.Mesh(
@@ -154,8 +251,15 @@ export function createRock(module: JarvisModule, accent: string, index: number):
     new THREE.PlaneGeometry(PANEL_WIDTH, PANEL_HEIGHT),
     new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }),
   );
+  // Aus der Ferne nimmt die Grafikkarte sonst eine gröbere Stufe der Textur; etwas feiner abgetastet
+  // bleibt die Schrift klar, ohne zu flimmern.
+  panel.material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", "diffuseColor *= texture2D( map, vMapUv, -0.7 );");
+  };
+  panel.material.customProgramCacheKey = () => "jarvis-panel";
   panel.position.y = PANEL_LIFT;
   panel.renderOrder = 2;
+  panel.layers.set(PANEL_LAYER);
   root.add(panel);
 
   // Unsichtbarer Kasten um Tafel und Stein: Dort reagiert der Fels auf Maus und Finger.
@@ -164,7 +268,7 @@ export function createRock(module: JarvisModule, accent: string, index: number):
   hit.userData.id = module.id;
   root.add(hit);
 
-  return { module, root, body, panel, edges, beam: light.uniforms, hit, base: new THREE.Vector3(), phase: random() * Math.PI * 2, hover: 0, flare: 0, draw, painted: "" };
+  return { module, root, body, panel, edges: island.edges, stone: island.stone, debris: island.debris, beam: light.uniforms, hit, base: new THREE.Vector3(), phase: random() * Math.PI * 2, hover: 0, flare: 0, draw, painted: "" };
 }
 
 // Wo die Felsen stehen. Unten und innen, also nah an JARVIS und groß im Bild, die wichtigsten Module.
