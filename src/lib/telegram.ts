@@ -45,6 +45,23 @@ export function findToken(text: string): string | null {
   return TOKEN_PATTERN.test(squeezed) ? squeezed : null;
 }
 
+// Sagt beim Abtippen, woran es hakt, statt nur „passt nicht“. Null, wenn der Schlüssel passt oder das Feld leer ist.
+export function tokenProblem(text: string): string | null {
+  if (findToken(text)) return null;
+  const t = text.normalize("NFKC").replace(/[\u200B-\u200D\u2060\uFEFF\s]/g, "");
+  if (!t) return null;
+  const colon = t.indexOf(":");
+  if (colon < 0)
+    return /^\d+[.;,]/.test(t)
+      ? "Nach den Ziffern steht ein Punkt oder Strichpunkt. Dort muss ein Doppelpunkt hin (Umschalttaste + Punkt)."
+      : "Es fehlt der Doppelpunkt nach den Ziffern (Umschalttaste + Punkt).";
+  if (!/^\d{5,12}$/.test(t.slice(0, colon))) return "Vor dem Doppelpunkt stehen nur Ziffern, meist zehn.";
+  const tail = t.slice(colon + 1);
+  const bad = [...tail].findIndex((c) => !/[A-Za-z0-9_-]/.test(c));
+  if (bad >= 0) return `Das Zeichen „${[...tail][bad]}“ gehört nicht hinein. Nach dem Doppelpunkt kommen nur Buchstaben ohne Umlaute, Ziffern, - und _.`;
+  return `Nach dem Doppelpunkt stehen ${tail.length} Zeichen, es müssen mindestens 30 sein (meist 35).`;
+}
+
 export const isClock = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 
 // Der Link, der den Bot auf dem Handy öffnet und den Code gleich mitschickt.

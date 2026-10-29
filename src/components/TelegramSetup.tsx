@@ -6,7 +6,7 @@ import { useJarvis } from "./JarvisProvider";
 import { Button, inputClass, Notice } from "./ui";
 import { getJson, postJson } from "@/lib/api";
 import type { Settings } from "@/lib/settings";
-import { findToken, pairLink, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
+import { findToken, pairLink, tokenProblem, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
 
 // Einstellungen → Handy: Bot-Schlüssel eintragen, Handy koppeln, festlegen, was aufs Handy kommt.
 
@@ -140,15 +140,13 @@ function TokenForm({ busy, onSave }: { busy: boolean; onSave: (token: string) =>
   );
 }
 
-// Schon beim Tippen sagen, ob das wie ein ganzer Schlüssel aussieht. Er hat rund 46 Zeichen.
+// Schon beim Tippen sagen, ob das wie ein ganzer Schlüssel aussieht, und sonst, woran es hakt. Er hat rund 46 Zeichen.
 function TokenCheck({ text }: { text: string }) {
   const found = findToken(text);
   if (found) return <p className="text-xs text-emerald-300">Sieht aus wie ein Bot-Schlüssel ({found.length} Zeichen).</p>;
-  const n = text.trim().length;
   return (
     <p className="text-xs text-amber-200">
-      Noch kein ganzer Schlüssel: {n} Zeichen, ein Schlüssel hat etwa 46. Er beginnt mit Ziffern, dann ein Doppelpunkt, dann Buchstaben und Ziffern ohne
-      Leerzeichen.
+      Noch kein gültiger Schlüssel ({text.trim().length} Zeichen, meist sind es 46). {tokenProblem(text)}
     </p>
   );
 }
