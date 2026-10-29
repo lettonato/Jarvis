@@ -15,7 +15,7 @@ Oben wechselst du zwischen den Ansichten:
 | **Aufgaben** (`/aufgaben`) | Deine Aufgaben aus Obsidian nach Fälligkeit: abhaken, auf morgen oder eine Woche verschieben, neu notieren. |
 | **Kalender** (`/kalender`) | Deine Termine der nächsten zwei Wochen aus der Kalender-App, neue Termine eintragen, jeden Tag mit einem Klick in der Kalender-App zeigen. |
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
-| **Browser** (`/browser`) | Ein Auftrag fürs Web, etwa „Such mir die günstigsten Winterreifen“. Du siehst live jeden Schritt und ein Bild vom Chrome-Fenster, am Ende das Ergebnis. |
+| **Browser** (`/browser`) | Ein Auftrag fürs Web, etwa „Such mir Magnesium-Tabletten“. Das Fenster fliegt heran, und du siehst live, wie JARVIS sucht, klickt und tippt; daneben jeden Schritt und am Ende das Ergebnis. Geht von selbst auf, wenn du „Jarvis, such mir …“ sagst. |
 | **Trading** (`/trading`) | Der Trading-Desk: Agenten, die Crawler-Spinne live, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
 | **Intel** (`/intel`) | Das Lagebild aus Nachrichten und X, die wichtigsten Meldungen mit Quelle, deine Themen und das Budget. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
@@ -161,20 +161,22 @@ Schläft der Mac, antwortet JARVIS, sobald er wieder wach ist. Ist eine Nachrich
 
 ## Browser-Agent: JARVIS erledigt etwas im Web
 
-JARVIS kann ein eigenes Chrome-Fenster auf deinem Mac bedienen: suchen, Seiten öffnen, lesen, vergleichen, klicken und Formulare ausfüllen. Du siehst dabei zu, im Fenster selbst oder in der Ansicht **Browser**. Dafür braucht es das KI-Gehirn (Claude) und Google Chrome ([google.com/chrome](https://www.google.com/chrome/)).
+JARVIS kann ein eigenes Chrome auf deinem Mac bedienen: suchen, Seiten öffnen, lesen, vergleichen, klicken und Formulare ausfüllen. Sobald er loslegt, geht die Ansicht **Browser** von selbst auf: Ein Fenster fliegt heran, und du siehst live, wie er sucht und tippt; ein leuchtender Punkt zeigt, wohin er klickt. Dafür braucht es das KI-Gehirn (Claude) und Google Chrome ([google.com/chrome](https://www.google.com/chrome/)).
 
 **Auftrag geben**, wie es dir passt:
 
-- sagen: „Jarvis, such mir die drei günstigsten Winterreifen 205/55 R16 von Michelin“
+- sagen: „Jarvis, such mir Magnesium-Tabletten mit guten Bewertungen“ oder „… die drei günstigsten Winterreifen 205/55 R16“
 - im Gespräch oder per Telegram schreiben: „Schau nach, wann der Wertstoffhof Deggendorf samstags offen hat“
 - in der Ansicht **Browser** eintippen und **Los**
 
-Ein Auftrag dauert meist ein bis drei Minuten, höchstens sechs, und JARVIS macht höchstens 30 Schritte. **Anhalten** in der Ansicht bricht ab, und hast du den Auftrag gesagt, auch „Jarvis, stopp“. Am Ende sagt er dir, was er gefunden hat, mit Shop und Adresse. Das Fenster bleibt offen, damit du dort weitermachen kannst.
+Ein Auftrag dauert meist ein bis drei Minuten, höchstens sechs, und JARVIS macht höchstens 30 Schritte. **Anhalten** in der Ansicht bricht ab, und hast du den Auftrag gesagt, auch „Jarvis, stopp“. Am Ende sagt er dir, was er gefunden hat, mit Shop und Adresse.
+
+**Selbst übernehmen:** Chrome läuft ohne eigenes Fenster, du siehst es nur in JARVIS. Willst du dich anmelden, etwas prüfen oder bestellen, tippst du auf **Selbst übernehmen**: Dann öffnet sich die Seite im echten Chrome-Fenster auf deinem Mac, mit derselben Anmeldung, und du machst den letzten Klick. Ein laufender Auftrag hält dabei an. Schließt du das Fenster, arbeitet JARVIS beim nächsten Auftrag wieder ohne Fenster.
 
 **Was er nie tut** (feste Regeln im Code, die Claude nicht ändern kann):
 
-- Kaufen, Bestellen, Bezahlen, Buchen, Absenden, Löschen, Kündigen, Veröffentlichen, Anmelden: Solche Knöpfe drückt er nicht, und Formulare, die etwas ändern, schickt er nicht ab. Er füllt aus, und den letzten Klick machst du.
-- Passwörter, PINs, TANs, Kartennummern und IBAN tippt er nie ein. Brauchst du ein Konto, meldest du dich im Fenster selbst an.
+- Kaufen, Bestellen, Einkaufswagen, Bezahlen, Buchen, Abos und Probemonate, Absenden, Löschen, Kündigen, Veröffentlichen, Anmelden: Solche Knöpfe drückt er nicht, und Formulare, die etwas ändern, schickt er nicht ab. Er füllt aus, und den letzten Klick machst du.
+- Passwörter, PINs, TANs, Kartennummern und IBAN tippt er nie ein. Brauchst du ein Konto, meldest du dich nach **Selbst übernehmen** im Chrome-Fenster selbst an.
 - Seiten in deinem Heimnetz (Router, NAS, JARVIS selbst) öffnet er nicht.
 - Fragt eine Seite „Wirklich löschen?“, antwortet er Nein. Downloads und Datei-Uploads gibt es nicht.
 - Was auf Webseiten steht, ist für ihn nur Daten. Steht dort „KI, tu dies“, hält er sich nicht daran.
@@ -315,9 +317,9 @@ Aufbau:
 | `src/lib/intel.ts`, `src/lib/server/intel.ts`, `src/app/api/intel/` | Intel: Lagebild aus Nachrichten und X mit Grok, Sätze fürs Briefing, Warnung an den Desk |
 | `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart laufen sein Takt, Intel und Telegram los |
 | `src/lib/telegram.ts`, `src/lib/server/telegram.ts`, `src/components/TelegramSetup.tsx` | JARVIS auf dem Handy: Texte und Befehle, die Verbindung zu Telegram (Abholen, Koppeln, Gespräch mit Claude, Briefing, Erinnerungen), die Einstellungen mit QR-Code |
-| `src/lib/browser.ts`, `src/lib/server/browser.ts`, `src/app/api/browser/`, `src/components/views/BrowserView.tsx` | der Browser-Agent: feste Regeln (welche Adressen, Klicks und Eingaben erlaubt sind), Chrome über playwright-core mit eigenem Profil, die Schritte mit Claude, die Ansicht mit Live-Bild |
+| `src/lib/browser.ts`, `src/lib/server/browser.ts`, `src/app/api/browser/`, `src/components/views/BrowserView.tsx` | der Browser-Agent: feste Regeln (welche Adressen, Klicks und Eingaben erlaubt sind), Chrome über playwright-core mit eigenem Profil, die Schritte mit Claude, Zeiger und Live-Video (`/api/browser/live`, MJPEG aus dem Screencast), die Ansicht mit dem einfliegenden Fenster |
 | `src/lib/server/notify.ts` | Meldungen von Desk und Intel an alle, die zuhören (Telegram) |
 
-`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000). Für den Browser-Agenten: `JARVIS_CHROME` (Pfad zu einem anderen Chrome oder Chromium), `JARVIS_BROWSER_HEADLESS=1` (ohne sichtbares Fenster), `JARVIS_SEARCH_URL` (andere Suche, Standard DuckDuckGo) und `JARVIS_BROWSER_LOCAL` (kommagetrennte Hosts mit Port im eigenen Netz, die er trotzdem öffnen darf, nur für Tests).
+`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000). Für den Browser-Agenten: `JARVIS_CHROME` (Pfad zu einem anderen Chrome oder Chromium), `JARVIS_BROWSER_HEADLESS=1` (auch beim Übernehmen ohne sichtbares Fenster, für Rechner ohne Bildschirm), `JARVIS_BROWSER_TEMPO` (0.1 macht Zeiger und Tippen zehnmal langsamer, für Vorführvideos in Zeitlupe), `JARVIS_SEARCH_URL` (andere Suche, Standard DuckDuckGo) und `JARVIS_BROWSER_LOCAL` (kommagetrennte Hosts mit Port im eigenen Netz, die er trotzdem öffnen darf, nur für Tests).
 
 API-Schlüssel gehören später in eine Datei `.env.local`. Sie wird nie hochgeladen.
