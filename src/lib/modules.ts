@@ -79,11 +79,11 @@ export const MODULES: JarvisModule[] = [
     code: "M-05",
     name: "Browser",
     tagline: "sucht und erledigt im Web",
-    phase: 6,
-    href: "/agenten#browser",
+    phase: 1,
+    href: "/browser",
     side: "links",
     about:
-      "Wenn du sagst „such mir das raus“, öffnet er eine eigene Ansicht, recherchiert im Web, vergleicht Angebote und legt dir das Ergebnis vor. Kaufen oder Absenden nur mit deiner Freigabe.",
+      "Wenn du sagst „such mir das raus“, bedient er ein eigenes Chrome-Fenster auf deinem Mac: Er sucht, vergleicht Angebote auf mehreren Seiten, liest, was du wissen willst, und füllt Formulare für dich aus. Du siehst live mit. Kaufen, Bestellen, Absenden und Anmelden kann er nicht, den letzten Klick machst immer du. Passwörter und Zahlungsdaten tippt er nie ein.",
   },
   {
     id: "trading",

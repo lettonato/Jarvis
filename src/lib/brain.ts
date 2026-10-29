@@ -68,6 +68,7 @@ export const VIEWS = {
   post: "/post",
   trading: "/trading",
   intel: "/intel",
+  browser: "/browser",
   agenten: "/agenten",
   einstellungen: "/einstellungen",
 } as const;
