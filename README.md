@@ -279,7 +279,7 @@ Einmalig:
 
 **Windows:** Doppelklick auf `start-jarvis.bat`.
 
-Beim ersten Start und nach jedem Update werden die Pakete installiert, das dauert ein bis zwei Minuten. Danach öffnet sich der Browser mit `http://localhost:3000`. Zum Sprechen Chrome oder Safari verwenden. Das Terminal-Fenster muss offen bleiben, solange JARVIS läuft; zum Beenden schließt du es.
+Beim ersten Start und nach jedem Update werden die Pakete installiert, das dauert ein bis zwei Minuten. Danach öffnet sich der Browser mit `http://localhost:3000`, sobald JARVIS bereit ist (nach einem Update etwa eine Minute). Läuft auf dem Mac noch ein älteres JARVIS, etwa aus dem Ordner einer früheren Version, beendet der Start es vorher; sonst bliebe der Browser beim alten hängen. Zum Sprechen Chrome oder Safari verwenden. Das Terminal-Fenster muss offen bleiben, solange JARVIS läuft; zum Beenden schließt du es.
 
 ## Für Entwickler
 
