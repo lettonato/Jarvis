@@ -1,3 +1,4 @@
+import type { Approval, ApprovalLimit } from "./approval";
 import type { SoftKey } from "./thresholds";
 
 // Der Spielgeld-Handel: Die Agenten handeln mit erfundenem Geld, aber mit echten Kursen und echten
@@ -91,7 +92,7 @@ export type Trade = {
 export type LogEntry = { at: string; agent: DeskAgent | "Desk"; text: string; tone?: "kill" | "buy" | "sell" | "warn" };
 
 // Was Crawler und Chief zuletzt über einen Coin entschieden haben, für die Scan-Tabelle.
-export type CoinVerdict = { at: string; stage: "chain_kill" | "skin_kill" | "x_kill" | "chief_nein" | "gekauft" | "nicht_gekauft" | "nicht_geprueft"; text: string };
+export type CoinVerdict = { at: string; stage: "chain_kill" | "skin_kill" | "x_kill" | "chief_nein" | "frage" | "gekauft" | "nicht_gekauft" | "nicht_geprueft"; text: string };
 
 export type DeskStats = {
   scanned: number;
@@ -147,6 +148,11 @@ export type DeskSnapshot = {
   x: { enabled: boolean; spentTodayUsd: number; budgetUsd: number };
   // Meldet Intel ein ernstes Ereignis, kauft der Desk bis dahin nichts Neues.
   intelWarning: { text: string; until: string } | null;
+  // Rückfragen vor Käufen: die offenen zuerst, dazu die zuletzt erledigten.
+  approvals: Approval[];
+  approvalLimit: ApprovalLimit;
+  // Ob die Frage auch aufs Handy kommt (Telegram gekoppelt).
+  approvalPhone: boolean;
 };
 
 const HOUR = 3_600_000;

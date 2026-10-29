@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { ApprovalLimit } from "../approval";
 import type { MailProviderId } from "../mailProviders";
 
 // Die Einstellungen liegen im Benutzerordner unter ~/.jarvis, damit sie ein Update von JARVIS
@@ -34,6 +35,9 @@ export type TelegramConfig = {
   briefing?: string | null;
 };
 
+// Ab welchem Betrag der Desk vor einem Kauf fragt (src/lib/approval.ts). Fehlt der Wert, gilt die vorsichtige Grenze.
+export type ApprovalConfig = { limitUsd: ApprovalLimit };
+
 export type JarvisConfig = {
   name: string;
   vaultPath?: string;
@@ -43,6 +47,7 @@ export type JarvisConfig = {
   calendar?: CalendarConfig;
   intel?: IntelConfig;
   telegram?: TelegramConfig;
+  approval?: ApprovalConfig;
 };
 
 export const DEFAULT_X_BUDGET_USD = 1;

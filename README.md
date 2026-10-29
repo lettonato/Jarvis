@@ -160,6 +160,7 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 - **Erinnerung** eine Viertelstunde vor jedem Termin.
 - **Warnungen:** Intel bremst den Desk, oder das Tageslimit ist erreicht.
 - **Trades:** jeder Kauf und Verkauf des Spielgeld-Desks mit Begründung.
+- **Rückfrage vor Käufen** mit den Knöpfen **Ja, kaufen** und **Nein** (nicht abschaltbar, solange die Rückfrage an ist; siehe [Rückfrage vor Käufen](#rückfrage-vor-käufen)). Nach deiner Antwort steht das Ergebnis unter der Frage, und die Knöpfe verschwinden.
 
 **Schreiben:** Mit KI-Gehirn schreibst du JARVIS wie in der App, etwa „Was steht morgen an?“, „Trag Freitag 15 Uhr Friseur ein“ oder „Fass mir die Mail von Anna zusammen“. Dazu gibt es feste Befehle, auch ohne KI-Gehirn: `/briefing`, `/handel`, `/pause` (oder einfach „Stopp“: keine neuen Käufe, der Stop-Loss passt weiter auf), `/weiter`, `/notaus`, `/hilfe`. Sprachnachrichten versteht er noch nicht; das Mikrofon der Handy-Tastatur macht aus Sprache Text.
 
@@ -220,6 +221,20 @@ So läuft eine Runde, jede Minute (Reihenfolge aus `filter.py`: billige Prüfung
 4. **Chief** schätzt die weichen Filter: Ist der Anstieg schon gelaufen, gehören Seite und Konten wirklich zum Coin, wurde das Konto schon für andere Coins benutzt? Mit KI-Gehirn macht das Claude (Haiku, Bruchteile eines Cents pro Runde), sonst Faustregeln. Was sich ausrechnen lässt (Liquidität, Konzentration, Anteil des Entwicklers), rechnet der Code; die Grenzen aus `thresholds.py` entscheiden, nicht die KI.
 5. **Size** setzt 2 % des Kontos ein, **Fills** kauft zum frischen Kurs, mit Gebühren und Kursrutsch wie auf einer echten Börse. Ist der Kurs seit der Prüfung um mehr als 5 % gestiegen, läuft Fills nicht hinterher.
 6. **Risk** und **Crawler** bewachen die gekauften Coins, auch in der Pause: Stop-Loss −15 %, Nachlauf-Stop 20 % unter dem Höchststand, Ziel +50 %, spätestens nach 24 Stunden raus. Fällt die Liquidität um die Hälfte, verschwindet das Handelspaar oder meldet RugCheck neue Rug-Zeichen, verkauft der Desk sofort.
+
+### Rückfrage vor Käufen
+
+Ab einer Grenze kauft der Desk nicht selbst, sondern fragt dich: per Telegram mit den Knöpfen **Ja, kaufen** und **Nein**, und in JARVIS als gelbe Leiste oben (auf dem Trading-Desk groß mit Countdown). Erst nach deinem Ja wird gekauft. Die Grenze stellst du unter **Einstellungen → Rückfrage vor Käufen** ein: bei jedem Kauf, ab 100 $ (Standard), ab 250 $, ab 500 $ oder nie. Im Spielgeld-Test ist ein Kauf etwa 200 $, ab 100 $ fragt JARVIS also vor jedem Kauf.
+
+Feste Regeln dazu (`src/lib/approval.ts`):
+
+- Ohne Antwort verfällt die Frage nach 10 Minuten, dann wird nicht gekauft.
+- Freigeben kannst nur du mit den Knöpfen, in JARVIS oder in deinem gekoppelten Telegram-Chat. Das KI-Gehirn hat dafür kein Werkzeug, ein gesprochenes „Ja“ zählt nicht, und Knöpfe aus fremden Chats übergeht JARVIS.
+- Nach deinem Ja prüft der Desk mit frischem Kurs noch einmal: Läuft der Handel noch, ist Platz für eine Position, besteht der Coin die harten Filter, ist der Kurs seit der Frage nicht mehr als 5 % gestiegen. Sonst kauft er nicht und sagt dir warum.
+- Gekauft wird höchstens der Betrag, nach dem er gefragt hat. Offene Fragen belegen schon einen der 5 Plätze.
+- Nach einem Nein fragt er denselben Coin 24 Stunden nicht mehr. Pause, Tageslimit und Not-Aus ziehen offene Fragen zurück.
+- Verkäufe (Stop-Loss, Ziel, Rug-Zeichen) fragen nie nach; dort kostet Warten Geld.
+- Rückfragen kommen aufs Handy, auch wenn die Meldungen zu Trades abgeschaltet sind. Ist kein Handy gekoppelt, steht die Frage nur in JARVIS.
 
 Feste Regeln, die auch Claude nicht ändern kann (`src/lib/paper.ts`): höchstens 5 Coins gleichzeitig, höchstens 5 % Verlust am Tag (danach kauft er bis morgen nichts), 24 Stunden Pause für einen verkauften Coin, nie Käufe mit Beispieldaten.
 
@@ -324,7 +339,8 @@ Aufbau:
 | `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart laufen sein Takt, Intel und Telegram los |
 | `src/lib/telegram.ts`, `src/lib/server/telegram.ts`, `src/components/TelegramSetup.tsx` | JARVIS auf dem Handy: Texte und Befehle, die Verbindung zu Telegram (Abholen, Koppeln, Gespräch mit Claude, Briefing, Erinnerungen), die Einstellungen mit QR-Code |
 | `src/lib/browser.ts`, `src/lib/server/browser.ts`, `src/app/api/browser/`, `src/components/views/BrowserView.tsx` | der Browser-Agent: feste Regeln (welche Adressen, Klicks und Eingaben erlaubt sind), Chrome über playwright-core mit eigenem Profil, die Schritte mit Claude, Zeiger und Live-Video (`/api/browser/live`, MJPEG aus dem Screencast), die Ansicht mit dem einfliegenden Fenster |
-| `src/lib/server/notify.ts` | Meldungen von Desk und Intel an alle, die zuhören (Telegram) |
+| `src/lib/server/notify.ts` | Meldungen von Desk und Intel an alle, die zuhören (Telegram), auch Rückfragen mit Knöpfen |
+| `src/lib/approval.ts`, `src/components/Approvals.tsx` | Rückfrage vor Käufen: Grenze, Texte und Knöpfe; die Frage in JARVIS (Leiste oben, groß auf dem Trading-Desk). Die Arbeit macht `answerApproval` in `engine.ts` |
 
 `JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000). Für den Browser-Agenten: `JARVIS_CHROME` (Pfad zu einem anderen Chrome oder Chromium), `JARVIS_BROWSER_HEADLESS=1` (auch beim Übernehmen ohne sichtbares Fenster, für Rechner ohne Bildschirm), `JARVIS_BROWSER_TEMPO` (0.1 macht Zeiger und Tippen zehnmal langsamer, für Vorführvideos in Zeitlupe), `JARVIS_SEARCH_URL` (andere Suche, Standard DuckDuckGo) und `JARVIS_BROWSER_LOCAL` (kommagetrennte Hosts mit Port im eigenen Netz, die er trotzdem öffnen darf, nur für Tests).
 

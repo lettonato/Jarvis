@@ -9,6 +9,7 @@ import type { JarvisConfig } from "./config";
 import { markSeen, readMail, readMessage } from "./mail";
 import { addEvent, CalendarError, openCalendar, openUrl, readCalendar } from "./calendar";
 import { addNote, addTask, completeTask, obsidianLink, readTasks, rescheduleTask } from "./obsidian";
+import { APPROVAL } from "../approval";
 import { SAFETY, STATUS_LABEL } from "../paper";
 import { control, deskSnapshot, DeskError } from "./desk/engine";
 import { GrokError } from "./desk/grok";
@@ -90,7 +91,7 @@ ${
 }
 - Nachrichten: Intel lässt Grok von xAI morgens und am Nachmittag die Nachrichten und X zu Bitcoin, Ethereum, Solana und ${name}s Themen lesen. Das letzte Lagebild liest du kostenlos mit nachrichten_lesen. Eine Suche auf X mit Grok (nachrichten_suchen) kostet etwa ${Math.round(TYPICAL_INTEL_COST_USD * 100)} Cent und dauert eine halbe Minute; nimm sie nur, wenn ${name} ausdrücklich wissen will, was auf X dazu gesagt wird. Für alles andere reicht web_search.
 - Im Browser arbeiten (browser_auftrag): JARVIS bedient ein eigenes Chrome auf ${name}s Mac; am Mac sieht ${name} in der Browser-Ansicht live zu. Er sucht, vergleicht Angebote auf mehreren Seiten, liest Seiten, die web_fetch nicht schafft, und füllt Formulare aus. Bestellen, abschicken, bezahlen und anmelden kann der Browser nicht; den letzten Klick macht ${name} selbst. Ein Auftrag dauert ein bis drei Minuten; sag vorher kurz, dass du in den Browser gehst. Für einfache Fragen zu Fakten reicht web_search.
-- Den Spielgeld-Handel abfragen und steuern: starten, pausieren, fortsetzen, Not-Aus. Dort handeln die Agenten Scan, Vet, Crawler, Chief, Size, Fills und Risk mit ${SAFETY.startCapitalUsd.toLocaleString("de-DE")} Dollar erfundenem Geld, um ${SAFETY.testDays} Tage lang zu testen, ob sich der Desk nach Kosten lohnt.
+- Den Spielgeld-Handel abfragen und steuern: starten, pausieren, fortsetzen, Not-Aus. Dort handeln die Agenten Scan, Vet, Crawler, Chief, Size, Fills und Risk mit ${SAFETY.startCapitalUsd.toLocaleString("de-DE")} Dollar erfundenem Geld, um ${SAFETY.testDays} Tage lang zu testen, ob sich der Desk nach Kosten lohnt. Ab einer Grenze, die ${name} in den Einstellungen wählt, fragt der Desk vor jedem Kauf per Telegram und auf dem Trading-Desk nach und kauft erst nach ${name}s Ja; ohne Antwort verfällt die Frage nach ${APPROVAL.timeoutMinutes} Minuten. Freigeben kann nur ${name} selbst mit den Knöpfen dort, nicht du und auch nicht per Sprache. Will ${name} dir gegenüber Ja sagen, schick ihn freundlich zu den Knöpfen.
 
 Was du noch nicht kannst: Mails schreiben, beantworten oder löschen, bestehende Termine ändern oder löschen, telefonieren, im Web etwas bestellen, abschicken oder dich anmelden und mit echtem Geld handeln. Möchte ${name} so etwas, sag ehrlich, dass es später kommt, und biete an, es als Aufgabe zu notieren. Gib keine Kauf- oder Verkaufsempfehlungen für echtes Geld; die festen Regeln des Desks (Stop-Loss, 2 Prozent pro Trade, Tageslimit) kannst und darfst du nicht ändern.
 
@@ -502,6 +503,8 @@ export async function think(
             aussortiert: d.stats.killed,
             rugs_gestoppt: d.stats.rugsStopped,
           },
+          rueckfragen_offen: d.approvals.filter((a) => a.state === "offen").map((a) => ({ coin: a.symbol, usd: usd(a.usd), warum: a.why, verfaellt: a.until })),
+          rueckfrage_ab_usd: d.approvalLimit === null ? "nie" : d.approvalLimit,
           gewonnen: d.stats.wins,
           verloren: d.stats.losses,
           protokoll: d.log.slice(0, 15).map((l) => `${l.agent}: ${l.text}`),
@@ -690,7 +693,10 @@ export async function think(
   } else if (intel && !intel.configured) lines.push("Nachrichten (Intel): kein xAI-Schlüssel");
   const desk = await deskSnapshot().catch(() => null);
   if (desk && desk.status !== "aus") {
-    lines.push(`Spielgeld-Handel: ${STATUS_LABEL[desk.status]}, Konto ${Math.round(desk.equity)} Dollar (${desk.pnlPct >= 0 ? "+" : ""}${desk.pnlPct.toFixed(1)} % seit Start), Tag ${desk.testDay} von ${SAFETY.testDays}, ${desk.positions.length} Positionen offen`);
+    const asking = desk.approvals.filter((a) => a.state === "offen").map((a) => `$${a.symbol} für ${Math.round(a.usd)} Dollar`);
+    lines.push(
+      `Spielgeld-Handel: ${STATUS_LABEL[desk.status]}, Konto ${Math.round(desk.equity)} Dollar (${desk.pnlPct >= 0 ? "+" : ""}${desk.pnlPct.toFixed(1)} % seit Start), Tag ${desk.testDay} von ${SAFETY.testDays}, ${desk.positions.length} Positionen offen${asking.length ? `; wartet auf ${name}s Ja per Knopf: ${asking.join(", ")}` : ""}`,
+    );
   } else if (desk) lines.push("Spielgeld-Handel: noch nicht gestartet");
   for (const line of request.extra.slice(0, 4)) lines.push(line.slice(0, 300));
 

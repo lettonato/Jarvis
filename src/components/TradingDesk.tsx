@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { ApprovalPanel, ApprovalRule } from "./Approvals";
 import { CrawlerWeb } from "./CrawlerWeb";
 import { Holo } from "./HoloView";
 import { useJarvis } from "./JarvisProvider";
@@ -66,6 +67,7 @@ export function TradingDesk() {
   return (
     <main className="m-2 flex flex-1 flex-col gap-3 rounded-lg border-2 border-frame/80 bg-desk/60 p-3 sm:m-4 sm:p-4">
       <Header now={now} isDemo={isDemo} loading={!snap} desk={desk} />
+      {desk && <ApprovalPanel desk={desk} />}
       <AgentGrid snap={snap} desk={desk} />
       <CrawlerWeb snap={snap} desk={desk} />
       <section className="grid gap-3 lg:grid-cols-3">
@@ -286,6 +288,7 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
         </p>
       )}
       {note && <p className={`text-xs ${note.tone === "ok" ? "text-up" : "text-down"}`}>{note.text}</p>}
+      {desk && <ApprovalRule desk={desk} />}
       <BalanceChart points={desk?.equityHistory ?? []} start={desk?.startCapital ?? SAFETY.startCapitalUsd} />
       {desk?.status === "aus" && (
         <ul className="grid gap-1 text-xs text-quiet sm:grid-cols-2">
@@ -501,6 +504,7 @@ const VERDICT: Record<CoinVerdict["stage"], { label: string; tone: string }> = {
   skin_kill: { label: "Crawler: raus", tone: "bg-down/15 text-down" },
   x_kill: { label: "X warnt", tone: "bg-down/15 text-down" },
   chief_nein: { label: "Chief: nein", tone: "bg-amber-500/15 text-amber-300" },
+  frage: { label: "fragt dich", tone: "bg-amber-400/20 font-bold text-amber-200" },
   nicht_gekauft: { label: "Fills: nein", tone: "bg-amber-500/15 text-amber-300" },
   nicht_geprueft: { label: "nicht geprüft", tone: "bg-panel-2 text-quiet" },
   gekauft: { label: "GEKAUFT", tone: "bg-sky-500/15 font-bold text-sky-300" },
