@@ -1,10 +1,10 @@
 import { connection } from "next/server";
 import { brainKey, explainBrainError } from "@/lib/server/brain";
-import { browserStatus, BrowserError, closeBrowser, runBrowserTask, showBrowser, stopBrowserTask } from "@/lib/server/browser";
+import { browserStatus, BrowserError, closeBrowser, runBrowserTask, stopBrowserTask, takeOver } from "@/lib/server/browser";
 import { readConfig } from "@/lib/server/config";
 import { guard, readBody } from "@/lib/server/guard";
 
-// Der Browser-Agent: Stand abfragen, einen Auftrag starten, anhalten, das Fenster nach vorn holen oder schließen.
+// Der Browser-Agent: Stand abfragen, einen Auftrag starten, anhalten, selbst übernehmen (echtes Chrome-Fenster) oder schließen.
 // Ein Auftrag aus der Ansicht läuft im Hintergrund weiter; die Seite fragt den Stand regelmäßig ab.
 
 export async function GET(request: Request) {
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   return Response.json(await browserStatus(brainKey(await readConfig())));
 }
 
-type Action = { action: "auftrag"; text: string } | { action: "stopp" } | { action: "zeigen" } | { action: "schliessen" };
+type Action = { action: "auftrag"; text: string } | { action: "stopp" } | { action: "uebernehmen" } | { action: "schliessen" };
 
 export async function POST(request: Request) {
   await connection();
@@ -36,8 +36,8 @@ export async function POST(request: Request) {
       if (early) throw early;
     } else if (body.action === "stopp") {
       stopBrowserTask();
-    } else if (body.action === "zeigen") {
-      await showBrowser();
+    } else if (body.action === "uebernehmen") {
+      await takeOver();
     } else if (body.action === "schliessen") {
       await closeBrowser();
     } else {

@@ -377,6 +377,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
             const { ready, rest } = takeSentences(pending);
             pending = rest;
             ready.forEach((sentence) => speech.push(sentence));
+          } else if (event.type === "navigate") {
+            if (event.href !== place.current) router.push(event.href, { transitionTypes: holoTypes(place.current, event.href) });
           } else if (event.type === "error") throw new Error(event.error);
           else result = event.reply;
         }

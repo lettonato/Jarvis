@@ -470,3 +470,82 @@ body {
     opacity: 0.35;
   }
 }
+
+/* Der Live-Browser: Startet JARVIS einen Auftrag, fliegt das Fenster aus der Tiefe heran, ein Lichtstreifen
+   fährt einmal darüber, und die Live-Marke pulsiert, solange er arbeitet. */
+@media (prefers-reduced-motion: no-preference) {
+  .browser-fly {
+    transform-origin: 50% 80%;
+    animation: browser-fly 1.6s var(--holo-ease) both;
+  }
+  .browser-scan::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 35%;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgb(94 234 212 / 0.3), transparent);
+    animation: browser-scan 1.5s 0.9s ease-in-out both;
+  }
+  .browser-live-dot {
+    animation: browser-live 1.2s ease-in-out infinite;
+  }
+  .browser-boot {
+    animation: browser-boot 1.6s ease-in-out infinite;
+  }
+  .browser-step {
+    animation: browser-step 0.5s var(--holo-ease) both;
+  }
+}
+
+@keyframes browser-fly {
+  0% {
+    opacity: 0;
+    transform: perspective(1600px) translate3d(0, 22vh, -1500px) rotateX(46deg) rotateZ(-5deg) scale(0.3);
+    filter: brightness(2.8) blur(10px);
+  }
+  45% {
+    opacity: 1;
+    filter: brightness(1.7) blur(1px);
+  }
+  78% {
+    transform: perspective(1600px) translate3d(0, -1.2vh, 50px) rotateX(-3deg) rotateZ(0.3deg) scale(1.015);
+    filter: brightness(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes browser-scan {
+  from {
+    transform: translateY(-110%);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(300%);
+    opacity: 0;
+  }
+}
+
+@keyframes browser-live {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+
+@keyframes browser-boot {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes browser-step {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
