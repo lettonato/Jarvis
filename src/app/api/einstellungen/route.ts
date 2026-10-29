@@ -11,6 +11,7 @@ import { createVault, detectVaults, vaultProblem } from "@/lib/server/obsidian";
 import { providerById } from "@/lib/mailProviders";
 import { findToken, isClock, tokenProblem } from "@/lib/telegram";
 import type { Settings } from "@/lib/settings";
+import { approvalLimitOf, isApprovalLimit, type ApprovalLimit } from "@/lib/approval";
 
 // Das Passwort verlässt den Server nie: die Seite erfährt nur, ob eines gespeichert ist.
 async function settings(config: JarvisConfig): Promise<Settings> {
@@ -33,6 +34,7 @@ async function settings(config: JarvisConfig): Promise<Settings> {
       budgetUsd: xBudget(config),
     },
     telegram: telegramStatus(config),
+    approval: { limitUsd: approvalLimitOf(config.approval?.limitUsd) },
     configFile: path.join(CONFIG_DIR, "config.json"),
   };
 }
@@ -62,7 +64,8 @@ type Action =
   | { action: "telegramPrefs"; trades?: boolean; warnings?: boolean; reminders?: boolean; briefing?: string | null }
   | { action: "telegramTest" }
   | { action: "telegramUnpair" }
-  | { action: "removeTelegram" };
+  | { action: "removeTelegram" }
+  | { action: "approval"; limitUsd: ApprovalLimit };
 
 // Mehr als 20 $ am Tag sind für einen Spielgeld-Test sicher ein Tippfehler.
 const MAX_X_BUDGET_USD = 20;
@@ -192,6 +195,9 @@ export async function POST(request: Request) {
     await writeConfig(fresh);
     wakeTelegram();
     return Response.json(await settings(fresh));
+  } else if (body.action === "approval") {
+    if (!isApprovalLimit(body.limitUsd)) return Response.json({ error: "Diese Grenze gibt es nicht." }, { status: 400 });
+    config.approval = { limitUsd: body.limitUsd };
   } else {
     return Response.json({ error: "Unbekannte Aktion." }, { status: 400 });
   }

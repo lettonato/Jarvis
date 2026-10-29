@@ -1,3 +1,4 @@
+import type { ApprovalLimit } from "./approval";
 import type { MailProviderId } from "./mailProviders";
 import type { TelegramStatus } from "./telegram";
 
@@ -13,5 +14,7 @@ export type Settings = {
   crawler: { configured: boolean; hint: string | null; fromEnv: boolean; budgetUsd: number };
   // JARVIS auf dem Handy über Telegram.
   telegram: TelegramStatus;
+  // Ab welchem Betrag der Desk vor einem Kauf fragt.
+  approval: { limitUsd: ApprovalLimit };
   configFile: string;
 };

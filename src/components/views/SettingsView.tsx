@@ -6,7 +6,9 @@ import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
 import { TelegramSetup } from "../TelegramSetup";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
+import { APPROVAL, APPROVAL_CHOICES, type ApprovalLimit } from "@/lib/approval";
 import type { MemoryFact } from "@/lib/brain";
+import { SAFETY } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
 import { PHOTOS, readWorldStyle, saveWorldStyle, type WorldStyle } from "@/lib/photos";
 import { VOICE_KEY } from "@/lib/useVoice";
@@ -47,6 +49,13 @@ export function SettingsView() {
             text="Über Telegram hast du JARVIS auch unterwegs dabei: Er schickt dir morgens das Briefing, erinnert dich an Termine, meldet Warnungen und Trades, und du kannst ihm schreiben wie in der App. Dafür legst du dir bei Telegram einen eigenen Bot an. JARVIS antwortet nur deinem Handy, und dein Mac bleibt von außen unerreichbar."
           >
             <TelegramSetup />
+          </Section>
+          <Section
+            id="rueckfrage"
+            title="Rückfrage vor Käufen"
+            text={`Ab dieser Grenze kauft der Trading-Desk nicht selbst. JARVIS fragt dich per Telegram mit Ja/Nein-Knöpfen und oben in JARVIS, und kauft erst nach deinem Ja. Ohne Antwort verfällt die Frage nach ${APPROVAL.timeoutMinutes} Minuten, dann wird nicht gekauft.`}
+          >
+            <ApprovalSetup />
           </Section>
           <Section
             id="crawler"
@@ -391,6 +400,66 @@ function CrawlerSetup() {
         </Button>
       )}
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
+    </div>
+  );
+}
+
+function ApprovalSetup() {
+  const { settings, setSettings, desk } = useJarvis();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const current = settings?.approval.limitUsd;
+  const ticket = Math.floor((desk && desk.status !== "aus" ? desk.equity : SAFETY.startCapitalUsd) * SAFETY.maxTradeShare);
+
+  async function choose(limitUsd: ApprovalLimit) {
+    setBusy(true);
+    setError(null);
+    try {
+      setSettings(await postJson<Settings>("/api/einstellungen", { action: "approval", limitUsd }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Rückfrage ab">
+        {APPROVAL_CHOICES.map((c) => {
+          const on = current === c.value;
+          return (
+            <button
+              key={String(c.value)}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              disabled={busy}
+              onClick={() => choose(c.value)}
+              className={`rounded-lg border px-3 py-2 text-xs font-bold transition disabled:opacity-50 ${
+                on ? "border-sky-300/80 bg-sky-400/20 text-sky-50 shadow-[0_0_18px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 text-sky-200/80 hover:border-sky-300/50"
+              }`}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-quiet">
+        Im Spielgeld-Test ist ein Kauf etwa {ticket} $ ({SAFETY.maxTradeShare * 100} % des Kontos).{" "}
+        {current === null
+          ? "Mit „Nie fragen“ kauft der Desk wie bisher selbst und meldet dir den Kauf."
+          : current !== undefined && ticket >= current
+            ? "Mit dieser Grenze fragt JARVIS also gerade vor jedem Kauf."
+            : "Mit dieser Grenze kauft der Desk gerade noch selbst; erst größere Käufe brauchen dein Ja."}
+      </p>
+      <ul className="space-y-1 text-xs text-sky-50/85">
+        <li>· Freigeben kannst nur du mit den Knöpfen, nicht das KI-Gehirn und nicht per Sprache.</li>
+        <li>· Nach deinem Ja prüft der Desk noch einmal den Kurs: Ist er seit der Frage um mehr als 5 % gestiegen, kauft er nicht.</li>
+        <li>· Verkäufe wie Stop-Loss und Gewinnmitnahme fragen nie nach, dort kostet Warten Geld.</li>
+        <li>· {settings?.telegram.paired ? "Die Frage kommt auf dein gekoppeltes Handy." : "Ohne gekoppeltes Handy siehst du die Frage nur hier in JARVIS."}</li>
+      </ul>
+      {error && <Notice tone="error">{error}</Notice>}
     </div>
   );
 }

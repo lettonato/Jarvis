@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { ApprovalBar, openApprovals } from "./Approvals";
 import { Chips, Composer, HandsFreeSwitch, Messages, NewConversation, sessionLabel, useDraft, useStateLabel } from "./Console";
 import { HoloLink } from "./HoloLink";
 import { Holo } from "./HoloView";
@@ -21,7 +22,7 @@ import { World } from "./world/World";
 type Tab = { href: string; label: string; icon: IconName; badge?: { value: number; alert: boolean } };
 
 function useTabs(): Tab[] {
-  const { tasks, mail, calendar, intel } = useJarvis();
+  const { tasks, mail, calendar, intel, desk } = useJarvis();
   const now = useNow();
   const today = now ? isoDate(now) : null;
   const events = now && today && calendar?.access === "ok" ? eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime()).length : 0;
@@ -35,7 +36,7 @@ function useTabs(): Tab[] {
     { href: "/kalender", label: "Kalender", icon: "kalender", badge: events ? { value: events, alert: false } : undefined },
     { href: "/post", label: "Post", icon: "post", badge: important ? { value: important, alert: true } : undefined },
     { href: "/browser", label: "Browser", icon: "browser" },
-    { href: "/trading", label: "Trading", icon: "trading" },
+    { href: "/trading", label: "Trading", icon: "trading", badge: openApprovals(desk).length ? { value: openApprovals(desk).length, alert: true } : undefined },
     { href: "/intel", label: "Intel", icon: "intel", badge: intel?.warning ? { value: 1, alert: true } : undefined },
     { href: "/agenten", label: "Agenten", icon: "agenten" },
   ];
@@ -107,6 +108,7 @@ function NavBar() {
           </HoloLink>
         </div>
       </div>
+      <ApprovalBar />
     </header>
   );
 }

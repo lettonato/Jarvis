@@ -1,5 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { APPROVAL, approvalLimitOf, approvalOutcome, approvalQuestion, needsApproval, type Approval, type ApprovalState } from "../../approval";
 import { isoDate } from "../../dates";
 import { formatPct, formatSignedUsd, formatUsd } from "../../format";
 import { fetchPairs, marketSnapshot, toCandidate, type Candidate, type DexPair } from "../../market";
@@ -41,6 +43,7 @@ import { GrokError, readX, TYPICAL_COST_USD, type XReport } from "./grok";
 // 1. Risk und Crawler bewachen die offenen Positionen (Stop-Loss, Ziel, Rug-Zeichen).
 // 2. Das Tageslimit wird geprüft.
 // 3. Läuft der Handel, gehen neue Coins durch Scan, Vet, Crawler und Chief; Size und Fills kaufen.
+//    Ab der Grenze aus den Einstellungen fragen sie dich vorher und kaufen erst nach deinem Ja.
 // Der Stand liegt in ~/.jarvis/spielgeld.json, jeder Trade zusätzlich in spielgeld-trades.jsonl.
 
 const FILE = path.join(CONFIG_DIR, "spielgeld.json");
@@ -59,6 +62,7 @@ const TRADE_LIMIT = 200;
 const HISTORY_EVERY_MS = 5 * TICK_MS;
 const HISTORY_LIMIT = 3000;
 const TRAIL_LIMIT = 200;
+const APPROVAL_MS = APPROVAL.timeoutMinutes * 60_000;
 
 type StoredPosition = Position & { missed?: number };
 
@@ -82,6 +86,8 @@ type State = {
   equityHistory: { at: string; equity: number }[];
   lastPick: string | null;
   lastTickAt: string | null;
+  // Rückfragen vor Käufen, neueste zuerst.
+  approvals: Approval[];
 };
 
 const freshState = (): State => ({
@@ -103,6 +109,7 @@ const freshState = (): State => ({
   equityHistory: [],
   lastPick: null,
   lastTickAt: null,
+  approvals: [],
 });
 
 // Next.js lädt diesen Code unter Umständen in mehreren Bündeln. Damit es trotzdem nur einen Desk
@@ -198,7 +205,8 @@ function record(state: State, trade: Trade) {
 
 const tradeId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
-function buy(state: State, c: Candidate, ticket: number, why: string, now: Date) {
+// Nach deinem Ja steht das Ergebnis schon unter der Rückfrage; eine zweite Meldung wäre doppelt.
+function buy(state: State, c: Candidate, ticket: number, why: string, now: Date, approved = false) {
   const { qty, fillPrice, feesUsd } = simulateBuy(ticket, c.priceUsd, c.liquidityUsd);
   state.cash -= ticket;
   const at = now.toISOString();
@@ -223,7 +231,137 @@ function buy(state: State, c: Candidate, ticket: number, why: string, now: Date)
   state.lastPick = c.symbol;
   log(state, "Size", `$${c.symbol}: ${formatUsd(ticket)}, das sind ${SAFETY.maxTradeShare * 100} % des Kontos`);
   log(state, "Fills", `Kauf $${c.symbol} für ${formatUsd(ticket)}, davon ${formatUsd(feesUsd)} Gebühren`, "buy");
-  notify({ kind: "trade", text: `🟢 Spielgeld-Kauf: $${c.symbol} für ${formatUsd(ticket)}.\nWarum: ${why}` });
+  if (!approved) notify({ kind: "trade", text: `🟢 Spielgeld-Kauf: $${c.symbol} für ${formatUsd(ticket)}.\nWarum: ${why}` });
+}
+
+// ---------- Rückfrage vor Käufen ----------
+
+const openApprovals = (state: State) => state.approvals.filter((a) => a.state === "offen");
+
+// Warum gerade nicht gekauft wird, als halber Satz.
+const NOT_BUYING: Record<DeskStatus, string> = {
+  aus: "der Handel ist nicht gestartet",
+  laeuft: "",
+  pausiert: "der Handel ist pausiert",
+  tageslimit: "das Tageslimit ist erreicht",
+  notaus: "der Not-Aus ist gedrückt",
+};
+
+function ask(state: State, c: Candidate, usd: number, why: string, now: Date) {
+  const a: Approval = {
+    id: randomBytes(5).toString("hex"),
+    address: c.address,
+    symbol: c.symbol,
+    name: c.name,
+    url: c.url,
+    usd,
+    price: c.priceUsd,
+    why,
+    askedAt: now.toISOString(),
+    until: new Date(now.getTime() + APPROVAL_MS).toISOString(),
+    state: "offen",
+  };
+  state.approvals.unshift(a);
+  // Offene bleiben immer, von den erledigten nur die letzten.
+  let done = 0;
+  state.approvals = state.approvals.filter((x) => x.state === "offen" || ++done <= APPROVAL.keep);
+  state.verdicts[c.address] = { at: now.toISOString(), stage: "frage", text: `wartet auf dein Ja für ${formatUsd(usd)}` };
+  log(state, "Size", `$${c.symbol}: Kauf für ${formatUsd(usd)}. Ich frage dich vorher und kaufe erst nach deinem Ja`, "warn");
+  trace(c, "chief", "ok", `wartet auf dein Ja für ${formatUsd(usd)}`);
+  notify({ kind: "rueckfrage", id: a.id, text: approvalQuestion(a) });
+}
+
+function settle(state: State, a: Approval, outcome: Exclude<ApprovalState, "offen">, result: string, now: Date, via?: Approval["via"]) {
+  a.state = outcome;
+  a.result = result;
+  a.answeredAt = now.toISOString();
+  if (via) a.via = via;
+  if (outcome !== "ja") state.verdicts[a.address] = { at: now.toISOString(), stage: "nicht_gekauft", text: result.replace(/\.$/, "") };
+  notify({ kind: "rueckfrage_ende", id: a.id, text: approvalOutcome(a) });
+}
+
+// Ohne Antwort kein Kauf.
+function expireApprovals(state: State, now: Date) {
+  for (const a of openApprovals(state)) {
+    if (Date.parse(a.until) > now.getTime()) continue;
+    settle(state, a, "verfallen", "Keine Antwort, also nicht gekauft.", now);
+    log(state, "Fills", `$${a.symbol}: keine Antwort von dir, also nicht gekauft`, "warn");
+    trace(a, "fills", "warn", "keine Antwort von dir, also nicht gekauft");
+  }
+}
+
+// Pause, Not-Aus, Tageslimit: Was noch auf dein Ja wartet, fällt weg.
+function dropApprovals(state: State, why: string, now: Date) {
+  for (const a of openApprovals(state)) {
+    settle(state, a, "verworfen", `Nicht gekauft: ${why}.`, now);
+    log(state, "Fills", `$${a.symbol}: Rückfrage zurückgezogen, ${why}`, "warn");
+  }
+}
+
+export async function approvalStateOf(id: string): Promise<ApprovalState | null> {
+  return (await load()).approvals.find((a) => a.id === id)?.state ?? null;
+}
+
+// Deine Antwort auf eine Rückfrage, per Knopf in JARVIS oder in Telegram. Ein Ja kauft nur, wenn auch
+// jetzt noch alles passt; geprüft wird mit einem frischen Kurs.
+export async function answerApproval(id: string, yes: boolean, via: NonNullable<Approval["via"]>, now = new Date()): Promise<string> {
+  const state = await load();
+  const find = () => state.approvals.find((x) => x.id === id);
+  const open = () => {
+    const a = find();
+    if (!a) throw new DeskError("Diese Rückfrage gibt es nicht mehr.");
+    if (a.state !== "offen") throw new DeskError(`Diese Rückfrage ist schon erledigt: ${a.result}`);
+    return a;
+  };
+  let a = open();
+  if (Date.parse(a.until) <= now.getTime()) {
+    expireApprovals(state, now);
+    await save(state);
+    throw new DeskError(`Zu spät: Die Rückfrage zu $${a.symbol} ist verfallen. Gekauft habe ich nichts.`);
+  }
+  if (!yes) {
+    settle(state, a, "nein", "Nicht gekauft, du hast Nein gesagt.", now, via);
+    // Denselben Coin fragt der Desk heute nicht noch einmal.
+    state.cooldown[a.address] = new Date(now.getTime() + SAFETY.cooldownHours * HOUR).toISOString();
+    log(state, "Du", `$${a.symbol}: nein, nicht kaufen`);
+    trace(a, "fills", "raus", "du hast Nein gesagt");
+    await save(state);
+    return `Gut, $${a.symbol} kaufe ich nicht.`;
+  }
+
+  let pair: DexPair | undefined;
+  try {
+    pair = (await fetchPairs([a.address])).get(a.address);
+  } catch {
+    throw new DeskError("Ich bekomme gerade keinen frischen Kurs und kaufe nicht blind. Die Frage bleibt offen, versuch es gleich noch einmal.");
+  }
+  // Während auf den Kurs gewartet wurde, kann sich alles geändert haben: noch einmal von vorn prüfen.
+  a = open();
+  const refuse = async (why: string) => {
+    settle(state, a, "verworfen", `Nicht gekauft: ${why}.`, now, via);
+    log(state, "Fills", `$${a.symbol}: trotz deinem Ja nicht gekauft, ${why}`, "warn");
+    trace(a, "fills", "warn", `trotz deinem Ja nicht gekauft: ${why}`);
+    await save(state);
+    return `Nicht gekauft: ${why}.`;
+  };
+  if (Date.parse(a.until) <= now.getTime()) return refuse("die Rückfrage ist inzwischen verfallen");
+  if (state.status !== "laeuft") return refuse(NOT_BUYING[state.status]);
+  if (state.positions.some((p) => p.address === a.address)) return refuse("den Coin hat der Desk schon");
+  if (state.positions.length >= SAFETY.maxOpenPositions) return refuse(`es sind schon ${SAFETY.maxOpenPositions} Coins offen`);
+  const live = pair ? toCandidate(pair, now.getTime()) : null;
+  if (!live || !(live.priceUsd > 0) || !live.passed) return refuse("er besteht die harten Filter nicht mehr");
+  if (live.priceUsd > a.price * (1 + MAX_CHASE)) return refuse(`der Kurs ist seit der Frage ${formatPct((live.priceUsd / a.price - 1) * 100)} gestiegen, ich laufe nicht hinterher`);
+  const size = Math.min(a.usd, ticketSize(equity(state), state.cash));
+  if (!size) return refuse("es ist nicht genug Geld auf dem Konto");
+
+  settle(state, a, "ja", `Gekauft für ${formatUsd(size)}.`, now, via);
+  state.verdicts[a.address] = { at: now.toISOString(), stage: "gekauft", text: a.why };
+  log(state, "Du", `$${a.symbol}: ja, kaufen`);
+  buy(state, live, size, a.why, now, true);
+  trace(live, "fills", "gekauft", `nach deinem Ja gekauft für ${formatUsd(size)}`);
+  await save(state);
+  await writeReport(state, state.day.date);
+  return `Gekauft: $${a.symbol} für ${formatUsd(size)}.`;
 }
 
 function sell(state: State, p: StoredPosition, price: number, liquidity: number, agent: DeskAgent, why: string, now: Date) {
@@ -351,11 +489,13 @@ async function hunt(state: State, now: Date) {
     if (warnOnce(state, "Risk", text)) trace(null, "intel", "warn", text);
     return;
   }
-  if (state.positions.length >= SAFETY.maxOpenPositions) return;
+  // Was auf dein Ja wartet, belegt schon einen Platz.
+  const asked = openApprovals(state);
+  if (state.positions.length + asked.length >= SAFETY.maxOpenPositions) return;
   const ticket = ticketSize(equity(state), state.cash);
   if (!ticket) return;
 
-  const held = new Set(state.positions.map((p) => p.address));
+  const held = new Set([...state.positions, ...asked].map((p) => p.address));
   const fresh = candidates
     .filter((c) => c.passed && !held.has(c.address))
     .filter((c) => !(state.cooldown[c.address] && Date.parse(state.cooldown[c.address]) > now.getTime()))
@@ -470,9 +610,10 @@ async function hunt(state: State, now: Date) {
     state.verdicts[v.address] = { at: now.toISOString(), stage: "nicht_gekauft", text: why };
     log(state, "Fills", `$${v.symbol}: ${why}`, "warn");
   };
+  const limit = approvalLimitOf(config.approval?.limitUsd);
   for (const v of picks) {
     // Der Not-Aus oder eine Pause kann jederzeit dazwischenkommen.
-    if (state.status !== "laeuft" || state.positions.length >= SAFETY.maxOpenPositions) break;
+    if (state.status !== "laeuft" || state.positions.length + openApprovals(state).length >= SAFETY.maxOpenPositions) break;
     const size = ticketSize(equity(state), state.cash);
     if (!size) break;
     const checked = survivors.find((s) => s.candidate.address === v.address)!.candidate;
@@ -484,6 +625,11 @@ async function hunt(state: State, now: Date) {
     }
     if (live.priceUsd > checked.priceUsd * (1 + MAX_CHASE)) {
       pass(v, `seit der Prüfung ${formatPct((live.priceUsd / checked.priceUsd - 1) * 100)} gestiegen, ich laufe nicht hinterher`);
+      continue;
+    }
+    // Ab deiner Grenze kauft nicht der Desk, sondern du.
+    if (needsApproval(size, limit)) {
+      ask(state, live, size, v.why, now);
       continue;
     }
     state.verdicts[v.address] = { at: now.toISOString(), stage: "gekauft", text: v.why };
@@ -557,9 +703,11 @@ export async function tick(now = new Date()) {
     const state = await load();
     if (state.status === "aus" || state.status === "notaus") return;
     await rollDay(state, now);
+    expireApprovals(state, now);
     const before = state.day.trades;
     await watch(state, now);
     dailyLimit(state);
+    if (state.status !== "laeuft") dropApprovals(state, NOT_BUYING[state.status], now);
     if (state.status === "laeuft") await hunt(state, now);
     remember(state, now);
     state.lastTickAt = now.toISOString();
@@ -598,6 +746,7 @@ export async function control(input: DeskAction, now = new Date()): Promise<stri
       if (state.status !== "laeuft" && state.status !== "tageslimit") throw new DeskError("Der Handel läuft gerade nicht.");
       state.status = "pausiert";
       state.statusReason = "Von dir pausiert. Stop-Loss und Crawler bewachen die offenen Positionen weiter.";
+      dropApprovals(state, NOT_BUYING.pausiert, now);
       message = "Pausiert. Ich kaufe nichts Neues, passe aber weiter auf die offenen Positionen auf.";
       break;
     case "weiter":
@@ -610,6 +759,7 @@ export async function control(input: DeskAction, now = new Date()): Promise<stri
     case "notaus":
       if (state.status === "aus") throw new DeskError("Der Spielgeld-Handel ist noch nicht gestartet.");
       state.status = "notaus";
+      dropApprovals(state, NOT_BUYING.notaus, now);
       state.statusReason = "Not-Aus: alle Agenten stehen, auch der Stop-Loss. Offene Positionen bleiben, bis du sie verkaufst oder weitermachst.";
       message = `Not-Aus. Alle Agenten stehen.${state.positions.length ? ` ${state.positions.length} Positionen bleiben offen.` : ""}`;
       break;
@@ -633,6 +783,7 @@ export async function control(input: DeskAction, now = new Date()): Promise<stri
     }
     case "zuruecksetzen": {
       if (state.status === "laeuft" || state.status === "tageslimit") throw new DeskError("Bitte zuerst pausieren.");
+      dropApprovals(state, "der Handel wurde zurückgesetzt", now);
       await fs.rename(TRADES_FILE, TRADES_FILE.replace(/\.jsonl$/, `-bis-${isoDate(now)}-${now.getTime()}.jsonl`)).catch(() => {});
       Object.assign(state, freshState());
       message = "Zurückgesetzt. Das alte Protokoll liegt noch neben den Einstellungen.";
@@ -685,6 +836,9 @@ export async function deskSnapshot(now = new Date()): Promise<DeskSnapshot> {
     intelWarning: await intelWarning(now)
       .then((w) => (w ? { text: w.text, until: w.until } : null))
       .catch(() => null),
+    approvals: [...openApprovals(state), ...state.approvals.filter((a) => a.state !== "offen").slice(0, 5)],
+    approvalLimit: approvalLimitOf(config.approval?.limitUsd),
+    approvalPhone: Boolean(config.telegram?.chatId),
   };
 }
 

@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { approvalButton, parseApprovalButton } from "../approval";
 import type { BrainTurn } from "../brain";
 import type { CalendarSnapshot } from "../calendar";
 import { deskSentence, situation } from "../commands";
@@ -24,7 +25,7 @@ import {
 import { brainKey, explainBrainError, HISTORY_TURNS, think } from "./brain";
 import { readCalendar } from "./calendar";
 import { CONFIG_DIR, readConfig, writeConfig, type JarvisConfig, type TelegramConfig } from "./config";
-import { control, DeskError, deskSnapshot } from "./desk/engine";
+import { answerApproval, approvalStateOf, control, DeskError, deskSnapshot } from "./desk/engine";
 import { intelSnapshot } from "./intel";
 import { readMail } from "./mail";
 import { onNotice, type Notice } from "./notify";
@@ -58,9 +59,14 @@ const CALENDAR_EVERY_MS = 5 * MINUTE;
 
 type TgChat = { id: number; type: string; first_name?: string };
 type TgMessage = { message_id: number; date: number; chat: TgChat; from?: { first_name?: string }; text?: string; voice?: unknown; audio?: unknown };
-type TgUpdate = { update_id: number; message?: TgMessage };
+// Ein Druck auf einen Knopf unter einer Nachricht des Bots.
+type TgCallback = { id: string; from: { id: number }; message?: { message_id: number; chat: TgChat }; data?: string };
+type TgUpdate = { update_id: number; message?: TgMessage; callback_query?: TgCallback };
 
-type State = { offset: number; history: BrainTurn[]; lastAt: string | null; reminded: string[]; briefedOn: string | null };
+// asks: welche Telegram-Nachricht zu welcher Rückfrage gehört, damit JARVIS dort später das Ergebnis
+// einträgt und die Knöpfe entfernt.
+type Ask = { id: string; messageId: number; text: string };
+type State = { offset: number; history: BrainTurn[]; lastAt: string | null; reminded: string[]; briefedOn: string | null; asks: Ask[] };
 
 type Shared = {
   running: boolean;
@@ -91,7 +97,7 @@ const shared: Shared = (holder.__jarvisTelegram ??= {
   calendar: null,
 });
 
-const freshState = (): State => ({ offset: 0, history: [], lastAt: null, reminded: [], briefedOn: null });
+const freshState = (): State => ({ offset: 0, history: [], lastAt: null, reminded: [], briefedOn: null, asks: [] });
 
 async function load(): Promise<State> {
   if (shared.state) return shared.state;
@@ -179,6 +185,17 @@ async function send(token: string, chatId: number, text: string): Promise<void> 
       await call(token, "sendMessage", body);
     }
   }
+}
+
+// Eine Rückfrage mit Ja/Nein-Knöpfen darunter.
+async function sendQuestion(token: string, chatId: number, id: string, text: string): Promise<number> {
+  const msg = await call<{ message_id: number }>(token, "sendMessage", {
+    chat_id: chatId,
+    text,
+    link_preview_options: { is_disabled: true },
+    reply_markup: { inline_keyboard: [[{ text: "✅ Ja, kaufen", callback_data: approvalButton(id, true) }, { text: "✖️ Nein", callback_data: approvalButton(id, false) }]] },
+  });
+  return msg.message_id;
 }
 
 // ---------- Koppeln ----------
@@ -303,6 +320,31 @@ async function handle(token: string, msg: TgMessage) {
   shared.queue = shared.queue.then(() => converse(token, tg.chatId!, text, config)).catch((e) => console.error("Telegram:", e));
 }
 
+// Ja oder Nein auf eine Rückfrage. Zählt nur aus deinem gekoppelten Chat; alle anderen bekommen keine Antwort.
+async function handleButton(token: string, q: TgCallback) {
+  const config = await readConfig();
+  const tg = config.telegram;
+  if (!tg?.chatId || tg.token !== token) return;
+  const answer = (text?: string) => call(token, "answerCallbackQuery", { callback_query_id: q.id, ...(text ? { text } : {}) }).catch(() => {});
+  if (q.from.id !== tg.chatId || q.message?.chat.id !== tg.chatId) return;
+  const button = parseApprovalButton(q.data);
+  if (!button) return answer();
+  let text: string;
+  try {
+    text = await answerApproval(button.id, button.yes, "telegram");
+  } catch (e) {
+    text = e instanceof DeskError ? e.message : `Das hat nicht geklappt. ${explainTelegramError(e)}`;
+    // Ist die Frage schon erledigt, verschwinden wenigstens die Knöpfe.
+    if (q.message && (await approvalStateOf(button.id)) !== "offen") {
+      const state = await load();
+      state.asks = state.asks.filter((a) => a.id !== button.id);
+      await save(state);
+      await call(token, "editMessageReplyMarkup", { chat_id: tg.chatId, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {});
+    }
+  }
+  await answer(text.slice(0, 190));
+}
+
 async function runCommand(command: TelegramCommand, config: JarvisConfig): Promise<string> {
   try {
     switch (command) {
@@ -325,6 +367,10 @@ async function runCommand(command: TelegramCommand, config: JarvisConfig): Promi
 function deskStatus(desk: Awaited<ReturnType<typeof deskSnapshot>>): string {
   if (desk.status === "aus") return "Der Spielgeld-Handel ist noch nicht gestartet. Starten kannst du ihn am Mac auf dem Trading-Desk oder hier mit „Starte den Handel“.";
   const lines = [deskSentence(desk)];
+  for (const a of desk.approvals.filter((x) => x.state === "offen")) {
+    const until = new Date(a.until).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    lines.push(`🟡 Wartet auf dein Ja: $${a.symbol} für ${formatUsd(a.usd)}, bis ${until} Uhr. Die Knöpfe stehen unter meiner Frage.`);
+  }
   for (const p of desk.positions.slice(0, 8)) {
     const value = p.qty * p.lastPrice;
     lines.push(`• $${p.symbol}: ${formatUsd(p.costUsd)} → ${formatUsd(value)} (${formatPct(((value - p.costUsd) / p.costUsd) * 100)})`);
@@ -381,10 +427,39 @@ async function briefing(config: JarvisConfig, now: Date): Promise<string> {
   return briefingMessage({ name: config.name, now, weather, calendar, mail, tasks, intel, desk });
 }
 
+// Rückfragen kommen immer, auch wenn Meldungen zu Trades abgeschaltet sind: Ohne dein Ja kauft der Desk nicht.
+async function deliverQuestion(tg: TelegramConfig & { chatId: number }, notice: Extract<Notice, { kind: "rueckfrage" | "rueckfrage_ende" }>) {
+  const state = await load();
+  if (notice.kind === "rueckfrage") {
+    const messageId = await sendQuestion(tg.token, tg.chatId, notice.id, notice.text);
+    state.asks = [...state.asks, { id: notice.id, messageId, text: notice.text }].slice(-30);
+    await save(state);
+    return;
+  }
+  const ask = state.asks.find((a) => a.id === notice.id);
+  if (!ask) return;
+  state.asks = state.asks.filter((a) => a !== ask);
+  await save(state);
+  // Ergebnis unter die Frage, Knöpfe weg.
+  await call(tg.token, "editMessageText", {
+    chat_id: tg.chatId,
+    message_id: ask.messageId,
+    text: `${ask.text}\n\n${notice.text}`,
+    link_preview_options: { is_disabled: true },
+    reply_markup: { inline_keyboard: [] },
+  });
+}
+
 async function deliver(notice: Notice) {
   const config = await readConfig();
   const tg = config.telegram;
   if (!tg?.chatId) return;
+  if (notice.kind === "rueckfrage" || notice.kind === "rueckfrage_ende") {
+    return deliverQuestion({ ...tg, chatId: tg.chatId }, notice).catch((e) => {
+      if (e instanceof TelegramError && e.code === 403) shared.error = explainTelegramError(e);
+      console.error("Telegram-Rückfrage:", explainTelegramError(e));
+    });
+  }
   const prefs = prefsOf(tg);
   if (notice.kind === "trade" && !prefs.trades) return;
   if (notice.kind === "warnung" && !prefs.warnings) return;
@@ -468,13 +543,14 @@ async function poll() {
     const state = await load();
     const abort = (shared.abort = new AbortController());
     try {
-      const updates = await call<TgUpdate[]>(token, "getUpdates", { offset: state.offset, timeout: POLL_S, allowed_updates: ["message"] }, AbortSignal.any([abort.signal, AbortSignal.timeout((POLL_S + 20) * 1000)]));
+      const updates = await call<TgUpdate[]>(token, "getUpdates", { offset: state.offset, timeout: POLL_S, allowed_updates: ["message", "callback_query"] }, AbortSignal.any([abort.signal, AbortSignal.timeout((POLL_S + 20) * 1000)]));
       shared.error = null;
       backoff = 5_000;
       for (const update of updates) {
         state.offset = update.update_id + 1;
         await save(state);
         if (update.message) await handle(token, update.message).catch((e) => console.error("Telegram:", explainTelegramError(e)));
+        if (update.callback_query) await handleButton(token, update.callback_query).catch((e) => console.error("Telegram:", explainTelegramError(e)));
       }
     } catch (e) {
       if (abort.signal.aborted) continue;

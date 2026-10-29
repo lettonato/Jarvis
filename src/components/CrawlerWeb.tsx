@@ -26,6 +26,7 @@ const VERDICT_AT: Record<CoinVerdict["stage"], [Ring, NodeState]> = {
   skin_kill: [2, "raus"],
   x_kill: [3, "raus"],
   chief_nein: [4, "raus"],
+  frage: [4, "ok"],
   nicht_gekauft: [4, "warn"],
   nicht_geprueft: [1, "warn"],
   gekauft: [5, "gekauft"],
