@@ -22,7 +22,8 @@ export type Candidate = {
   url: string;
   priceUsd: number;
   change24h: number;
-  // Kurzfristige Bewegung, damit der Chief sieht, ob der Anstieg schon gelaufen ist.
+  // Kurzfristige Bewegung, damit der Chief sieht, ob der Anstieg schon gelaufen ist oder gerade anfängt.
+  change5m: number;
   change1h: number;
   change6h: number;
   liquidityUsd: number;
@@ -31,6 +32,11 @@ export type Candidate = {
   tradesH24: number;
   buysH1: number;
   sellsH1: number;
+  buysM5: number;
+  sellsM5: number;
+  volumeH1: number;
+  // Schwung von 0 bis 1: Kommt gerade frisches Geld rein? Daraus entscheidet der Desk, wen er zuerst prüft.
+  heat: number;
   ageMinutes: number;
   // Webseite und Konten, die das Projekt bei DexScreener angegeben hat. Der Crawler liest sie.
   websites: string[];
@@ -56,6 +62,8 @@ const TIMEOUT_MS = 8000;
 // Für Tests lassen sich die Quellen auf einen nachgebauten Server umlenken.
 const COINGECKO = process.env.COINGECKO_URL ?? "https://api.coingecko.com";
 const DEXSCREENER = process.env.DEXSCREENER_URL ?? "https://api.dexscreener.com";
+// GeckoTerminal zeigt, welche Solana-Pools gerade am meisten gehandelt werden, ebenfalls ohne Schlüssel.
+const GECKOTERMINAL = process.env.GECKOTERMINAL_URL ?? "https://api.geckoterminal.com";
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, {
@@ -89,49 +97,87 @@ export type DexPair = {
   url: string;
   baseToken: { address: string; name: string; symbol: string };
   priceUsd?: string;
-  priceChange?: { h1?: number; h6?: number; h24?: number };
+  priceChange?: { m5?: number; h1?: number; h6?: number; h24?: number };
   liquidity?: { usd?: number };
-  volume?: { h24?: number };
-  txns?: { h1?: DexTxns; h24?: DexTxns };
+  volume?: { m5?: number; h1?: number; h24?: number };
+  txns?: { m5?: DexTxns; h1?: DexTxns; h24?: DexTxns };
   marketCap?: number;
   fdv?: number;
   pairCreatedAt?: number;
   info?: { websites?: { url?: string }[]; socials?: { type?: string; url?: string }[] };
 };
 
-// DexScreener nimmt höchstens 30 Adressen pro Abfrage.
+// DexScreener nimmt höchstens 30 Adressen pro Abfrage; der Scan schaut sich bis zu 60 an.
 const MAX_TOKENS = 30;
+const MAX_SCAN = 60;
 
 // Pro Token zählt das Handelspaar mit der meisten Liquidität.
 export async function fetchPairs(addresses: string[]): Promise<Map<string, DexPair>> {
   const best = new Map<string, DexPair>();
-  for (let i = 0; i < addresses.length; i += MAX_TOKENS) {
-    const pairs = await getJson<DexPair[]>(`${DEXSCREENER}/tokens/v1/solana/${addresses.slice(i, i + MAX_TOKENS).join(",")}`);
-    for (const pair of pairs) {
-      const current = best.get(pair.baseToken.address);
-      if (!current || (pair.liquidity?.usd ?? 0) > (current.liquidity?.usd ?? 0)) best.set(pair.baseToken.address, pair);
-    }
+  const chunks: string[][] = [];
+  for (let i = 0; i < addresses.length; i += MAX_TOKENS) chunks.push(addresses.slice(i, i + MAX_TOKENS));
+  const results = await Promise.all(chunks.map((chunk) => getJson<DexPair[]>(`${DEXSCREENER}/tokens/v1/solana/${chunk.join(",")}`)));
+  for (const pair of results.flat()) {
+    const current = best.get(pair.baseToken.address);
+    if (!current || (pair.liquidity?.usd ?? 0) > (current.liquidity?.usd ?? 0)) best.set(pair.baseToken.address, pair);
   }
   return best;
 }
 
+type GeckoPools = { data?: { relationships?: { base_token?: { data?: { id?: string } } } }[] };
+
+// Die Pools, die gerade bei GeckoTerminal im Trend sind. Die Token-Adresse steckt in der id hinter „solana_“.
+async function trendingAddresses(): Promise<string[]> {
+  const res = await getJson<GeckoPools>(`${GECKOTERMINAL}/api/v2/networks/solana/trending_pools?duration=1h`);
+  return (res.data ?? [])
+    .map((pool) => pool.relationships?.base_token?.data?.id ?? "")
+    .filter((id) => id.startsWith("solana_"))
+    .map((id) => id.slice("solana_".length));
+}
+
+// Gängige Coins, die im Trend auftauchen, aber keine Memecoins sind (SOL selbst, Dollar-Coins).
+const NOT_MEME = new Set([
+  "So11111111111111111111111111111111111111112",
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+]);
+
 async function fetchCandidates(): Promise<{ scanned: number; candidates: Candidate[] }> {
   const lists = await Promise.allSettled([
     getJson<DexListing[]>(`${DEXSCREENER}/token-boosts/top/v1`),
+    getJson<DexListing[]>(`${DEXSCREENER}/token-boosts/latest/v1`),
     getJson<DexListing[]>(`${DEXSCREENER}/token-profiles/latest/v1`),
   ]);
   const listings = lists.flatMap((l) => (l.status === "fulfilled" ? l.value : []));
   if (listings.length === 0) throw new Error("DexScreener liefert keine Token-Listen");
+  // Fällt GeckoTerminal aus, reichen die Listen von DexScreener.
+  const trending = await trendingAddresses().catch(() => []);
 
   const addresses = [
-    ...new Set(listings.filter((l) => l.chainId === "solana").map((l) => l.tokenAddress)),
-  ].slice(0, MAX_TOKENS);
+    ...new Set([...trending, ...listings.filter((l) => l.chainId === "solana").map((l) => l.tokenAddress)].filter((a) => a && !NOT_MEME.has(a))),
+  ].slice(0, MAX_SCAN);
   if (addresses.length === 0) return { scanned: 0, candidates: [] };
 
   const best = await fetchPairs(addresses);
   const now = Date.now();
   const candidates = [...best.values()].map((pair) => toCandidate(pair, now));
   return { scanned: addresses.length, candidates: sortCandidates(candidates) };
+}
+
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+
+// Schwung aus den letzten Minuten: Kaufen gerade mehr Leute als verkaufen, ist das Volumen der letzten Stunde
+// höher als im Tagesschnitt, und steigt der Kurs gerade erst? Ein senkrechter Pump zählt dagegen wenig,
+// da kämen wir zu spät.
+export function heatOf(c: Pick<Candidate, "buysH1" | "sellsH1" | "buysM5" | "sellsM5" | "volumeH1" | "volumeH24" | "change5m" | "change1h">): number {
+  const trades = c.buysH1 + c.sellsH1;
+  const pressure = trades ? clamp01((c.buysH1 / trades - 0.45) / 0.25) : 0;
+  const recent = c.buysM5 + c.sellsM5;
+  const pressureNow = recent >= 5 ? clamp01((c.buysM5 / recent - 0.45) / 0.25) : pressure;
+  const accel = c.volumeH24 > 0 ? clamp01((c.volumeH1 / (c.volumeH24 / 24) - 0.8) / 2.2) : 0;
+  const move5 = clamp01(c.change5m / 8);
+  const move1 = c.change1h > 80 ? 0.2 : clamp01(c.change1h / 30);
+  return Math.round((0.2 * pressure + 0.2 * pressureNow + 0.3 * accel + 0.15 * move5 + 0.15 * move1) * 100) / 100;
 }
 
 const httpsOnly = (url?: string): url is string => typeof url === "string" && url.startsWith("https://");
@@ -144,17 +190,21 @@ export function toCandidate(pair: DexPair, now = Date.now()): Candidate {
     mcapUsd: pair.marketCap ?? pair.fdv ?? 0,
     tradesH24: (pair.txns?.h24?.buys ?? 0) + (pair.txns?.h24?.sells ?? 0),
   };
-  return {
+  const candidate = {
     address: pair.baseToken.address,
     symbol: pair.baseToken.symbol,
     name: pair.baseToken.name,
     url: pair.url,
     priceUsd: Number(pair.priceUsd ?? 0),
     change24h: pair.priceChange?.h24 ?? 0,
+    change5m: pair.priceChange?.m5 ?? 0,
     change1h: pair.priceChange?.h1 ?? 0,
     change6h: pair.priceChange?.h6 ?? 0,
     buysH1: pair.txns?.h1?.buys ?? 0,
     sellsH1: pair.txns?.h1?.sells ?? 0,
+    buysM5: pair.txns?.m5?.buys ?? 0,
+    sellsM5: pair.txns?.m5?.sells ?? 0,
+    volumeH1: pair.volume?.h1 ?? 0,
     websites: (pair.info?.websites ?? []).map((w) => w.url).filter(httpsOnly).slice(0, 3),
     socials: (pair.info?.socials ?? [])
       .filter((x): x is { type: string; url: string } => typeof x.type === "string" && httpsOnly(x.url))
@@ -162,10 +212,12 @@ export function toCandidate(pair: DexPair, now = Date.now()): Candidate {
     ...stats,
     ...vet(stats),
   };
+  return { ...candidate, heat: heatOf(candidate) };
 }
 
+// Wer die harten Filter besteht, zuerst; darunter die mit dem meisten Schwung.
 function sortCandidates(list: Candidate[]): Candidate[] {
-  return list.sort((a, b) => Number(b.passed) - Number(a.passed) || b.volumeH24 - a.volumeH24);
+  return list.sort((a, b) => Number(b.passed) - Number(a.passed) || b.heat - a.heat || b.volumeH24 - a.volumeH24);
 }
 
 // Mehrere Ansichten und der Spielgeld-Desk fragen die Kurse ab; innerhalb von 15 Sekunden bekommen
@@ -218,15 +270,19 @@ function demoCandidates(): { scanned: number; candidates: Candidate[] } {
       url: "https://dexscreener.com/solana",
       priceUsd,
       change24h,
+      change5m: change24h / 60,
       change1h: change24h / 8,
       change6h: change24h / 3,
       buysH1: Math.round(tradesH24 / 40),
       sellsH1: Math.round(tradesH24 / 50),
+      buysM5: Math.round(tradesH24 / 400),
+      sellsM5: Math.round(tradesH24 / 500),
+      volumeH1: volumeH24 / 20,
       websites: [],
       socials: [],
       ...stats,
       ...vet(stats),
     };
-  });
+  }).map((c) => ({ ...c, heat: heatOf(c) }));
   return { scanned: 30, candidates: sortCandidates(candidates) };
 }

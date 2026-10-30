@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { HoloLink } from "./HoloLink";
 import { useJarvis } from "./JarvisProvider";
 import { postJson } from "@/lib/api";
-import { APPROVAL, secondsLeft, type Approval } from "@/lib/approval";
+import { APPROVAL, assetLabel, secondsLeft, type Approval } from "@/lib/approval";
 import { formatUsd } from "@/lib/format";
 import type { DeskSnapshot } from "@/lib/paper";
 import { useNow } from "@/lib/useNow";
@@ -68,9 +68,13 @@ export function ApprovalPanel({ desk }: { desk: DeskSnapshot }) {
             <li key={a.id} className="flex flex-col gap-2 rounded border border-amber-300/30 bg-desk/70 p-3 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <p className="text-base font-bold text-ink">
-                  <a href={a.url} target="_blank" rel="noreferrer" className="hover:underline">
-                    ${a.symbol}
-                  </a>{" "}
+                  {a.url ? (
+                    <a href={a.url} target="_blank" rel="noreferrer" className="hover:underline">
+                      {assetLabel(a)}
+                    </a>
+                  ) : (
+                    assetLabel(a)
+                  )}{" "}
                   für {formatUsd(a.usd)} kaufen?
                   <span className="ml-2 align-middle text-[10px] font-normal uppercase tracking-wider text-quiet">Spielgeld</span>
                 </p>
@@ -106,7 +110,7 @@ export function ApprovalPanel({ desk }: { desk: DeskSnapshot }) {
         <ul className="mt-2 space-y-0.5 text-[11px] text-quiet">
           {done.map((a) => (
             <li key={a.id}>
-              ${a.symbol}, {formatUsd(a.usd)}: {a.result}
+              {assetLabel(a)}, {formatUsd(a.usd)}: {a.result}
               {a.via === "telegram" ? " (per Telegram)" : ""}
             </li>
           ))}
@@ -131,7 +135,7 @@ export function ApprovalBar() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="font-bold text-amber-200">🟡 Rückfrage</span>
           <span className="min-w-0 flex-1">
-            Soll ich <b>${a.symbol}</b> für {formatUsd(a.usd)} kaufen?
+            Soll ich <b>{assetLabel(a)}</b> für {formatUsd(a.usd)} kaufen?
             <span className="ml-2 text-xs tabular-nums text-quiet">{now ? `noch ${countdown(secondsLeft(a, now.getTime()))}` : ""}</span>
             {open.length > 1 && <span className="ml-2 text-xs text-quiet">und {open.length - 1} weitere</span>}
           </span>

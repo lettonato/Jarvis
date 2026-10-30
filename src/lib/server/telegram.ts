@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { approvalButton, parseApprovalButton } from "../approval";
+import { approvalButton, assetLabel, parseApprovalButton } from "../approval";
 import type { BrainTurn } from "../brain";
 import type { CalendarSnapshot } from "../calendar";
 import { deskSentence, situation } from "../commands";
@@ -369,11 +369,15 @@ function deskStatus(desk: Awaited<ReturnType<typeof deskSnapshot>>): string {
   const lines = [deskSentence(desk)];
   for (const a of desk.approvals.filter((x) => x.state === "offen")) {
     const until = new Date(a.until).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-    lines.push(`🟡 Wartet auf dein Ja: $${a.symbol} für ${formatUsd(a.usd)}, bis ${until} Uhr. Die Knöpfe stehen unter meiner Frage.`);
+    lines.push(`🟡 Wartet auf dein Ja: ${assetLabel(a)} für ${formatUsd(a.usd)}, bis ${until} Uhr. Die Knöpfe stehen unter meiner Frage.`);
   }
   for (const p of desk.positions.slice(0, 8)) {
     const value = p.qty * p.lastPrice;
     lines.push(`• $${p.symbol}: ${formatUsd(p.costUsd)} → ${formatUsd(value)} (${formatPct(((value - p.costUsd) / p.costUsd) * 100)})`);
+  }
+  for (const p of desk.commodities.positions) {
+    const value = p.qty * p.lastPrice;
+    lines.push(`• ${p.name}: ${formatUsd(p.costUsd)} → ${formatUsd(value)} (${formatPct(((value - p.costUsd) / p.costUsd) * 100)})`);
   }
   return lines.join("\n");
 }

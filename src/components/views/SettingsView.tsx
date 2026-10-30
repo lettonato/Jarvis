@@ -8,6 +8,7 @@ import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { APPROVAL, APPROVAL_CHOICES, type ApprovalLimit } from "@/lib/approval";
 import type { MemoryFact } from "@/lib/brain";
+import { COMMODITY_RULES } from "@/lib/commodities";
 import { SAFETY } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
 import { PHOTOS, readWorldStyle, saveWorldStyle, type WorldStyle } from "@/lib/photos";
@@ -64,6 +65,13 @@ export function SettingsView() {
             text="Wie im GrokBot-Video liest der Crawler vor jedem Kauf, was auf X über den Coin geschrieben wird, und prüft das X-Konto des Projekts. Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben. Mit demselben Schlüssel liest Intel die Nachrichten und X für dein Briefing; Themen und Budget dafür stellst du in der Intel-Ansicht ein."
           >
             <CrawlerSetup />
+          </Section>
+          <Section
+            id="rohstoffe"
+            title="Rohstoffe: Gold, Silber, Öl"
+            text="Neben den Memecoins handelt der Spielgeld-Desk auch Gold, Silber und Öl. Dort folgt er dem Trend: Er kauft, wenn der Kurs seit Stunden nach oben zieht, und steigt mit einem Nachlauf-Stop aus, sobald es kippt. Die Kurse kommen von Twelve Data; der kostenlose Plan reicht."
+          >
+            <CommoditySetup />
           </Section>
           <Section title="Obsidian" text="Aus diesem Tresor liest JARVIS deine Aufgaben. Neue Aufgaben landen in JARVIS/Eingang.md, Notizen in JARVIS/Notizen.md.">
             <VaultSetup />
@@ -394,10 +402,83 @@ function CrawlerSetup() {
       )}
       <p className="text-xs text-quiet">
         Grok berechnet pro gelesenem X-Beitrag einen halben Cent, dazu ein wenig für die Auswertung. Ein Coin kostet meist 10 bis 30 Cent. Ist das Tagesbudget
-        aufgebraucht, prüft der Crawler bis morgen keine neuen Coins, und der Desk kauft nichts Neues. Gekaufte Coins bewacht er weiter.
+        aufgebraucht, prüft der Crawler bis morgen ohne X weiter: Blockchain und Projektseite liest er trotzdem. Ein höheres Budget heißt, dass mehr Coins auch auf X
+        geprüft werden.
       </p>
       {crawler?.hint && (
         <Button tone="danger" disabled={busy} onClick={() => send({ action: "removeXai" })}>
+          Schlüssel entfernen
+        </Button>
+      )}
+      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+    </div>
+  );
+}
+
+function CommoditySetup() {
+  const { settings, setSettings } = useJarvis();
+  const info = settings?.commodities;
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  async function send(body: object) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const next = await postJson<Settings & { message?: string }>("/api/einstellungen", body);
+      setSettings(next);
+      setKey("");
+      setMessage(next.message ? { tone: "ok", text: next.message } : null);
+    } catch (e) {
+      setMessage({ tone: "error", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    send({ action: "twelvedata", apiKey: key });
+  };
+
+  return (
+    <div className="space-y-3 text-sm">
+      {info?.configured && <Notice tone="ok">{info.hint ? `Verbunden mit dem Schlüssel ${info.hint}.` : "Verbunden über TWELVEDATA_API_KEY."} Der Desk schaut alle 6 Minuten auf Gold, Silber und Öl.</Notice>}
+      <form onSubmit={submit} className="space-y-3">
+        <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+          <li>
+            Auf{" "}
+            <a href="https://twelvedata.com" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+              twelvedata.com
+            </a>{" "}
+            kostenlos registrieren. Der Plan „Basic“ kostet nichts, eine Karte brauchst du nicht.
+          </li>
+          <li>Im Dashboard unter „API Keys“ den Schlüssel kopieren und hier einfügen.</li>
+        </ol>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            type="password"
+            autoComplete="off"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder={info?.hint ? `gespeichert (${info.hint}), zum Ändern neuen einfügen` : "Schlüssel von Twelve Data"}
+            aria-label="Twelve-Data-Schlüssel"
+            className={inputClass}
+          />
+          <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+            {busy ? "Prüfe …" : "Prüfen und speichern"}
+          </Button>
+        </div>
+      </form>
+      <ul className="space-y-1 text-xs text-sky-50/85">
+        <li>· Je Rohstoff höchstens {COMMODITY_RULES.tradeShare * 100} % des Kontos, zusammen also höchstens {COMMODITY_RULES.tradeShare * 300} %.</li>
+        <li>· Gold kommt als Feinunze. Liefert dein Plan Silber und Öl nicht direkt, nimmt der Desk die US-Fonds SLV und USO. Die handeln nur zur Börsenzeit in New York (15:30 bis 22 Uhr).</li>
+        <li>· Ist ein Markt zu, wird dort weder gekauft noch verkauft. Am Wochenende ruhen alle drei.</li>
+        <li>· Kosten wie bei einem Online-Broker: 1 $ pro Auftrag und eine kleine Spanne.</li>
+      </ul>
+      {info?.hint && (
+        <Button tone="danger" disabled={busy} onClick={() => send({ action: "removeTwelvedata" })}>
           Schlüssel entfernen
         </Button>
       )}
@@ -411,7 +492,10 @@ function ApprovalSetup() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const current = settings?.approval.limitUsd;
-  const ticket = Math.floor((desk && desk.status !== "aus" ? desk.equity : SAFETY.startCapitalUsd) * SAFETY.maxTradeShare);
+  const account = desk && desk.status !== "aus" ? desk.equity : SAFETY.startCapitalUsd;
+  const low = Math.floor(account * SAFETY.minTradeShare);
+  const high = Math.floor(account * SAFETY.maxTradeShare);
+  const metal = Math.floor(account * COMMODITY_RULES.tradeShare);
 
   async function choose(limitUsd: ApprovalLimit) {
     setBusy(true);
@@ -448,12 +532,13 @@ function ApprovalSetup() {
         })}
       </div>
       <p className="text-xs text-quiet">
-        Im Spielgeld-Test ist ein Kauf etwa {ticket} $ ({SAFETY.maxTradeShare * 100} % des Kontos).{" "}
+        Im Spielgeld-Test kostet ein Coin {low} bis {high} $ ({SAFETY.minTradeShare * 100} bis {SAFETY.maxTradeShare * 100} % des Kontos), Gold, Silber oder Öl je
+        etwa {metal} $.{" "}
         {current === null
-          ? "Mit „Nie fragen“ kauft der Desk wie bisher selbst und meldet dir den Kauf."
-          : current !== undefined && ticket >= current
-            ? "Mit dieser Grenze fragt JARVIS also gerade vor jedem Kauf."
-            : "Mit dieser Grenze kauft der Desk gerade noch selbst; erst größere Käufe brauchen dein Ja."}
+          ? "Mit „Nie fragen“ kauft der Desk sofort selbst und meldet dir jeden Kauf danach. So verpasst er keine schnelle Chance."
+          : current !== undefined && low >= current
+            ? "Mit dieser Grenze fragt JARVIS also vor jedem Kauf. Schnelle Chancen sind manchmal weg, bis du antwortest."
+            : "Mit dieser Grenze kauft der Desk kleinere Coins selbst; größere Käufe brauchen dein Ja."}
       </p>
       <ul className="space-y-1 text-xs text-sky-50/85">
         <li>· Freigeben kannst nur du mit den Knöpfen, nicht das KI-Gehirn und nicht per Sprache.</li>

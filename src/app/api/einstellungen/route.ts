@@ -1,7 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { connection } from "next/server";
-import { CONFIG_DIR, expandHome, grokKey, readConfig, writeConfig, xBudget, type JarvisConfig, type MailConfig } from "@/lib/server/config";
+import { CONFIG_DIR, expandHome, grokKey, readConfig, twelveKey, writeConfig, xBudget, type JarvisConfig, type MailConfig } from "@/lib/server/config";
+import { testTwelveKey } from "@/lib/server/desk/commodities";
 import { testGrokKey } from "@/lib/server/desk/grok";
 import { brainKey, testKey } from "@/lib/server/brain";
 import { guard, readBody } from "@/lib/server/guard";
@@ -32,6 +33,11 @@ async function settings(config: JarvisConfig): Promise<Settings> {
       hint: config.xai?.apiKey ? `…${config.xai.apiKey.slice(-4)}` : null,
       fromEnv: !config.xai?.apiKey && Boolean(process.env.XAI_API_KEY),
       budgetUsd: xBudget(config),
+    },
+    commodities: {
+      configured: Boolean(twelveKey(config)),
+      hint: config.twelvedata?.apiKey ? `…${config.twelvedata.apiKey.slice(-4)}` : null,
+      fromEnv: !config.twelvedata?.apiKey && Boolean(process.env.TWELVEDATA_API_KEY),
     },
     telegram: telegramStatus(config),
     approval: { limitUsd: approvalLimitOf(config.approval?.limitUsd) },
@@ -65,7 +71,9 @@ type Action =
   | { action: "telegramTest" }
   | { action: "telegramUnpair" }
   | { action: "removeTelegram" }
-  | { action: "approval"; limitUsd: ApprovalLimit };
+  | { action: "approval"; limitUsd: ApprovalLimit }
+  | { action: "twelvedata"; apiKey: string }
+  | { action: "removeTwelvedata" };
 
 // Mehr als 20 $ am Tag sind für einen Spielgeld-Test sicher ein Tippfehler.
 const MAX_X_BUDGET_USD = 20;
@@ -195,6 +203,16 @@ export async function POST(request: Request) {
     await writeConfig(fresh);
     wakeTelegram();
     return Response.json(await settings(fresh));
+  } else if (body.action === "twelvedata") {
+    const apiKey = body.apiKey?.trim() ?? "";
+    if (!/^[A-Za-z0-9]{16,64}$/.test(apiKey)) return Response.json({ error: "Ein Twelve-Data-Schlüssel besteht nur aus Buchstaben und Zahlen, meist 32 Zeichen. Bitte den ganzen Schlüssel einfügen." }, { status: 400 });
+    const result = await testTwelveKey(apiKey);
+    if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+    config.twelvedata = { apiKey };
+    await writeConfig(config);
+    return Response.json({ ...(await settings(config)), message: "Verbunden. Ab jetzt schaut der Desk auch auf Gold, Silber und Öl." });
+  } else if (body.action === "removeTwelvedata") {
+    delete config.twelvedata;
   } else if (body.action === "approval") {
     if (!isApprovalLimit(body.limitUsd)) return Response.json({ error: "Diese Grenze gibt es nicht." }, { status: 400 });
     config.approval = { limitUsd: body.limitUsd };

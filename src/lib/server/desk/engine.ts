@@ -1,14 +1,25 @@
 import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { APPROVAL, approvalLimitOf, approvalOutcome, approvalQuestion, needsApproval, type Approval, type ApprovalState } from "../../approval";
+import { APPROVAL, approvalLimitOf, approvalOutcome, approvalQuestion, assetLabel, needsApproval, type Approval, type ApprovalState } from "../../approval";
+import {
+  COMMODITY_RULES,
+  commodityExit,
+  commodityStop,
+  commodityStopPct,
+  simulateCommodityBuy,
+  simulateCommoditySell,
+  type CommodityId,
+  type CommodityPosition,
+  type CommodityQuote,
+} from "../../commodities";
 import { isoDate } from "../../dates";
 import { formatPct, formatSignedUsd, formatUsd } from "../../format";
 import { fetchPairs, marketSnapshot, toCandidate, type Candidate, type DexPair } from "../../market";
 import {
   SAFETY,
   equityOf,
-  exitReason,
+  exitPlan,
   simulateBuy,
   simulateSell,
   stopPrice,
@@ -31,38 +42,53 @@ import {
 } from "../../paper";
 import { SOFT_FILTERS, SOFT_KEYS, type SoftKey } from "../../thresholds";
 import { brainKey, explainBrainError } from "../brain";
-import { CONFIG_DIR, grokKey, readConfig, xBudget } from "../config";
+import { CONFIG_DIR, grokKey, readConfig, twelveKey, xBudget } from "../config";
 import { intelWarning } from "../intel";
 import { notify } from "../notify";
 import { writeVaultFile } from "../obsidian";
 import { judgeByRules, judgeWithClaude, type ChiefInput, type Verdict } from "./chief";
+import { commodityNote, commodityQuotes, freshCommodity, refreshCommodities } from "./commodities";
 import { crawl, guard, type ChainCheck } from "./crawler";
 import { GrokError, readX, TYPICAL_COST_USD, type XReport } from "./grok";
 
-// Der Motor des Spielgeld-Desks. Er läuft jede Minute, solange JARVIS auf dem Mac läuft:
-// 1. Risk und Crawler bewachen die offenen Positionen (Stop-Loss, Ziel, Rug-Zeichen).
+// Der Motor des Spielgeld-Desks. Er läuft, solange JARVIS auf dem Mac läuft:
+// 1. Alle 10 Sekunden bewachen Risk und Crawler die offenen Positionen (Stop-Loss, Gewinnmitnahme, Rug-Zeichen).
 // 2. Das Tageslimit wird geprüft.
-// 3. Läuft der Handel, gehen neue Coins durch Scan, Vet, Crawler und Chief; Size und Fills kaufen.
-//    Ab der Grenze aus den Einstellungen fragen sie dich vorher und kaufen erst nach deinem Ja.
+// 3. Alle paar Minuten schaut Trend auf Gold, Silber und Öl (mit Twelve-Data-Schlüssel).
+// 4. Alle 30 Sekunden gehen neue Coins durch Scan, Vet, Crawler und Chief; Size und Fills kaufen.
+//    Das läuft nebenher, damit die Wache nie auf eine langsame Prüfung warten muss. Ist in den Einstellungen
+//    eine Grenze für Rückfragen gesetzt, fragen sie dich ab dort vorher und kaufen erst nach deinem Ja.
 // Der Stand liegt in ~/.jarvis/spielgeld.json, jeder Trade zusätzlich in spielgeld-trades.jsonl.
 
 const FILE = path.join(CONFIG_DIR, "spielgeld.json");
 const TRADES_FILE = path.join(CONFIG_DIR, "spielgeld-trades.jsonl");
-const TICK_MS = Number(process.env.JARVIS_TICK_MS) || 60_000;
-// Bei einer Minute Takt: RugCheck alle 10 Minuten, ein Punkt für den Verlauf alle 5 Minuten.
-const GUARD_MS = 10 * TICK_MS;
+const TICK_MS = Number(process.env.JARVIS_TICK_MS) || 10_000;
+// Bei 10 Sekunden Takt: neue Coins alle 30 Sekunden, RugCheck und ein Punkt für den Verlauf alle 5 Minuten.
+const HUNT_MS = Number(process.env.JARVIS_HUNT_MS) || 3 * TICK_MS;
+const GUARD_MS = 30 * TICK_MS;
+// Rohstoffe alle 6 Minuten: So reichen die 800 kostenlosen Abfragen am Tag bei Twelve Data.
+const COMMODITY_MS = Number(process.env.JARVIS_COMMODITY_MS) || 6 * 60_000;
 const HOUR = 3_600_000;
 const MAX_CRAWLS_PER_TICK = 4;
-const MAX_CHIEF_CALLS_PER_DAY = 200;
+const MAX_CHIEF_CALLS_PER_DAY = 400;
 // Ist der Kurs seit der Prüfung um mehr als 5 % gestiegen, wird nicht gekauft.
 const MAX_CHASE = 0.05;
-const MISSED_TICKS_UNTIL_GONE = 5;
+// Rohstoffe sind ruhiger: dort schon ab 1 %.
+const MAX_CHASE_COMMODITY = 0.01;
+// Coins ohne Schwung prüft der Desk gar nicht erst, da kommt kein frisches Geld rein.
+const MIN_HEAT = 0.3;
+// Zwei Minuten ohne Handelspaar: Der Pool ist leer.
+const MISSED_TICKS_UNTIL_GONE = 12;
 const LOG_LIMIT = 150;
 const TRADE_LIMIT = 200;
-const HISTORY_EVERY_MS = 5 * TICK_MS;
+const HISTORY_EVERY_MS = 30 * TICK_MS;
 const HISTORY_LIMIT = 3000;
 const TRAIL_LIMIT = 200;
 const APPROVAL_MS = APPROVAL.timeoutMinutes * 60_000;
+// Rug-Zeichen und Warnungen von X: solche Coins frühestens nach 12 Stunden wieder ansehen.
+const KILL_STAGES = new Set<CoinVerdict["stage"]>(["chain_kill", "skin_kill", "x_kill"]);
+// So lange stehen die Urteile des Desks in der Scan-Tabelle.
+const VERDICT_SHOW_MS = 6 * HOUR;
 
 type StoredPosition = Position & { missed?: number };
 
@@ -74,6 +100,9 @@ type State = {
   startCapital: number;
   cash: number;
   positions: StoredPosition[];
+  // Gold, Silber und Öl, getrennt von den Coins.
+  commodities: CommodityPosition[];
+  commodityCooldown: Partial<Record<CommodityId, string>>;
   day: { date: string; startEquity: number; trades: number; limitHit: boolean; chiefCalls: number; xSpentUsd: number };
   days: DayRecord[];
   // Wann ein Coin zuletzt geprüft wurde und bis wann er nach einem Verkauf gesperrt ist.
@@ -98,6 +127,8 @@ const freshState = (): State => ({
   startCapital: SAFETY.startCapitalUsd,
   cash: SAFETY.startCapitalUsd,
   positions: [],
+  commodities: [],
+  commodityCooldown: {},
   day: { date: isoDate(new Date()), startEquity: SAFETY.startCapitalUsd, trades: 0, limitHit: false, chiefCalls: 0, xSpentUsd: 0 },
   days: [],
   seen: {},
@@ -120,6 +151,10 @@ type Shared = {
   saving: Promise<void>;
   timer: ReturnType<typeof setInterval> | null;
   ticking: boolean;
+  // Die Suche nach neuen Coins läuft nebenher; hier steht, ob gerade eine läuft und wann die letzte begann.
+  hunting?: Promise<void> | null;
+  lastHuntAt?: number;
+  commodityAt?: number;
   trail?: CrawlEvent[];
   seq?: number;
 };
@@ -177,7 +212,9 @@ export async function crawlTrail(after = 0): Promise<CrawlTrail> {
   const seq = shared.seq ?? 0;
   // Ist die Seite weiter als der Server, wurde er neu gestartet: dann alles von vorn.
   const from = after > seq ? 0 : after;
-  return { seq, events: (shared.trail ?? []).filter((e) => e.seq > from).slice(-80), status: state.status, lastTickAt: state.lastTickAt, tickMs: TICK_MS };
+  // Die Spinne zählt bis zur nächsten Suche, nicht bis zur nächsten Wache.
+  const lastHunt = shared.lastHuntAt ? new Date(shared.lastHuntAt).toISOString() : state.lastTickAt;
+  return { seq, events: (shared.trail ?? []).filter((e) => e.seq > from).slice(-80), status: state.status, lastTickAt: lastHunt, tickMs: HUNT_MS };
 }
 
 const chainText = (chain: ChainCheck) =>
@@ -191,7 +228,7 @@ const hostOf = (url: string) => {
   }
 };
 
-const equity = (state: State) => equityOf(state.cash, state.positions);
+const equity = (state: State) => equityOf(state.cash, state.positions, state.commodities);
 
 // Liest den Status jedes Mal frisch: Der Not-Aus kann jederzeit zwischen zwei Schritten kommen.
 const halted = (state: State) => state.status === "notaus";
@@ -205,8 +242,11 @@ function record(state: State, trade: Trade) {
 
 const tradeId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
+const shareText = (usd: number, total: number) => `${(Math.round((usd / total) * 1000) / 10).toLocaleString("de-DE")} %`;
+
 // Nach deinem Ja steht das Ergebnis schon unter der Rückfrage; eine zweite Meldung wäre doppelt.
 function buy(state: State, c: Candidate, ticket: number, why: string, now: Date, approved = false) {
+  const total = equity(state);
   const { qty, fillPrice, feesUsd } = simulateBuy(ticket, c.priceUsd, c.liquidityUsd);
   state.cash -= ticket;
   const at = now.toISOString();
@@ -229,7 +269,7 @@ function buy(state: State, c: Candidate, ticket: number, why: string, now: Date,
   });
   record(state, { id: tradeId(), at, side: "kauf", address: c.address, symbol: c.symbol, qty, price: c.priceUsd, fillPrice, usd: ticket, feesUsd, agent: "Fills", why });
   state.lastPick = c.symbol;
-  log(state, "Size", `$${c.symbol}: ${formatUsd(ticket)}, das sind ${SAFETY.maxTradeShare * 100} % des Kontos`);
+  log(state, "Size", `$${c.symbol}: ${formatUsd(ticket)}, das sind ${shareText(ticket, total)} des Kontos`);
   log(state, "Fills", `Kauf $${c.symbol} für ${formatUsd(ticket)}, davon ${formatUsd(feesUsd)} Gebühren`, "buy");
   if (!approved) notify({ kind: "trade", text: `🟢 Spielgeld-Kauf: $${c.symbol} für ${formatUsd(ticket)}.\nWarum: ${why}` });
 }
@@ -237,6 +277,10 @@ function buy(state: State, c: Candidate, ticket: number, why: string, now: Date,
 // ---------- Rückfrage vor Käufen ----------
 
 const openApprovals = (state: State) => state.approvals.filter((a) => a.state === "offen");
+// Was bei den Coins auf dein Ja wartet; Rohstoffe haben eigene Plätze.
+const coinApprovals = (state: State) => openApprovals(state).filter((a) => a.market !== "rohstoff");
+
+type Askable = Pick<Candidate, "address" | "symbol" | "name" | "url" | "priceUsd">;
 
 // Warum gerade nicht gekauft wird, als halber Satz.
 const NOT_BUYING: Record<DeskStatus, string> = {
@@ -247,7 +291,7 @@ const NOT_BUYING: Record<DeskStatus, string> = {
   notaus: "der Not-Aus ist gedrückt",
 };
 
-function ask(state: State, c: Candidate, usd: number, why: string, now: Date) {
+function ask(state: State, c: Askable, usd: number, why: string, now: Date, market?: "rohstoff") {
   const a: Approval = {
     id: randomBytes(5).toString("hex"),
     address: c.address,
@@ -260,14 +304,17 @@ function ask(state: State, c: Candidate, usd: number, why: string, now: Date) {
     askedAt: now.toISOString(),
     until: new Date(now.getTime() + APPROVAL_MS).toISOString(),
     state: "offen",
+    ...(market ? { market } : {}),
   };
   state.approvals.unshift(a);
   // Offene bleiben immer, von den erledigten nur die letzten.
   let done = 0;
   state.approvals = state.approvals.filter((x) => x.state === "offen" || ++done <= APPROVAL.keep);
-  state.verdicts[c.address] = { at: now.toISOString(), stage: "frage", text: `wartet auf dein Ja für ${formatUsd(usd)}` };
-  log(state, "Size", `$${c.symbol}: Kauf für ${formatUsd(usd)}. Ich frage dich vorher und kaufe erst nach deinem Ja`, "warn");
-  trace(c, "chief", "ok", `wartet auf dein Ja für ${formatUsd(usd)}`);
+  if (!market) {
+    state.verdicts[c.address] = { at: now.toISOString(), stage: "frage", text: `wartet auf dein Ja für ${formatUsd(usd)}` };
+    trace(c, "chief", "ok", `wartet auf dein Ja für ${formatUsd(usd)}`);
+  }
+  log(state, market ? "Trend" : "Size", `${assetLabel(a)}: Kauf für ${formatUsd(usd)}. Ich frage dich vorher und kaufe erst nach deinem Ja`, "warn");
   notify({ kind: "rueckfrage", id: a.id, text: approvalQuestion(a) });
 }
 
@@ -276,7 +323,7 @@ function settle(state: State, a: Approval, outcome: Exclude<ApprovalState, "offe
   a.result = result;
   a.answeredAt = now.toISOString();
   if (via) a.via = via;
-  if (outcome !== "ja") state.verdicts[a.address] = { at: now.toISOString(), stage: "nicht_gekauft", text: result.replace(/\.$/, "") };
+  if (outcome !== "ja" && a.market !== "rohstoff") state.verdicts[a.address] = { at: now.toISOString(), stage: "nicht_gekauft", text: result.replace(/\.$/, "") };
   notify({ kind: "rueckfrage_ende", id: a.id, text: approvalOutcome(a) });
 }
 
@@ -285,8 +332,8 @@ function expireApprovals(state: State, now: Date) {
   for (const a of openApprovals(state)) {
     if (Date.parse(a.until) > now.getTime()) continue;
     settle(state, a, "verfallen", "Keine Antwort, also nicht gekauft.", now);
-    log(state, "Fills", `$${a.symbol}: keine Antwort von dir, also nicht gekauft`, "warn");
-    trace(a, "fills", "warn", "keine Antwort von dir, also nicht gekauft");
+    log(state, "Fills", `${assetLabel(a)}: keine Antwort von dir, also nicht gekauft`, "warn");
+    if (a.market !== "rohstoff") trace(a, "fills", "warn", "keine Antwort von dir, also nicht gekauft");
   }
 }
 
@@ -294,7 +341,7 @@ function expireApprovals(state: State, now: Date) {
 function dropApprovals(state: State, why: string, now: Date) {
   for (const a of openApprovals(state)) {
     settle(state, a, "verworfen", `Nicht gekauft: ${why}.`, now);
-    log(state, "Fills", `$${a.symbol}: Rückfrage zurückgezogen, ${why}`, "warn");
+    log(state, "Fills", `${assetLabel(a)}: Rückfrage zurückgezogen, ${why}`, "warn");
   }
 }
 
@@ -314,19 +361,58 @@ export async function answerApproval(id: string, yes: boolean, via: NonNullable<
     return a;
   };
   let a = open();
+  const label = assetLabel(a);
   if (Date.parse(a.until) <= now.getTime()) {
     expireApprovals(state, now);
     await save(state);
-    throw new DeskError(`Zu spät: Die Rückfrage zu $${a.symbol} ist verfallen. Gekauft habe ich nichts.`);
+    throw new DeskError(`Zu spät: Die Rückfrage zu ${label} ist verfallen. Gekauft habe ich nichts.`);
   }
   if (!yes) {
     settle(state, a, "nein", "Nicht gekauft, du hast Nein gesagt.", now, via);
-    // Denselben Coin fragt der Desk heute nicht noch einmal.
-    state.cooldown[a.address] = new Date(now.getTime() + SAFETY.cooldownHours * HOUR).toISOString();
-    log(state, "Du", `$${a.symbol}: nein, nicht kaufen`);
-    trace(a, "fills", "raus", "du hast Nein gesagt");
+    // Denselben Coin oder Rohstoff fragt der Desk eine Weile nicht noch einmal.
+    if (a.market === "rohstoff") state.commodityCooldown[a.address as CommodityId] = new Date(now.getTime() + COMMODITY_RULES.cooldownHours * HOUR).toISOString();
+    else state.cooldown[a.address] = new Date(now.getTime() + SAFETY.cooldownAfterLossHours * HOUR).toISOString();
+    log(state, "Du", `${label}: nein, nicht kaufen`);
+    if (a.market !== "rohstoff") trace(a, "fills", "raus", "du hast Nein gesagt");
     await save(state);
-    return `Gut, $${a.symbol} kaufe ich nicht.`;
+    return `Gut, ${label} kaufe ich nicht.`;
+  }
+
+  const refuse = async (why: string) => {
+    settle(state, a, "verworfen", `Nicht gekauft: ${why}.`, now, via);
+    log(state, "Fills", `${label}: trotz deinem Ja nicht gekauft, ${why}`, "warn");
+    if (a.market !== "rohstoff") trace(a, "fills", "warn", `trotz deinem Ja nicht gekauft: ${why}`);
+    await save(state);
+    return `Nicht gekauft: ${why}.`;
+  };
+  const bought = async (size: number) => {
+    await save(state);
+    await writeReport(state, state.day.date);
+    return `Gekauft: ${label} für ${formatUsd(size)}.`;
+  };
+
+  if (a.market === "rohstoff") {
+    const key = twelveKey(await readConfig());
+    let quote: CommodityQuote | null = null;
+    try {
+      quote = key ? await freshCommodity(key, a.address as CommodityId, now) : null;
+    } catch {
+      throw new DeskError("Ich bekomme gerade keinen frischen Kurs und kaufe nicht blind. Die Frage bleibt offen, versuch es gleich noch einmal.");
+    }
+    a = open();
+    if (Date.parse(a.until) <= now.getTime()) return refuse("die Rückfrage ist inzwischen verfallen");
+    if (state.status !== "laeuft") return refuse(NOT_BUYING[state.status]);
+    if (state.commodities.some((p) => p.id === a.address)) return refuse(`${label} hat der Desk schon`);
+    if (!quote) return refuse("es gibt gerade keinen Kurs");
+    if (!quote.open) return refuse("der Markt ist gerade zu");
+    if (!quote.signal?.buy) return refuse(`der Trend passt nicht mehr (${quote.signal?.why ?? "zu wenig Kurse"})`);
+    if (quote.price > a.price * (1 + MAX_CHASE_COMMODITY)) return refuse(`der Kurs ist seit der Frage ${formatPct((quote.price / a.price - 1) * 100)} gestiegen, ich laufe nicht hinterher`);
+    const size = Math.min(a.usd, commodityTicket(state));
+    if (!size) return refuse("es ist nicht genug Geld auf dem Konto");
+    settle(state, a, "ja", `Gekauft für ${formatUsd(size)}.`, now, via);
+    log(state, "Du", `${label}: ja, kaufen`);
+    buyCommodity(state, quote, size, a.why, now, true);
+    return bought(size);
   }
 
   let pair: DexPair | undefined;
@@ -337,13 +423,6 @@ export async function answerApproval(id: string, yes: boolean, via: NonNullable<
   }
   // Während auf den Kurs gewartet wurde, kann sich alles geändert haben: noch einmal von vorn prüfen.
   a = open();
-  const refuse = async (why: string) => {
-    settle(state, a, "verworfen", `Nicht gekauft: ${why}.`, now, via);
-    log(state, "Fills", `$${a.symbol}: trotz deinem Ja nicht gekauft, ${why}`, "warn");
-    trace(a, "fills", "warn", `trotz deinem Ja nicht gekauft: ${why}`);
-    await save(state);
-    return `Nicht gekauft: ${why}.`;
-  };
   if (Date.parse(a.until) <= now.getTime()) return refuse("die Rückfrage ist inzwischen verfallen");
   if (state.status !== "laeuft") return refuse(NOT_BUYING[state.status]);
   if (state.positions.some((p) => p.address === a.address)) return refuse("den Coin hat der Desk schon");
@@ -351,27 +430,37 @@ export async function answerApproval(id: string, yes: boolean, via: NonNullable<
   const live = pair ? toCandidate(pair, now.getTime()) : null;
   if (!live || !(live.priceUsd > 0) || !live.passed) return refuse("er besteht die harten Filter nicht mehr");
   if (live.priceUsd > a.price * (1 + MAX_CHASE)) return refuse(`der Kurs ist seit der Frage ${formatPct((live.priceUsd / a.price - 1) * 100)} gestiegen, ich laufe nicht hinterher`);
-  const size = Math.min(a.usd, ticketSize(equity(state), state.cash));
+  // Gekauft wird höchstens der Betrag aus der Frage, und nie mehr als die feste Obergrenze.
+  const size = Math.min(a.usd, ticketSize(equity(state), state.cash, 1));
   if (!size) return refuse("es ist nicht genug Geld auf dem Konto");
 
   settle(state, a, "ja", `Gekauft für ${formatUsd(size)}.`, now, via);
   state.verdicts[a.address] = { at: now.toISOString(), stage: "gekauft", text: a.why };
-  log(state, "Du", `$${a.symbol}: ja, kaufen`);
+  log(state, "Du", `${label}: ja, kaufen`);
   buy(state, live, size, a.why, now, true);
   trace(live, "fills", "gekauft", `nach deinem Ja gekauft für ${formatUsd(size)}`);
-  await save(state);
-  await writeReport(state, state.day.date);
-  return `Gekauft: $${a.symbol} für ${formatUsd(size)}.`;
+  return bought(size);
 }
 
-function sell(state: State, p: StoredPosition, price: number, liquidity: number, agent: DeskAgent, why: string, now: Date) {
+// share 0.5 verkauft die Hälfte (Gewinnmitnahme bei +100 %), der Rest bleibt mit seinem Stop liegen.
+function sell(state: State, p: StoredPosition, price: number, liquidity: number, agent: DeskAgent, why: string, now: Date, share: 1 | 0.5 = 1) {
   // Während der Desk auf Kurse wartet, kannst du dieselbe Position schon selbst verkauft haben.
   if (!state.positions.includes(p)) return;
-  const { usd, fillPrice, feesUsd } = simulateSell(p.qty, price, liquidity);
-  const pnlUsd = usd - p.costUsd;
+  const qty = p.qty * share;
+  const cost = p.costUsd * share;
+  const { usd, fillPrice, feesUsd } = simulateSell(qty, price, liquidity);
+  const pnlUsd = usd - cost;
   state.cash += usd;
-  state.positions = state.positions.filter((x) => x.address !== p.address);
-  state.cooldown[p.address] = new Date(now.getTime() + SAFETY.cooldownHours * HOUR).toISOString();
+  if (share < 1) {
+    p.qty -= qty;
+    p.costUsd -= cost;
+    p.halfSold = true;
+  } else {
+    state.positions = state.positions.filter((x) => x.address !== p.address);
+    // Nach einem Gewinn darf der Desk bald wieder einsteigen, nach einem Verlust erst morgen früh.
+    const hours = pnlUsd >= 0 ? SAFETY.cooldownAfterWinHours : SAFETY.cooldownAfterLossHours;
+    state.cooldown[p.address] = new Date(now.getTime() + hours * HOUR).toISOString();
+  }
   if (pnlUsd >= 0) state.stats.wins++;
   else state.stats.losses++;
   record(state, {
@@ -380,6 +469,71 @@ function sell(state: State, p: StoredPosition, price: number, liquidity: number,
     side: "verkauf",
     address: p.address,
     symbol: p.symbol,
+    qty,
+    price,
+    fillPrice,
+    usd,
+    feesUsd,
+    pnlUsd,
+    pnlPct: (pnlUsd / cost) * 100,
+    agent,
+    why,
+  });
+  const what = share < 1 ? `Hälfte von $${p.symbol} verkauft` : `Verkauf $${p.symbol}`;
+  log(state, agent, `${what}: ${why}. Ergebnis ${formatSignedUsd(pnlUsd)}`, "sell");
+  // Was du selbst verkaufst, weißt du schon.
+  if (agent !== "Du") {
+    notify({ kind: "trade", text: `${pnlUsd >= 0 ? "🔵" : "🔴"} Spielgeld: ${what}, Ergebnis ${formatSignedUsd(pnlUsd)} (${formatPct((pnlUsd / cost) * 100)}).\nGrund: ${why}` });
+  }
+}
+
+// ---------- Gold, Silber, Öl ----------
+
+// Size für Rohstoffe: 10 % des Kontos, aber nie mehr, als bar da ist.
+function commodityTicket(state: State): number {
+  const ticket = Math.floor(Math.min(equity(state) * COMMODITY_RULES.tradeShare, state.cash) * 100) / 100;
+  return ticket >= SAFETY.minTicketUsd ? ticket : 0;
+}
+
+function buyCommodity(state: State, q: CommodityQuote, ticket: number, why: string, now: Date, approved = false) {
+  const total = equity(state);
+  const { qty, fillPrice, feesUsd } = simulateCommodityBuy(ticket, q.price);
+  state.cash -= ticket;
+  const at = now.toISOString();
+  state.commodities.push({
+    id: q.id,
+    name: q.name,
+    symbol: q.symbol,
+    qty,
+    costUsd: ticket,
+    entryPrice: fillPrice,
+    openedAt: at,
+    peakPrice: fillPrice,
+    lastPrice: q.price,
+    lastAt: q.at,
+    stopPct: commodityStopPct(q.id, q.signal?.atrPct ?? 0),
+    why,
+  });
+  record(state, { id: tradeId(), at, side: "kauf", address: q.id, symbol: q.name, qty, price: q.price, fillPrice, usd: ticket, feesUsd, agent: "Trend", why, market: "rohstoff" });
+  log(state, "Trend", `Kauf ${q.name} (${q.label}) für ${formatUsd(ticket)}, das sind ${shareText(ticket, total)} des Kontos. ${why}`, "buy");
+  if (!approved) notify({ kind: "trade", text: `🟢 Spielgeld-Kauf: ${q.name} für ${formatUsd(ticket)}.\nWarum: ${why}` });
+}
+
+function sellCommodity(state: State, p: CommodityPosition, price: number, agent: DeskAgent, why: string, now: Date) {
+  if (!state.commodities.includes(p)) return;
+  const { usd, fillPrice, feesUsd } = simulateCommoditySell(p.qty, price);
+  const pnlUsd = usd - p.costUsd;
+  state.cash += usd;
+  state.commodities = state.commodities.filter((x) => x !== p);
+  if (pnlUsd < 0) state.commodityCooldown[p.id] = new Date(now.getTime() + COMMODITY_RULES.cooldownHours * HOUR).toISOString();
+  if (pnlUsd >= 0) state.stats.wins++;
+  else state.stats.losses++;
+  record(state, {
+    id: tradeId(),
+    at: now.toISOString(),
+    side: "verkauf",
+    address: p.id,
+    symbol: p.name,
     qty: p.qty,
     price,
     fillPrice,
@@ -389,11 +543,54 @@ function sell(state: State, p: StoredPosition, price: number, liquidity: number,
     pnlPct: (pnlUsd / p.costUsd) * 100,
     agent,
     why,
+    market: "rohstoff",
   });
-  log(state, agent, `Verkauf $${p.symbol}: ${why}. Ergebnis ${formatSignedUsd(pnlUsd)}`, "sell");
-  // Was du selbst verkaufst, weißt du schon.
+  log(state, agent, `Verkauf ${p.name}: ${why}. Ergebnis ${formatSignedUsd(pnlUsd)}`, "sell");
   if (agent !== "Du") {
-    notify({ kind: "trade", text: `${pnlUsd >= 0 ? "🔵" : "🔴"} Spielgeld-Verkauf: $${p.symbol}, Ergebnis ${formatSignedUsd(pnlUsd)} (${formatPct((pnlUsd / p.costUsd) * 100)}).\nGrund: ${why}` });
+    notify({ kind: "trade", text: `${pnlUsd >= 0 ? "🔵" : "🔴"} Spielgeld-Verkauf: ${p.name}, Ergebnis ${formatSignedUsd(pnlUsd)} (${formatPct((pnlUsd / p.costUsd) * 100)}).\nGrund: ${why}` });
+  }
+}
+
+// Trend: alle 6 Minuten Kurse holen, gekaufte Rohstoffe bewachen (auch in der Pause) und neue kaufen,
+// wenn der Trend nach oben zeigt. Ohne Twelve-Data-Schlüssel passiert hier nichts.
+async function commodityRound(state: State, now: Date) {
+  if (!due(shared.commodityAt, COMMODITY_MS, now)) return;
+  const config = await readConfig();
+  const key = twelveKey(config);
+  if (!key) return;
+  shared.commodityAt = now.getTime();
+  let quotes: CommodityQuote[];
+  try {
+    quotes = await refreshCommodities(key, now);
+  } catch (e) {
+    warnOnce(state, "Trend", `Keine Rohstoff-Kurse von Twelve Data (${e instanceof Error ? e.message : e}). Nächste Runde wieder`);
+    return;
+  }
+  for (const p of [...state.commodities]) {
+    if (halted(state)) return;
+    const q = quotes.find((x) => x.id === p.id);
+    // Ist der Markt zu, steht der Kurs still: dann wird nicht verkauft, der Stop greift bei Öffnung.
+    if (!q || !q.open) continue;
+    p.lastPrice = q.price;
+    p.lastAt = q.at;
+    p.peakPrice = Math.max(p.peakPrice, q.price);
+    const reason = commodityExit(p, q.price, q.signal);
+    if (reason) sellCommodity(state, p, q.price, "Risk", reason, now);
+  }
+  if (state.status !== "laeuft") return;
+  const limit = approvalLimitOf(config.approval?.limitUsd);
+  for (const q of quotes) {
+    if (!q.open || !q.signal?.buy) continue;
+    if (state.commodities.some((p) => p.id === q.id) || openApprovals(state).some((a) => a.address === q.id)) continue;
+    const until = state.commodityCooldown[q.id];
+    if (until && Date.parse(until) > now.getTime()) continue;
+    const ticket = commodityTicket(state);
+    if (!ticket) break;
+    if (needsApproval(ticket, limit)) {
+      ask(state, { address: q.id, symbol: q.name, name: q.label, url: "", priceUsd: q.price }, ticket, q.signal.why, now, "rohstoff");
+      continue;
+    }
+    buyCommodity(state, q, ticket, q.signal.why, now);
   }
 }
 
@@ -446,15 +643,15 @@ async function watch(state: State, now: Date) {
       }
     }
 
-    const reason = exitReason(p, price, p.lastLiquidity, now);
-    if (reason && !halted(state) && state.positions.includes(p)) {
-      sell(state, p, price, p.lastLiquidity, "Risk", reason, now);
-      if (reason.startsWith("Liquidität")) state.stats.rugsStopped++;
+    const plan = exitPlan(p, price, p.lastLiquidity, now);
+    if (plan && !halted(state) && state.positions.includes(p)) {
+      sell(state, p, price, p.lastLiquidity, "Risk", plan.why, now, plan.share);
+      if (plan.why.startsWith("Liquidität")) state.stats.rugsStopped++;
     }
   }
 }
 
-// 2. Höchstens 5 % Verlust am Tag.
+// 2. Höchstens 8 % Verlust am Tag.
 function dailyLimit(state: State) {
   if (!state.day.limitHit && equity(state) <= state.day.startEquity * (1 - SAFETY.dailyLossLimit)) {
     state.day.limitHit = true;
@@ -469,6 +666,9 @@ function dailyLimit(state: State) {
 
 const margin = (v: Verdict) =>
   SOFT_KEYS.reduce((sum, k: SoftKey) => sum + (SOFT_FILTERS[k].limit === "max" ? SOFT_FILTERS[k].value - v.scores[k] : v.scores[k] - SOFT_FILTERS[k].value), 0);
+
+// Überzeugung von 0 bis 1: zu 60 % der Schwung, zu 40 % wie deutlich die weichen Filter bestanden sind.
+export const conviction = (c: Pick<Candidate, "heat">, v: Verdict) => Math.min(1, Math.max(0, 0.6 * c.heat + 0.4 * Math.min(1, Math.max(0, margin(v) / 1.5))));
 
 // 3. Neue Coins suchen: Scan und Vet (harte Filter), Crawler (Blockchain und Projekt), Chief (weiche Filter).
 async function hunt(state: State, now: Date) {
@@ -490,27 +690,33 @@ async function hunt(state: State, now: Date) {
     return;
   }
   // Was auf dein Ja wartet, belegt schon einen Platz.
-  const asked = openApprovals(state);
+  const asked = coinApprovals(state);
   if (state.positions.length + asked.length >= SAFETY.maxOpenPositions) return;
   const ticket = ticketSize(equity(state), state.cash);
   if (!ticket) return;
 
+  // Wer abgelehnt wurde, kommt nach einer Stunde wieder dran; wer Rug-Zeichen hatte, erst nach 12 Stunden.
+  const waitFor = (address: string) =>
+    state.verdicts[address] && KILL_STAGES.has(state.verdicts[address].stage) ? SAFETY.killRecheckHours * HOUR : SAFETY.recheckMinutes * 60_000;
   const held = new Set([...state.positions, ...asked].map((p) => p.address));
-  const fresh = candidates
+  const open = candidates
     .filter((c) => c.passed && !held.has(c.address))
     .filter((c) => !(state.cooldown[c.address] && Date.parse(state.cooldown[c.address]) > now.getTime()))
-    .filter((c) => !(state.seen[c.address] && now.getTime() - Date.parse(state.seen[c.address]) < SAFETY.recheckHours * HOUR))
-    .slice(0, MAX_CRAWLS_PER_TICK);
-  if (fresh.length === 0) return;
+    .filter((c) => !(state.seen[c.address] && now.getTime() - Date.parse(state.seen[c.address]) < waitFor(c.address)));
+  // Die Liste ist nach Schwung sortiert: Die heißesten Coins prüft der Crawler zuerst.
+  const fresh = open.filter((c) => c.heat >= MIN_HEAT).slice(0, MAX_CRAWLS_PER_TICK);
+  if (fresh.length === 0) {
+    if (open.length) trace(null, "scan", "ok", `Kein Coin mit genug Schwung, ${open.length} ohne frisches Geld übersprungen`);
+    return;
+  }
 
   const config = await readConfig();
   const xKey = grokKey(config);
   const xLeft = () => xBudget(config) - state.day.xSpentUsd;
-  // Der Crawler liest zuerst, dann handelt der Desk: Ist das X-Budget für heute weg, prüft er nichts Neues.
+  // Ist das X-Budget für heute weg, prüft der Crawler ohne X weiter: Blockchain und Projektseite liest er trotzdem.
   if (xKey && xLeft() < TYPICAL_COST_USD) {
-    const text = `Das X-Budget von ${formatUsd(xBudget(config))} für heute ist aufgebraucht. Morgen liest Grok weiter, bis dahin kauft der Desk nichts Neues`;
+    const text = `Das X-Budget von ${formatUsd(xBudget(config))} für heute ist aufgebraucht. Bis morgen prüfe ich ohne X weiter`;
     if (warnOnce(state, "Crawler", text)) trace(null, "x", "warn", text);
-    return;
   }
 
   const survivors: ChiefInput[] = [];
@@ -542,13 +748,7 @@ async function hunt(state: State, now: Date) {
       const site = report.site ? ("title" in report.site ? `Seite „${report.site.title || report.site.url}“ gelesen` : `Seite: ${report.site.error}`) : "keine Seite";
       log(state, "Crawler", `$${c.symbol}: Blockchain sauber, Top 10 halten ${report.chain.top10Pct?.toLocaleString("de-DE")} %, ${site}`);
       let x: XReport | null = null;
-      if (xKey) {
-        // Reicht das Budget nicht mehr, kommt der Coin morgen wieder dran.
-        if (xLeft() < TYPICAL_COST_USD) {
-          trace(c, "x", "warn", "X-Budget für heute aufgebraucht, morgen geht es weiter");
-          delete state.seen[c.address];
-          break;
-        }
+      if (xKey && xLeft() >= TYPICAL_COST_USD) {
         trace(c, "x", "laeuft", "Grok liest die Beiträge auf X und das Projektkonto");
         x = await readXFor(state, xKey, c, now);
         if (!x) continue;
@@ -594,7 +794,8 @@ async function hunt(state: State, now: Date) {
     if (!v.buy) state.verdicts[v.address] = { at: now.toISOString(), stage: "chief_nein", text: v.why };
   }
 
-  const picks = verdicts.filter((x) => x.buy).sort((a, b) => margin(b) - margin(a));
+  const heatOf = (v: Verdict) => survivors.find((s) => s.candidate.address === v.address)?.candidate ?? { heat: 0 };
+  const picks = verdicts.filter((x) => x.buy).sort((a, b) => conviction(heatOf(b), b) - conviction(heatOf(a), a));
   if (picks.length === 0) return;
 
   // Zwischen Scan und Entscheidung vergehen Sekunden; gekauft wird zum frischen Kurs, nicht zum alten.
@@ -613,10 +814,11 @@ async function hunt(state: State, now: Date) {
   const limit = approvalLimitOf(config.approval?.limitUsd);
   for (const v of picks) {
     // Der Not-Aus oder eine Pause kann jederzeit dazwischenkommen.
-    if (state.status !== "laeuft" || state.positions.length + openApprovals(state).length >= SAFETY.maxOpenPositions) break;
-    const size = ticketSize(equity(state), state.cash);
-    if (!size) break;
+    if (state.status !== "laeuft" || state.positions.length + coinApprovals(state).length >= SAFETY.maxOpenPositions) break;
     const checked = survivors.find((s) => s.candidate.address === v.address)!.candidate;
+    // Je mehr Schwung und je klarer die weichen Filter bestanden sind, desto größer der Einsatz.
+    const size = ticketSize(equity(state), state.cash, conviction(checked, v));
+    if (!size) break;
     const pair = quotes.get(v.address);
     const live = pair ? toCandidate(pair, now.getTime()) : null;
     if (!live || !(live.priceUsd > 0) || !live.passed) {
@@ -683,7 +885,7 @@ async function rollDay(state: State, now: Date) {
   }
   // Alte Einträge vergessen, damit die Datei klein bleibt.
   const cutoff = now.getTime() - 2 * 24 * HOUR;
-  for (const map of [state.seen, state.cooldown]) {
+  for (const map of [state.seen, state.cooldown, state.commodityCooldown as Record<string, string>]) {
     for (const [k, v] of Object.entries(map)) if (Date.parse(v) < cutoff) delete map[k];
   }
   for (const [k, v] of Object.entries(state.verdicts)) if (Date.parse(v.at) < cutoff) delete state.verdicts[k];
@@ -696,6 +898,13 @@ function remember(state: State, now: Date) {
   if (state.equityHistory.length > HISTORY_LIMIT) state.equityHistory.splice(0, state.equityHistory.length - HISTORY_LIMIT);
 }
 
+// Ist seit dem letzten Mal genug Zeit vergangen? Geht die Uhr des Macs zurück (Zeitumstellung von Hand,
+// Abgleich mit dem Zeitserver), zählt das auch als fällig, sonst stünde die Suche still.
+const due = (last: number | undefined, every: number, now: Date) => {
+  const elapsed = now.getTime() - (last ?? 0);
+  return elapsed >= every || elapsed < 0;
+};
+
 export async function tick(now = new Date()) {
   if (shared.ticking) return;
   shared.ticking = true;
@@ -707,17 +916,41 @@ export async function tick(now = new Date()) {
     const before = state.day.trades;
     await watch(state, now);
     dailyLimit(state);
+    await commodityRound(state, now);
+    dailyLimit(state);
     if (state.status !== "laeuft") dropApprovals(state, NOT_BUYING[state.status], now);
-    if (state.status === "laeuft") await hunt(state, now);
     remember(state, now);
     state.lastTickAt = now.toISOString();
     await save(state);
     if (state.day.trades !== before) await writeReport(state, state.day.date);
+    // Die Suche läuft nebenher weiter; die Wache kommt in 10 Sekunden wieder, egal wie lange sie braucht.
+    if (state.status === "laeuft" && !shared.hunting && due(shared.lastHuntAt, HUNT_MS, now)) {
+      shared.lastHuntAt = now.getTime();
+      shared.hunting = huntRound(state, now);
+    }
   } catch (e) {
     console.error("Spielgeld-Desk:", e);
   } finally {
     shared.ticking = false;
   }
+}
+
+async function huntRound(state: State, now: Date) {
+  try {
+    const before = state.day.trades;
+    await hunt(state, now);
+    await save(state);
+    if (state.day.trades !== before) await writeReport(state, state.day.date);
+  } catch (e) {
+    console.error("Spielgeld-Desk, Suche:", e);
+  } finally {
+    shared.hunting = null;
+  }
+}
+
+// Wartet, bis eine laufende Suche fertig ist (für Tests und vor dem Zurücksetzen).
+export async function huntDone() {
+  while (shared.hunting) await shared.hunting;
 }
 
 export function startDesk() {
@@ -761,28 +994,52 @@ export async function control(input: DeskAction, now = new Date()): Promise<stri
       state.status = "notaus";
       dropApprovals(state, NOT_BUYING.notaus, now);
       state.statusReason = "Not-Aus: alle Agenten stehen, auch der Stop-Loss. Offene Positionen bleiben, bis du sie verkaufst oder weitermachst.";
-      message = `Not-Aus. Alle Agenten stehen.${state.positions.length ? ` ${state.positions.length} Positionen bleiben offen.` : ""}`;
+      message = `Not-Aus. Alle Agenten stehen.${state.positions.length + state.commodities.length ? ` ${state.positions.length + state.commodities.length} Positionen bleiben offen.` : ""}`;
       break;
     case "verkaufen":
     case "alle_verkaufen": {
-      const targets = input.action === "verkaufen" ? state.positions.filter((p) => p.address === input.address) : [...state.positions];
-      if (targets.length === 0) throw new DeskError("Diese Position gibt es nicht mehr.");
-      const pairs = await fetchPairs(targets.map((p) => p.address)).catch(() => {
-        throw new DeskError("Ich bekomme gerade keine Kurse, also verkaufe ich nicht blind. Versuch es gleich noch einmal.");
-      });
+      const only = input.action === "verkaufen" ? input.address : null;
+      const targets = only === null ? [...state.positions] : state.positions.filter((p) => p.address === only);
+      const metals = only === null ? [...state.commodities] : state.commodities.filter((p) => p.id === only);
+      if (targets.length + metals.length === 0) throw new DeskError("Diese Position gibt es nicht mehr.");
       let total = 0;
-      for (const p of targets) {
-        const pair = pairs.get(p.address);
-        const price = Number(pair?.priceUsd ?? p.lastPrice);
+      let sold = 0;
+      const sell1 = (fn: () => void) => {
         const before = state.cash;
-        sell(state, p, price, pair?.liquidity?.usd ?? p.lastLiquidity, "Du", "von dir verkauft", now);
+        fn();
         total += state.cash - before;
+        sold++;
+      };
+      if (targets.length) {
+        const pairs = await fetchPairs(targets.map((p) => p.address)).catch(() => {
+          throw new DeskError("Ich bekomme gerade keine Kurse, also verkaufe ich nicht blind. Versuch es gleich noch einmal.");
+        });
+        for (const p of targets) {
+          const pair = pairs.get(p.address);
+          sell1(() => sell(state, p, Number(pair?.priceUsd ?? p.lastPrice), pair?.liquidity?.usd ?? p.lastLiquidity, "Du", "von dir verkauft", now));
+        }
       }
-      message = `${targets.length === 1 ? `$${targets[0].symbol}` : `${targets.length} Positionen`} verkauft, ${formatUsd(total)} zurück aufs Konto.`;
+      // Rohstoffe nur bei offenem Markt: Nach Börsenschluss gibt es keinen Kurs, zu dem jemand kauft.
+      const closed: string[] = [];
+      if (metals.length) {
+        const key = twelveKey(await readConfig());
+        for (const p of metals) {
+          const q = key ? await freshCommodity(key, p.id, now).catch(() => null) : null;
+          if (!q || !q.open) {
+            closed.push(p.name);
+            continue;
+          }
+          sell1(() => sellCommodity(state, p, q.price, "Du", "von dir verkauft", now));
+        }
+      }
+      if (sold === 0) throw new DeskError(`Der Markt für ${closed.join(" und ")} ist gerade zu. Verkaufen geht wieder, sobald er öffnet.`);
+      const what = sold === 1 ? (targets[0] ? `$${targets[0].symbol}` : metals.find((p) => !closed.includes(p.name))!.name) : `${sold} Positionen`;
+      message = `${what} verkauft, ${formatUsd(total)} zurück aufs Konto.${closed.length ? ` ${closed.join(" und ")} bleibt, der Markt ist gerade zu.` : ""}`;
       break;
     }
     case "zuruecksetzen": {
       if (state.status === "laeuft" || state.status === "tageslimit") throw new DeskError("Bitte zuerst pausieren.");
+      await huntDone();
       dropApprovals(state, "der Handel wurde zurückgesetzt", now);
       await fs.rename(TRADES_FILE, TRADES_FILE.replace(/\.jsonl$/, `-bis-${isoDate(now)}-${now.getTime()}.jsonl`)).catch(() => {});
       Object.assign(state, freshState());
@@ -823,6 +1080,12 @@ export async function deskSnapshot(now = new Date()): Promise<DeskSnapshot> {
     pnlPct: (total / state.startCapital - 1) * 100,
     dayPnlPct: (total / state.day.startEquity - 1) * 100,
     positions: state.positions.map((p) => ({ ...publicPosition(p), stopPrice: stopPrice(p), targetPrice: targetPrice(p) })),
+    commodities: {
+      enabled: Boolean(twelveKey(config)),
+      quotes: commodityQuotes(),
+      positions: state.commodities.map((p) => ({ ...p, stopPrice: commodityStop(p) })),
+      note: commodityNote(),
+    },
     trades: state.trades.slice(0, 40),
     log: state.log.slice(0, 80),
     stats: state.stats,
@@ -830,7 +1093,7 @@ export async function deskSnapshot(now = new Date()): Promise<DeskSnapshot> {
     equityHistory: downsample(state.equityHistory, 400),
     lastPick: state.lastPick,
     lastTickAt: state.lastTickAt,
-    verdicts: Object.fromEntries(Object.entries(state.verdicts).filter(([, v]) => now.getTime() - Date.parse(v.at) < SAFETY.recheckHours * HOUR)),
+    verdicts: Object.fromEntries(Object.entries(state.verdicts).filter(([, v]) => now.getTime() - Date.parse(v.at) < VERDICT_SHOW_MS)),
     chief: brainKey(config) ? "claude" : "regeln",
     x: { enabled: Boolean(grokKey(config)), spentTodayUsd: state.day.xSpentUsd, budgetUsd: xBudget(config) },
     intelWarning: await intelWarning(now)
@@ -859,7 +1122,7 @@ async function writeReport(state: State, date: string, closed?: DayRecord) {
     `- Konto am Tagesanfang: ${formatUsd(start)}`,
     `- Konto ${closed ? "am Tagesende" : "jetzt"}: ${formatUsd(end)} (${formatSignedUsd(end - start)})`,
     `- Seit dem Start: ${formatSignedUsd(end - state.startCapital)}`,
-    `- Offene Positionen: ${state.positions.map((p) => `$${p.symbol}`).join(", ") || "keine"}`,
+    `- Offene Positionen: ${[...state.positions.map((p) => `$${p.symbol}`), ...state.commodities.map((p) => p.name)].join(", ") || "keine"}`,
     `- Crawler: ${state.stats.killed} Coins aussortiert, ${state.stats.rugsStopped} Rugs gestoppt, ${state.stats.postsRead} Beiträge auf X gelesen (seit dem Start)`,
     ...(state.stats.xReads ? [`- Grok auf X: ${formatUsd(state.stats.xCostUsd)} seit dem Start`] : []),
     "",
@@ -869,7 +1132,7 @@ async function writeReport(state: State, date: string, closed?: DayRecord) {
     "| --- | --- | --- | --- | --- | --- | --- |",
     ...trades.map(
       (t) =>
-        `| ${time(t.at)} | $${cell(t.symbol)} | ${t.side} | ${formatUsd(t.usd)} | ${t.pnlUsd === undefined ? "" : formatSignedUsd(t.pnlUsd)} | ${t.agent} | ${cell(t.why)} |`,
+        `| ${time(t.at)} | ${cell(assetLabel(t))} | ${t.side} | ${formatUsd(t.usd)} | ${t.pnlUsd === undefined ? "" : formatSignedUsd(t.pnlUsd)} | ${t.agent} | ${cell(t.why)} |`,
     ),
     ...(trades.length ? [] : ["| | | | | | | heute keine Trades |"]),
     "",
