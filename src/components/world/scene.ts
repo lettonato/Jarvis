@@ -14,6 +14,7 @@ import { createSky } from "./sky";
 import { createTerrain } from "./terrain";
 import type { AvatarState } from "@/lib/avatar";
 import { MODULES, type ModuleId } from "@/lib/modules";
+import { QUALITY_SHOWN_EVENT, readQuality, readQualityCap, saveQuality, saveQualityCap, type QualityChoice, type QualityLevel } from "@/lib/quality";
 import { BIOMES, biomeOf, type Biome, type BiomeId, type Feature } from "@/lib/world";
 
 // Die 3D-Welt hinter JARVIS: Gebirge, Himmel, der schwebende Kopf und die Felsen mit den Modulen.
@@ -27,6 +28,8 @@ export type World = {
   setInteractive: (on: boolean) => void;
   // Echte Landschaftsfotos statt des gerechneten Gebirges.
   setPhotos: (on: boolean) => void;
+  // Bildqualität aus den Einstellungen: automatisch oder eine feste Stufe.
+  setQuality: (choice: QualityChoice) => void;
   focus: (id: string | null) => void;
   dispose: () => void;
 };
@@ -90,20 +93,6 @@ const damp = (rate: number, dt: number) => 1 - Math.exp(-rate * dt);
 const ACCENT: Partial<Record<ModuleId, string>> = { cognition: "#c084fc", wetter: "#7dd3fc", telefon: "#a5b4fc", browser: "#a5b4fc" };
 const accentOf = (id: ModuleId, href: string) => ACCENT[id] ?? BIOMES[biomeOf(href)].high;
 
-// Qualitätsstufen: 2 mit Leuchten und scharfem Bild, 1 etwas gröber, 0 ohne Leuchten.
-// Ruckelt es, geht die Welt von selbst eine Stufe herunter und merkt sich das.
-const QUALITY_KEY = "jarvis-welt-qualitaet";
-function readQuality(): { level: number; fixed: boolean } {
-  try {
-    const v = localStorage.getItem(QUALITY_KEY) ?? "";
-    const fixed = v.startsWith("fest:");
-    const n = Number(fixed ? v.slice(5) : v);
-    return { level: v && n >= 0 && n <= 2 ? n : 2, fixed };
-  } catch {
-    return { level: 2, fixed: false };
-  }
-}
-
 const DUST_VERTEX = /* glsl */ `
 uniform vec2 uOffset;
 uniform float uTime;
@@ -164,6 +153,10 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
 
   const canvas = document.createElement("canvas");
   canvas.className = "block h-full w-full";
+  // Die Welt blendet über den Hintergrund der Seite ein, statt ihn mit einem dunklen Bild abzulösen. Ebenso,
+  // wenn der Browser die Grafik verliert und wieder zurückgibt. Die Schleife selbst blendet, Bild für Bild.
+  canvas.style.opacity = "0";
+  let shown = 0;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
   container.appendChild(canvas);
   renderer.setClearColor("#04060f");
@@ -196,7 +189,7 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   scene.add(dust);
 
   // Die Fotowelt: ein Foto hinter allem, Gebirge, Himmel und Besonderheiten der Landschaft sind dann aus.
-  const photos = createPhotos(initial, reduced);
+  const photos = createPhotos(initial, reduced, (t) => renderer.initTexture(t));
   let usePhotos = photosOn;
   const showLandscape = () => {
     terrain.mesh.visible = !usePhotos;
@@ -295,6 +288,12 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   };
   passesFor();
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.5, 0.7);
+  // Ein einzelner kaputter Bildpunkt (keine Zahl oder unendlich hell) würde im Nachleuchten zu einem Blitz über
+  // den halben Bildschirm. Solche Punkte fallen vor dem Leuchten weg.
+  bloom.materialHighPassFilter.fragmentShader = bloom.materialHighPassFilter.fragmentShader.replace(
+    "vec4 texel = texture2D( tDiffuse, vUv );",
+    "vec4 texel = texture2D( tDiffuse, vUv );\n\t\t\tif ( ! all( lessThan( abs( texel ), vec4( 1e4 ) ) ) ) texel = vec4( 0.0 );",
+  );
   composer.addPass(bloom);
   composer.addPass(new LayerPass(scene, camera, PANEL_LAYER));
   composer.addPass(new OutputPass());
@@ -303,7 +302,7 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   const fitCache = new Map<string, Fit>();
   let W = 1;
   let H = 1;
-  let level = quality.level;
+  let level: QualityLevel = quality.level;
   let layoutDone = false;
   let stage: THREE.Vector3[] = [];
   const applySize = () => {
@@ -519,6 +518,8 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   // Verliert der Browser die Grafik (Treiber, zu viele offene Tabs), zeigt die Seite solange einfache Kacheln.
   const onContextLost = (e: Event) => {
     e.preventDefault();
+    shown = 0;
+    canvas.style.opacity = "0";
     onLost(true);
   };
   const onContextRestored = () => onLost(false);
@@ -535,24 +536,70 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
   let last = performance.now();
   let lastDraw = 0;
   let time = 0;
-  const samples: number[] = [];
-  let warmup = 45;
-  let climbed = false;
   const roll = { value: 0 };
 
-  function applyQuality(next: number) {
+  // ───────── Bildqualität ─────────
+  // Ruckelt es länger, geht die Welt eine Stufe herunter. Läuft es auf einer niedrigeren Stufe lange flüssig
+  // (etwa nach einem Ruckler beim Start), einmal je Laden wieder eine hinauf. Gewechselt wird nur während
+  // eines Flugs, wenn sich ohnehin alles bewegt, damit das Bild nie im Stillstand springt; nur wenn es arg
+  // ruckelt, sofort. Das Leuchten blendet dabei weich aus und ein, statt einfach auszugehen.
+  const samples: number[] = [];
+  let warmup = 45;
+  let pending: { level: QualityLevel; since: number } | null = null;
+  let dropped = false;
+  let climbedAt = -Infinity;
+  let glowMix = level > 0 ? 1 : 0;
+  const average = (n: number) => samples.slice(-n).reduce((a, b) => a + b, 0) / n;
+
+  function applyQuality(next: QualityLevel, now: number) {
+    pending = null;
+    samples.length = 0;
+    if (next === level) return;
+    if (next < level) {
+      // Gerade erst hinaufgestiegen und schon wieder zu langsam: ein paar Tage nicht mehr so hoch.
+      if (!dropped && now - climbedAt < 120_000) saveQualityCap(next);
+      dropped = true;
+    } else climbedAt = now;
     level = next;
-    try {
-      if (!quality.fixed) localStorage.setItem(QUALITY_KEY, String(level));
-    } catch {}
-    bloom.enabled = level > 0;
-    if (level < 2) {
+    if (!quality.fixed) saveQuality(level, false);
+    if (level < 2 && target.samples > 0) {
       for (const t of [composer.renderTarget1, composer.renderTarget2]) {
         t.samples = 0;
         t.dispose();
       }
     }
+    // Ohne Leuchten wird direkt auf den Bildschirm gezeichnet; die Shader dafür vorab übersetzen, solange
+    // das Leuchten noch ausblendet.
+    if (level === 0) void compileAll(null, true);
     applySize();
+    window.dispatchEvent(new CustomEvent(QUALITY_SHOWN_EVENT, { detail: level }));
+  }
+
+  function judgeQuality(dt: number, now: number, calm: boolean, flying: boolean) {
+    if (quality.fixed) return;
+    if (warmup > 0) {
+      warmup--;
+      return;
+    }
+    // In den Arbeitsansichten läuft die Welt absichtlich mit 30 Bildern; das zählt nicht als Ruckeln.
+    if (!calm && !document.hidden) {
+      samples.push(dt);
+      if (samples.length > 240) samples.shift();
+    }
+    if (samples.length >= 90) {
+      const recent = average(90);
+      if (level > 0 && recent > 1 / 38 && !(pending && pending.level < level)) pending = { level: (level - 1) as QualityLevel, since: now };
+      // Nur ein kurzer Ruckler: dann bleibt alles, wie es ist.
+      else if (pending && pending.level < level && recent < 1 / 50) pending = null;
+      else if (pending && pending.level > level && recent > 1 / 45) pending = null;
+      if (pending && pending.level < level && recent > 1 / 24) return applyQuality(pending.level, now);
+    }
+    if (!pending && !dropped && climbedAt === -Infinity && level < 2 && samples.length >= 240 && average(240) < 1 / 56 && level < readQualityCap()) {
+      pending = { level: (level + 1) as QualityLevel, since: now };
+    }
+    // Mitten im Flug fällt der Wechsel nicht auf. Ruckelt es weiter und kommt lange kein Flug, gilt ein Schritt
+    // nach unten auch so; in den ruhigen Arbeitsansichten wartet er auf den nächsten Flug.
+    if (pending && ((flying && progress < 0.8) || (!calm && pending.level < level && now - pending.since > 8000))) applyQuality(pending.level, now);
   }
 
   const tick = (now: number) => {
@@ -562,7 +609,8 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
     // meist still hinter dem Text: Dort reichen 30.
     const calm = biome.frame === "frei" && !flying && avatar === "idle";
     if (now - lastDraw < (calm ? 31 : 14)) return;
-    const dt = Math.min(0.25, (now - last) / 1000);
+    // Hing der Browser kurz (etwa beim Aufbau einer Ansicht), läuft die Bewegung weich weiter, statt zu springen.
+    const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     lastDraw = now;
     if (resized) {
@@ -570,29 +618,7 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
       applySize();
     }
     time += dt * (reduced ? 0.25 : 1);
-
-    // Ruckelt es länger, eine Stufe herunter. Die ersten Bilder zählen nicht, da wird noch aufgebaut.
-    // Läuft es auf einer niedrigeren Stufe lange flüssig (etwa nach einem Ruckler beim Start), einmal je
-    // Laden wieder eine Stufe hinauf, damit die Welt nicht dauerhaft grob bleibt.
-    if (warmup > 0) warmup--;
-    else if (!calm && !quality.fixed && !document.hidden) {
-      samples.push(dt);
-      if (samples.length >= 90 && level > 0) {
-        const avg = samples.slice(-90).reduce((a, b) => a + b, 0) / 90;
-        if (avg > 1 / 38) {
-          samples.length = 0;
-          applyQuality(level - 1);
-        }
-      }
-      if (samples.length >= 240) {
-        const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
-        samples.length = 0;
-        if (level < 2 && !climbed && avg < 1 / 56) {
-          climbed = true;
-          applyQuality(level + 1);
-        }
-      }
-    }
+    judgeQuality(dt, now, calm, flying);
 
     // Flug: Landschaft und Weg.
     if (flying) progress = duration > 0 ? Math.min(1, progress + dt / duration) : 1;
@@ -654,7 +680,7 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
       bustMaterial.size = (avatar === "listening" ? 0.038 : 0.03) * (hovered ? 1.15 : 1);
       // Mit Nachleuchten addieren sich die Punkte schneller zu Weiß; dann etwas zurückhaltender, vor hellen
       // Fotos (Wolken, Schnee) noch etwas mehr.
-      bustMaterial.opacity = (avatar === "idle" ? 0.8 : 0.95) * headVis * (level > 0 ? 0.62 : 1) * (usePhotos ? 0.78 : 1);
+      bustMaterial.opacity = (avatar === "idle" ? 0.8 : 0.95) * headVis * (1 - 0.38 * glowMix) * (usePhotos ? 0.78 : 1);
       projector.rotation.y = time * (avatar === "thinking" ? 1.6 : 0.25);
       headBeam.uniforms.uTime.value = time;
       headBeam.uniforms.uOpacity.value = (avatar === "speaking" ? 0.2 : 0.1) * headVis;
@@ -747,7 +773,10 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
     sky.group.position.copy(camera.position);
     if (usePhotos) photos.update(dt, time, parallax, look.accent, look.light);
 
-    if (level > 0) composer.render(dt);
+    glowMix = level > 0 ? Math.min(1, glowMix + dt / 1.2) : Math.max(0, glowMix - dt / 1.2);
+    bloom.strength = 0.7 * glowMix;
+    bloom.enabled = glowMix > 0;
+    if (level > 0 || glowMix > 0) composer.render(dt);
     else {
       if (usePhotos) {
         renderer.render(photos.scene, photos.camera);
@@ -757,27 +786,36 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
       renderer.autoClear = true;
       if (ring.visible) renderLayer(renderer, scene, camera, PANEL_LAYER);
     }
+    if (shown < 1 && !renderer.getContext().isContextLost()) {
+      shown = reduced ? 1 : Math.min(1, shown + dt / 0.9);
+      canvas.style.opacity = shown < 1 ? shown.toFixed(3) : "";
+    }
   };
 
+  // Alle Shader übersetzen, auch die der Landschaften, die noch nicht zu sehen sind. Sonst stockt der erste
+  // Flug dorthin kurz. Mit Nachleuchten wird erst in ein Zwischenbild gezeichnet; dafür braucht es eigene
+  // Shader-Varianten.
+  function compileAll(into: THREE.WebGLRenderTarget | null, later = false) {
+    const hidden: THREE.Object3D[] = [];
+    scene.traverse((o) => {
+      if (!o.visible) {
+        hidden.push(o);
+        o.visible = true;
+      }
+    });
+    renderer.setRenderTarget(into);
+    camera.layers.enable(PANEL_LAYER);
+    const done = later ? renderer.compileAsync(scene, camera).catch(() => {}) : (renderer.compile(scene, camera), Promise.resolve());
+    camera.layers.disable(PANEL_LAYER);
+    renderer.setRenderTarget(null);
+    for (const o of hidden) o.visible = false;
+    return done;
+  }
+
   applySize();
-  bloom.enabled = level > 0;
+  bloom.enabled = glowMix > 0;
   paint();
-  // Alle Shader gleich am Anfang übersetzen, auch die der Landschaften, die noch nicht zu sehen sind.
-  // Sonst stockt der erste Flug dorthin kurz.
-  const hidden: THREE.Object3D[] = [];
-  scene.traverse((o) => {
-    if (!o.visible) {
-      hidden.push(o);
-      o.visible = true;
-    }
-  });
-  // Mit Nachleuchten wird erst in ein Zwischenbild gezeichnet; dafür braucht es eigene Shader-Varianten.
-  renderer.setRenderTarget(level > 0 ? composer.renderTarget1 : null);
-  camera.layers.enable(PANEL_LAYER);
-  renderer.compile(scene, camera);
-  camera.layers.disable(PANEL_LAYER);
-  renderer.setRenderTarget(null);
-  for (const o of hidden) o.visible = false;
+  void compileAll(level > 0 ? composer.renderTarget1 : null);
   tick(performance.now());
 
   return {
@@ -803,6 +841,14 @@ export function createWorld(container: HTMLElement, { initial, photos: photosOn,
       usePhotos = on;
       showLandscape();
       passesFor();
+    },
+    setQuality(choice) {
+      quality.fixed = choice !== "auto";
+      saveQuality(choice === "auto" ? level : choice, quality.fixed);
+      dropped = false;
+      climbedAt = -Infinity;
+      warmup = 45;
+      applyQuality(choice === "auto" ? level : choice, performance.now());
     },
     focus(id) {
       focusId = id;

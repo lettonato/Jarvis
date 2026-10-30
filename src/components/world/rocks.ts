@@ -159,7 +159,9 @@ uniform float uTime;
 varying float vUp;
 void main() {
   float scan = 0.75 + 0.25 * sin(vUp * 26.0 - uTime * 4.0);
-  float a = pow(1.0 - vUp, 1.6) * uOpacity * scan;
+  // Am oberen Rand kann vUp um eine Winzigkeit über 1 liegen; pow mit negativer Basis ergibt dann keinen
+  // Wert (NaN), und das Nachleuchten machte daraus einen Blitz über den halben Bildschirm.
+  float a = pow(clamp(1.0 - vUp, 0.0, 1.0), 1.6) * uOpacity * scan;
   gl_FragColor = vec4(uColor * a, a);
 }
 `;

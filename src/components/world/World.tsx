@@ -8,6 +8,7 @@ import { setFocusHandler, setWorldStatus } from "./anchor";
 import type { World as WorldApi } from "./scene";
 import { holoTypes } from "@/lib/holo";
 import { readWorldStyle, STYLE_EVENT, STYLE_KEY } from "@/lib/photos";
+import { QUALITY_EVENT, type QualityChoice } from "@/lib/quality";
 import { biomeOf } from "@/lib/world";
 
 // Die 3D-Welt als Hintergrund hinter allen Ansichten. Sie bleibt beim Wechsel der Ansicht stehen und
@@ -33,6 +34,14 @@ export function World() {
     if (!mount) return;
     let api: WorldApi | null = null;
     let gone = false;
+    // Verliert der Browser kurz die Grafik und holt sie gleich zurück, bleibt die Seite, wie sie ist. Erst wenn
+    // es länger dauert, zeigt sie einfache Kacheln; sonst springt die ganze Übersicht zweimal hin und her.
+    let lostTimer: ReturnType<typeof setTimeout> | undefined;
+    const onLost = (lost: boolean) => {
+      clearTimeout(lostTimer);
+      if (lost) lostTimer = setTimeout(() => setWorldStatus("aus"), 2500);
+      else setWorldStatus("laeuft");
+    };
     import("./scene")
       .then(({ createWorld }) => {
         if (gone) return;
@@ -40,7 +49,7 @@ export function World() {
           initial: biomeOf(place.current),
           photos: readWorldStyle() === "fotos",
           onOpen: (href) => router.push(href, { transitionTypes: holoTypes(place.current, href) }),
-          onLost: (lost) => setWorldStatus(lost ? "aus" : "laeuft"),
+          onLost,
         });
         world.current = api;
         const { state: s, telemetry: t, brain: b } = latest.current;
@@ -52,14 +61,18 @@ export function World() {
       })
       .catch(() => setWorldStatus("aus"));
     const restyle = () => api?.setPhotos(readWorldStyle() === "fotos");
+    const requality = (e: Event) => api?.setQuality((e as CustomEvent<QualityChoice>).detail);
     const onStorage = (e: StorageEvent) => {
       if (e.key === STYLE_KEY) restyle();
     };
     window.addEventListener(STYLE_EVENT, restyle);
+    window.addEventListener(QUALITY_EVENT, requality);
     window.addEventListener("storage", onStorage);
     return () => {
       gone = true;
+      clearTimeout(lostTimer);
       window.removeEventListener(STYLE_EVENT, restyle);
+      window.removeEventListener(QUALITY_EVENT, requality);
       window.removeEventListener("storage", onStorage);
       api?.dispose();
       world.current = null;

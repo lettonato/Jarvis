@@ -193,14 +193,14 @@ void main() {
   float rings = smoothstep(0.035, 0.0, abs(fract(r * 6.0) - 0.5) - 0.46);
   float cross = smoothstep(0.006, 0.0, min(abs(p.x), abs(p.y)));
   float sweep = mod(a - uTime * 0.9, 6.2831853) / 6.2831853;
-  float trail = pow(1.0 - sweep, 6.0);
+  float trail = pow(clamp(1.0 - sweep, 0.0, 1.0), 6.0);
   // Ein paar Ziele, die aufleuchten, wenn der Strahl sie trifft.
   float blips = 0.0;
   for (int i = 0; i < 5; i++) {
     float fi = float(i);
     vec2 b = vec2(cos(fi * 2.4 + 0.7), sin(fi * 2.4 + 0.7)) * (0.25 + fract(fi * 0.37) * 0.6);
     float ba = mod(atan(b.y, b.x) - uTime * 0.9, 6.2831853) / 6.2831853;
-    blips += smoothstep(0.035, 0.0, length(p - b)) * pow(1.0 - ba, 3.0);
+    blips += smoothstep(0.035, 0.0, length(p - b)) * pow(clamp(1.0 - ba, 0.0, 1.0), 3.0);
   }
   float edge = smoothstep(0.02, 0.0, abs(r - 0.985));
   float v = rings * 0.35 + cross * 0.25 + trail * 0.55 + blips * 1.6 + edge * 0.8;
