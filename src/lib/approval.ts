@@ -30,11 +30,13 @@ export const APPROVAL_CHOICES: { value: ApprovalLimit; label: string }[] = [
   { value: null, label: "Nie fragen" },
 ];
 
-export const DEFAULT_APPROVAL_LIMIT: ApprovalLimit = 100;
+// Seit dem Umbau auf maximalen Gewinn (Benedikts Wahl am 30. Oktober 2026): Beim Spielgeld kauft der Desk
+// sofort und meldet den Kauf danach. Die Rückfrage lässt sich in den Einstellungen wieder einschalten.
+export const DEFAULT_APPROVAL_LIMIT: ApprovalLimit = null;
 
 export const isApprovalLimit = (value: unknown): value is ApprovalLimit => APPROVAL_CHOICES.some((c) => c.value === value);
 
-// Steht nichts oder Unsinn in den Einstellungen, gilt die vorsichtige Grenze.
+// Steht nichts oder Unsinn in den Einstellungen, gilt die Grenze von oben.
 export const approvalLimitOf = (saved: unknown): ApprovalLimit => (isApprovalLimit(saved) ? saved : DEFAULT_APPROVAL_LIMIT);
 
 export const needsApproval = (usd: number, limit: ApprovalLimit) => limit !== null && usd >= limit;
@@ -58,14 +60,19 @@ export type Approval = {
   state: ApprovalState;
   answeredAt?: string;
   via?: "app" | "telegram";
+  // Gold, Silber oder Öl statt eines Coins; address ist dann gold, silber oder oel.
+  market?: "rohstoff";
   // Was am Ende passiert ist, in einem Satz.
   result?: string;
 };
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
-export function approvalQuestion(a: Pick<Approval, "symbol" | "usd" | "why" | "until">): string {
-  return `🟡 Rückfrage: Soll ich $${a.symbol} für ${formatUsd(a.usd)} kaufen? (Spielgeld)\nWarum: ${a.why}\nOhne Antwort bis ${clock(a.until)} Uhr kaufe ich nicht.`;
+// Coins heißen $SYMBOL, Rohstoffe einfach Gold, Silber oder Öl.
+export const assetLabel = (a: { symbol: string; market?: "rohstoff" }) => (a.market === "rohstoff" ? a.symbol : `$${a.symbol}`);
+
+export function approvalQuestion(a: Pick<Approval, "symbol" | "usd" | "why" | "until" | "market">): string {
+  return `🟡 Rückfrage: Soll ich ${assetLabel(a)} für ${formatUsd(a.usd)} kaufen? (Spielgeld)\nWarum: ${a.why}\nOhne Antwort bis ${clock(a.until)} Uhr kaufe ich nicht.`;
 }
 
 // Was unter der Frage steht, sobald sie erledigt ist.

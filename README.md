@@ -215,39 +215,56 @@ Standard ist Deggendorf. Ändern über `JARVIS_WEATHER_PLACE`, `JARVIS_WEATHER_L
 
 ## Spielgeld-Handel (`/trading`)
 
-Die Agenten aus dem GrokBot-Video handeln mit **10.000 $ erfundenem Geld**, um 28 Tage lang zu testen, ob sich der Desk nach Kosten lohnt. Gestartet wird mit **Spielgeld-Handel starten** auf dem Trading-Desk oder mit „Starte den Handel“. Echtes Geld gibt es erst nach den 28 Tagen, wenn der Desk im Plus ist, und nur mit deiner Zustimmung.
+Die Agenten aus dem GrokBot-Video handeln mit **10.000 $ erfundenem Geld**, um 28 Tage lang zu testen, ob sich der Desk nach Kosten lohnt. Ziel ist so viel Gewinn wie möglich: schnell auf den Markt reagieren, Gewinner laufen lassen, Verlierer früh abschneiden. Gestartet wird mit **Spielgeld-Handel starten** auf dem Trading-Desk oder mit „Starte den Handel“. Echtes Geld gibt es erst nach den 28 Tagen, wenn der Desk im Plus ist, und nur mit deiner Zustimmung.
 
-So läuft eine Runde, jede Minute (Reihenfolge aus `filter.py`: billige Prüfungen zuerst):
+Takt: Alle **10 Sekunden** schaut Risk auf die Kurse der gekauften Coins, alle **30 Sekunden** sucht der Desk nebenher neue, alle **6 Minuten** schaut Trend auf Gold, Silber und Öl. Eine langsame Prüfung (Grok braucht ein paar Sekunden pro Coin) hält die Wache nie auf.
 
-1. **Scan** holt neue Solana-Coins von DexScreener.
-2. **Vet** prüft die harten Filter (Alter, Liquidität, Volumen, Marktwert, Trades).
+So läuft eine Suche (Reihenfolge aus `filter.py`: billige Prüfungen zuerst):
+
+1. **Scan** holt Solana-Coins von DexScreener (beworbene und neue Profile) und die Pools, die bei GeckoTerminal gerade im Trend sind, bis zu 60 Coins.
+2. **Vet** prüft die harten Filter (Alter, Liquidität, Volumen, Marktwert, Trades) und rechnet den **Schwung** von 0 bis 100: Kaufen in der letzten Stunde und den letzten 5 Minuten mehr Leute als verkaufen, liegt das Volumen der letzten Stunde über dem Tagesschnitt, steigt der Kurs gerade erst? Coins unter 30 prüft der Crawler gar nicht, die heißesten zuerst.
 3. **Crawler** liest zuerst, dann handelt der Desk: Er holt den Blockchain-Bericht von RugCheck und sortiert aus, wenn der Entwickler noch Coins erzeugen oder Konten einfrieren kann, RugCheck vor Betrug warnt, eine Wallet mehr als 5 % hält oder die zehn größten mehr als 60 %. Hat ein Coin weder Webseite noch Konten, fliegt er auch raus. Sonst liest er die Projektseite und, mit xAI-Schlüssel, X (siehe unten).
 4. **Chief** schätzt die weichen Filter: Ist der Anstieg schon gelaufen, gehören Seite und Konten wirklich zum Coin, wurde das Konto schon für andere Coins benutzt? Mit KI-Gehirn macht das Claude (Haiku, Bruchteile eines Cents pro Runde), sonst Faustregeln. Was sich ausrechnen lässt (Liquidität, Konzentration, Anteil des Entwicklers), rechnet der Code; die Grenzen aus `thresholds.py` entscheiden, nicht die KI.
-5. **Size** setzt 2 % des Kontos ein, **Fills** kauft zum frischen Kurs, mit Gebühren und Kursrutsch wie auf einer echten Börse. Ist der Kurs seit der Prüfung um mehr als 5 % gestiegen, läuft Fills nicht hinterher.
-6. **Risk** und **Crawler** bewachen die gekauften Coins, auch in der Pause: Stop-Loss −15 %, Nachlauf-Stop 20 % unter dem Höchststand, Ziel +50 %, spätestens nach 24 Stunden raus. Fällt die Liquidität um die Hälfte, verschwindet das Handelspaar oder meldet RugCheck neue Rug-Zeichen, verkauft der Desk sofort.
+5. **Size** setzt 2 bis 5 % des Kontos ein, je nach Überzeugung (zu 60 % der Schwung, zu 40 % wie klar die weichen Filter bestanden sind). **Fills** kauft zum frischen Kurs, mit Gebühren und Kursrutsch wie auf einer echten Börse. Ist der Kurs seit der Prüfung um mehr als 5 % gestiegen, läuft Fills nicht hinterher.
+6. **Risk** und **Crawler** bewachen die gekauften Coins, auch in der Pause:
+   - Stop-Loss −15 % ab Einstieg, Nachlauf-Stop 20 % unter dem Höchststand.
+   - Bei **+100 %** verkauft Risk die Hälfte: Der Einsatz ist zurück, der Rest läuft weiter, solange es steigt. Er darf mehr schwanken (Nachlauf-Stop 30 % unter dem Höchststand) und kann so nicht mehr ins Minus rutschen. Ein festes Ziel gibt es danach nicht.
+   - Wer nach 12 Stunden keine +20 % geschafft hat, wird verkauft; das Geld arbeitet woanders besser. Gewinner dürfen länger bleiben.
+   - Fällt die Liquidität um die Hälfte, verschwindet das Handelspaar oder meldet RugCheck neue Rug-Zeichen, verkauft der Desk sofort.
+7. Abgelehnte Coins schaut der Desk nach einer Stunde wieder an, solche mit Rug-Zeichen erst nach 12 Stunden. Nach einem Gewinn darf er denselben Coin nach einer Stunde wieder kaufen, nach einem Verlust erst nach 12.
+
+### Gold, Silber, Öl
+
+Mit einem kostenlosen Schlüssel von [Twelve Data](https://twelvedata.com) (**Einstellungen → Rohstoffe**) handelt der Desk auch Rohstoffe. Die bewegen sich ruhiger als Memecoins, deshalb folgt **Trend** hier dem Trend auf 15-Minuten-Kerzen: Er kauft, wenn der kurze Schnitt (3 Stunden) über dem langen (12 Stunden) liegt und steigt, der Kurs darüber liegt, in den letzten 4 Stunden gestiegen und nicht schon davongelaufen ist. Verkauft wird mit einem Nachlauf-Stop (4 Kerzenschwankungen unter dem Höchststand, bei Gold mindestens 1,5 %, bei Silber und Öl 2,5 %) oder wenn der Trend kippt.
+
+- Je Rohstoff höchstens 10 % des Kontos. Kosten wie bei einem Online-Broker: 1 $ pro Auftrag und 0,05 % Spanne.
+- Gold kommt als Feinunze (XAU/USD). Für die Feinunze Silber und das Barrel WTI verlangt Twelve Data meist einen größeren Plan; dann nimmt der Desk von selbst die US-Fonds SLV und USO, gleich in derselben Runde. Die Fonds handeln nur zur Börsenzeit in New York.
+- Ist ein Markt zu (abends bei den Fonds, am Wochenende bei allen), wird dort weder gekauft noch verkauft.
+- Nach einem Verlust kauft er denselben Rohstoff 4 Stunden nicht wieder. Intel-Warnungen bremsen nur die Memecoins.
+- Der Desk braucht rund 400 der 800 kostenlosen Abfragen am Tag.
 
 ### Rückfrage vor Käufen
 
-Ab einer Grenze kauft der Desk nicht selbst, sondern fragt dich: per Telegram mit den Knöpfen **Ja, kaufen** und **Nein**, und in JARVIS als gelbe Leiste oben (auf dem Trading-Desk groß mit Countdown). Erst nach deinem Ja wird gekauft. Die Grenze stellst du unter **Einstellungen → Rückfrage vor Käufen** ein: bei jedem Kauf, ab 100 $ (Standard), ab 250 $, ab 500 $ oder nie. Im Spielgeld-Test ist ein Kauf etwa 200 $, ab 100 $ fragt JARVIS also vor jedem Kauf.
+Beim Spielgeld kauft der Desk standardmäßig sofort selbst und meldet dir jeden Kauf danach, damit er keine schnelle Chance verpasst. Unter **Einstellungen → Rückfrage vor Käufen** kannst du eine Grenze setzen: bei jedem Kauf, ab 100 $, ab 250 $, ab 500 $ oder nie (Standard). Ab dieser Grenze fragt er dich: per Telegram mit den Knöpfen **Ja, kaufen** und **Nein**, und in JARVIS als gelbe Leiste oben (auf dem Trading-Desk groß mit Countdown). Erst nach deinem Ja wird gekauft. Im Spielgeld-Test kostet ein Coin 200 bis 500 $, Gold, Silber oder Öl je etwa 1.000 $.
 
 Feste Regeln dazu (`src/lib/approval.ts`):
 
 - Ohne Antwort verfällt die Frage nach 10 Minuten, dann wird nicht gekauft.
 - Freigeben kannst nur du mit den Knöpfen, in JARVIS oder in deinem gekoppelten Telegram-Chat. Das KI-Gehirn hat dafür kein Werkzeug, ein gesprochenes „Ja“ zählt nicht, und Knöpfe aus fremden Chats übergeht JARVIS.
-- Nach deinem Ja prüft der Desk mit frischem Kurs noch einmal: Läuft der Handel noch, ist Platz für eine Position, besteht der Coin die harten Filter, ist der Kurs seit der Frage nicht mehr als 5 % gestiegen. Sonst kauft er nicht und sagt dir warum.
-- Gekauft wird höchstens der Betrag, nach dem er gefragt hat. Offene Fragen belegen schon einen der 5 Plätze.
-- Nach einem Nein fragt er denselben Coin 24 Stunden nicht mehr. Pause, Tageslimit und Not-Aus ziehen offene Fragen zurück.
+- Nach deinem Ja prüft der Desk mit frischem Kurs noch einmal: Läuft der Handel noch, ist Platz für eine Position, besteht der Coin die harten Filter, ist der Kurs seit der Frage nicht mehr als 5 % gestiegen (bei Rohstoffen: Markt offen, Trend noch nach oben, höchstens 1 % gestiegen). Sonst kauft er nicht und sagt dir warum.
+- Gekauft wird höchstens der Betrag, nach dem er gefragt hat. Offene Fragen zu Coins belegen schon einen der 8 Plätze.
+- Nach einem Nein fragt er denselben Coin 12 Stunden nicht mehr, einen Rohstoff 4 Stunden. Pause, Tageslimit und Not-Aus ziehen offene Fragen zurück.
 - Verkäufe (Stop-Loss, Ziel, Rug-Zeichen) fragen nie nach; dort kostet Warten Geld.
 - Rückfragen kommen aufs Handy, auch wenn die Meldungen zu Trades abgeschaltet sind. Ist kein Handy gekoppelt, steht die Frage nur in JARVIS.
 
-Feste Regeln, die auch Claude nicht ändern kann (`src/lib/paper.ts`): höchstens 5 Coins gleichzeitig, höchstens 5 % Verlust am Tag (danach kauft er bis morgen nichts), 24 Stunden Pause für einen verkauften Coin, nie Käufe mit Beispieldaten.
+Feste Regeln, die auch Claude nicht ändern kann (`src/lib/paper.ts`, `src/lib/commodities.ts`): höchstens 8 Coins und 3 Rohstoffe gleichzeitig, höchstens 8 % Verlust am Tag (danach kauft er bis morgen nichts, der Stop-Loss passt weiter auf), nie Käufe mit Beispieldaten.
 
 - **Not-Aus:** Knopf unten rechts oder „Stopp alles“. Alle Agenten stehen sofort, auch der Stop-Loss. Mit **Weitermachen** oder „Handel fortsetzen“ geht es weiter.
 - **Protokoll:** Jede Entscheidung steht im Protokoll auf dem Desk, jeder Trade mit Begründung. In der Scan-Tabelle siehst du pro Coin, wie weit er gekommen ist.
 - **Obsidian:** Jeden Tag schreibt JARVIS einen Bericht nach `JARVIS/Handel/JJJJ-MM-TT.md` in deinen Tresor. Alle Trades stehen zusätzlich in `~/.jarvis/spielgeld-trades.jsonl`.
 - **JARVIS fragen:** „Wie läuft der Handel?“, „Pausiere den Handel“. Im Briefing nennt er den Stand, die Übersicht zeigt ihn auf dem Trading-Felsen.
 - **Mac wach halten:** Der Desk handelt nur, solange JARVIS läuft. `start-jarvis.command` hält den Mac wach, solange das Fenster offen ist. Klappst du ein MacBook zu, schläft es trotzdem; offene Positionen bewacht dann niemand, bis du es wieder aufklappst.
-- **Kurse oben:** Bitcoin, Ethereum und Solana in Euro (CoinGecko).
+- **Kurse oben:** Bitcoin, Ethereum und Solana in Euro (CoinGecko). Darunter die Rohstoffe mit Kurs, Trend und was der Desk davon hält.
 
 Sind CoinGecko, DexScreener oder Open-Meteo nicht erreichbar, zeigt JARVIS oben **BEISPIELDATEN**. Diese Zahlen sind erfunden und nur zur Ansicht; mit ihnen handelt der Desk nicht.
 
@@ -264,6 +281,7 @@ Wie im Video liest der Crawler vor jedem Kauf auch X. Das macht **Grok von xAI**
 - Warnen auf X mehrere unabhängige Konten konkret vor dem Coin, fliegt er raus („X warnt“).
 - Passt das Konto nicht oder wurde es recycelt, sagt Chief nein.
 - Kann Grok gerade nicht lesen (kein Guthaben, Störung), kauft der Desk den Coin nicht.
+- Ist das Tagesbudget aufgebraucht, prüft der Crawler bis morgen ohne X weiter (Blockchain und Projektseite liest er trotzdem).
 - Ohne xAI-Schlüssel läuft der Desk wie vorher, nur ohne X.
 
 **Einrichten** (einmalig):
@@ -272,7 +290,7 @@ Wie im Video liest der Crawler vor jedem Kauf auch X. Das macht **Grok von xAI**
 2. Guthaben aufladen, zum Beispiel 10 $. Mehr kann nie abgebucht werden.
 3. Unter **API Keys** einen Schlüssel erstellen (beginnt mit `xai-`) und in JARVIS unter **Einstellungen → Grok** einfügen. JARVIS prüft ihn, bevor er speichert.
 
-**Kosten:** xAI rechnet pro gelesenem Beitrag (0,5 Cent) und Profil (1 Cent), dazu Grok selbst. Ein Coin kostet so etwa 10 bis 30 Cent. Deshalb gibt es ein **Tagesbudget** (Standard 1 $, einstellbar bis 20 $). Ist es aufgebraucht, kauft der Desk bis morgen nichts Neues; die gekauften Coins bewacht er weiter. Wie viel heute verbraucht ist, steht auf dem Desk in der Social-Kachel.
+**Kosten:** xAI rechnet pro gelesenem Beitrag (0,5 Cent) und Profil (1 Cent), dazu Grok selbst. Ein Coin kostet so etwa 10 bis 30 Cent. Deshalb gibt es ein **Tagesbudget** (Standard 1 $, einstellbar bis 20 $). Ist es aufgebraucht, prüft der Crawler bis morgen ohne X weiter; ein höheres Budget heißt, dass mehr Coins auch auf X geprüft werden. Wie viel heute verbraucht ist, steht auf dem Desk in der Social-Kachel.
 
 ## Intel: Nachrichten und X im Briefing
 
@@ -338,8 +356,9 @@ Aufbau:
 | `src/lib/thresholds.ts`, `src/lib/vet.ts` | harte Filter aus dem Video und der Vet-Agent |
 | `src/lib/market.ts` | Kurse und Scanner (CoinGecko, DexScreener) |
 | `src/components/TradingDesk.tsx`, `src/components/CrawlerWeb.tsx` | der Trading-Desk und die Crawler-Spinne (SVG, liest `/api/handel/spur` jede Sekunde) |
-| `src/lib/paper.ts` | Spielgeld: feste Sicherheitsregeln, Gebühren, Stop-Loss, Rechnungen |
-| `src/lib/server/desk/` | der Spielgeld-Handel: `engine.ts` (Takt, Konto, Kauf und Verkauf, Bericht), `crawler.ts` (RugCheck und Projektseite), `grok.ts` (X über Grok von xAI), `chief.ts` (weiche Filter mit Claude oder Faustregeln) |
+| `src/lib/paper.ts` | Spielgeld: feste Sicherheitsregeln, Gebühren, Stop-Loss, Gewinnmitnahme, Rechnungen |
+| `src/lib/commodities.ts` | Gold, Silber, Öl: feste Regeln, Trend aus 15-Minuten-Kerzen, Stop, Kosten |
+| `src/lib/server/desk/` | der Spielgeld-Handel: `engine.ts` (Takt, Konto, Kauf und Verkauf, Bericht), `crawler.ts` (RugCheck und Projektseite), `grok.ts` (X über Grok von xAI), `chief.ts` (weiche Filter mit Claude oder Faustregeln), `commodities.ts` (Kurse von Twelve Data) |
 | `src/lib/intel.ts`, `src/lib/server/intel.ts`, `src/app/api/intel/` | Intel: Lagebild aus Nachrichten und X mit Grok, Sätze fürs Briefing, Warnung an den Desk |
 | `src/app/api/handel/`, `src/instrumentation.ts` | Schnittstelle des Desks; beim Serverstart laufen sein Takt, Intel und Telegram los |
 | `src/lib/telegram.ts`, `src/lib/server/telegram.ts`, `src/components/TelegramSetup.tsx` | JARVIS auf dem Handy: Texte und Befehle, die Verbindung zu Telegram (Abholen, Koppeln, Gespräch mit Claude, Briefing, Erinnerungen), die Einstellungen mit QR-Code |
@@ -347,6 +366,6 @@ Aufbau:
 | `src/lib/server/notify.ts` | Meldungen von Desk und Intel an alle, die zuhören (Telegram), auch Rückfragen mit Knöpfen |
 | `src/lib/approval.ts`, `src/components/Approvals.tsx` | Rückfrage vor Käufen: Grenze, Texte und Knöpfe; die Frage in JARVIS (Leiste oben, groß auf dem Trading-Desk). Die Arbeit macht `answerApproval` in `engine.ts` |
 
-`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt des Desks (Standard 60000). Für den Browser-Agenten: `JARVIS_CHROME` (Pfad zu einem anderen Chrome oder Chromium), `JARVIS_BROWSER_HEADLESS=1` (auch beim Übernehmen ohne sichtbares Fenster, für Rechner ohne Bildschirm), `JARVIS_BROWSER_TEMPO` (0.1 macht Zeiger und Tippen zehnmal langsamer, für Vorführvideos in Zeitlupe), `JARVIS_SEARCH_URL` (andere Suche, Standard DuckDuckGo) und `JARVIS_BROWSER_LOCAL` (kommagetrennte Hosts mit Port im eigenen Netz, die er trotzdem öffnen darf, nur für Tests).
+`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `GECKOTERMINAL_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `TWELVEDATA_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt der Wache (Standard 10000), `JARVIS_HUNT_MS` den der Suche (Standard dreimal der Takt), `JARVIS_COMMODITY_MS` den der Rohstoffe (Standard 360000). Statt in den Einstellungen kann der Twelve-Data-Schlüssel auch in `TWELVEDATA_API_KEY` stehen. Für den Browser-Agenten: `JARVIS_CHROME` (Pfad zu einem anderen Chrome oder Chromium), `JARVIS_BROWSER_HEADLESS=1` (auch beim Übernehmen ohne sichtbares Fenster, für Rechner ohne Bildschirm), `JARVIS_BROWSER_TEMPO` (0.1 macht Zeiger und Tippen zehnmal langsamer, für Vorführvideos in Zeitlupe), `JARVIS_SEARCH_URL` (andere Suche, Standard DuckDuckGo) und `JARVIS_BROWSER_LOCAL` (kommagetrennte Hosts mit Port im eigenen Netz, die er trotzdem öffnen darf, nur für Tests).
 
 API-Schlüssel gehören später in eine Datei `.env.local`. Sie wird nie hochgeladen.

@@ -35,7 +35,10 @@ export type TelegramConfig = {
   briefing?: string | null;
 };
 
-// Ab welchem Betrag der Desk vor einem Kauf fragt (src/lib/approval.ts). Fehlt der Wert, gilt die vorsichtige Grenze.
+// Twelve Data liefert die Kurse für Gold, Silber und Öl. Der kostenlose Plan reicht.
+export type TwelveDataConfig = { apiKey: string };
+
+// Ab welchem Betrag der Desk vor einem Kauf fragt (src/lib/approval.ts). Fehlt der Wert, gilt die Grenze von dort.
 export type ApprovalConfig = { limitUsd: ApprovalLimit };
 
 export type JarvisConfig = {
@@ -48,12 +51,14 @@ export type JarvisConfig = {
   intel?: IntelConfig;
   telegram?: TelegramConfig;
   approval?: ApprovalConfig;
+  twelvedata?: TwelveDataConfig;
 };
 
 export const DEFAULT_X_BUDGET_USD = 1;
 
 // Der Schlüssel aus den Einstellungen geht vor, sonst XAI_API_KEY aus der Umgebung.
 export const grokKey = (config: JarvisConfig) => config.xai?.apiKey || process.env.XAI_API_KEY || null;
+export const twelveKey = (config: JarvisConfig) => config.twelvedata?.apiKey || process.env.TWELVEDATA_API_KEY || null;
 export const xBudget = (config: JarvisConfig) => config.xai?.dailyBudgetUsd ?? DEFAULT_X_BUDGET_USD;
 
 export const CONFIG_DIR = process.env.JARVIS_CONFIG_DIR ?? path.join(os.homedir(), ".jarvis");

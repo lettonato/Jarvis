@@ -14,7 +14,7 @@ export const AGENTS: Agent[] = [
   { id: "scan", name: "Scan", motto: "findet, was sich bewegt", color: "#3b82f6" },
   { id: "vet", name: "Vet", motto: "harte Filter: ist er echt?", color: "#f8fafc" },
   { id: "social", name: "Social", motto: "prüft Seite, Konten und X", color: "#ef4444" },
-  { id: "size", name: "Size", motto: "wie viel: 2 % pro Trade", color: "#f43f5e" },
+  { id: "size", name: "Size", motto: "wie viel: 2 bis 5 % pro Coin", color: "#f43f5e" },
   { id: "fills", name: "Fills", motto: "Ausführung mit Spielgeld", color: "#22c55e" },
   { id: "risk", name: "Risk", motto: "Ausstieg und Stop-Loss", color: "#f59e0b", guards: true },
   { id: "crawler", name: "Crawler", motto: "liest zuerst, dann handelt der Desk", color: "#a78bfa", guards: true },

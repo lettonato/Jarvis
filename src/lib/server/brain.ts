@@ -493,7 +493,13 @@ export async function think(
           ergebnis_prozent: usd(d.pnlPct),
           heute_prozent: usd(d.dayPnlPct),
           chief_bewertet_mit: d.chief === "claude" ? "Claude" : "Faustregeln (kein KI-Gehirn)",
-          positionen: d.positions.map((p) => ({ coin: p.symbol, kosten_usd: usd(p.costUsd), wert_usd: usd(p.qty * p.lastPrice), stop: p.stopPrice, ziel: p.targetPrice, gekauft: p.openedAt, warum: p.why })),
+          positionen: d.positions.map((p) => ({ coin: p.symbol, kosten_usd: usd(p.costUsd), wert_usd: usd(p.qty * p.lastPrice), stop: p.stopPrice, haelfte_verkaufen_bei: p.targetPrice, gekauft: p.openedAt, warum: p.why })),
+          rohstoffe: d.commodities.enabled
+            ? {
+                positionen: d.commodities.positions.map((p) => ({ name: p.name, kosten_usd: usd(p.costUsd), wert_usd: usd(p.qty * p.lastPrice), stop: p.stopPrice, gekauft: p.openedAt, warum: p.why })),
+                kurse: d.commodities.quotes.map((q) => ({ name: q.name, quelle: q.label, kurs_usd: q.price, markt_offen: q.open, trend: q.signal?.trend ?? "unbekannt", kaufsignal: q.signal?.buy ?? false })),
+              }
+            : "aus, kein Twelve-Data-Schlüssel",
           letzte_trades: d.trades.slice(0, 10).map((t) => ({ zeit: t.at, art: t.side, coin: t.symbol, usd: usd(t.usd), ergebnis_usd: t.pnlUsd === undefined ? null : usd(t.pnlUsd), wer: t.agent, warum: t.why })),
           crawler: {
             seiten_gelesen: d.stats.pagesRead,

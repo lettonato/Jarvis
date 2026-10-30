@@ -42,10 +42,13 @@ function measured(input: ChiefInput) {
 }
 
 // Faustregeln, wenn kein KI-Gehirn eingerichtet ist oder Claude nicht antwortet.
+// Zu spät ist, wer nach einem senkrechten Pump kommt oder wenn die Bewegung gerade kippt.
 function momentumRule(c: Candidate): number {
   if (c.change1h > 60 || c.change6h > 200 || c.change24h > 500) return 0.85;
-  if (c.change1h < -15) return 0.7;
-  return clamp01(Math.max(c.change24h / 600, c.change6h / 300, 0.1));
+  if (c.change1h < -15 || c.change5m < -8) return 0.7;
+  const spent = clamp01(Math.max(c.change24h / 600, c.change6h / 300, 0.1));
+  // Frischer Schwung in den letzten Minuten heißt: Die Bewegung läuft noch.
+  return clamp01(spent - 0.3 * c.heat);
 }
 
 function accountRule(r: CrawlReport): number {
@@ -84,9 +87,9 @@ export function judgeByRules(inputs: ChiefInput[]): Verdict[] {
   );
 }
 
-const SYSTEM = `Du bist Chief, der Chefbewerter eines Trading-Desks für neue Solana-Memecoins, der mit Spielgeld übt. Du kaufst nie selbst; du schätzt für jeden Coin drei Fragen ein, jeweils als Zahl von 0 bis 1:
+const SYSTEM = `Du bist Chief, der Chefbewerter eines Trading-Desks für neue Solana-Memecoins, der mit Spielgeld übt. Ziel ist so viel Gewinn wie möglich: früh in Coins, bei denen gerade frisches Geld reinkommt, und weg von allem, was nach Betrug aussieht. Du kaufst nie selbst; du schätzt für jeden Coin drei Fragen ein, jeweils als Zahl von 0 bis 1:
 
-- momentum_already_spent: Ist der Anstieg schon gelaufen, sodass wir zu spät kämen? 1 heißt: klar zu spät, etwa nach einem senkrechten Pump oder wenn mehr verkauft als gekauft wird. 0 heißt: die Bewegung fängt gerade erst an.
+- momentum_already_spent: Ist der Anstieg schon gelaufen, sodass wir zu spät kämen? 1 heißt: klar zu spät, etwa nach einem senkrechten Pump oder wenn in den letzten Minuten mehr verkauft als gekauft wird. 0 heißt: die Bewegung fängt gerade erst an, etwa wenn Kaufdruck und Volumen der letzten Minuten deutlich über dem Tagesschnitt liegen. schwung ist eine Rechnung des Desks dazu (0 bis 1).
 - account_is_the_project: Gehören Webseite und Konten wirklich zu diesem Coin? 1 heißt: Name, Symbol und Inhalt passen eindeutig zusammen. 0 heißt: fremde, leere, kopierte oder unpassende Seite.
 - recycled_account: Wurde das Konto oder die Seite schon für andere Coins benutzt? 1 heißt: deutliche Hinweise, etwa ein Handle, der nicht zum Coin passt, oder ein Seitentext über ein anderes Projekt. 0 heißt: keine Hinweise.
 
@@ -127,8 +130,11 @@ function describe({ candidate: c, crawl, x }: ChiefInput) {
     symbol: c.symbol,
     name: c.name,
     alter_minuten: Math.round(c.ageMinutes),
-    kurs_aenderung_prozent: { "1h": c.change1h, "6h": c.change6h, "24h": c.change24h },
+    kurs_aenderung_prozent: { "5min": c.change5m, "1h": c.change1h, "6h": c.change6h, "24h": c.change24h },
+    kaeufe_verkaeufe_5min: { kaeufe: c.buysM5, verkaeufe: c.sellsM5 },
     kaeufe_verkaeufe_1h: { kaeufe: c.buysH1, verkaeufe: c.sellsH1 },
+    volumen_1h_usd: Math.round(c.volumeH1),
+    schwung: c.heat,
     liquiditaet_usd: Math.round(c.liquidityUsd),
     marktwert_usd: Math.round(c.mcapUsd),
     volumen_24h_usd: Math.round(c.volumeH24),

@@ -144,7 +144,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const { data: tasks, reload: reloadTasks, set: setTasks } = usePolling<TasksSnapshot>("/api/aufgaben", 60_000);
   const { data: mail, reload: loadMail, set: setMail } = usePolling<MailSnapshot>("/api/post", 2 * 60_000);
   const { data: settings, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
-  const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 15_000);
+  const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 10_000);
   const { data: calendar, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
   const { data: intel, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
   const { data: memoryData, set: setMemoryData } = usePolling<{ facts: MemoryFact[] }>("/api/gedaechtnis", 10 * 60_000);

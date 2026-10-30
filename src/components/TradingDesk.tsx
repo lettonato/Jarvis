@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { ApprovalPanel, ApprovalRule } from "./Approvals";
+import { HoloLink } from "./HoloLink";
 import { CrawlerWeb } from "./CrawlerWeb";
 import { Holo } from "./HoloView";
 import { useJarvis } from "./JarvisProvider";
 import { AGENTS, type Agent } from "@/lib/agents";
 import { postJson } from "@/lib/api";
+import { assetLabel } from "@/lib/approval";
+import { COMMODITIES, COMMODITY_RULES, type CommodityQuote } from "@/lib/commodities";
 import type { Candidate, MajorQuote, MarketSnapshot } from "@/lib/market";
 import { COSTS, SAFETY, STATUS_LABEL, type CoinVerdict, type DeskSnapshot, type LogEntry, type Trade } from "@/lib/paper";
 import { FILTER_LABELS, FILTER_STAGES, HARD_FILTERS, SOFT_FILTERS, SOFT_KEYS, type FilterKey } from "@/lib/thresholds";
@@ -79,6 +82,7 @@ export function TradingDesk() {
         </div>
       </section>
       {desk && desk.positions.length > 0 && <Positions desk={desk} controls={controls} now={now} />}
+      {desk && <Commodities desk={desk} controls={controls} />}
       <section className="grid flex-1 gap-3 lg:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-3 lg:col-span-2">
           <ScannerTable snap={snap} verdicts={desk?.verdicts ?? {}} />
@@ -158,9 +162,9 @@ function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnap
     social: desk?.x.enabled
       ? { value: stats ? formatCount(stats.postsRead) : "–", detail: `X-Beiträge gelesen · Grok heute ${formatUsd(desk.x.spentTodayUsd)} von ${formatUsd(desk.x.budgetUsd)}` }
       : { value: stats ? formatCount(stats.pagesRead) : "–", detail: "Seiten gelesen · X ohne xAI-Schlüssel aus" },
-    size: { value: lastBuy ? formatUsd(lastBuy.usd) : "–", detail: `Ticket, ${SAFETY.maxTradeShare * 100} % des Kontos` },
+    size: { value: lastBuy ? formatUsd(lastBuy.usd) : "–", detail: `Ticket, ${SAFETY.minTradeShare * 100} bis ${SAFETY.maxTradeShare * 100} % des Kontos je nach Überzeugung` },
     fills: {
-      value: lastFill ? `${lastFill.side === "kauf" ? "rein" : "raus"} $${lastFill.symbol}` : "–",
+      value: lastFill ? `${lastFill.side === "kauf" ? "rein" : "raus"} ${assetLabel(lastFill)}` : "–",
       detail: lastFill ? `letzte Ausführung, ${formatUsd(lastFill.feesUsd)} Gebühren` : "noch keine Ausführung",
     },
     risk: { value: stats ? `${stats.wins}W ${stats.losses}L` : "–", detail: `Stop-Loss −${SAFETY.stopLoss * 100} %, Tageslimit −${SAFETY.dailyLossLimit * 100} %` },
@@ -292,10 +296,16 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
       <BalanceChart points={desk?.equityHistory ?? []} start={desk?.startCapital ?? SAFETY.startCapitalUsd} />
       {desk?.status === "aus" && (
         <ul className="grid gap-1 text-xs text-quiet sm:grid-cols-2">
-          <li>· {SAFETY.maxTradeShare * 100} % des Kontos pro Trade, höchstens {SAFETY.maxOpenPositions} Coins gleichzeitig</li>
+          <li>
+            · {SAFETY.minTradeShare * 100} bis {SAFETY.maxTradeShare * 100} % des Kontos je Coin, höchstens {SAFETY.maxOpenPositions} Coins gleichzeitig
+          </li>
           <li>· Stop-Loss −{SAFETY.stopLoss * 100} %, nachziehend −{SAFETY.trailingStop * 100} % vom Höchststand</li>
-          <li>· Gewinnmitnahme bei +{SAFETY.takeProfit * 100} %, spätestens nach {SAFETY.maxHoldHours} Stunden raus</li>
+          <li>
+            · bei +{SAFETY.halfAt * 100} % die Hälfte verkaufen, der Rest läuft mit −{SAFETY.runnerTrail * 100} % Nachlauf weiter; nach {SAFETY.staleHours} Std ohne +
+            {SAFETY.staleGain * 100} % raus
+          </li>
           <li>· höchstens −{SAFETY.dailyLossLimit * 100} % am Tag, dann Pause bis morgen</li>
+          <li>· Gold, Silber, Öl: je {COMMODITY_RULES.tradeShare * 100} % des Kontos, wenn der Trend nach oben zeigt</li>
           <li>· Kosten wie echt: {COSTS.dexFee * 100} % Gebühr, Slippage, Netzwerkgebühr</li>
           <li>· läuft, solange JARVIS auf dem Mac offen ist</li>
         </ul>
@@ -416,7 +426,7 @@ function Positions({ desk, controls, now }: { desk: DeskSnapshot; controls: Cont
               <th className="px-3 py-2 text-right">Wert jetzt</th>
               <th className="px-3 py-2 text-right">±</th>
               <th className="px-3 py-2 text-right">Stop</th>
-              <th className="px-3 py-2 text-right">Ziel</th>
+              <th className="px-3 py-2 text-right">Hälfte bei</th>
               <th className="px-3 py-2 text-right">seit</th>
               <th className="px-3 py-2">Warum gekauft</th>
               <th className="px-3 py-2" />
@@ -437,7 +447,9 @@ function Positions({ desk, controls, now }: { desk: DeskSnapshot; controls: Cont
                   <td className="px-3 py-2 text-right">{formatUsd(value)}</td>
                   <td className={`px-3 py-2 text-right ${change >= 0 ? "text-up" : "text-down"}`}>{formatPct(change)}</td>
                   <td className="px-3 py-2 text-right">{formatPriceUsd(p.stopPrice)}</td>
-                  <td className="px-3 py-2 text-right">{formatPriceUsd(p.targetPrice)}</td>
+                  <td className="px-3 py-2 text-right" title={p.targetPrice === null ? "Die Hälfte ist schon verkauft, der Rest läuft mit dem Nachlauf-Stop" : "Hier verkauft Risk die Hälfte"}>
+                    {p.targetPrice === null ? "Hälfte raus" : formatPriceUsd(p.targetPrice)}
+                  </td>
                   <td className="px-3 py-2 text-right">{now ? formatAge((now.getTime() - Date.parse(p.openedAt)) / 60_000) : "–"}</td>
                   <td className="max-w-[280px] truncate px-3 py-2 text-quiet" title={p.why}>
                     {p.why}
@@ -457,6 +469,98 @@ function Positions({ desk, controls, now }: { desk: DeskSnapshot; controls: Cont
   );
 }
 
+const TREND: Record<NonNullable<CommodityQuote["signal"]>["trend"], { label: string; tone: string }> = {
+  steigt: { label: "Trend steigt", tone: "bg-up/15 text-up" },
+  faellt: { label: "Trend fällt", tone: "bg-down/15 text-down" },
+  seitwaerts: { label: "seitwärts", tone: "bg-panel-2 text-quiet" },
+};
+
+// Gold, Silber und Öl: Kurs, Trend und was der Desk davon hält.
+function Commodities({ desk, controls }: { desk: DeskSnapshot; controls: Controls }) {
+  const c = desk.commodities;
+  return (
+    <section className="rounded-md border border-line bg-panel">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-sky-300">Rohstoffe · Gold, Silber, Öl</h2>
+        <span className="text-xs text-quiet">{c.enabled ? `folgt dem Trend, je ${COMMODITY_RULES.tradeShare * 100} % des Kontos` : "aus"}</span>
+      </div>
+      {!c.enabled ? (
+        <p className="px-3 py-3 text-xs text-quiet">
+          Mit einem kostenlosen Schlüssel von Twelve Data handelt der Desk auch Gold, Silber und Öl. Eintragen unter{" "}
+          <HoloLink href="/einstellungen#rohstoffe" className="text-sky-300 hover:underline">
+            Einstellungen → Rohstoffe
+          </HoloLink>
+          .
+        </p>
+      ) : (
+        <div className="grid gap-2 p-3 sm:grid-cols-3">
+          {COMMODITIES.map((meta) => (
+            <CommodityCard
+              key={meta.id}
+              name={meta.name}
+              quote={c.quotes.find((q) => q.id === meta.id)}
+              position={c.positions.find((p) => p.id === meta.id)}
+              controls={controls}
+            />
+          ))}
+        </div>
+      )}
+      {c.enabled && c.note && <p className="px-3 pb-3 text-[11px] text-amber-200">{c.note}</p>}
+    </section>
+  );
+}
+
+function CommodityCard({
+  name,
+  quote,
+  position,
+  controls,
+}: {
+  name: string;
+  quote?: CommodityQuote;
+  position?: DeskSnapshot["commodities"]["positions"][number];
+  controls: Controls;
+}) {
+  const signal = quote?.signal ?? null;
+  const value = position ? position.qty * position.lastPrice : 0;
+  const change = position ? (value / position.costUsd - 1) * 100 : 0;
+  return (
+    <article className="flex min-w-0 flex-col gap-1 rounded border border-line bg-panel-2/40 p-3">
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="font-bold text-ink">{name}</span>
+        {quote && !quote.open ? (
+          <span className="rounded bg-panel-2 px-1.5 py-0.5 text-quiet">Markt zu</span>
+        ) : signal ? (
+          <span className={`rounded px-1.5 py-0.5 ${TREND[signal.trend].tone}`}>{TREND[signal.trend].label}</span>
+        ) : quote ? (
+          <span className="text-quiet">sammelt Kurse</span>
+        ) : null}
+      </div>
+      <p className="text-[11px] text-quiet">{quote ? quote.label : "noch kein Kurs"}</p>
+      <p className="text-xl font-bold">{quote ? formatPriceUsd(quote.price) : "–"}</p>
+      {signal && <p className={`text-xs ${signal.change4h >= 0 ? "text-up" : "text-down"}`}>{formatPct(signal.change4h * 100)} in 4 Std</p>}
+      {position ? (
+        <div className="mt-1 space-y-1 border-t border-line pt-2 text-xs">
+          <p>
+            Gekauft für {formatUsd(position.costUsd)}, jetzt {formatUsd(value)} <span className={change >= 0 ? "text-up" : "text-down"}>({formatPct(change)})</span>
+          </p>
+          <p className="text-quiet">Stop bei {formatPriceUsd(position.stopPrice)}</p>
+          <button
+            type="button"
+            disabled={controls.busy}
+            onClick={() => controls.act("verkaufen", position.id)}
+            className="rounded border border-line px-2 py-0.5 hover:bg-panel-2 disabled:opacity-50"
+          >
+            Verkaufen
+          </button>
+        </div>
+      ) : (
+        signal && <p className="mt-1 text-[11px] text-quiet">{signal.buy ? "Kaufsignal" : `Kein Kauf: ${signal.why}`}</p>
+      )}
+    </article>
+  );
+}
+
 function ScannerTable({ snap, verdicts }: { snap: MarketSnapshot | null; verdicts: Record<string, CoinVerdict> }) {
   const rows = snap?.scan.candidates ?? [];
   return (
@@ -466,11 +570,13 @@ function ScannerTable({ snap, verdicts }: { snap: MarketSnapshot | null; verdict
         <span className="text-xs text-quiet">{snap ? `${snap.scan.scanned} gescannt` : "lädt …"}</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] whitespace-nowrap text-left text-xs">
+        <table className="w-full min-w-[820px] whitespace-nowrap text-left text-xs">
           <thead className="text-[10px] uppercase tracking-wider text-quiet">
             <tr className="border-b border-line">
               <th className="px-3 py-2">Coin</th>
               <th className="px-3 py-2 text-right">Preis</th>
+              <th className="px-3 py-2 text-right" title="Schwung: Kaufdruck, Volumen und Kurs der letzten Minuten, 0 bis 100">Schwung</th>
+              <th className="px-3 py-2 text-right">5 Min</th>
               <th className="px-3 py-2 text-right">24 Std</th>
               <th className="px-3 py-2 text-right">Liquidität</th>
               <th className="px-3 py-2 text-right">Volumen 24 Std</th>
@@ -486,7 +592,7 @@ function ScannerTable({ snap, verdicts }: { snap: MarketSnapshot | null; verdict
             ))}
             {snap && rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-6 text-center text-quiet">
+                <td colSpan={11} className="px-3 py-6 text-center text-quiet">
                   Gerade keine neuen Solana-Coins gefunden.
                 </td>
               </tr>
@@ -521,6 +627,10 @@ function CandidateRow({ c, verdict }: { c: Candidate; verdict?: CoinVerdict }) {
         <span className="ml-2 text-quiet">{c.name}</span>
       </td>
       <td className="px-3 py-2 text-right">{formatPriceUsd(c.priceUsd)}</td>
+      <td className="px-3 py-2 text-right">
+        <HeatBar heat={c.heat} />
+      </td>
+      <td className={`px-3 py-2 text-right ${c.change5m >= 0 ? "text-up" : "text-down"}`}>{formatPct(c.change5m)}</td>
       <td className={`px-3 py-2 text-right ${c.change24h >= 0 ? "text-up" : "text-down"}`}>{formatPct(c.change24h)}</td>
       <td className="px-3 py-2 text-right">{formatCompactUsd(c.liquidityUsd)}</td>
       <td className="px-3 py-2 text-right">{formatCompactUsd(c.volumeH24)}</td>
@@ -545,6 +655,19 @@ function CandidateRow({ c, verdict }: { c: Candidate; verdict?: CoinVerdict }) {
   );
 }
 
+// Schwung als schmaler Balken mit Zahl. Ab 30 prüft der Crawler einen Coin überhaupt.
+function HeatBar({ heat }: { heat: number }) {
+  const value = Math.round(heat * 100);
+  return (
+    <span className="inline-flex items-center justify-end gap-1.5" title={value >= 30 ? "genug Schwung, der Crawler prüft ihn" : "zu wenig Schwung, wird übersprungen"}>
+      <span className="h-1.5 w-10 overflow-hidden rounded bg-panel-2">
+        <span className="block h-full rounded bg-sky-300" style={{ width: `${value}%`, opacity: value >= 30 ? 1 : 0.4 }} />
+      </span>
+      <span className={value >= 30 ? "text-ink" : "text-quiet"}>{value}</span>
+    </span>
+  );
+}
+
 function Trades({ trades }: { trades: Trade[] }) {
   if (trades.length === 0) return null;
   return (
@@ -557,7 +680,7 @@ function Trades({ trades }: { trades: Trade[] }) {
           <li key={t.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2">
             <span className="text-quiet">{new Date(t.at).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" })}</span>
             <span className={`w-14 font-bold uppercase ${t.side === "kauf" ? "text-sky-300" : "text-amber-300"}`}>{t.side}</span>
-            <span className="font-bold">${t.symbol}</span>
+            <span className="font-bold">{assetLabel(t)}</span>
             <span>{formatUsd(t.usd)}</span>
             {t.pnlUsd !== undefined && <span className={t.pnlUsd >= 0 ? "text-up" : "text-down"}>{formatSignedUsd(t.pnlUsd)}</span>}
             <span className="text-quiet">{t.agent}</span>
@@ -630,7 +753,10 @@ function Footer({ desk, controls }: { desk: DeskSnapshot | null; controls: Contr
   const armed = desk && desk.status !== "aus" && desk.status !== "notaus";
   return (
     <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-[11px] text-quiet">
-      <span>Daten: CoinGecko, DexScreener, RugCheck und Grok · der Desk arbeitet jede Minute, die Spinne zeigt jeden Schritt sofort</span>
+      <span>
+        Daten: CoinGecko, DexScreener, GeckoTerminal, RugCheck, Grok und Twelve Data · Risk wacht alle 10 Sekunden, neue Coins alle 30 Sekunden, die Spinne zeigt jeden
+        Schritt sofort
+      </span>
       <button
         type="button"
         disabled={!armed || controls.busy}
