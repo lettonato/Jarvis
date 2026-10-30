@@ -244,12 +244,13 @@ body {
   animation: holo-swing-in var(--holo-time) var(--holo-ease) 60ms both;
 }
 
-/* Ohne Richtung, etwa mit der Zurück-Taste: weiches Überblenden mit kurzem Aufleuchten. */
+/* Ohne Richtung, etwa mit der Zurück-Taste oder der Wischgeste: weiches Überblenden mit sanftem Aufleuchten,
+   ohne Flackern. */
 ::view-transition-old(.holo-fade) {
   animation: holo-fade-out 240ms ease-out both;
 }
 ::view-transition-new(.holo-fade) {
-  animation: holo-flicker 520ms ease-out 80ms both;
+  animation: holo-glow-in 520ms ease-out 80ms both;
 }
 
 @keyframes holo-pass {
@@ -404,20 +405,10 @@ body {
   }
 }
 
-@keyframes holo-flicker {
-  0% {
+@keyframes holo-glow-in {
+  from {
     opacity: 0;
-    filter: brightness(2.4) blur(4px);
-  }
-  20% {
-    opacity: 0.6;
-  }
-  30% {
-    opacity: 0.25;
-  }
-  100% {
-    opacity: 1;
-    filter: none;
+    filter: brightness(1.8) blur(4px);
   }
 }
 

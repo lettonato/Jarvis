@@ -107,7 +107,8 @@ ${NOISE}`,
     vec3 r2 = cross(normal, dpdx);
     float det = dot(dpdx, r1);
     vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
-    normal = normalize(abs(det) * normal - grad);
+    vec3 bumped = abs(det) * normal - grad;
+    if (dot(bumped, bumped) > 1e-12) normal = normalize(bumped);
   }`,
       )
       .replace(
@@ -116,7 +117,7 @@ ${NOISE}`,
   {
     // Leuchtende Adern unten im Fels, die langsam pulsieren.
     float vein = 1.0 - abs(stoneNoise(sp * vec3(4.2, 2.6, 4.2) + vec3(0.0, uTime * 0.04, 0.0)));
-    vein = pow(vein, 28.0) * smoothstep(0.0, -0.3, sp.y);
+    vein = pow(max(vein, 0.0), 28.0) * smoothstep(0.0, -0.3, sp.y);
     float pulse = 0.7 + 0.3 * sin(uTime * 1.3 + sp.y * 9.0);
     totalEmissiveRadiance += uAccent * vein * (0.75 + uGlow * 2.0) * pulse;
     // Feines Raster auf dem Sockel, kantenscharf auf jeder Bildschirmgröße.
@@ -125,7 +126,7 @@ ${NOISE}`,
     float grid = (1.0 - clamp(min(gd.x, gd.y), 0.0, 1.0)) * top;
     totalEmissiveRadiance += uAccent * grid * (0.09 + uGlow * 0.5);
     // Schimmer an der Kante.
-    float rim = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 3.0);
+    float rim = pow(clamp(1.0 - abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 3.0);
     totalEmissiveRadiance += mix(vec3(0.49, 0.83, 0.99), uAccent, 0.5) * rim * (0.28 + uGlow * 0.7);
   }`,
       );

@@ -126,7 +126,7 @@ export function ApprovalBar() {
   if (pathname === "/trading" || (open.length === 0 && !note)) return null;
   const a = open[0];
   return (
-    <div className="mx-2 mb-2 rounded-lg border border-amber-400/60 bg-desk/90 px-3 py-2 text-sm shadow-lg backdrop-blur sm:mx-5" role="status">
+    <div className="mx-2 mb-2 rounded-lg border border-amber-400/60 bg-desk/95 px-3 py-2 text-sm shadow-lg sm:mx-5" role="status">
       {a ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="font-bold text-amber-200">🟡 Rückfrage</span>

@@ -11,6 +11,7 @@ import type { MemoryFact } from "@/lib/brain";
 import { SAFETY } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
 import { PHOTOS, readWorldStyle, saveWorldStyle, type WorldStyle } from "@/lib/photos";
+import { chooseQuality, QUALITY_LABEL, QUALITY_SHOWN_EVENT, readQuality, readQualityChoice, type QualityChoice, type QualityLevel } from "@/lib/quality";
 import { VOICE_KEY } from "@/lib/useVoice";
 
 // Einstellungen: wie JARVIS dich nennt, welcher Obsidian-Tresor und welches Postfach, welche Stimme.
@@ -90,6 +91,7 @@ export function SettingsView() {
             text="Hinter JARVIS liegt eine Landschaft, und bei jedem Wechsel der Ansicht fliegst du in die nächste. Wähle das gerechnete Gebirge oder echte Fotos. Gilt für diesen Browser."
           >
             <WorldStylePicker />
+            <WorldQualityPicker />
           </Section>
           <Section title="Stimme">
             <VoicePicker />
@@ -551,6 +553,65 @@ function WorldStylePicker() {
           ))}
         </ul>
       </details>
+    </div>
+  );
+}
+
+const QUALITY_CHOICES: { id: QualityChoice; title: string; text: string }[] = [
+  { id: "auto", title: "Automatisch", text: "Passt sich deinem Rechner an. Gewechselt wird nur im Flug, damit nichts springt." },
+  { id: 2, title: "Hoch", text: "Gestochen scharf, mit Leuchten. Braucht die meiste Grafikleistung." },
+  { id: 1, title: "Mittel", text: "Etwas weicher, mit Leuchten." },
+  { id: 0, title: "Einfach", text: "Ohne Leuchten, für ältere Rechner." },
+];
+
+// Wie fein die Landschaft gerechnet wird. Flackert oder ruckelt es, hilft eine feste Stufe.
+function WorldQualityPicker() {
+  const [choice, setChoice] = useState<QualityChoice | null>(null);
+  const [shown, setShown] = useState<QualityLevel | null>(null);
+
+  useEffect(() => {
+    const first = setTimeout(() => {
+      setChoice(readQualityChoice());
+      setShown(readQuality().level);
+    }, 0);
+    const onShown = (e: Event) => setShown((e as CustomEvent<QualityLevel>).detail);
+    window.addEventListener(QUALITY_SHOWN_EVENT, onShown);
+    return () => {
+      clearTimeout(first);
+      window.removeEventListener(QUALITY_SHOWN_EVENT, onShown);
+    };
+  }, []);
+
+  const choose = (next: QualityChoice) => {
+    setChoice(next);
+    if (next !== "auto") setShown(next);
+    chooseQuality(next);
+  };
+
+  return (
+    <div className="mt-4 space-y-2">
+      <p className="text-xs font-bold uppercase tracking-widest text-sky-200/80">Bildqualität</p>
+      <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Bildqualität der Landschaft">
+        {QUALITY_CHOICES.map((q) => {
+          const on = choice === q.id;
+          return (
+            <button
+              key={String(q.id)}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => choose(q.id)}
+              className={`flex flex-col justify-start rounded-lg border p-2.5 text-left transition ${
+                on ? "border-sky-300/80 bg-sky-400/20 shadow-[0_0_18px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 hover:border-sky-300/50"
+              }`}
+            >
+              <span className="block text-xs font-bold text-sky-50">{q.title}</span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-quiet">{q.text}</span>
+            </button>
+          );
+        })}
+      </div>
+      {choice === "auto" && shown !== null && <p className="text-xs text-quiet">Zurzeit: {QUALITY_LABEL[shown]}.</p>}
     </div>
   );
 }

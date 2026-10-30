@@ -19,7 +19,7 @@ Oben wechselst du zwischen den Ansichten:
 | **Trading** (`/trading`) | Der Trading-Desk: Agenten, die Crawler-Spinne live, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
 | **Intel** (`/intel`) | Das Lagebild aus Nachrichten und X, die wichtigsten Meldungen mit Quelle, deine Themen und das Budget. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
-| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Grok (Crawler auf X und Intel), Obsidian-Tresor, Kalender, Postfach, Sprache, Aussehen (Gebirge oder echte Fotos), Stimme. |
+| **Einstellungen** (Zahnrad) | Name, KI-Gehirn, Grok (Crawler auf X und Intel), Obsidian-Tresor, Kalender, Postfach, Sprache, Aussehen (Gebirge oder echte Fotos, Bildqualität), Stimme. |
 
 Hinter allen Ansichten liegt eine 3D-Welt, und jede Ansicht hat ihre eigene Landschaft. Wechselst du die Ansicht, fliegt die Kamera über das Gebirge in die neue Landschaft, während Farben, Berge und Himmel ineinander übergehen:
 
@@ -41,6 +41,10 @@ Hinter allen Ansichten liegt eine 3D-Welt, und jede Ansicht hat ihre eigene Land
 Unter **Einstellungen → Aussehen** kannst du statt des gerechneten Gebirges **echte Fotos** wählen. Dann liegt hinter jeder Ansicht ein echtes Landschaftsfoto (Bergsee, Reisterrassen, Milchstraße, Alpen-Sonnenaufgang …), etwas abgedunkelt und in die Farbe der Ansicht getaucht, damit Text lesbar bleibt. Das Bild atmet langsam und folgt leicht der Maus. Beim Wechsel der Ansicht fliegst du ins alte Foto hinein, während das neue aus der Tiefe herankommt. JARVIS, die Felsen der Module und der Lichtstaub schweben davor wie gewohnt. Umschalten geht jederzeit ohne Neuladen; die Wahl gilt für diesen Browser.
 
 Alle zehn Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu. Wer sie gemacht hat, steht in den Einstellungen unter Bildnachweis und in [`public/welt/QUELLEN.md`](public/welt/QUELLEN.md).
+
+### Bildqualität
+
+Unter **Einstellungen → Aussehen → Bildqualität** steht, wie fein die Landschaft gerechnet wird: **Hoch** (scharf wie dein Bildschirm, mit Leuchten), **Mittel** (etwas weicher) oder **Einfach** (ohne Leuchten, für ältere Rechner). Auf **Automatisch** passt JARVIS die Stufe selbst an: Ruckelt es länger, geht er eine Stufe herunter, läuft es lange flüssig, einmal wieder hinauf. Gewechselt wird nur während eines Flugs, wenn sich ohnehin alles bewegt, und das Leuchten blendet weich aus und ein; so springt das Bild nie, während du hinschaust. Ging es nach einem Aufstieg gleich wieder zu langsam, bleibt die Welt drei Tage auf der niedrigeren Stufe. Flackert oder ruckelt es bei dir trotzdem, stell eine feste Stufe ein.
 
 Hinter Text ist die Welt gedämpft, damit alles lesbar bleibt. Die Ansichten selbst wechseln weiter wie Hologramme im Film: Öffnest du ein Modul, faltet sich seine Ansicht aus einer Lichtlinie in der Tiefe auf; zwischen Aufgaben, Kalender, Post, Browser, Trading, Intel und Agenten schwenken sie wie Tafeln um dich herum, und der kleine JARVIS unten fliegt beim Antippen groß in den Fokus. Wer im System „Bewegung reduzieren“ eingeschaltet hat, bekommt schlichte Wechsel ohne Flug.
 
@@ -313,6 +317,7 @@ Aufbau:
 | --- | --- |
 | `src/components/JarvisProvider.tsx` | JARVIS über allen Ansichten: Gespräch, Stimme, Besprechung, Daten |
 | `src/components/AppFrame.tsx` | Navigation oben und der kleine JARVIS unten |
+| `src/lib/quality.ts` | Bildqualität der 3D-Welt: Stufen, gemerkte Stufe und Obergrenze im Browser |
 | `src/lib/holo.ts`, `src/components/HoloView.tsx` | welche Übergangs-Animation bei welchem Wechsel läuft; die Animationen selbst stehen in `src/app/globals.css` |
 | `src/components/views/` | die Ansichten Fokus, Aufgaben, Post, Agenten, Einstellungen |
 | `src/components/CommandCenter.tsx` | die Übersicht: Platz für Kopf und Felsen, Modul-Liste für die Tastatur, Konsole |
