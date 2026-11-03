@@ -18,6 +18,8 @@ import { MOOD_LABEL, TYPICAL_INTEL_COST_USD, type IntelReport } from "../intel";
 import { forget, readMemory, remember, revise } from "./memory";
 import { BrowserError, runBrowserTask } from "./browser";
 import { MAX_MINUTES } from "../browser";
+import { docContextLine } from "../documents";
+import { DocError, documentsSnapshot, openDocument, resendDocument, startDocument } from "./documents";
 
 // Das KI-Gehirn: Claude führt das Gespräch, so wie in der Claude-App, und erledigt Dinge mit Werkzeugen,
 // die direkt auf Obsidian, das Postfach, den Kalender und den Desk zugreifen. Für Aktuelles sucht er im Web.
@@ -91,6 +93,7 @@ ${
 }
 - Nachrichten: Intel lässt Grok von xAI morgens und am Nachmittag die Nachrichten und X zu Bitcoin, Ethereum, Solana und ${name}s Themen lesen. Das letzte Lagebild liest du kostenlos mit nachrichten_lesen. Eine Suche auf X mit Grok (nachrichten_suchen) kostet etwa ${Math.round(TYPICAL_INTEL_COST_USD * 100)} Cent und dauert eine halbe Minute; nimm sie nur, wenn ${name} ausdrücklich wissen will, was auf X dazu gesagt wird. Für alles andere reicht web_search.
 - Im Browser arbeiten (browser_auftrag): JARVIS bedient ein eigenes Chrome auf ${name}s Mac; am Mac sieht ${name} in der Browser-Ansicht live zu. Er sucht, vergleicht Angebote auf mehreren Seiten, liest Seiten, die web_fetch nicht schafft, und füllt Formulare aus. Bestellen, abschicken, bezahlen und anmelden kann der Browser nicht; den letzten Klick macht ${name} selbst. Ein Auftrag dauert ein bis drei Minuten; sag vorher kurz, dass du in den Browser gehst. Für einfache Fragen zu Fakten reicht web_search.
+- Dokumente erstellen (dokument_erstellen): Will ${name} ein Dokument, einen Bericht oder eine Analyse zum Behalten, recherchiert dein Analyst im Hintergrund gründlich im Web und schreibt daraus ein PDF mit Tabellen, Grafiken und Quellen. Es landet im Ordner Dokumente/JARVIS auf dem Mac${remote ? "" : " und geht dort von selbst auf"}; ist das Handy gekoppelt, kommt es auch per Telegram. Das dauert meist fünf bis fünfzehn Minuten und kostet bei Anthropic ein paar Dollar; sag beides kurz dazu. Gib dem Analysten alles mit, was ${name} sich wünscht, und warte nicht auf ihn: Ihr könnt weiterreden. ${remote ? "Ein fertiges Dokument schickst du mit dokument_oeffnen noch einmal in den Chat." : "Ein fertiges Dokument öffnest du mit dokument_oeffnen."} Für eine schnelle Antwort im Gespräch reicht web_search.
 - Den Spielgeld-Handel abfragen und steuern: starten, pausieren, fortsetzen, Not-Aus. Dort handeln die Agenten Scan, Vet, Crawler, Chief, Size, Fills und Risk mit ${SAFETY.startCapitalUsd.toLocaleString("de-DE")} Dollar erfundenem Geld, um ${SAFETY.testDays} Tage lang zu testen, ob sich der Desk nach Kosten lohnt. Ab einer Grenze, die ${name} in den Einstellungen wählt, fragt der Desk vor jedem Kauf per Telegram und auf dem Trading-Desk nach und kauft erst nach ${name}s Ja; ohne Antwort verfällt die Frage nach ${APPROVAL.timeoutMinutes} Minuten. Freigeben kann nur ${name} selbst mit den Knöpfen dort, nicht du und auch nicht per Sprache. Will ${name} dir gegenüber Ja sagen, schick ihn freundlich zu den Knöpfen.
 
 Was du noch nicht kannst: Mails schreiben, beantworten oder löschen, bestehende Termine ändern oder löschen, telefonieren, im Web etwas bestellen, abschicken oder dich anmelden und mit echtem Geld handeln. Möchte ${name} so etwas, sag ehrlich, dass es später kommt, und biete an, es als Aufgabe zu notieren. Gib keine Kauf- oder Verkaufsempfehlungen für echtes Geld; die festen Regeln des Desks (Stop-Loss, 2 Prozent pro Trade, Tageslimit) kannst und darfst du nicht ändern.
@@ -138,6 +141,8 @@ const STATUS: Record<string, string> = {
   gedaechtnis_aendern: "Ich passe mein Gedächtnis an",
   gedaechtnis_vergessen: "Ich vergesse es",
   browser_auftrag: "Ich gehe in den Browser",
+  dokument_erstellen: "Ich gebe den Auftrag an den Analysten",
+  dokument_oeffnen: "Ich hole das Dokument",
   web_search: "Ich suche im Web",
   web_fetch: "Ich lese die Seite",
 };
@@ -156,6 +161,7 @@ const VIEW_LABEL: Record<ViewName, string> = {
   trading: "Trading-Desk",
   intel: "Intel (Lagebild aus Nachrichten und X)",
   browser: "Browser (was JARVIS gerade im Web erledigt)",
+  dokumente: "Dokumente (was der Analyst schreibt und fertige PDFs)",
   agenten: "Agenten",
   einstellungen: "Einstellungen",
 };
@@ -211,8 +217,10 @@ export async function think(
     opened: MailMessage[];
     calendar?: CalendarSnapshot;
     memory: boolean;
+    documents: boolean;
   } = {
     memory: false,
+    documents: false,
     tasks: false,
     mail: false,
     desk: false,
@@ -643,6 +651,55 @@ export async function think(
       },
     }),
     betaTool({
+      name: "dokument_erstellen",
+      description: `Gibt dem Analysten von JARVIS den Auftrag für ein Dokument. Er recherchiert im Hintergrund gründlich im Web (Markt, Zahlen, alle wichtigen Firmen) und schreibt daraus ein PDF mit Tabellen, Grafiken und Quellen, das in ${name}s Ordner Dokumente/JARVIS landet und per Telegram aufs Handy kommt. Dauert meist fünf bis fünfzehn Minuten und kostet bei Anthropic ein paar Dollar. Nur, wenn ${name} ein Dokument, einen Bericht, ein PDF oder eine schriftliche Analyse will; es läuft immer nur eines zur Zeit.`,
+      strict: true,
+      inputSchema: {
+        type: "object",
+        properties: {
+          thema: { type: "string", description: "Das Thema in wenigen Worten, etwa „Die KI-Wertschöpfungskette“." },
+          auftrag: {
+            type: "string",
+            description: `Alles, was ${name} sich für das Dokument wünscht, vollständig und in ${name}s Sinn: was hinein soll, Schwerpunkte, Grafiken, Umfang, für wen. Lass nichts weg, was ${name} gesagt hat.`,
+          },
+        },
+        required: ["thema", "auftrag"],
+        additionalProperties: false,
+      },
+      run: async ({ thema, auftrag }) => {
+        try {
+          await startDocument(config, apiKey, { thema, auftrag, from: remote ? "telegram" : "mac" });
+        } catch (e) {
+          if (e instanceof DocError) throw new Error(e.message);
+          throw e;
+        }
+        outcome.documents = true;
+        if (!remote) outcome.navigate = VIEWS.dokumente;
+        const phone = remote ? "Das PDF kommt in diesen Chat." : config.telegram?.chatId ? "Das PDF geht am Mac auf und kommt auch per Telegram." : "Das PDF geht am Mac auf; Telegram ist nicht gekoppelt.";
+        return `Gestartet. Der Analyst arbeitet im Hintergrund, meist fünf bis fünfzehn Minuten. ${phone} Es liegt dann im Ordner Dokumente/JARVIS. Sag das ${name} in ein, zwei Sätzen; warten musst du nicht.`;
+      },
+    }),
+    betaTool({
+      name: "dokument_oeffnen",
+      description: remote
+        ? "Schickt ein fertiges Dokument noch einmal als Datei in diesen Chat. Ohne id das neueste."
+        : "Öffnet ein fertiges Dokument am Mac. Ohne id das neueste; gibt es noch keins, den Ordner Dokumente/JARVIS.",
+      inputSchema: {
+        type: "object",
+        properties: { id: { type: "string", description: "Die id aus der Lage (in eckigen Klammern), leer für das neueste." } },
+        required: [],
+        additionalProperties: false,
+      },
+      run: async ({ id }) => {
+        try {
+          return remote ? await resendDocument(id || null) : await openDocument(id || null);
+        } catch (e) {
+          if (e instanceof DocError) throw new Error(e.message);
+          throw e;
+        }
+      },
+    }),
+    betaTool({
       name: "besprechung_starten",
       description:
         "Startet nach deiner Antwort eine Besprechung: JARVIS geht die neuen wichtigen Mails oder die bis nächste Woche fälligen Aufgaben Punkt für Punkt mit dem Nutzer durch und nennt den ersten Punkt selbst. Kündige sie in deiner Antwort nur kurz an.",
@@ -704,6 +761,9 @@ export async function think(
       `Spielgeld-Handel: ${STATUS_LABEL[desk.status]}, Konto ${Math.round(desk.equity)} Dollar (${desk.pnlPct >= 0 ? "+" : ""}${desk.pnlPct.toFixed(1)} % seit Start), Tag ${desk.testDay} von ${SAFETY.testDays}, ${desk.positions.length} Positionen offen${asking.length ? `; wartet auf ${name}s Ja per Knopf: ${asking.join(", ")}` : ""}`,
     );
   } else if (desk) lines.push("Spielgeld-Handel: noch nicht gestartet");
+  const docs = await documentsSnapshot().catch(() => null);
+  const docLine = docs ? docContextLine(docs, now) : null;
+  if (docLine) lines.push(docLine);
   for (const line of request.extra.slice(0, 4)) lines.push(line.slice(0, 300));
 
   const messages = historyMessages(request.history);
@@ -807,6 +867,7 @@ export async function think(
     calendar: outcome.calendar,
     intel: outcome.intel ? await intelSnapshot() : undefined,
     memory: outcome.memory ? await readMemory() : undefined,
+    documents: outcome.documents ? await documentsSnapshot() : undefined,
   };
 }
 

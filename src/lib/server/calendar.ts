@@ -304,3 +304,9 @@ export async function openUrl(url: string): Promise<void> {
   if (!onMac()) throw new CalendarError("Das geht nur auf dem Mac.");
   await run(OPEN(), [url], 10_000);
 }
+
+// Öffnet eine Datei mit ihrem Programm (ein PDF in Vorschau) oder zeigt sie im Finder.
+export async function openFile(file: string, reveal = false): Promise<void> {
+  if (!onMac()) throw new CalendarError("Das geht nur auf dem Mac.");
+  await run(OPEN(), reveal ? ["-R", file] : [file], 10_000);
+}

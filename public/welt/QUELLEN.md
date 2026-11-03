@@ -1,6 +1,6 @@
 # Bildnachweis der Fotowelt
 
-Die zehn Landschaftsfotos hinter JARVIS stammen aus den Hintergrundbild-Paketen von Ubuntu und seinen Varianten. Alle stehen unter freien Creative-Commons-Lizenzen, die Weitergabe und Bearbeitung erlauben, solange der Urheber genannt wird (BY) und Bearbeitungen unter derselben Lizenz bleiben (SA).
+Die elf Landschaftsfotos hinter JARVIS stammen aus den Hintergrundbild-Paketen von Ubuntu und seinen Varianten. Alle stehen unter freien Creative-Commons-Lizenzen, die Weitergabe und Bearbeitung erlauben, solange der Urheber genannt wird (BY) und Bearbeitungen unter derselben Lizenz bleiben (SA).
 
 Für JARVIS wurden die Fotos auf 2560 × 1440 Pixel zugeschnitten und als WebP gespeichert. In der App werden sie zusätzlich abgedunkelt und leicht eingefärbt. Diese Bearbeitungen stehen unter derselben Lizenz wie das jeweilige Original.
 
@@ -16,6 +16,7 @@ Für JARVIS wurden die Fotos auf 2560 × 1440 Pixel zugeschnitten und als WebP g
 | intel.webp | Intel | Sonnenaufgang am Brauneck | Uday Nakade | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | ubuntustudio-wallpapers (noble), 2404_Brauneck_Sunrise.jpg |
 | agenten.webp | Agenten | Milchstraße über dem Wald | Jeff Morgan | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | xubuntu-community-wallpapers (bionic), jeff_morgan__stub_stewart_iridium_flare__4k.jpg |
 | einstellungen.webp | Einstellungen | Berge bei Krasnaja Poljana | Alexander Lyubavin | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | ubuntu-gnome-wallpapers (yakkety), sochi_krasnaya_polyana_mountains_by_alexander_lyubavin.jpg |
+| dokumente.webp | Dokumente | Felswände der Dolomiten | Felix Hartlieb | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | xubuntu-community-wallpapers (jammy), Dolomites_by_Felix_Hartlieb.jpg |
 
 Das Vorschaubild `vorschau-fotos.webp` in den Einstellungen ist ein Bildschirmfoto von JARVIS vor `uebersicht.webp` und steht deshalb ebenfalls unter CC BY-SA 4.0 (the5sheepdev).
 

@@ -2,7 +2,7 @@
 // der Kopf über einem Tal, die Module stehen als Felsen im Bogen drumherum. Öffnest du ein Modul, fliegt
 // die Kamera durch die Berge in seine Landschaft, Formen und Farben gehen dabei ineinander über.
 
-export type BiomeId = "uebersicht" | "fokus" | "aufgaben" | "kalender" | "post" | "browser" | "trading" | "intel" | "agenten" | "einstellungen";
+export type BiomeId = "uebersicht" | "fokus" | "aufgaben" | "kalender" | "post" | "browser" | "dokumente" | "trading" | "intel" | "agenten" | "einstellungen";
 
 // Was eine Landschaft besonders macht: Zeitringe am Himmel, Kurs-Säulen in der Schlucht …
 export type Feature = "ringe" | "leuchtfeuer" | "kristalle" | "saeulen" | "radar" | "netz" | "aura";
@@ -154,6 +154,24 @@ export const BIOMES: Record<BiomeId, Biome> = {
     aurora: "#3b82f6",
     accent: "#99f6e4",
     feature: "netz",
+  },
+  // Die Dokumente: helle Kalkwände wie in einer Bibliothek aus Stein, warmes Licht, ruhige Kristalle.
+  dokumente: {
+    ...WORK,
+    height: 10,
+    scale: 0.03,
+    ridge: 0.8,
+    terrace: 0.5,
+    valley: 8,
+    seed: [-34, -92],
+    low: "#1c1608",
+    high: "#fde68a",
+    grid: "#d4a017",
+    zenith: "#070502",
+    horizon: "#3a2a0c",
+    aurora: "#38bdf8",
+    accent: "#fef3c7",
+    feature: "kristalle",
   },
   trading: {
     ...WORK,
