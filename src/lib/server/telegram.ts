@@ -134,14 +134,15 @@ export class TelegramError extends Error {
 }
 
 // Der Schlüssel steckt in der Adresse; er landet deshalb nie in einer Fehlermeldung oder im Protokoll.
+// Dateien gehen als Formular (multipart), alles andere als JSON.
 async function call<T>(token: string, method: string, body: object = {}, signal?: AbortSignal): Promise<T> {
   let res: Response;
+  const form = body instanceof FormData;
   try {
     res = await fetch(`${api()}/bot${token}/${method}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-      signal: signal ?? AbortSignal.timeout(20_000),
+      ...(form ? { body } : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+      signal: signal ?? AbortSignal.timeout(form ? 120_000 : 20_000),
     });
   } catch (e) {
     if (signal?.aborted) throw e;
@@ -184,6 +185,26 @@ async function send(token: string, chatId: number, text: string): Promise<void> 
       await new Promise((r) => setTimeout(r, Math.min(30, e.retryAfter ?? 3) * 1000));
       await call(token, "sendMessage", body);
     }
+  }
+}
+
+// Eine Datei mit ein paar Zeilen darunter (Telegram nimmt höchstens 1024 Zeichen und 50 MB).
+async function sendFile(token: string, chatId: number, file: string, caption: string): Promise<void> {
+  const data = await fs.readFile(file);
+  if (data.length > 49 * 1024 * 1024) throw new TelegramError("Die Datei ist für Telegram zu groß.");
+  const form = () => {
+    const f = new FormData();
+    f.set("chat_id", String(chatId));
+    f.set("caption", caption.length > 1024 ? `${caption.slice(0, 1023)}…` : caption);
+    f.set("document", new Blob([new Uint8Array(data)], { type: file.endsWith(".pdf") ? "application/pdf" : "text/html" }), path.basename(file));
+    return f;
+  };
+  try {
+    await call(token, "sendDocument", form());
+  } catch (e) {
+    if (!(e instanceof TelegramError) || e.code !== 429) throw e;
+    await new Promise((r) => setTimeout(r, Math.min(30, e.retryAfter ?? 3) * 1000));
+    await call(token, "sendDocument", form());
   }
 }
 
@@ -463,6 +484,22 @@ async function deliver(notice: Notice) {
       if (e instanceof TelegramError && e.code === 403) shared.error = explainTelegramError(e);
       console.error("Telegram-Rückfrage:", explainTelegramError(e));
     });
+  }
+  // Dokumente kommen immer: Du hast sie bestellt. Geht die Datei nicht durch, kommt wenigstens der Text.
+  if (notice.kind === "dokument") {
+    const report = (e: unknown) => {
+      if (e instanceof TelegramError && e.code === 403) shared.error = explainTelegramError(e);
+      console.error("Telegram-Dokument:", explainTelegramError(e));
+    };
+    if (notice.file) {
+      try {
+        return await sendFile(tg.token, tg.chatId, notice.file, notice.text);
+      } catch (e) {
+        report(e);
+        return send(tg.token, tg.chatId, `${notice.text}\n\nDie Datei ging nicht durch (${explainTelegramError(e)}). Sie liegt am Mac im Ordner Dokumente/JARVIS.`).catch(report);
+      }
+    }
+    return send(tg.token, tg.chatId, notice.text).catch(report);
   }
   const prefs = prefsOf(tg);
   if (notice.kind === "trade" && !prefs.trades) return;

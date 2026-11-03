@@ -7,7 +7,9 @@ export type Notice =
   | { kind: "trade" | "warnung"; text: string }
   // Eine Rückfrage mit Ja/Nein-Knöpfen, und später, was aus ihr wurde (die Knöpfe verschwinden dann).
   | { kind: "rueckfrage"; id: string; text: string }
-  | { kind: "rueckfrage_ende"; id: string; text: string };
+  | { kind: "rueckfrage_ende"; id: string; text: string }
+  // Ein fertiges Dokument kommt als Datei, ein gescheitertes nur als Text.
+  | { kind: "dokument"; text: string; file: string | null };
 
 type Listener = (notice: Notice) => void;
 const holder = globalThis as typeof globalThis & { __jarvisNotify?: Set<Listener> };

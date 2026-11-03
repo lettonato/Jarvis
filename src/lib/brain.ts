@@ -1,4 +1,5 @@
 import type { CalendarSnapshot } from "./calendar";
+import type { DocsSnapshot } from "./documents";
 import type { IntelSnapshot } from "./intel";
 import type { MailMessage, MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
@@ -49,6 +50,8 @@ export type BrainReply = {
   calendar?: CalendarSnapshot;
   // Intel, wenn Claude gezielt nach Nachrichten gesucht hat.
   intel?: IntelSnapshot;
+  // Die Dokumente, wenn Claude dem Analysten einen Auftrag gegeben hat.
+  documents?: DocsSnapshot;
 };
 
 // Der Server schickt die Antwort Stück für Stück, eine Zeile JSON pro Ereignis.
@@ -71,6 +74,7 @@ export const VIEWS = {
   trading: "/trading",
   intel: "/intel",
   browser: "/browser",
+  dokumente: "/dokumente",
   agenten: "/agenten",
   einstellungen: "/einstellungen",
 } as const;

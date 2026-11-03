@@ -106,6 +106,7 @@ export function helpText(name: string, brain: boolean): string {
     "/weiter – Handel fortsetzen",
     "/notaus – alle Agenten sofort stoppen",
     "",
+    ...(brain ? ["Dokumente: Schreib „Erstell mir ein Dokument über …“, dann recherchiere ich im Hintergrund und schicke dir das PDF hierher.", ""] : []),
     "Ich laufe auf deinem Mac. Schläft er, antworte ich, sobald er wieder wach ist.",
   ].join("\n");
 }

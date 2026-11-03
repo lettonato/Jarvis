@@ -16,6 +16,7 @@ Oben wechselst du zwischen den Ansichten:
 | **Kalender** (`/kalender`) | Deine Termine der nächsten zwei Wochen aus der Kalender-App, neue Termine eintragen, jeden Tag mit einem Klick in der Kalender-App zeigen. |
 | **Post** (`/post`) | Wichtige neue Mails oben, Newsletter eingeklappt. Lesen, als Aufgabe notieren, als gelesen markieren. |
 | **Browser** (`/browser`) | Ein Auftrag fürs Web, etwa „Such mir Magnesium-Tabletten“. Das Fenster fliegt heran, und du siehst live, wie JARVIS sucht, klickt und tippt; daneben jeden Schritt und am Ende das Ergebnis. Geht von selbst auf, wenn du „Jarvis, such mir …“ sagst. |
+| **Dokumente** (`/dokumente`) | Was der Analyst gerade recherchiert (Schritt für Schritt, mit Abbrechen) und deine fertigen PDFs zum Öffnen, Ansehen oder im Finder zeigen. Geht von selbst auf, wenn du „Jarvis, erstell mir ein Dokument über …“ sagst. |
 | **Trading** (`/trading`) | Der Trading-Desk: Agenten, die Crawler-Spinne live, Spielgeld-Konto, offene Positionen, Scanner, Trades mit Begründung und Not-Aus. |
 | **Intel** (`/intel`) | Das Lagebild aus Nachrichten und X, die wichtigsten Meldungen mit Quelle, deine Themen und das Budget. |
 | **Agenten** (`/agenten`) | Alle Agenten, was sie können und ab welcher Phase. Mit Wettervorhersage. |
@@ -31,6 +32,7 @@ Hinter allen Ansichten liegt eine 3D-Welt, und jede Ansicht hat ihre eigene Land
 | Kalender | sanfte türkise Hügel, am Himmel drehen sich Zeitringe wie ein Uhrwerk |
 | Post | schroffe Eisberge, in der Luft schweben Kristalle |
 | Browser | türkises Hochland unter einem Netz aus Seiten, durch das Lichtpunkte laufen |
+| Dokumente | helle, gestufte Kalkwände in warmem Licht, dazwischen schwebende Kristalle |
 | Trading | magentafarbene Schlucht, gesäumt von grünen und roten Kurs-Säulen |
 | Intel | flaches oranges Land mit einem riesigen Radarschirm |
 | Agenten | violettes Gebirge unter einem Sternbild, durch dessen Fäden Lichtpunkte laufen |
@@ -194,6 +196,29 @@ Ein Auftrag dauert meist ein bis drei Minuten, höchstens sechs, und JARVIS mach
 
 Chrome läuft dabei mit einem eigenen Profil in `~/.jarvis/browser-profil`, getrennt von deinem normalen Chrome, deinen Lesezeichen und Passwörtern. Meldest du dich dort irgendwo an, bleibt das gespeichert.
 
+## Dokumente: JARVIS recherchiert und schreibt dir ein PDF
+
+Sag einfach: „Jarvis, erstell mir ein Dokument über die KI-Wertschöpfungskette: Markt analysieren, alle beteiligten Firmen, gern mit Grafiken.“ Das geht am Mac und genauso per Telegram. JARVIS gibt den Auftrag an seinen **Analysten** (Claude) weiter, und ihr könnt währenddessen weiterreden.
+
+So entsteht das Dokument:
+
+1. Der Analyst plant die Gliederung und recherchiert im Web: höchstens 24 Suchen und 10 gelesene Seiten, mit Vorrang für Geschäftsberichte, Behörden und bekannte Marktforscher.
+2. Er schreibt das Dokument: Kernaussagen vorn, nummerierte Abschnitte, Firmen in Tabellen, Grafiken (die Stufen einer Wertschöpfungskette, Balken für Vergleiche, Säulen für die Entwicklung über Jahre, Prognosen heller) und alle Quellen mit Link. Zahlen sind mit [1], [2] … ihrer Quelle zugeordnet.
+3. JARVIS prüft, was zurückkommt (fehlt eine Einheit oder ist eine Grafik unvollständig, bessert der Analyst nach), setzt daraus eine Seite und macht mit Chrome ein PDF.
+
+**Wo du es bekommst:**
+
+- Auf dem Mac im Ordner **Dokumente → JARVIS** (`~/Documents/JARVIS`). Den Ordner legt JARVIS beim ersten Dokument selbst an. Der Dateiname beginnt mit dem Datum, etwa „2026-11-03 Die KI-Wertschöpfungskette.pdf“. Beim ersten Mal fragt macOS, ob das Terminal auf den Ordner Dokumente zugreifen darf: **Erlauben**. Sagst du Nein, legt JARVIS das Dokument in `~/.jarvis/dokumente` ab und sagt dir, wie du den Ordner später freigibst (**Systemeinstellungen → Datenschutz & Sicherheit → Dateien und Ordner → Terminal**).
+- Hast du es am Mac bestellt, geht das PDF dort von selbst auf, und JARVIS sagt Bescheid.
+- Ist dein Handy gekoppelt, kommt das PDF zusätzlich per Telegram, mit den wichtigsten Aussagen darunter. „Schick mir das Dokument noch mal“ schickt das neueste erneut.
+- In der Ansicht **Dokumente** findest du alle wieder: **Öffnen** (in Vorschau), **Im Browser ansehen**, **Im Finder zeigen**, **Ordner öffnen**.
+
+**Dauer und Kosten:** Meist fünf bis fünfzehn Minuten. Es läuft immer nur ein Dokument zur Zeit, höchstens 30 Minuten. Die Recherche kostet bei Anthropic meist ein paar Dollar; die genauen Kosten stehen bei jedem Dokument. Ab etwa 10 Dollar hört der Analyst auf zu suchen und schreibt mit dem, was er hat. **Abbrechen** in der Ansicht stoppt sofort.
+
+Für das PDF braucht JARVIS Google Chrome (wie der Browser-Agent; Chrome läuft dafür unsichtbar, ohne Skripte und ohne Internet). Ohne Chrome bekommst du das Dokument als Webseite, die du in Safari mit **Ablage → Als PDF exportieren** selbst umwandeln kannst.
+
+Die Dokumente sind Recherchen, keine Anlageberatung. Zahlen stammen aus den genannten Quellen und können sich seitdem geändert haben.
+
 ## Sicherheit
 
 - JARVIS läuft nur auf deinem Mac (`127.0.0.1`), andere Geräte im WLAN erreichen ihn nicht.
@@ -207,6 +232,7 @@ Chrome läuft dabei mit einem eigenen Profil in `~/.jarvis/browser-profil`, getr
 - Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche. Eine Webseite öffnet er nur, wenn die Adresse von dir, aus seiner Websuche oder aus Intel stammt; Links aus deinen Mails ruft er nicht auf. Was auf Webseiten steht, ist für ihn nur Daten, keine Anweisungen.
 - Mit Telegram laufen die Nachrichten zwischen dir und JARVIS über die Server von Telegram und sind dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem gekoppelten Chat, kann auch von dort keine Mails schreiben oder löschen, und Termine nur eintragen. Der Bot-Schlüssel liegt wie die anderen in `~/.jarvis/config.json`; wer ihn hat, kann Nachrichten an deinen Bot mitlesen, deshalb nie weitergeben (im BotFather lässt er sich mit `/revoke` erneuern).
 - Der Browser-Agent bedient ein eigenes Chrome-Profil, nicht dein normales. Er kauft, bestellt, sendet und meldet sich nirgends an, tippt keine Passwörter oder Zahlungsdaten und öffnet keine Seiten im Heimnetz. Was er auf einer Seite liest, geht als Text an Claude; Bilder vom Fenster bleiben auf deinem Mac.
+- Für Dokumente gehen Thema und deine Wünsche an Anthropic, der Analyst sucht damit im Web. Die fertigen Dateien liegen nur in deinem Ordner Dokumente/JARVIS und, wenn du Telegram nutzt, in deinem Chat mit dem Bot. Die Liste der Dokumente liegt in `~/.jarvis/dokumente.json`, lesbar nur für deinen Benutzer.
 - Das Gedächtnis liegt in `~/.jarvis/gedaechtnis.json`, lesbar nur für deinen Benutzer; der Gesprächsverlauf nur im Browser auf diesem Mac.
 
 ## Wetter

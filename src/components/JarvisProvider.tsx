@@ -9,6 +9,7 @@ import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainT
 import type { CalendarSnapshot } from "@/lib/calendar";
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import { intelSentence, searchSentence, type IntelSnapshot } from "@/lib/intel";
+import { docDoneSentence, type DocsSnapshot } from "@/lib/documents";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
 import type { DeskSnapshot } from "@/lib/paper";
@@ -48,6 +49,9 @@ type Jarvis = {
   // Intel: das Lagebild aus Nachrichten und X.
   intel: IntelSnapshot | null;
   setIntel: (i: IntelSnapshot) => void;
+  // Dokumente, die der Analyst schreibt oder geschrieben hat.
+  documents: DocsSnapshot | null;
+  setDocuments: (d: DocsSnapshot) => void;
   mailText: Record<number, MailMessage>;
   // Die Mails, die Claude zuletzt geöffnet hat; n zählt mit, damit dieselbe Mail wieder aufklappt.
   spotlight: { uids: number[]; n: number };
@@ -147,6 +151,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 10_000);
   const { data: calendar, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
   const { data: intel, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
+  const { data: documents, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
   const { data: memoryData, set: setMemoryData } = usePolling<{ facts: MemoryFact[] }>("/api/gedaechtnis", 10 * 60_000);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
@@ -413,6 +418,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       if (result.calendar) setCalendar(result.calendar);
       if (result.intel) setIntel(result.intel);
       if (result.memory) setMemoryData({ facts: result.memory });
+      if (result.documents) setDocuments(result.documents);
       if (result.opened) {
         const opened = result.opened;
         setMailText((prev) => ({ ...prev, ...Object.fromEntries(opened.map((m) => [m.uid, m])) }));
@@ -445,7 +451,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       }
       speech.end(listenAfter);
     },
-    [context, addTurn, updateTurn, speakStream, listen, router, setSession, setTasks, setMail, setDesk, setCalendar, setIntel, setMemoryData],
+    [context, addTurn, updateTurn, speakStream, listen, router, setSession, setTasks, setMail, setDesk, setCalendar, setIntel, setMemoryData, setDocuments],
   );
 
   const handle = useCallback(
@@ -554,6 +560,28 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     speak(text);
   }, [intel, addTurn, speak]);
 
+  // Schreibt der Analyst, alle drei Sekunden nachsehen, sonst reicht jede Minute.
+  useEffect(() => {
+    if (!documents?.running) return;
+    const timer = setTimeout(() => void loadDocuments(), 3000);
+    return () => clearTimeout(timer);
+  }, [documents, loadDocuments]);
+
+  // Wird ein Dokument fertig, das du am Mac bestellt hast, sagt JARVIS es dir. Bestellungen vom Handy
+  // kommen dorthin zurück; der Mac bleibt dann still.
+  const writing = useRef(new Set<string>());
+  useEffect(() => {
+    if (!documents) return;
+    if (documents.running?.from === "mac") writing.current.add(documents.running.id);
+    for (const job of documents.jobs) {
+      if (job.state === "laeuft" || !writing.current.has(job.id)) continue;
+      writing.current.delete(job.id);
+      const text = docDoneSentence(job, true);
+      addTurn("jarvis", text);
+      speak(text);
+    }
+  }, [documents, addTurn, speak]);
+
   const state: AvatarState = listening ? "listening" : thinking ? "thinking" : speaking ? "speaking" : "idle";
 
   const value = useMemo<Jarvis>(
@@ -577,6 +605,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       reloadCalendar: () => loadCalendar("?force=1"),
       intel,
       setIntel,
+      documents,
+      setDocuments,
       mailText,
       spotlight,
       memory: memoryData?.facts ?? null,
@@ -609,6 +639,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       loadCalendar,
       intel,
       setIntel,
+      documents,
+      setDocuments,
       mailText,
       spotlight,
       memoryData,
