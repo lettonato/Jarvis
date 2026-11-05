@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -43,16 +43,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: gitleaks installieren (feste Version, Prüfsumme geprüft)
         env:
           GITLEAKS_VERSION: 8.18.4
         run: |
-          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          archiv="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$archiv" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archiv}"
           curl -sSfL -o checksums.txt "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
-          grep " gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz$" checksums.txt | sha256sum -c -
-          tar xzf gitleaks.tgz gitleaks
+          grep " ${archiv}$" checksums.txt | sha256sum -c -
+          tar xzf "$archiv" gitleaks
       - name: gitleaks über alle Commits
         run: ./gitleaks detect --source . --log-opts="--all" --redact --verbose
