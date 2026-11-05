@@ -6,7 +6,10 @@
     "dev": "next dev -H 127.0.0.1",
     "build": "next build",
     "start": "next start -H 127.0.0.1",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "pruefen": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
@@ -28,6 +31,10 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
+    "tsx": "4.23.15",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.18 <23"
   }
 }

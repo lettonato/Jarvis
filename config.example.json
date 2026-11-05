@@ -1,0 +1,12 @@
+{
+  "name": "Benedikt",
+  "vaultPath": "~/Documents/JARVIS-Tresor",
+  "mail": { "provider": "t-online", "host": "secureimap.t-online.de", "port": 993, "user": "name@t-online.de", "password": "<APP-PASSWORT, nie einchecken>" },
+  "claude": { "apiKey": "<ANTHROPIC-SCHLUESSEL, nie einchecken>" },
+  "xai": { "apiKey": "<XAI-SCHLUESSEL, nie einchecken>", "dailyBudgetUsd": 1 },
+  "twelvedata": { "apiKey": "<TWELVEDATA-SCHLUESSEL, nie einchecken>" },
+  "telegram": { "token": "<BOT-TOKEN, nie einchecken>", "bot": "MeinJarvisBot", "trades": true, "warnings": true, "reminders": true, "briefing": "07:30" },
+  "calendar": { "target": "" },
+  "intel": { "topics": ["Bitcoin"], "budgetUsd": 1, "auto": true },
+  "approval": { "limitUsd": null }
+}

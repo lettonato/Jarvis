@@ -93,7 +93,7 @@ export async function checkChain(address: string): Promise<ChainCheck> {
 }
 
 // Nur echte Webseiten: kein localhost, keine IP-Adressen, nichts aus dem Heimnetz.
-function publicHttps(raw: string): URL | null {
+export function publicHttps(raw: string): URL | null {
   try {
     const url = new URL(raw);
     const host = url.hostname.toLowerCase();
@@ -107,7 +107,7 @@ function publicHttps(raw: string): URL | null {
 }
 
 // Der Name allein reicht nicht: Auch ein öffentlicher Name kann auf ein Gerät im Heimnetz zeigen.
-function privateAddress(ip: string): boolean {
+export function privateAddress(ip: string): boolean {
   if (isIP(ip) === 6) {
     const v6 = ip.toLowerCase();
     if (v6.startsWith("::ffff:")) return privateAddress(v6.slice(7));
