@@ -1,0 +1,58 @@
+# Automatische Prüfung bei jedem Push und jedem Pull Request (JARVIS 2.0, Schritt 1).
+# Läuft auf GitHub im kostenlosen Kontingent. Spricht keine echten Dienste an: Alle Tests nutzen
+# nachgebaute Server und leere Einstellungsordner, Schlüssel werden keine gebraucht.
+
+name: Prüfung
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pruefung-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code:
+    name: Lint, Typen, Tests, Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Typprüfung
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npx next build
+      - name: Bekannte Schwachstellen in Laufzeit-Paketen
+        run: npm audit --omit=dev --audit-level=high
+
+  geheimnisse:
+    name: Secret-Scan (ganze History)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks installieren (feste Version, Prüfsumme geprüft)
+        env:
+          GITLEAKS_VERSION: 8.18.4
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o checksums.txt "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz$" checksums.txt | sha256sum -c -
+          tar xzf gitleaks.tgz gitleaks
+      - name: gitleaks über alle Commits
+        run: ./gitleaks detect --source . --log-opts="--all" --redact --verbose

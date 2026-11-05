@@ -143,8 +143,19 @@ async function inside(vault: string, file: string): Promise<string> {
   if (target !== root && !target.startsWith(root + path.sep)) throw new Error("Pfad liegt außerhalb des Tresors.");
   if (!target.toLowerCase().endsWith(".md")) throw new Error("Nur Markdown-Dateien.");
   // Auch eine Verknüpfung im Tresor darf nicht nach draußen zeigen.
-  const real = await fs.realpath(target).catch(() => target);
-  if (!real.startsWith(root + path.sep)) throw new Error("Pfad liegt außerhalb des Tresors.");
+  // Gibt es die Datei noch nicht, zählt der nächste vorhandene Ordner darüber; sonst führte ein
+  // verknüpfter Ordner („link/neu.md“) unbemerkt nach draußen.
+  let existing = target;
+  let real: string | null = null;
+  while (real === null) {
+    real = await fs.realpath(existing).catch(() => null);
+    if (real === null) {
+      const parent = path.dirname(existing);
+      if (parent === existing) break;
+      existing = parent;
+    }
+  }
+  if (real === null || (real !== root && !real.startsWith(root + path.sep))) throw new Error("Pfad liegt außerhalb des Tresors.");
   return target;
 }
 

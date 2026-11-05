@@ -30,6 +30,7 @@ eine Cloud-Bereitstellung dazukommen.
 | R-13 | Kostenauslösung durch das Modell (Analyst, Grok-Suche) | Mittel | aus dem Code |
 | R-14 | Datenschutz: Mails, Termine, Gedächtnis gehen über persönlichen API-Schlüssel an Anthropic | Kritisch für Firmendaten | aus dem Code |
 | R-15 | Plattform: JARVIS ist Mac-gebunden, Plan sieht Windows-Login vor | Mittel | aus dem Code |
+| R-16 | Obsidian-Schreiben folgte verknüpftem Ordner nach draußen (neue Datei) | Mittel | bestätigt per Test, **behoben in Schritt 1** |
 
 ## Prüfung der Phase-2-Grundlagen
 
@@ -170,6 +171,10 @@ und Datenstandort (Phase 4.1). Bis dahin: keine Firmendaten in JARVIS.
 
 **R-15 Plattform:** Kalender, „Öffnen“ und Wachhalten sind macOS-spezifisch. Der Plan sieht einen Windows-
 Desktop-Agenten vor. Das muss vor Phase 8 entschieden werden.
+
+**R-16 Obsidian-Pfadprüfung (behoben):** Beim Anlegen einer neuen Datei prüfte `inside()` nur den Zielpfad;
+existierte die Datei noch nicht, folgte ein verknüpfter Ordner im Tresor (`link/neu.md`) unbemerkt nach
+draußen. Ein Test in Schritt 1 hat das nachgewiesen, die Prüfung nutzt jetzt den nächsten vorhandenen Ordner.
 
 ## Was bereits gut ist und erhalten bleiben soll
 
