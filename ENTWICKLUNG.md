@@ -31,7 +31,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Kernfunktion | Heute | Ziel | Phase | Stand |
 |---|---|---|---|---|
 | **Fundament** | | | | |
-| Sicherheitsnetz: Tests, CI, Secret-Scan, Rückfallpunkt | 123 Tests, CI-Workflow, gitleaks | jeder Schritt automatisch geprüft | 1 | Testbereit (CI-Lauf auf GitHub steht aus) |
+| Sicherheitsnetz: Tests, CI, Secret-Scan, Rückfallpunkt | 123 Tests, CI grün, gitleaks ohne Fund | jeder Schritt automatisch geprüft | 1 | Abgeschlossen ([CI-Lauf](https://github.com/lettonato/Jarvis/actions/runs/42112321400)); Mac-Prüfliste offen |
 | Security Gateway (alle Werkzeuge, Klassen A–D, Deny by Default) | fehlt; Werkzeuge direkt am Modell | jede Aktion geprüft, protokolliert, freigegeben | 2 | Offen |
 | Zentraler Not-Aus und Agentensperre | nur Desk, vom Modell aufhebbar | ein Schalter für alles, nur Mensch löst | 2 | Offen |
 | Audit-Log und Alarmierung | fehlt | manipulationssicher, Azure Monitor | 2/3 | Offen |
@@ -80,11 +80,11 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | 1.1 Implementiert vs. getestet | Testbereit | alle 8 genannten Funktionen im Code vorhanden, „Programme öffnen“ eingeschränkt |
 | 1.2 Stand versionieren | Testbereit | Tag `stand-2026-11-05` auf `9d6811c` lokal gesetzt; **Hochladen des Tags wird von der Cloud-Sandbox blockiert**. Rückfallpunkt bleibt Commit `9d6811c` (Branch `dokumente`). Tag kann Benedikt auf GitHub unter Releases anlegen. |
 | 1.2 Keine API-Schlüssel im Repo | Abgeschlossen | 31 Commits aller Branches am 05.11.2026 geprüft, nur Testwert `xai-test-123` in entfernter Datei |
-| 1.2 Schutz gegen künftige Schlüssel-Commits | Testbereit | gitleaks 8.18.4 in der CI über die ganze History; lokal in der Sandbox nicht ausführbar, erster Lauf auf GitHub steht aus |
+| 1.2 Schutz gegen künftige Schlüssel-Commits | Abgeschlossen | gitleaks 8.18.4 in der CI: 33 Commits aller Branches, „no leaks found“ ([CI-Lauf](https://github.com/lettonato/Jarvis/actions/runs/42112321400)) |
 | 1.2 Konfiguration vom Code getrennt und dokumentiert | Abgeschlossen | [docs/konfiguration.md](docs/konfiguration.md), [config.example.json](config.example.json); alle 29 Umgebungsvariablen erfasst |
 | 1.2 Reproduzierbare Entwicklungsumgebung | Testbereit | `npm ci` in beiden Startdateien, Node 22 (`.nvmrc`, `engines`); auf dem Mac noch nicht gestartet |
 | 1.2 Bestehende Funktionen durch Tests abgesichert | Testbereit | 123 Tests, siehe Testergebnisse; Mac-Funktionen nur per Prüfliste |
-| 1.2 Rückfallmöglichkeit | Testbereit | Commit `9d6811c` + CI auf jedem Push |
+| 1.2 Rückfallmöglichkeit | Testbereit | Commit `9d6811c` + CI auf jedem Push ([CI-Lauf](https://github.com/lettonato/Jarvis/actions/runs/42112321400)); Tag fehlt noch auf GitHub |
 
 ### Testergebnisse Schritt 1 (5. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -98,7 +98,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Rauchtest `next start`: 11 Seiten und 9 API-Routen | alle 200; fremder Host → 403, POST ohne `x-jarvis` → 403 |
 | `npm audit --omit=dev` | 0 Schwachstellen in Laufzeit-Paketen |
 | `npm audit` (inkl. Entwicklungswerkzeuge) | 1 mittlere Meldung in `minimatch` über eslint, bestand schon vorher, betrifft nur Entwicklung |
-| CI auf GitHub | steht aus (erster Lauf nach dem Push) |
+| CI auf GitHub (5. November, 21:25 UTC) | alle Prüfungen grün: Lint, Typen, Tests, Build, Audit, gitleaks ([CI-Lauf](https://github.com/lettonato/Jarvis/actions/runs/42112321400)). Erster Lauf scheiterte an einem Fehler im Workflow selbst (Prüfsumme des gitleaks-Archivs), behoben |
 
 Abgedeckt: Desk-Regeln und Rückfrage (14), Browser-Sperren (39), Crawler-Filter (25), API-Schutz,
 Telegram- und Dokument-Regeln (14), Obsidian, Gedächtnis, Dokumentablage (9), KI-Gehirn mit
