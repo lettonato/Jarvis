@@ -1,5 +1,4 @@
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { NetzSperre, privateAddress, privateName, sichererAbruf, type Lookup } from "../netz";
 import { HARD_FILTERS } from "../../thresholds";
 import type { Candidate } from "../../market";
 
@@ -99,58 +98,36 @@ export function publicHttps(raw: string): URL | null {
     const host = url.hostname.toLowerCase();
     if (url.protocol !== "https:" || !host.includes(".")) return null;
     if (/^[\d.]+$/.test(host) || host.includes(":") || host.startsWith("[")) return null;
-    if (host === "localhost" || host.endsWith(".local") || host.endsWith(".localhost") || host.endsWith(".internal")) return null;
+    if (privateName(host)) return null;
     return url;
   } catch {
     return null;
   }
 }
 
-// Der Name allein reicht nicht: Auch ein öffentlicher Name kann auf ein Gerät im Heimnetz zeigen.
-export function privateAddress(ip: string): boolean {
-  if (isIP(ip) === 6) {
-    const v6 = ip.toLowerCase();
-    if (v6.startsWith("::ffff:")) return privateAddress(v6.slice(7));
-    return v6 === "::" || v6 === "::1" || /^f[cd]/.test(v6) || /^fe[89ab]/.test(v6);
-  }
-  const [a, b] = ip.split(".").map(Number);
-  return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b < 128) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b < 32) || (a === 192 && b === 168) || a >= 224;
-}
-
-// Wirft, wenn der Name gar nicht aufgelöst werden kann; dann ist die Seite nicht erreichbar.
-async function pointsHome(url: URL): Promise<boolean> {
-  const addresses = await lookup(url.hostname, { all: true });
-  return addresses.some((a) => privateAddress(a.address));
-}
+// Die IP-Prüfung steht im gemeinsamen Netzschutz (src/lib/server/netz.ts), den auch der Browser nutzt.
+export { privateAddress };
 
 const decode = (s: string) =>
   s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 
-export async function readSite(raw: string): Promise<SiteRead> {
+export async function readSite(raw: string, { lookup }: { lookup?: Lookup } = {}): Promise<SiteRead> {
   let url = publicHttps(raw);
   if (!url) return { url: raw, error: "keine sichere https-Adresse" };
   try {
-    // Weiterleitungen einzeln folgen und jede Adresse prüfen, damit keine ins Heimnetz zeigt.
+    // Weiterleitungen einzeln folgen. Jeder Abruf prüft die Adresse in seiner eigenen Namensauflösung,
+    // die Verbindung geht genau an die geprüfte Adresse (kein DNS-Rebinding).
     for (let hop = 0; hop < 4; hop++) {
-      if (await pointsHome(url)) return { url: url.toString(), error: "Adresse zeigt ins Heimnetz, die lese ich nicht" };
-      const res = await fetch(url, {
-        redirect: "manual",
-        cache: "no-store",
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-        headers: { accept: "text/html", "user-agent": "Mozilla/5.0 (JARVIS Crawler)" },
-      });
-      if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
-        const next = publicHttps(new URL(res.headers.get("location")!, url).toString());
-        await res.body?.cancel();
+      const res = await sichererAbruf(url.toString(), { lookup, timeoutMs: TIMEOUT_MS, maxBytes: SITE_BYTES });
+      const location = res.headers.location;
+      if (res.status >= 300 && res.status < 400 && location) {
+        const next = publicHttps(new URL(location, url).toString());
         if (!next) return { url: raw, error: "leitet auf eine unsichere Adresse weiter" };
         url = next;
         continue;
       }
-      if (!res.ok) {
-        await res.body?.cancel();
-        return { url: url.toString(), error: `Seite antwortet mit ${res.status}` };
-      }
-      const html = await readLimited(res);
+      if (res.status < 200 || res.status >= 300) return { url: url.toString(), error: `Seite antwortet mit ${res.status}` };
+      const html = res.body;
       const title = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
       const text = decode(
         html
@@ -164,23 +141,9 @@ export async function readSite(raw: string): Promise<SiteRead> {
     }
     return { url: raw, error: "zu viele Weiterleitungen" };
   } catch (e) {
+    if (e instanceof NetzSperre) return { url: url.toString(), error: "Adresse zeigt ins Heimnetz, die lese ich nicht" };
     return { url: url.toString(), error: e instanceof Error && e.name === "TimeoutError" ? "Seite antwortet nicht" : "Seite nicht erreichbar" };
   }
-}
-
-async function readLimited(res: Response): Promise<string> {
-  if (!res.body) return "";
-  const reader = res.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (size < SITE_BYTES) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    size += value.length;
-  }
-  await reader.cancel().catch(() => {});
-  return new TextDecoder().decode(Buffer.concat(chunks).subarray(0, SITE_BYTES));
 }
 
 // Die beiden Crawler-Stufen aus filter.py: chain_kill (Blockchain), dann skin_kill (Projekt lesen).

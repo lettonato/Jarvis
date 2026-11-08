@@ -1,9 +1,10 @@
-// Feste Sperren des Browser-Agenten (src/lib/browser.ts). Bekannte Lücken stehen als TODO-Tests mit
-// Risikonummer aus docs/jarvis-2.0/02-risiken.md: Sie laufen mit, gelten aber nicht als bestanden.
+// Feste Sperren des Browser-Agenten (src/lib/browser.ts) und die DNS-Prüfung jeder Adresse
+// (src/lib/server/netz.ts). R-04 ist seit Schritt 2 behoben; die Tests dazu sind normale Tests.
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { clickProblem, enterProblem, typeProblem, urlProblem, type ElementInfo } from "../../src/lib/browser";
+import { adresseProblem } from "../../src/lib/server/netz";
 
 const el = (over: Partial<ElementInfo> = {}): ElementInfo => ({
   tag: "button",
@@ -49,11 +50,35 @@ describe("Browser: welche Adressen geöffnet werden", () => {
     test(`sperrt ${url}`, () => assert.notEqual(urlProblem(url), null));
   }
 
-  // R-04: Der Filter prüft nur den Namen, nicht die IP-Adresse, auf die der Name zeigt.
-  for (const url of ["http://192.168.178.1.nip.io/", "http://127.0.0.1.nip.io:3000/", "http://localtest.me:3000/"]) {
-    test(`sperrt Name mit privater Ziel-IP ${url}`, { todo: "Bekannte Lücke R-04, Behebung in Schritt 2" }, () => assert.notEqual(urlProblem(url), null));
+  // R-04 (behoben in Schritt 2): Namen werden aufgelöst. Der nachgebaute DNS antwortet so, wie die echten
+  // Dienste es tun (nip.io bettet die IP in den Namen ein, localtest.me zeigt auf 127.0.0.1).
+  const dns = (map: Record<string, string>) => async (host: string) => {
+    const ip = map[host];
+    if (!ip) throw new Error("ENOTFOUND");
+    return [{ address: ip, family: ip.includes(":") ? 6 : 4 }];
+  };
+  const fakeDns = dns({
+    "192.168.178.1.nip.io": "192.168.178.1",
+    "127.0.0.1.nip.io": "127.0.0.1",
+    "localtest.me": "127.0.0.1",
+    "metadata.example.com": "169.254.169.254",
+    "v6-intern.example.com": "fd00::1",
+    "www.idealo.de": "104.18.12.34",
+  });
+  for (const url of ["http://192.168.178.1.nip.io/", "http://127.0.0.1.nip.io:3000/", "http://localtest.me:3000/", "http://metadata.example.com/latest/", "http://v6-intern.example.com/"]) {
+    test(`sperrt Name mit privater Ziel-IP ${url}`, async () => assert.notEqual(await adresseProblem(url, { lookup: fakeDns }), null));
   }
-  test("sperrt Azure-WireServer 168.63.129.16", { todo: "Bekannte Lücke R-04, Behebung in Schritt 2" }, () => assert.notEqual(urlProblem("http://168.63.129.16/"), null));
+  test("erlaubt Name mit öffentlicher IP", async () => assert.equal(await adresseProblem("https://www.idealo.de/", { lookup: fakeDns }), null));
+  test("sperrt Namen, die sich nicht auflösen lassen", async () => assert.notEqual(await adresseProblem("https://gibt-es-nicht.example/", { lookup: fakeDns }), null));
+  test("sperrt, wenn auch nur eine von mehreren Adressen intern ist", async () => {
+    const mixed = async () => [
+      { address: "8.8.8.8", family: 4 },
+      { address: "10.0.0.5", family: 4 },
+    ];
+    assert.notEqual(await adresseProblem("https://gemischt.example/", { lookup: mixed }), null);
+  });
+  test("sperrt Azure-WireServer 168.63.129.16", () => assert.notEqual(urlProblem("http://168.63.129.16/"), null));
+  test("die eigene JARVIS-Schnittstelle ist für den Browser gesperrt", () => assert.notEqual(urlProblem("http://127.0.0.1:3000/api/sicherheit"), null));
 });
 
 describe("Browser: was nie geklickt wird", () => {

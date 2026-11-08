@@ -4,6 +4,7 @@ import path from "node:path";
 import type { BrowserContext, CDPSession, Frame, Locator, Page } from "playwright-core";
 import { clickProblem, enterProblem, hostLabel, MAX_MINUTES, MAX_STEPS, typeProblem, urlProblem, type BrowserStatus, type BrowserStep, type BrowserTask, type ElementInfo } from "../browser";
 import { CONFIG_DIR, type JarvisConfig } from "./config";
+import { adresseProblem } from "./netz";
 
 // Der Browser-Agent. JARVIS startet ein eigenes Chrome mit eigenem Profil (Anmeldungen bleiben darin
 // gespeichert, getrennt von deinem normalen Chrome) und lässt Claude es bedienen. Chrome läuft dabei ohne
@@ -17,6 +18,25 @@ const MODEL = "claude-opus-5-5";
 const PROFILE_DIR = path.join(CONFIG_DIR, "browser-profil");
 // Nur für Tests: einzelne lokale Seiten (Host mit Port) erlauben, einen bestimmten Chrome und eine eigene Suchseite nehmen.
 const ALLOW_LOCAL = (process.env.JARVIS_BROWSER_LOCAL ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+
+// Namensauflösung je Host, eine Minute gemerkt, damit nicht jedes Bild einer Seite neu fragt.
+const dnsCache = new Map<string, { at: number; problem: string | null }>();
+async function dnsProblem(raw: string): Promise<string | null> {
+  let host: string;
+  try {
+    const url = new URL(raw);
+    if (ALLOW_LOCAL.includes(url.host)) return null;
+    host = url.hostname;
+  } catch {
+    return "Das ist keine Webadresse.";
+  }
+  const hit = dnsCache.get(host);
+  if (hit && Date.now() - hit.at < 60_000) return hit.problem;
+  const problem = await adresseProblem(raw);
+  dnsCache.set(host, { at: Date.now(), problem });
+  if (dnsCache.size > 500) dnsCache.delete(dnsCache.keys().next().value!);
+  return problem;
+}
 const SEARCH_URL = process.env.JARVIS_SEARCH_URL ?? "https://duckduckgo.com/html/?kl=de-de&q=";
 // Nur für Tests ohne Bildschirm: auch beim Übernehmen kein sichtbares Fenster.
 const NEVER_VISIBLE = process.env.JARVIS_BROWSER_HEADLESS === "1";
@@ -148,9 +168,14 @@ async function launch(visible = false): Promise<BrowserContext> {
     throw new BrowserError(explainLaunch(e));
   }
   // Auch Bilder, Skripte und Weiterleitungen einer Seite erreichen nichts im Heimnetz.
+  // Dazu wird jeder Name aufgelöst: Zeigt er auf eine interne Adresse (etwa 192.168.178.1.nip.io), wird gesperrt.
   await context.route(
-    (url) => /^https?:$/.test(url.protocol) && urlProblem(url.href, ALLOW_LOCAL) !== null,
-    (route) => route.abort("blockedbyclient"),
+    (url) => /^https?:$/.test(url.protocol),
+    async (route) => {
+      const href = route.request().url();
+      if (urlProblem(href, ALLOW_LOCAL) !== null || (await dnsProblem(href)) !== null) return route.abort("blockedbyclient");
+      return route.continue();
+    },
   );
   context.on("page", (page) => {
     wire(page);
@@ -620,7 +645,7 @@ async function runTask(config: JarvisConfig, apiKey: string, auftrag: string, op
         inputSchema: { type: "object", properties: { adresse: { type: "string", description: "z. B. https://www.idealo.de" } }, required: ["adresse"], additionalProperties: false },
         run: async ({ adresse }) => {
           const url = /^[a-z]+:/i.test(adresse.trim()) ? adresse.trim() : `https://${adresse.trim()}`;
-          const problem = urlProblem(url, ALLOW_LOCAL);
+          const problem = urlProblem(url, ALLOW_LOCAL) ?? (await dnsProblem(url));
           if (problem) return blocked(problem, hostLabel(url));
           return act(async (p) => {
             step(`Öffne ${hostLabel(url)}`, { url });
