@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
 import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
+import { SicherheitsZentrale } from "../Sicherheit";
 import { TelegramSetup } from "../TelegramSetup";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
@@ -104,7 +105,14 @@ export function SettingsView() {
           <Section title="Stimme">
             <VoicePicker />
           </Section>
-          <Section title="Sicherheit">
+          <Section
+            id="sicherheit"
+            title="Sicherheit"
+            text="Jedes Werkzeug, das eine KI benutzt, läuft durch das Security Gateway: Es prüft nach festen Regeln, fragt dich vor Änderungen und schreibt alles ins Audit-Log."
+          >
+            <SicherheitsZentrale />
+          </Section>
+          <Section title="Datenschutz">
             <ul className="space-y-1.5 text-sm text-sky-50/85">
               <li>
                 Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
@@ -114,7 +122,7 @@ export function SettingsView() {
               <li>
                 Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben,
                 Mails), verschlüsselt an Anthropic. Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche; Links aus deinen Mails ruft er nicht auf. Claude kann
-                keine Mails schreiben oder löschen und ändert Aufgaben nur, wenn du es sagst.
+                keine Mails schreiben oder löschen; Änderungen an Aufgaben, Terminen, Mails und Gedächtnis führt JARVIS erst nach deinem Ja per Knopf aus.
               </li>
               <li>
                 Mit Telegram holt JARVIS die Nachrichten an deinen Bot selbst bei Telegram ab; dafür muss niemand an deinen Mac heran. Was ihr schreibt, läuft über die

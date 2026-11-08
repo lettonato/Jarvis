@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import path from "node:path";
 import type { BrowserContext, CDPSession, Frame, Locator, Page } from "playwright-core";
+import { durchGateway, GatewaySperre } from "./gateway/gateway";
+import { agentSperre } from "./gateway/zustand";
 import { clickProblem, enterProblem, hostLabel, MAX_MINUTES, MAX_STEPS, typeProblem, urlProblem, type BrowserStatus, type BrowserStep, type BrowserTask, type ElementInfo } from "../browser";
 import { CONFIG_DIR, type JarvisConfig } from "./config";
 import { adresseProblem } from "./netz";
@@ -552,7 +554,9 @@ type TaskOptions = { from: BrowserTask["from"]; signal?: AbortSignal; onStep?: (
 
 // Ein Auftrag im Browser, etwa „Such mir Winterreifen 205/55 R16 und vergleich drei Angebote“.
 // Liefert das Ergebnis als Text. Immer nur einer zur Zeit.
-export function runBrowserTask(config: JarvisConfig, apiKey: string, auftrag: string, opts: TaskOptions): Promise<string> {
+export async function runBrowserTask(config: JarvisConfig, apiKey: string, auftrag: string, opts: TaskOptions): Promise<string> {
+  const sperre = await agentSperre("browser");
+  if (sperre) throw new BrowserError(sperre);
   if (shared.task?.state === "laeuft")
     return Promise.reject(new BrowserError(`Ich bin gerade schon im Browser unterwegs („${shared.task.auftrag.slice(0, 60)}“). Warte kurz oder halte den Auftrag in der Browser-Ansicht an.`));
   const run = runTask(config, apiKey, auftrag, opts);
@@ -743,6 +747,24 @@ async function runTask(config: JarvisConfig, apiKey: string, auftrag: string, op
       }),
     ];
 
+    // Jede Aktion läuft durch das Security Gateway: Es protokolliert sie und hält den Agenten beim Not-Aus
+    // sofort an. Was eine Webseite dem Agenten sagt, gilt immer als fremd.
+    const kanal = opts.from === "telegram" ? "telegram" : "mac";
+    const geprueft = tools.map((t) => ({
+      ...t,
+      run: async (input: never) => {
+        try {
+          return await durchGateway({ werkzeug: t.name, agent: "browser", kanal, eingabe: (input ?? {}) as Record<string, unknown>, fremd: true }, async () => t.run(input));
+        } catch (e) {
+          if (e instanceof GatewaySperre) {
+            step(`Gesperrt: ${e.message}`, { blocked: true });
+            if (e.ursache === "notaus" || e.ursache === "gesperrt") abort.abort();
+          }
+          throw e;
+        }
+      },
+    })) as typeof tools;
+
     const runner = new Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 }).beta.messages.toolRunner(
       {
         model: MODEL,
@@ -750,7 +772,7 @@ async function runTask(config: JarvisConfig, apiKey: string, auftrag: string, op
         output_config: { effort: "medium" },
         cache_control: { type: "ephemeral" },
         system: [{ type: "text", text: systemPrompt(config.name, opts.from === "telegram"), cache_control: { type: "ephemeral" } }],
-        tools,
+        tools: geprueft,
         messages: [{ role: "user", content: `Auftrag von ${config.name}:\n${auftrag.slice(0, 2000)}\n\nDas Fenster zeigt gerade:\n${await readPage(first)}` }],
         max_iterations: MAX_STEPS + 2,
       },

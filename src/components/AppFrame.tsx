@@ -9,6 +9,7 @@ import { Holo } from "./HoloView";
 import { Icon, type IconName } from "./icons";
 import { useConversation, useJarvis } from "./JarvisProvider";
 import { Orb } from "./Orb";
+import { SicherheitsLeiste } from "./Sicherheit";
 import { eventsOn } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
 import { formatClock } from "@/lib/format";
@@ -109,6 +110,7 @@ function NavBar() {
           </HoloLink>
         </div>
       </div>
+      <SicherheitsLeiste />
       <ApprovalBar />
     </header>
   );

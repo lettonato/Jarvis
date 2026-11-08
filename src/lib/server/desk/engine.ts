@@ -43,6 +43,7 @@ import {
 import { SOFT_FILTERS, SOFT_KEYS, type SoftKey } from "../../thresholds";
 import { brainKey, explainBrainError } from "../brain";
 import { CONFIG_DIR, grokKey, readConfig, twelveKey, xBudget } from "../config";
+import { agentSperre } from "../gateway/zustand";
 import { intelWarning } from "../intel";
 import { notify } from "../notify";
 import { writeVaultFile } from "../obsidian";
@@ -911,6 +912,8 @@ export async function tick(now = new Date()) {
   try {
     const state = await load();
     if (state.status === "aus" || state.status === "notaus") return;
+    // Zentraler Not-Aus oder gesperrter Desk: kein Agent arbeitet, auch nicht Scan, Crawler oder Chief.
+    if (await agentSperre("desk")) return;
     await rollDay(state, now);
     expireApprovals(state, now);
     const before = state.day.trades;
@@ -964,6 +967,11 @@ export type DeskAction = { action: "start" | "pause" | "weiter" | "notaus" | "al
 export class DeskError extends Error {}
 
 export async function control(input: DeskAction, now = new Date()): Promise<string> {
+  // Starten und Fortsetzen nur, solange weder der zentrale Not-Aus steht noch der Desk gesperrt ist.
+  if (input.action === "start" || input.action === "weiter") {
+    const sperre = await agentSperre("desk");
+    if (sperre) throw new DeskError(sperre);
+  }
   const state = await load();
   let message: string;
   switch (input.action) {

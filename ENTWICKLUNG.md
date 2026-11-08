@@ -14,12 +14,15 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 5. November 2026
+Letzte Aktualisierung: 8. November 2026
 
 ## Aktueller Stand
 
-Schritt 1 (Sicherheitsnetz) ist umgesetzt und in der Sandbox geprüft. Nächster Schritt nach Freigabe:
-Schritt 2, Security Gateway (siehe [Plan](docs/jarvis-2.0/03-plan-schritt-1.md)).
+Schritt 1 (Sicherheitsnetz) ist abgeschlossen. Schritt 2 (zentrale Sicherheitsarchitektur) ist umgesetzt
+und in der Sandbox geprüft: Security Gateway mit Klassen A–D und Deny by Default, zentraler Not-Aus,
+Freigaben durch einen Menschen, Audit-Log mit Prüfkette, gemeinsamer Netzschutz. Alle 13 bekannten
+Sicherheitslücken aus Schritt 1 sind behoben und als normale Tests grün (179 von 179). Beschreibung:
+[Schritt 2](docs/jarvis-2.0/04-security-gateway.md). Offen: Prüfung auf dem Mac (Prüfliste unten).
 
 ---
 
@@ -32,15 +35,15 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 |---|---|---|---|---|
 | **Fundament** | | | | |
 | Sicherheitsnetz: Tests, CI, Secret-Scan, Rückfallpunkt | 123 Tests, CI grün, gitleaks ohne Fund | jeder Schritt automatisch geprüft | 1 | Abgeschlossen ([CI-Lauf](https://github.com/lettonato/Jarvis/actions/runs/42112321400)); Mac-Prüfliste offen |
-| Security Gateway (alle Werkzeuge, Klassen A–D, Deny by Default) | fehlt; Werkzeuge direkt am Modell | jede Aktion geprüft, protokolliert, freigegeben | 2 | Offen |
-| Zentraler Not-Aus und Agentensperre | nur Desk, vom Modell aufhebbar | ein Schalter für alles, nur Mensch löst | 2 | Offen |
-| Audit-Log und Alarmierung | fehlt | manipulationssicher, Azure Monitor | 2/3 | Offen |
+| Security Gateway (alle Werkzeuge, Klassen A–D, Deny by Default) | alle 32 Werkzeuge von Gehirn (24), Browser (7) und Analyst (1) laufen durch `gateway/`, Websuche und Webseiten werden protokolliert, Herkunftsmarkierung, Freigaben per Knopf | jede Aktion geprüft, protokolliert, freigegeben | 2 | Testbereit (Sandbox geprüft, Mac offen) |
+| Zentraler Not-Aus und Agentensperre | ein Schalter für Gespräch, Browser, Analyst, Intel, Desk; lösen nur am Mac mit „FREIGEBEN“ | ein Schalter für alles, nur Mensch löst | 2 | Testbereit (Sandbox geprüft, Mac offen) |
+| Audit-Log und Alarmierung | `audit.jsonl` mit SHA-256-Kette, Schwärzung, Alarm per Telegram/Mac | manipulationssicher, Azure Monitor | 2/3 | Testbereit (lokal); unveränderliche Ablage Offen (Phase 3) |
 | Geheimnisverwaltung | Klartext `~/.jarvis/config.json` | Key Vault, Managed Identity, getrennt Test/Prod | 2/3 | Offen |
 | Anmeldung | keine, nur localhost | Entra ID mit MFA, eigene Identität je Nutzer | 5 | Offen |
 | Betrieb in Azure | lokaler Next-Server | Container Apps, Test- und Prod-Umgebung, IaC | 3 | Blockiert (Azure-Abo/IT klären) |
 | Modelladapter | Anthropic fest in 4 Dateien | Claude primär, andere Modelle austauschbar | 4 | Offen |
 | **Zentrales Gedächtnis** | | | | |
-| Persönliches Gedächtnis | `gedaechtnis.json`, Modell schreibt ohne Rückfrage | Teil des Projektgedächtnisses, mit Bestätigung | 2/6 | Testbereit (heute), Umbau Offen |
+| Persönliches Gedächtnis | `gedaechtnis.json`, jeder Eintrag erst nach Ja per Knopf | Teil des Projektgedächtnisses, mit Bestätigung | 2/6 | Testbereit (Bestätigung), Umbau Offen |
 | Projektakten (Verantwortliche, Termine, Aufgaben, Entscheidungen, Risiken, Quellen) | fehlt | PostgreSQL mit Quelle und Zeitstempel | 6 | Offen |
 | Gesprächsnachbereitung (Aufgaben/Entscheidungen aus Notizen, Vorschlag zur Bestätigung) | fehlt | strukturiert, erst nach Bestätigung gespeichert | 6 | Offen |
 | Intelligente Erinnerung vor Folgeterminen | fehlt | frühere Entscheidungen mit Quelle | 6 | Offen |
@@ -50,11 +53,11 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | JARVIS-Chat (Text und Sprache, öffnet Bereiche) | vorhanden, öffnet Ansichten | zentral im Dashboard | 7/8 | Testbereit |
 | Mitarbeiterkapazitäten | fehlt | nur offizielle Zeiterfassung, keine Überwachung | 7 | Offen |
 | **Gemeinsame Agentensteuerung** | | | | |
-| KI-Gehirn mit Werkzeugen | 25 Werkzeuge, Websuche | über Gateway, Datenminimierung | 2/4 | Testbereit |
-| Browser-Agent | eigenes Chrome, harte Kauf-/Passwortsperren | über Gateway, DNS-geprüfte Adressen | 2/9 | Testbereit, Lücke R-04 |
-| Dokumentenagent (Recherche → PDF) | vorhanden, Kostenbremse 10 $ | über Gateway, Ablage SharePoint/Blob | 9 | Testbereit |
+| KI-Gehirn mit Werkzeugen | 24 Werkzeuge + Websuche, alle über das Gateway | über Gateway, Datenminimierung | 2/4 | Testbereit |
+| Browser-Agent | eigenes Chrome, harte Kauf-/Passwortsperren, jede Aktion über das Gateway, DNS-geprüfte Adressen | über Gateway, DNS-geprüfte Adressen | 2/9 | Testbereit (R-04 behoben) |
+| Dokumentenagent (Recherche → PDF) | vorhanden, Kostenbremse 10 $, Abgabe über das Gateway, Not-Aus bricht ab | über Gateway, Ablage SharePoint/Blob | 9 | Testbereit |
 | Grok-Marktbeobachtung (Intel) | 2× täglich, Tagesbudget | proaktive Berichte | 9 | Testbereit |
-| Webcrawler | im Desk, SSRF-Grundschutz | gemeinsam nutzbar, Lücken geschlossen | 2/9 | Testbereit, Lücke R-05 |
+| Webcrawler | gemeinsamer Netzschutz `netz.ts` (alle IP-Formen, feste geprüfte IP je Abruf) | gemeinsam nutzbar, Lücken geschlossen | 2/9 | Testbereit (R-05 behoben) |
 | Trading-Simulation (Spielgeld) | vorhanden, kein Echtgeld-Code | strikt getrennt von Echtgeld | 9 | Testbereit |
 | Proaktive Routinen (Kalender, Projekte, Rückmeldungen, Berichte) | Telegram-Briefing, Erinnerungen | kontrollierbar, protokolliert, abschaltbar | 9 | Offen |
 | Verkehrsplanung | fehlt | echte Verkehrsdaten | 9 | Offen |
@@ -104,7 +107,7 @@ Abgedeckt: Desk-Regeln und Rückfrage (14), Browser-Sperren (39), Crawler-Filter
 Telegram- und Dokument-Regeln (14), Obsidian, Gedächtnis, Dokumentablage (9), KI-Gehirn mit
 nachgebautem Claude (10), Spielgeld-Desk (7).
 
-**Bekannte Lücken, als TODO-Tests geführt (nicht bestanden):**
+**Bekannte Lücken, Stand 5. November als TODO-Tests geführt (seit Schritt 2 alle behoben, siehe unten):**
 
 | Risiko | TODO-Tests | Befund |
 |---|---|---|
@@ -136,12 +139,45 @@ nachgebautem Claude (10), Spielgeld-Desk (7).
 | Aufgabe | Zustand | Beleg / Hinweis |
 |---|---|---|
 | Prüfung der Grundlagen (Secrets, Tools, SSRF, Injection, Not-Aus, Logs) | Testbereit | [Risikoliste](docs/jarvis-2.0/02-risiken.md) |
-| 2.1 Security Gateway, Deny by Default | Offen | Schritt 2, wartet auf Freigabe |
-| 2.2 Sicherheitsklassen A–D | Offen | erste Einordnung aller Werkzeuge in der Risikoliste, Abschnitt B |
-| 2.3 Zugangsdaten schützen | Offen | R-07 |
-| 2.4 Schutz vor manipulierten Inhalten | Offen | R-02, R-03, R-04, R-05; TODO-Tests liegen bereit |
-| 2.5 Zentraler Not-Aus, Agentensperre | Offen | R-06; TODO-Test liegt bereit |
-| 2.5 Audit-Log, Alarmierung, Manipulationsschutz | Offen | R-08 |
+| 2.1 Security Gateway, Deny by Default | Testbereit | `src/lib/server/gateway/`; Tests „Deny by Default und Richtlinientabelle“ (7), Gegenprobe ohne Gateway schlägt fehl |
+| 2.2 Sicherheitsklassen A–D | Testbereit | Richtlinientabelle mit 34 Einträgen (32 eigene Werkzeuge, Websuche, Webseiten); Tests „Klassen A bis D“ (5) |
+| 2.2 Freigaben außerhalb des Modells | Testbereit | Mac-Leiste und Telegram-Knöpfe, genau einmal, Verfall 15 Min.; Tests (7); Telegram-Knöpfe auf dem Handy noch nicht geprüft |
+| 2.3 Zugangsdaten schützen | Offen | R-07, Vorschlag für den nächsten Schritt |
+| 2.4 Schutz vor manipulierten Inhalten | Testbereit | Herkunftsmarkierung, R-03/R-04/R-05 behoben, R-02 durch Freigabepflicht nach fremden Inhalten eingedämmt; Tests „Herkunft“ (3) und Netzschutz (alle früheren TODO-Tests) |
+| 2.5 Zentraler Not-Aus, Agentensperre | Testbereit | R-06 behoben; Tests „zentraler Not-Aus“ (7), „Agentensperren“ (2) |
+| 2.5 Audit-Log, Alarmierung, Manipulationsschutz | Testbereit | R-08 lokal behoben (Kette, Schwärzung, Alarm); Tests „Audit-Log“ (4); unveränderliche Ablage erst mit Azure |
+
+### Testergebnisse Schritt 2 (8. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint` | 0 Befunde |
+| `npm run typecheck` | 0 Fehler |
+| `npm test` | **179 Tests: 179 bestanden, 0 fehlgeschlagen, 0 TODO** (Schritt 1: 123 Tests, davon 13 bekannte Lücken) |
+| Die 13 früheren TODO-Tests (R-03, R-04 ×4, R-05 ×7, R-06) | alle als normale Tests grün, nach echter Behebung im Code |
+| Gegenprobe: Gateway im Gehirn testweise entfernt | R-03, R-06 und der Test „manipuliertes Modell“ schlagen fehl; danach wiederhergestellt |
+| `next build` | erfolgreich |
+| Rauchtest `next start` mit `/api/sicherheit` | Not-Aus an → Desk-Start abgelehnt; Lösen mit falscher Bestätigung abgelehnt, mit „FREIGEBEN“ gelöst; ohne `x-jarvis` und mit fremdem Host 403; Audit-Kette intakt; Seiten `/`, `/einstellungen`, `/trading`, `/fokus`, `/agenten` 200 |
+| Oberfläche im Headless-Chrome | Not-Aus-Leiste, Freigabe-Leiste und Sicherheitszentrale werden angezeigt (ohne 3D-Welt; das Standard-Headless-Chrome der Sandbox stürzt bei der Kommandozentrale ab, auch ohne die Änderungen von Schritt 2) |
+
+Neue Tests in `test/module/gateway.test.ts` (35): Deny by Default, jedes angebotene Werkzeug hat eine Regel,
+jede freigabepflichtige Regel hat eine Aktion, Aufrufer und Kanäle, Klassen A–D, Freigaben (genau einmal,
+auch bei gleichzeitigem Ja, Nein, Verfall, kein Ja durch das System, Nachprüfung beim Ja), Herkunft nach
+dem Lesen von Mails, Not-Aus sperrt jedes Werkzeug und jeden Agenten, Lösen nur am Mac, nur die
+Sicherheitszentrale ruft `notausAus`/`entsperreAgent`/`entscheideFreigabe` auf, Audit-Kette erkennt
+Änderung und Löschung, Schwärzung. Dazu R-03 und R-06 in `gehirn.test.ts`, R-04 und R-05 in `test/regeln/`.
+
+**Prüfliste Schritt 2 für Benedikt auf dem Mac** (bleibt „Testbereit“ bis zur Bestätigung):
+
+1. „Merk dir, dass ich Kaffee schwarz trinke“: Oben erscheint eine Freigabe; nach „Ja, ausführen“ steht
+   der Eintrag unter Einstellungen → Gedächtnis.
+2. „Trag morgen 10 Uhr Test ein“: Freigabe am Mac und in Telegram; Ja auf dem Handy trägt ein, der Knopf
+   am Mac verschwindet.
+3. Einstellungen → Sicherheit → Not-Aus: rote Leiste oben, JARVIS antwortet „Ich bin angehalten“.
+   `/notaus` in Telegram wirkt genauso. Lösen nur mit „FREIGEBEN“ am Mac.
+4. Audit-Log in den Einstellungen zeigt die Schritte, „Prüfkette intakt“.
+
+**Verbleibende Risiken nach Schritt 2:** siehe [Schritt 2, Abschnitt „Verbleibende Risiken“](docs/jarvis-2.0/04-security-gateway.md#verbleibende-risiken).
 
 ## Phase 3 bis 10
 
@@ -158,6 +194,7 @@ nachgebautem Claude (10), Spielgeld-Desk (7).
 
 ## Offene Fragen an Benedikt
 
-1. Freigabe für Schritt 2 (Security Gateway)?
+1. Prüfliste Schritt 2 auf dem Mac, dann Freigabe für den nächsten Schritt (Vorschlag: 2.3 Zugangsdaten
+   aus der Klartextdatei in den macOS-Schlüsselbund).
 2. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
 3. Vor Phase 8: Läuft der Geschäftsführungs-PC mit Windows oder macOS?

@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { approvalButton, assetLabel, parseApprovalButton } from "../approval";
+import { freigabeKnopf, leseFreigabeKnopf } from "../sicherheit";
 import type { BrainTurn } from "../brain";
 import type { CalendarSnapshot } from "../calendar";
 import { deskSentence, situation } from "../commands";
@@ -28,6 +29,8 @@ import { CONFIG_DIR, readConfig, writeConfig, type JarvisConfig, type TelegramCo
 import { answerApproval, approvalStateOf, control, DeskError, deskSnapshot } from "./desk/engine";
 import { intelSnapshot } from "./intel";
 import { readMail } from "./mail";
+import { entscheideFreigabe, FreigabeFehler, freigabeZustand } from "./gateway/freigaben";
+import { notausAn } from "./gateway/zustand";
 import { onNotice, type Notice } from "./notify";
 import { readTasks } from "./obsidian";
 
@@ -209,12 +212,17 @@ async function sendFile(token: string, chatId: number, file: string, caption: st
 }
 
 // Eine Rückfrage mit Ja/Nein-Knöpfen darunter.
-async function sendQuestion(token: string, chatId: number, id: string, text: string): Promise<number> {
+// Kauf-Rückfragen des Desks (rf:) und Freigaben des Security Gateways (fg:) haben eigene Knöpfe.
+async function sendQuestion(token: string, chatId: number, id: string, text: string, art: "kauf" | "freigabe" = "kauf"): Promise<number> {
+  const buttons =
+    art === "kauf"
+      ? [{ text: "✅ Ja, kaufen", callback_data: approvalButton(id, true) }, { text: "✖️ Nein", callback_data: approvalButton(id, false) }]
+      : [{ text: "✅ Ja, ausführen", callback_data: freigabeKnopf(id, true) }, { text: "✖️ Nein", callback_data: freigabeKnopf(id, false) }];
   const msg = await call<{ message_id: number }>(token, "sendMessage", {
     chat_id: chatId,
     text,
     link_preview_options: { is_disabled: true },
-    reply_markup: { inline_keyboard: [[{ text: "✅ Ja, kaufen", callback_data: approvalButton(id, true) }, { text: "✖️ Nein", callback_data: approvalButton(id, false) }]] },
+    reply_markup: { inline_keyboard: [buttons] },
   });
   return msg.message_id;
 }
@@ -348,6 +356,23 @@ async function handleButton(token: string, q: TgCallback) {
   if (!tg?.chatId || tg.token !== token) return;
   const answer = (text?: string) => call(token, "answerCallbackQuery", { callback_query_id: q.id, ...(text ? { text } : {}) }).catch(() => {});
   if (q.from.id !== tg.chatId || q.message?.chat.id !== tg.chatId) return;
+  // Freigabe des Security Gateways: nur aus deinem gekoppelten Chat, ausgeführt genau einmal.
+  const fg = leseFreigabeKnopf(q.data);
+  if (fg) {
+    let text: string;
+    try {
+      text = (await entscheideFreigabe(fg.id, fg.ja, "telegram")).text;
+    } catch (e) {
+      text = e instanceof FreigabeFehler ? e.message : `Das hat nicht geklappt. ${e instanceof Error ? e.message : String(e)}`;
+      if (q.message && (await freigabeZustand(fg.id)) !== "offen") {
+        const state = await load();
+        state.asks = state.asks.filter((a) => a.id !== fg.id);
+        await save(state);
+        await call(token, "editMessageReplyMarkup", { chat_id: tg.chatId, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {});
+      }
+    }
+    return answer(text.slice(0, 190));
+  }
   const button = parseApprovalButton(q.data);
   if (!button) return answer();
   let text: string;
@@ -375,8 +400,10 @@ async function runCommand(command: TelegramCommand, config: JarvisConfig): Promi
         return deskStatus(await deskSnapshot());
       case "pause":
       case "weiter":
-      case "notaus":
         return await control({ action: command });
+      // /notaus schaltet den zentralen Not-Aus: alle Agenten stehen. Lösen geht nur am Mac.
+      case "notaus":
+        return await notausAn("per Telegram ausgelöst", "telegram");
       case "hilfe":
         return helpText(config.name, Boolean(brainKey(config)));
     }
@@ -453,10 +480,10 @@ async function briefing(config: JarvisConfig, now: Date): Promise<string> {
 }
 
 // Rückfragen kommen immer, auch wenn Meldungen zu Trades abgeschaltet sind: Ohne dein Ja kauft der Desk nicht.
-async function deliverQuestion(tg: TelegramConfig & { chatId: number }, notice: Extract<Notice, { kind: "rueckfrage" | "rueckfrage_ende" }>) {
+async function deliverQuestion(tg: TelegramConfig & { chatId: number }, notice: Extract<Notice, { kind: "rueckfrage" | "rueckfrage_ende" | "freigabe" | "freigabe_ende" }>) {
   const state = await load();
-  if (notice.kind === "rueckfrage") {
-    const messageId = await sendQuestion(tg.token, tg.chatId, notice.id, notice.text);
+  if (notice.kind === "rueckfrage" || notice.kind === "freigabe") {
+    const messageId = await sendQuestion(tg.token, tg.chatId, notice.id, notice.text, notice.kind === "rueckfrage" ? "kauf" : "freigabe");
     state.asks = [...state.asks, { id: notice.id, messageId, text: notice.text }].slice(-30);
     await save(state);
     return;
@@ -479,7 +506,7 @@ async function deliver(notice: Notice) {
   const config = await readConfig();
   const tg = config.telegram;
   if (!tg?.chatId) return;
-  if (notice.kind === "rueckfrage" || notice.kind === "rueckfrage_ende") {
+  if (notice.kind === "rueckfrage" || notice.kind === "rueckfrage_ende" || notice.kind === "freigabe" || notice.kind === "freigabe_ende") {
     return deliverQuestion({ ...tg, chatId: tg.chatId }, notice).catch((e) => {
       if (e instanceof TelegramError && e.code === 403) shared.error = explainTelegramError(e);
       console.error("Telegram-Rückfrage:", explainTelegramError(e));

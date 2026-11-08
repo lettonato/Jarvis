@@ -15,22 +15,25 @@ eine Cloud-Bereitstellung dazukommen.
 
 | Nr. | Risiko | Bewertung | Beleg |
 |---|---|---|---|
-| R-01 | Kein Security Gateway: Claude ruft alle 25 Werkzeuge direkt auf | Kritisch | aus dem Code |
-| R-02 | Prompt Injection kann zu Datenabfluss über den Browser-Agenten führen | Kritisch | aus dem Code |
-| R-03 | Gedächtnis wird ohne Bestätigung beschrieben (dauerhafte Injection) | Hoch | aus dem Code |
-| R-04 | Browser-Agent prüft Adressen nur nach Namen, nicht nach aufgelöster IP | Hoch | bestätigt |
-| R-05 | Crawler-SSRF-Schutz hat Lücken (Azure-Endpunkt, IPv6-Formen, DNS-Rebinding) | Hoch (in Azure) | bestätigt |
-| R-06 | Kein zentraler Not-Aus; Desk-Not-Aus kann das Modell selbst aufheben | Hoch | aus dem Code |
+| R-01 | Kein Security Gateway: Claude ruft alle 25 Werkzeuge direkt auf | Kritisch | aus dem Code, **behoben in Schritt 2** (Security Gateway) |
+| R-02 | Prompt Injection kann zu Datenabfluss über den Browser-Agenten führen | Kritisch | aus dem Code, **eingedämmt in Schritt 2** (Freigabe nach fremden Inhalten); Rest siehe 04-security-gateway.md |
+| R-03 | Gedächtnis wird ohne Bestätigung beschrieben (dauerhafte Injection) | Hoch | aus dem Code, **behoben in Schritt 2** (Freigabe für jeden Eintrag) |
+| R-04 | Browser-Agent prüft Adressen nur nach Namen, nicht nach aufgelöster IP | Hoch | bestätigt, **behoben in Schritt 2** (DNS-Prüfung je Anfrage); Rest: Rebinding innerhalb von Chrome |
+| R-05 | Crawler-SSRF-Schutz hat Lücken (Azure-Endpunkt, IPv6-Formen, DNS-Rebinding) | Hoch (in Azure) | bestätigt, **behoben in Schritt 2** (gemeinsamer Netzschutz, feste geprüfte IP) |
+| R-06 | Kein zentraler Not-Aus; Desk-Not-Aus kann das Modell selbst aufheben | Hoch | aus dem Code, **behoben in Schritt 2** (zentraler Not-Aus, lösen nur am Mac) |
 | R-07 | Geheimnisse im Klartext in `~/.jarvis/config.json`, ein Schlüssel für alles | Hoch | aus dem Code |
-| R-08 | Kein Audit-Log, keine Alarmierung, Protokolle änderbar | Hoch | aus dem Code |
-| R-09 | Telegram-Kanal hat volle Werkzeugrechte, nur über Chat-ID abgesichert | Mittel | aus dem Code |
-| R-10 | Keine automatischen Tests im Repo, keine CI | Hoch | bestätigt |
+| R-08 | Kein Audit-Log, keine Alarmierung, Protokolle änderbar | Hoch | aus dem Code, **lokal behoben in Schritt 2** (Audit-Log mit Prüfkette, Alarm); unveränderliche Ablage in Phase 3 |
+| R-09 | Telegram-Kanal hat volle Werkzeugrechte, nur über Chat-ID abgesichert | Mittel | aus dem Code, **eingedämmt in Schritt 2** (Gateway gilt auch für Telegram, Not-Aus dort nicht lösbar) |
+| R-10 | Keine automatischen Tests im Repo, keine CI | Hoch | bestätigt, **behoben in Schritt 1** (Tests, CI, gitleaks) |
 | R-11 | 16 PRs ungemergt gestapelt, `main` ist veraltet | Hoch | bestätigt |
 | R-12 | Betrieb im Next-Dev-Modus, `npm install` statt `npm ci` | Mittel | aus dem Code |
-| R-13 | Kostenauslösung durch das Modell (Analyst, Grok-Suche) | Mittel | aus dem Code |
+| R-13 | Kostenauslösung durch das Modell (Analyst, Grok-Suche) | Mittel | aus dem Code, **eingedämmt in Schritt 2** (Kosten nach fremden Inhalten nur mit Freigabe, Not-Aus bricht ab) |
 | R-14 | Datenschutz: Mails, Termine, Gedächtnis gehen über persönlichen API-Schlüssel an Anthropic | Kritisch für Firmendaten | aus dem Code |
 | R-15 | Plattform: JARVIS ist Mac-gebunden, Plan sieht Windows-Login vor | Mittel | aus dem Code |
 | R-16 | Obsidian-Schreiben folgte verknüpftem Ordner nach draußen (neue Datei) | Mittel | bestätigt per Test, **behoben in Schritt 1** |
+
+Stand der Behebung: siehe [Schritt 2](04-security-gateway.md). Die Abschnitte A bis F unten beschreiben den
+Befund vom 5. November 2026 und bleiben zur Nachvollziehbarkeit unverändert.
 
 ## Prüfung der Phase-2-Grundlagen
 

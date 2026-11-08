@@ -15,6 +15,7 @@ import {
 } from "../intel";
 import { CONFIG_DIR, grokKey, readConfig, writeConfig, type JarvisConfig } from "./config";
 import { askGrok, GrokError } from "./desk/grok";
+import { agentSperre } from "./gateway/zustand";
 import { notify } from "./notify";
 
 // Intel: Grok liest Nachrichten im Web und Beiträge auf X und schreibt ein kurzes Lagebild. Morgens ab
@@ -135,6 +136,8 @@ export class IntelError extends Error {}
 export async function refreshIntel(focus: string | null, opts: { wait?: boolean; now?: Date } = {}): Promise<IntelReport | null> {
   const now = opts.now ?? new Date();
   const config = await readConfig();
+  const sperre = await agentSperre("intel");
+  if (sperre) throw new IntelError(sperre);
   const key = grokKey(config);
   if (!key) throw new IntelError("Für Intel fehlt der xAI-Schlüssel. Den trägst du in den Einstellungen unter „Crawler auf X“ ein.");
   if (shared.running) throw new IntelError(shared.running.focus ? `Ich suche gerade schon zu ${shared.running.focus}.` : "Ich lese die Nachrichten gerade schon.");
@@ -177,6 +180,7 @@ export async function refreshIntel(focus: string | null, opts: { wait?: boolean;
 // Liest von selbst, wenn es Zeit ist: tagsüber, im Budget, und nicht gleich nach einem Fehlschlag.
 export async function autoIntel(now = new Date()) {
   if (shared.running || !inDaytime(now)) return;
+  if (await agentSperre("intel")) return;
   const state = await load();
   const config = await readConfig();
   const next = nextAuto(state, config, now);

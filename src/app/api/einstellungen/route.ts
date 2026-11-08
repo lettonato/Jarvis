@@ -5,6 +5,7 @@ import { CONFIG_DIR, expandHome, grokKey, readConfig, twelveKey, writeConfig, xB
 import { testTwelveKey } from "@/lib/server/desk/commodities";
 import { testGrokKey } from "@/lib/server/desk/grok";
 import { brainKey, testKey } from "@/lib/server/brain";
+import { protokolliere } from "@/lib/server/gateway/audit";
 import { guard, readBody } from "@/lib/server/guard";
 import { testMail } from "@/lib/server/mail";
 import { explainTelegramError, prefsOf, renewCode, resetTelegram, sendTest, telegramStatus, testTelegramToken, unpairTelegram, wakeTelegram } from "@/lib/server/telegram";
@@ -98,6 +99,8 @@ export async function POST(request: Request) {
   const body = await readBody<Action>(request);
   if (!body) return Response.json({ error: "Ungültige Anfrage." }, { status: 400 });
   const config = await readConfig();
+  // Fürs Audit-Log nur, was geändert wurde, nie die Werte (Schlüssel, Passwörter).
+  await protokolliere({ art: "einstellung", agent: "mensch", kanal: "mac", was: `Einstellung: ${String(body.action).slice(0, 40)}`, ergebnis: "angefragt" });
 
   if (body.action === "name") {
     const name = body.name?.trim().slice(0, 40);

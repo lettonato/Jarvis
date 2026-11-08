@@ -30,6 +30,11 @@ Weitere Zustandsdateien im selben Ordner (kein Konfigurationsinhalt, aber persö
 `gedaechtnis.json`, `telegram.json`, `intel.json`, `dokumente.json`, `spielgeld.json`,
 `spielgeld-trades.jsonl`, `browser-profil/`.
 
+Dateien des Security Gateways (seit Schritt 2, siehe `docs/jarvis-2.0/04-security-gateway.md`):
+`sicherheit.json` (Not-Aus, Agentensperren, Strenge für Klasse C; ist sie beschädigt, startet JARVIS mit
+Not-Aus), `freigaben.json` (die letzten 60 Freigaben), `audit.jsonl` (Audit-Log, nur angehängt, mit
+Prüfkette). Nicht von Hand ändern: Eine geänderte Zeile im Audit-Log meldet die Prüfung als Manipulation.
+
 **Bekannte Schwäche (R-07):** Geheimnisse stehen im Klartext in dieser Datei. Ziel laut Plan: macOS-
 Schlüsselbund bzw. Azure Key Vault mit Managed Identity, getrennte Schlüssel für Test und Produktion.
 

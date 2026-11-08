@@ -8,6 +8,8 @@ import { checkDocument, docCaption, DOC_LIMITS, fileStem, hostLabel, type DocJob
 import { openFile } from "./calendar";
 import { CONFIG_DIR, readConfig, type JarvisConfig } from "./config";
 import { renderDocument } from "./document-html";
+import { durchGateway, GatewaySperre } from "./gateway/gateway";
+import { agentSperre } from "./gateway/zustand";
 import { notify } from "./notify";
 import { htmlToPdf, PdfError } from "./pdf";
 
@@ -99,6 +101,8 @@ export async function startDocument(config: JarvisConfig, apiKey: string, input:
   const thema = clean(input.thema, 140);
   const auftrag = typeof input.auftrag === "string" ? input.auftrag.trim().slice(0, 4000) : "";
   if (!thema) throw new DocError("Worüber soll das Dokument gehen?");
+  const sperre = await agentSperre("analyst");
+  if (sperre) throw new DocError(sperre);
   const state = await load();
   if (shared.running) throw new DocError(`Ich schreibe gerade an „${shared.running.job.thema}“. Wenn das fertig ist, fange ich das nächste an.`);
   const job: DocJob = {
@@ -364,6 +368,9 @@ async function research(job: DocJob, apiKey: string, signal: AbortSignal): Promi
   ];
   let nudges = 0;
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    // Not-Aus oder Sperre halten den Analysten vor jedem Schritt an.
+    const sperre = await agentSperre("analyst");
+    if (sperre) throw new DocError(sperre);
     const searchesLeft = DOC_LIMITS.searches - job.searches;
     const fetchesLeft = DOC_LIMITS.fetches - job.pagesRead;
     const spent = job.costUsd >= DOC_LIMITS.maxUsd || (searchesLeft <= 0 && fetchesLeft <= 0);
@@ -421,6 +428,10 @@ async function research(job: DocJob, apiKey: string, signal: AbortSignal): Promi
     const calls = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
     const submitted = calls.filter((c) => c.name === SUBMIT).at(-1);
     if (submitted) {
+      // Auch die Abgabe geht durch das Security Gateway (protokolliert, beim Not-Aus gesperrt).
+      await durchGateway({ werkzeug: SUBMIT, agent: "analyst", kanal: job.from === "telegram" ? "telegram" : "mac", eingabe: { thema: job.thema }, fremd: true }, async () => true).catch((e) => {
+        throw e instanceof GatewaySperre ? new DocError(e.message) : e;
+      });
       const checked = checkDocument(submitted.input);
       if (checked.ok) return checked.doc;
       job.phase = "schreibt";
