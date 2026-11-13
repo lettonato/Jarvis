@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Edelmetalle } from "../Edelmetalle";
 import { useJarvis } from "../JarvisProvider";
 import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
@@ -8,7 +9,8 @@ import { BASE_TOPICS, MAX_TOPICS, MOOD_LABEL, TYPICAL_INTEL_COST_USD, type Intel
 import { useNow } from "@/lib/useNow";
 
 // Intel: das Lagebild aus Nachrichten und X, das Grok für dich liest. Oben die Lage und eine Warnung an
-// den Trading-Desk, falls es eine gibt, darunter die Meldungen mit Quelle, dann Suche und Themen.
+// den Trading-Desk, falls es eine gibt, darunter die Meldungen mit Quelle, dann Suche und Themen. Am Ende
+// steht das Lagebild für Gold und Silber (Edelmetalle.tsx); das kommt ohne Grok aus.
 
 const usd = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
 const clock = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -49,11 +51,11 @@ export function IntelView() {
         icon="intel"
         holo="modul-intel"
         title="Intel"
-        subtitle={intel?.configured ? `Nachrichten und X, gelesen von Grok · heute ${usd(intel.spentTodayUsd)} von ${usd(intel.budgetUsd)}` : "Nachrichten und X, gelesen von Grok"}
+        subtitle={intel?.configured ? `Nachrichten und X, gelesen von Grok. Heute ${usd(intel.spentTodayUsd)} von ${usd(intel.budgetUsd)}.` : "Nachrichten und X, gelesen von Grok"}
       >
         {intel?.configured && (
           <Button icon="laden" tone="primary" disabled={!canRun} onClick={() => refresh()} title={`Kostet etwa ${usd(TYPICAL_INTEL_COST_USD)}`}>
-            {intel.running && !intel.running.focus ? "Liest …" : `Aktualisieren · ≈ ${usd(TYPICAL_INTEL_COST_USD)}`}
+            {intel.running && !intel.running.focus ? "Liest …" : `Aktualisieren (etwa ${usd(TYPICAL_INTEL_COST_USD)})`}
           </Button>
         )}
       </PageHeader>
@@ -75,7 +77,7 @@ export function IntelView() {
 
       {intel?.warning && (
         <div role="alert" className="rounded-xl border border-down/60 bg-down/10 px-4 py-3 text-sm text-down">
-          <p className="text-xs font-bold text-down">Warnung an den Trading-Desk · bis {clock(intel.warning.until)} Uhr</p>
+          <p className="text-xs font-bold text-down">Warnung an den Trading-Desk bis {clock(intel.warning.until)} Uhr</p>
           <p className="mt-1">{intel.warning.text}</p>
           <p className="mt-1 text-xs text-down/80">Solange kauft der Desk nichts Neues. Stop-Loss und Verkäufe laufen weiter. Intel kann den Desk nur bremsen, nie kaufen lassen.</p>
         </div>
@@ -90,7 +92,7 @@ export function IntelView() {
           <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
             <span className={`rounded-full border px-2 py-0.5 font-bold ${MOOD_TONE[report.mood]}`}>Lage: {MOOD_LABEL[report.mood]}</span>
             <span className="text-quiet">
-              Stand {when(report.at, now)} · {usd(report.costUsd)}
+              Stand {when(report.at, now)}, {usd(report.costUsd)}
             </span>
             {intel.nextAt && <span className="ml-auto text-quiet">nächstes Lagebild {when(intel.nextAt, now)}</span>}
           </div>
@@ -107,6 +109,7 @@ export function IntelView() {
 
       {intel?.configured && <Search intel={intel} canRun={canRun} onSearch={refresh} now={now} />}
       {intel?.configured && <Topics intel={intel} />}
+      <Edelmetalle />
     </main>
   );
 }
@@ -185,7 +188,7 @@ function Search({ intel, canRun, onSearch, now }: { intel: IntelSnapshot; canRun
       {search && (
         <div className="mt-4 border-t border-schiefer/15 pt-3">
           <p className="text-xs text-quiet">
-            Zuletzt gesucht: <span className="font-bold text-stein">{search.focus}</span> · {when(search.at, now)} · {usd(search.costUsd)}
+            Zuletzt gesucht: <span className="font-bold text-stein">{search.focus}</span>, {when(search.at, now)}, {usd(search.costUsd)}
           </p>
           <p className="mt-1 text-sm text-schiefer">{search.summary}</p>
           <Items items={search.items} />

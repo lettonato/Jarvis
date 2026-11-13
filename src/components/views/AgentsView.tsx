@@ -3,14 +3,15 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { AgentControl } from "../AgentControl";
 import { RaumLink } from "../RaumLink";
+import { Zeitplan } from "../Zeitplan";
 import { Icon } from "../icons";
 import { useJarvis } from "../JarvisProvider";
 import { PageHeader, Panel } from "../ui";
 import { fromIso } from "@/lib/dates";
 import { CURRENT_PHASE, isActive, MODULES, type JarvisModule } from "@/lib/modules";
 
-// Alle Agenten auf einen Blick: oben die Steuerung (Zustand, letzter Lauf, Kosten, Sperren), darunter, was sie
-// heute können und was noch kommt.
+// Alle Agenten auf einen Blick: oben die Steuerung (Zustand, letzter Lauf, Kosten, Sperren), dann der gemeinsame
+// Zeitplan, darunter, was sie heute können und was noch kommt.
 // Kommst du über eine Kachel, steht der passende Agent hervorgehoben im Blick.
 
 const WEEKDAY = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
@@ -35,6 +36,7 @@ export function AgentsView() {
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
       <PageHeader icon="agenten" title="Agenten" subtitle={`Jeder Agent hat eine Aufgabe. Oben steuerst du sie, darunter steht, was sie können. Gerade läuft Phase ${CURRENT_PHASE} des Bauplans.`} />
       <AgentControl />
+      <Zeitplan />
       <div className="grid gap-4 md:grid-cols-2">
         {MODULES.map((m) => (
           <AgentCard key={m.id} module={m} highlighted={m.id === hash} />

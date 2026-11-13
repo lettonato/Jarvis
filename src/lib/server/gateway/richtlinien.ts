@@ -72,6 +72,8 @@ export const RICHTLINIEN: Record<string, Regel> = {
   nachrichten_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Intel", daten: "Lagebild", liefertFremdes: true }),
   dokument_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Dokumente/JARVIS", daten: "eigene PDFs" }),
   agenten_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Agentensteuerung", daten: "Zustand, Zeiten und Kosten der Agenten" }),
+  // Nur Zahlen, Daten und feste Sätze des Programms; Text von Twelve Data kommt hier nicht durch.
+  edelmetalle_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Edelmetall-Agent", daten: "Lagebild für Gold und Silber" }),
   projekte_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Projektgedächtnis", daten: "Projektübersicht (nur Bestätigtes)" }),
   projekt_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Projektgedächtnis", daten: "Projektakte (nur Bestätigtes)" }),
   ansicht_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Bildschirm", daten: "keine", kanaele: MAC }),

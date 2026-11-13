@@ -77,7 +77,7 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 
 | Nr. | Was du tust | Was du sehen solltest |
 |---|---|---|
-| H1 | Unten in der Leiste auf „Agenten“ gehen | Ganz oben steht „Steuerung“ mit fünf Agenten: Gespräch, Browser-Agent, Analyst, Intel, Spielgeld-Desk, jeder mit Zustand, „Zuletzt“ und „Kosten heute“ |
+| H1 | Unten in der Leiste auf „Agenten“ gehen | Ganz oben steht „Steuerung“ mit sechs Agenten: Gespräch, Browser-Agent, Analyst, Intel, Edelmetalle, Spielgeld-Desk, jeder mit Zustand, „Zuletzt“ und „Kosten heute“ |
 | H2 | Bei Intel mit den Angaben in der Intel-Ansicht vergleichen | Derselbe letzte Lauf und dieselben Kosten von heute |
 | H3 | Beim Analysten „Sperren“ drücken, dann JARVIS um ein Dokument bitten | Der Analyst steht auf „gesperrt“, JARVIS sagt, dass er gesperrt ist. Danach „Entsperren“ |
 | H4 | Läuft der Spielgeld-Desk: „Pausieren“, dann „Fortsetzen“ | Der Zustand wechselt auf „pausiert“ und zurück, auch auf dem Trading-Desk |
@@ -120,6 +120,24 @@ Das Aussehen ist bisher nur in der Sandbox mit Beispieldaten geprüft, in Chrome
 | J6 | In der Leiste rechts etwas an JARVIS schreiben oder „Jarvis“ sagen | Über der Leiste erscheint seine Antwort; ein Klick darauf klappt das ganze Gespräch auf |
 | J7 | Einstellungen → Aussehen | Eine Liste: zu jedem Raum das Foto mit dem Namen des Fotografen |
 | J8 | Gesamteindruck | Passt es zu dem Entwurf „Glashaus“, den du gewählt hast? Was stört dich, was fehlt dir? |
+
+## K. Zeitplan und Edelmetalle (Schritt F2, neu)
+
+Der Agent für Gold und Silber ist bisher nur gegen ein nachgebautes Twelve Data geprüft. Er braucht den
+Twelve-Data-Schlüssel, den du für die Rohstoffe im Trading schon eingetragen hast (sonst: Einstellungen,
+Rohstoffe). Er nutzt kein KI-Modell und kostet nichts außer zwei bis drei Abrufen aus deinem Kontingent je Lauf.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| K1 | Raum „Intel“ öffnen und nach unten zum Abschnitt „Gold und Silber“ rollen, dann „Jetzt lesen“ | Nach ein paar Sekunden steht unter „Fakten“ Gold mit Kurs je Feinunze und dem Datum des Kurses. Bei Silber steht entweder der Kurs je Feinunze oder „Silber-Fonds SLV“ mit Kurs je Anteil und einem Satz, warum. **Wichtig:** Steht dort stattdessen ein Fehler, schreib mir bitte den Satz |
+| K2 | Den Goldkurs mit einer Seite deiner Wahl vergleichen (zum Beispiel gold.de, in Dollar je Unze) | Der Kurs liegt nah beieinander (Tageskurs, kein Sekundenkurs) |
+| K3 | Den Abschnitt lesen | Fakten und „Einordnung nach festen Regeln“ stehen getrennt. Nirgends steht eine Vorhersage oder Kaufempfehlung; der Satz „keine Prognose und keine Anlageberatung“ steht da |
+| K4 | Bei „Uhrzeiten“ `25:00` eintragen und speichern, danach zwei eigene Uhrzeiten | Die falsche Uhrzeit wird abgelehnt, die richtigen werden gespeichert, und „Nächstes Lagebild“ nennt die nächste davon |
+| K5 | Raum „Agenten“: Abschnitt „Zeitplan“ unter der Steuerung ansehen | Vier Zeilen: Intel, Edelmetalle, Morgenbriefing, Tagesabschluss, jede mit Takt und nächstem Termin oder dem Grund, warum keiner ansteht |
+| K6 | JARVIS über eine der Uhrzeiten hinweg laufen lassen (zum Beispiel über 17:30), danach in „Agenten“ nachsehen | Im Zeitplan steht bei Edelmetalle unter „Zuletzt nach Plan“ die Uhrzeit, im Raum Intel ein neues „Gelesen heute …“ |
+| K7 | In „Agenten“ bei Edelmetalle „Sperren“, dann im Raum Intel „Jetzt lesen“ | Es wird nicht gelesen, die Meldung nennt die Sperre. Im Zeitplan steht „Der Agent ist gesperrt.“ Danach „Entsperren“ |
+| K8 | Zu JARVIS sagen: „Wie steht Gold?“ | Er nennt den Kurs mit dem Datum und, wenn du fragst, den Trend nach der Regel. Er gibt keine Prognose und keine Empfehlung |
+| K9 | In „Agenten“ bei Edelmetalle auf „öffnen“ klicken | Der Raum Intel geht auf und steht gleich beim Abschnitt „Gold und Silber“ |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

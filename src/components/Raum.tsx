@@ -15,32 +15,62 @@ const nachArt = Object.fromEntries([...FAHRTEN.map((f) => [f, f]), ["default", "
 const ScheibenOrt = createContext<HTMLElement | null>(null);
 
 // Ein Sprung zu einem Abschnitt (etwa /einstellungen#sicherheit): Die Wand rollt dorthin, auch wenn der Abschnitt
-// erst erscheint, nachdem die Daten geladen sind.
+// erst erscheint, nachdem die Daten geladen sind. Wächst die Seite danach noch (Daten kommen nach, der Abschnitt
+// rutscht), rollt die Wand ein paar Sekunden lang mit. Sie lässt los, sobald du selbst rollst, tippst oder
+// schreibst oder etwas anderes die Seite bewegt (etwa ein Sprachbefehl).
+const FOLGEN_MS = 5000;
+const GRIFFE = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+
 function useAnker(wand: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const flaeche = wand.current;
     if (!flaeche) return;
-    const springe = () => {
+    const zielVon = () => {
       let id = location.hash.slice(1);
       try {
         id = decodeURIComponent(id);
       } catch {
         // Ein kaputt kodierter Anker ist kein Grund für einen Fehler: dann eben wörtlich.
       }
-      if (!id) return true;
-      const ziel = document.getElementById(id);
-      if (!ziel || !flaeche.contains(ziel)) return false;
-      ziel.scrollIntoView({ block: "start" });
-      return true;
+      const ziel = id ? document.getElementById(id) : null;
+      return ziel && flaeche.contains(ziel) ? ziel : null;
     };
-    const warte = new MutationObserver(() => springe() && warte.disconnect());
-    if (!springe()) warte.observe(flaeche, { childList: true, subtree: true });
-    const schluss = setTimeout(() => warte.disconnect(), 5000);
-    window.addEventListener("hashchange", springe);
-    return () => {
+    // Wo der Abschnitt nach dem eigenen Sprung steht. Steht er bei einem Rollen woanders, hat jemand anderes gerollt.
+    let soll: number | null = null;
+    const springe = () => {
+      const ziel = zielVon();
+      if (!ziel) return;
+      ziel.scrollIntoView({ block: "start" });
+      soll = ziel.getBoundingClientRect().top;
+    };
+    const warte = new MutationObserver(springe);
+    let schluss: ReturnType<typeof setTimeout> | undefined;
+    const lassLos = () => {
       warte.disconnect();
       clearTimeout(schluss);
-      window.removeEventListener("hashchange", springe);
+      soll = null;
+      for (const griff of GRIFFE) window.removeEventListener(griff, lassLos, true);
+      window.removeEventListener("scroll", fremdGerollt, true);
+    };
+    const fremdGerollt = () => {
+      const ziel = zielVon();
+      if (soll !== null && ziel && Math.abs(ziel.getBoundingClientRect().top - soll) > 2) lassLos();
+    };
+    const folge = () => {
+      lassLos();
+      if (!location.hash.slice(1)) return;
+      springe();
+      warte.observe(flaeche, { childList: true, subtree: true });
+      schluss = setTimeout(lassLos, FOLGEN_MS);
+      // Am Fenster, nicht an der Wand: Auf dem Handy rollt der ganze Raum, und Tasten kommen nicht immer an der Wand an.
+      for (const griff of GRIFFE) window.addEventListener(griff, lassLos, { passive: true, capture: true });
+      window.addEventListener("scroll", fremdGerollt, { passive: true, capture: true });
+    };
+    folge();
+    window.addEventListener("hashchange", folge);
+    return () => {
+      lassLos();
+      window.removeEventListener("hashchange", folge);
     };
   }, [wand]);
 }

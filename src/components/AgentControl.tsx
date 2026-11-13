@@ -6,6 +6,7 @@ import { Button, Notice, Panel } from "./ui";
 import { ZUSTAND_LABEL, type AgentAktion, type AgentLage, type AgentenSnapshot, type AgentZustand } from "@/lib/agenten";
 import { postJson } from "@/lib/api";
 import { fromIso } from "@/lib/dates";
+import { ladeNeu } from "@/lib/geteilt";
 import { TYPICAL_INTEL_COST_USD } from "@/lib/intel";
 import { usePolling } from "@/lib/usePolling";
 import { useNow } from "@/lib/useNow";
@@ -44,11 +45,12 @@ const FARBE: Record<AgentZustand, string> = {
   fehler: "bg-down/15 text-down",
 };
 
-// Wohin ein Klick geht. Starten gibt es nur für Intel: Die anderen arbeiten auf Zuruf oder werden in ihrer Ansicht gestartet.
+// Wohin ein Klick geht. Starten gibt es für Intel und die Edelmetalle: Die anderen arbeiten auf Zuruf oder werden in ihrer Ansicht gestartet.
 function anfrage(agent: AgentLage, aktion: AgentAktion): { url: string; body: object } | null {
   if (aktion === "sperren") return { url: "/api/sicherheit", body: { aktion: "agent_sperren", agent: agent.name, grund: "in der Agentensteuerung gesperrt" } };
   if (aktion === "entsperren") return { url: "/api/sicherheit", body: { aktion: "agent_entsperren", agent: agent.name } };
   if (agent.name === "intel" && aktion === "starten") return { url: "/api/intel", body: { action: "aktualisieren" } };
+  if (agent.name === "metalle" && aktion === "starten") return { url: "/api/metalle", body: { action: "aktualisieren" } };
   if (agent.name === "desk" && aktion === "pausieren") return { url: "/api/handel", body: { action: "pause" } };
   if (agent.name === "desk" && aktion === "fortsetzen") return { url: "/api/handel", body: { action: "weiter" } };
   return null;
@@ -75,12 +77,14 @@ export function AgentControl() {
     setNote(null);
     try {
       const antwort = await postJson<{ message?: string }>(a.url, a.body);
-      setNote({ tone: "ok", text: antwort.message ?? (aktion === "starten" ? `${agent.label} ist gestartet.` : "Erledigt.") });
+      setNote({ tone: "ok", text: antwort.message ?? (aktion !== "starten" ? "Erledigt." : agent.name === "metalle" ? "Die Kurse für Gold und Silber sind neu gelesen." : `${agent.label} ist gestartet.`) });
     } catch (e) {
       setNote({ tone: "error", text: e instanceof Error ? e.message : String(e) });
     } finally {
       setBusy(false);
       void reload();
+      // Der Zeitplan darunter hängt an denselben Sperren und Läufen: Er soll nicht bis zu seinem nächsten Takt Altes zeigen.
+      void ladeNeu("/api/zeitplan");
     }
   };
 
@@ -180,7 +184,7 @@ export function AgentControl() {
                     tone={aktion === "sperren" ? "danger" : aktion === "starten" || aktion === "fortsetzen" ? "primary" : "ghost"}
                     disabled={busy}
                     onClick={() => void klick(a, aktion)}
-                    title={a.name === "intel" && aktion === "starten" ? `Grok liest jetzt die Nachrichten. Kostet etwa ${dollar(TYPICAL_INTEL_COST_USD)}.` : undefined}
+                    title={aktion !== "starten" ? undefined : a.name === "intel" ? `Grok liest jetzt die Nachrichten. Kostet etwa ${dollar(TYPICAL_INTEL_COST_USD)}.` : a.name === "metalle" ? "Holt die Tageskurse neu. Verbraucht zwei bis drei Abrufe aus deinem Kontingent bei Twelve Data." : undefined}
                   >
                     {KNOPF[aktion]}
                     {a.name === "intel" && aktion === "starten" ? ` (etwa ${dollar(TYPICAL_INTEL_COST_USD)})` : ""}
@@ -191,7 +195,7 @@ export function AgentControl() {
           ))}
         </ul>
       )}
-      <p className="mt-3 text-xs text-quiet">Gespräch, Browser und Analyst arbeiten auf Zuruf. Den Handel startest du auf dem Trading-Desk. Entsperren und den Not-Aus lösen geht nur hier am Mac.</p>
+      <p className="mt-3 text-xs text-quiet">Gespräch, Browser und Analyst arbeiten auf Zuruf. Wann Intel und die Edelmetalle von selbst lesen, steht im Zeitplan darunter. Den Handel startest du auf dem Trading-Desk. Entsperren und den Not-Aus lösen geht nur hier am Mac.</p>
     </Panel>
   );
 }

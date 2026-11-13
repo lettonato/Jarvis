@@ -9,6 +9,7 @@ import type { BrowserStatus } from "../../src/lib/browser";
 import type { DocJob, DocsSnapshot } from "../../src/lib/documents";
 import type { IntelSnapshot } from "../../src/lib/intel";
 import type { KostenPosten, KostenUebersicht } from "../../src/lib/kosten";
+import { baueBericht, HINWEIS, type MetalleSnapshot, type TagesKerze } from "../../src/lib/metalle";
 import type { DeskSnapshot } from "../../src/lib/paper";
 import type { SicherheitsZustand } from "../../src/lib/sicherheit";
 
@@ -59,13 +60,35 @@ const desk = (status: DeskSnapshot["status"], extra: Partial<DeskSnapshot> = {})
 const posten = (usd: number, anfragen: number): KostenPosten => ({ usd, anfragen, eingabe: 0, ausgabe: 0, suchen: 0 });
 // Das Kostenbuch von heute: drei Fragen im Gespräch, ein Schritt im Browser, zwei Bewertungen des Chiefs.
 const buch = (heute: KostenUebersicht["heute"] = { gehirn: { claude: posten(0.06, 3) }, browser: { claude: posten(0.12, 1) }, desk: { claude: posten(0.002, 2) } }): KostenUebersicht => ({ heute, heuteUsd: 0, monatUsd: 0, seit: "2026-11-13" });
-const daten = (extra: Partial<AgentenDaten> = {}): AgentenDaten => ({ gehirnBereit: true, sicherheit: frei, intel: intel(), documents: dokumente([job()]), browser: browser(), desk: desk("laeuft"), spuren: {}, kosten: buch(), ...extra });
+// Sechzig Handelstage Gold (steigend) und Silber (fallend), die am Vortag enden.
+const kerzen = (von: number, bis: number): TagesKerze[] =>
+  Array.from({ length: 60 }, (_, i) => {
+    const close = von + ((bis - von) * i) / 59;
+    return { tag: new Date(Date.UTC(2026, 10, 12) - (59 - i) * 86_400_000).toISOString().slice(0, 10), open: close, high: close, low: close, close };
+  });
+const bericht = baueBericht({ gold: kerzen(3000, 4000), silber: kerzen(50, 40) }, new Date(JETZT.getTime() - 2 * 3_600_000));
+const metalle = (extra: Partial<MetalleSnapshot> = {}): MetalleSnapshot => ({
+  eingerichtet: true,
+  auto: true,
+  zeiten: ["07:30", "17:30"],
+  laeuft: false,
+  bericht,
+  fakten: [],
+  einordnung: [],
+  hinweis: HINWEIS,
+  veraltet: false,
+  letzterVersuch: bericht.erstelltAm,
+  fehler: null,
+  naechsterLauf: new Date(2026, 10, 13, 17, 30).toISOString(),
+  ...extra,
+});
+const daten = (extra: Partial<AgentenDaten> = {}): AgentenDaten => ({ gehirnBereit: true, sicherheit: frei, intel: intel(), metalle: metalle(), documents: dokumente([job()]), browser: browser(), desk: desk("laeuft"), spuren: {}, kosten: buch(), ...extra });
 const von = (liste: AgentLage[], name: AgentLage["name"]) => liste.find((a) => a.name === name)!;
 
 describe("Agentensteuerung: Zustand und Läufe", () => {
-  test("alle fünf Agenten erscheinen, jeder mit Ansicht, Arbeitsweise und festen Grenzen", () => {
+  test("alle sechs Agenten erscheinen, jeder mit Ansicht, Arbeitsweise und festen Grenzen", () => {
     const liste = agentenLage(daten(), JETZT);
-    assert.deepEqual(liste.map((a) => a.name), ["gehirn", "browser", "analyst", "intel", "desk"]);
+    assert.deepEqual(liste.map((a) => a.name), ["gehirn", "browser", "analyst", "intel", "metalle", "desk"]);
     for (const a of liste) {
       assert.ok(a.href.startsWith("/"), a.name);
       assert.ok(a.takt.length > 0 && a.grenzen.length >= 2, a.name);
@@ -142,9 +165,48 @@ describe("Agentensteuerung: Zustand und Läufe", () => {
   });
 
   test("fällt die Auskunft eines Agenten aus, stehen die anderen trotzdem da", () => {
-    const liste = agentenLage(daten({ intel: null, desk: null, browser: null, documents: null }), JETZT);
-    assert.equal(liste.length, 5);
+    const liste = agentenLage(daten({ intel: null, metalle: null, desk: null, browser: null, documents: null }), JETZT);
+    assert.equal(liste.length, 6);
     assert.ok(liste.every((a) => a.zustand === "bereit" && !a.aktionen.includes("starten")));
+  });
+});
+
+describe("Agentensteuerung: der Edelmetall-Agent", () => {
+  test("wartet nach Zeitplan, zeigt das letzte Lagebild in einem Satz und lässt sich von Hand starten", () => {
+    const a = von(agentenLage(daten(), JETZT), "metalle");
+    assert.deepEqual([a.zustand, a.takt, a.href], ["wartet", "täglich um 07:30 und 17:30 Uhr", "/intel#edelmetalle"]);
+    assert.equal(a.letzterLauf, bericht.erstelltAm);
+    assert.equal(a.naechsterLauf, new Date(2026, 10, 13, 17, 30).toISOString());
+    assert.match(a.ergebnis ?? "", /^Gold 4\.000,00 \$ \(\+0,4 % zum Vortag\), Silber 40,00 \$/);
+    assert.deepEqual(a.aktionen, ["starten", "sperren"]);
+    assert.deepEqual(a.kosten?.heuteUsd, 0);
+    assert.ok(a.grenzen.some((g) => /handelt nicht/.test(g)) && a.grenzen.some((g) => /Keine Prognose/.test(g)));
+  });
+
+  test("ohne Twelve-Data-Schlüssel ist er nicht eingerichtet und lässt sich nicht starten", () => {
+    const a = von(agentenLage(daten({ metalle: metalle({ eingerichtet: false, bericht: null, naechsterLauf: null }) }), JETZT), "metalle");
+    assert.deepEqual([a.zustand, a.aktionen, a.kosten, a.naechsterLauf], ["nicht-eingerichtet", ["sperren"], null, null]);
+    assert.match(a.satz, /Twelve-Data-Schlüssel/);
+  });
+
+  test("läuft er gerade, meldet er einen Fehler oder liest er nur auf Zuruf, steht das da", () => {
+    const laeuft = von(agentenLage(daten({ metalle: metalle({ laeuft: true }) }), JETZT), "metalle");
+    assert.deepEqual([laeuft.zustand, laeuft.aktionen], ["laeuft", ["sperren"]]);
+    const fehler = von(agentenLage(daten({ metalle: metalle({ fehler: "Twelve Data ist gerade nicht erreichbar." }) }), JETZT), "metalle");
+    assert.deepEqual([fehler.zustand, fehler.fehler], ["fehler", "Twelve Data ist gerade nicht erreichbar."]);
+    assert.ok(fehler.aktionen.includes("starten"), "nach einem Fehler kann man es von Hand noch einmal versuchen");
+    const zuruf = von(agentenLage(daten({ metalle: metalle({ auto: false, naechsterLauf: null }) }), JETZT), "metalle");
+    assert.deepEqual([zuruf.zustand, zuruf.takt, zuruf.satz], ["bereit", "nur auf Zuruf", "Liest nur auf Zuruf."]);
+  });
+
+  test("ein veraltetes Lagebild ist als veraltet gekennzeichnet", () => {
+    const a = von(agentenLage(daten({ metalle: metalle({ veraltet: true }) }), JETZT), "metalle");
+    assert.match(a.ergebnis ?? "", /^Veraltet: Gold/);
+  });
+
+  test("mit Not-Aus ist auch er angehalten und nicht zu starten", () => {
+    const a = von(agentenLage(daten({ sicherheit: { ...frei, notaus: { an: true, seit: JETZT.toISOString(), grund: "Test", von: "mac" } } }), JETZT), "metalle");
+    assert.deepEqual([a.zustand, a.aktionen, a.naechsterLauf], ["angehalten", [], null]);
   });
 });
 

@@ -10,6 +10,7 @@ import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
 import { starteClaudeMock } from "../mocks/claude-mock";
 import { beispielPost, MOCK_POST_ADRESSE, MOCK_POST_PASSWORT, starteImapMock } from "../mocks/imap-mock";
 import { guterCoin, starteMarktMock } from "../mocks/markt-mock";
+import { starteTwelveMock, tagesreihe } from "../mocks/twelve-mock";
 
 const PORT = Number(process.argv[2] ?? 3210);
 const MODUS = process.argv[3] === "start" ? "start" : "dev";
@@ -47,7 +48,15 @@ async function main() {
     ].join("\n"),
   );
 
-  const [claude, post, markt] = await Promise.all([starteClaudeMock(), starteImapMock(beispielPost(jetzt.getTime())), starteMarktMock()]);
+  const [claude, post, markt, twelve] = await Promise.all([starteClaudeMock(), starteImapMock(beispielPost(jetzt.getTime())), starteMarktMock(), starteTwelveMock()]);
+  // Erfundene Tageskurse für den Edelmetall-Agenten, so wie der kostenlose Plan von Twelve Data sie liefert:
+  // Gold je Feinunze, Silber nur über den Fonds SLV. Gold steigt mit kleinen Wellen, der Fonds läuft seitwärts.
+  const heute = iso(jetzt);
+  twelve.reihen = {
+    "XAU/USD": tagesreihe(Array.from({ length: 90 }, (_, i) => 3650 + i * 5.2 + Math.sin(i / 3) * 28), heute),
+    "XAG/USD": { code: 403, message: "nicht im Plan" },
+    SLV: tagesreihe(Array.from({ length: 90 }, (_, i) => 43.5 + Math.sin(i / 6) * 1.5 - (i > 80 ? (i - 80) * 0.11 : 0)), heute),
+  };
   const hund = guterCoin("GOODDOG");
   const welle = guterCoin("WELLE", { aenderung: { m5: 2, h1: 9, h6: 14, h24: 22 } });
   markt.coins.push(hund, welle);
@@ -73,6 +82,7 @@ async function main() {
     COINGECKO_URL: markt.url,
     GECKOTERMINAL_URL: markt.url,
     RUGCHECK_URL: markt.url,
+    TWELVEDATA_URL: twelve.url,
     JARVIS_OSASCRIPT: path.resolve("test/mocks/osascript-mock.mjs"),
     JARVIS_OPEN: path.resolve("test/mocks/open-mock.mjs"),
     JARVIS_MAC_STORE: path.join(mac, "kalender.json"),
@@ -80,7 +90,7 @@ async function main() {
   });
 
   const config = await import("../../src/lib/server/config");
-  await config.writeConfig({ name: "Benedikt", vaultPath: tresor, claude: { apiKey: "sk-test-nur-fuer-den-mock" }, mail: { provider: "andere", host: post.host, port: post.port, user: MOCK_POST_ADRESSE, password: MOCK_POST_PASSWORT } });
+  await config.writeConfig({ name: "Benedikt", vaultPath: tresor, claude: { apiKey: "sk-test-nur-fuer-den-mock" }, twelvedata: { apiKey: "twelve-test-nur-fuer-den-mock" }, mail: { provider: "andere", host: post.host, port: post.port, user: MOCK_POST_ADRESSE, password: MOCK_POST_PASSWORT } });
   const p = await import("../../src/lib/server/projekte/projekte");
   const halle = await p.legeProjektAn({ name: "Hallenneubau", beschreibung: "Neue Produktionshalle am Standort Süd", verantwortliche: "Thomas", fortschritt: 35 }, "mac");
   await p.trageEin(halle.id, { art: "aufgabe", text: "Angebot Stahlbau nachfassen", zustaendig: "Thomas", faellig: iso(tag(3)) }, "mac");
@@ -104,7 +114,7 @@ async function main() {
   console.log(`Einstellungen: ${ordner}\nJARVIS mit Beispieldaten: http://127.0.0.1:${PORT}`);
   const ende = () => {
     server.kill("SIGTERM");
-    void Promise.all([claude.stop(), post.stop(), markt.stop()]).finally(() => process.exit(0));
+    void Promise.all([claude.stop(), post.stop(), markt.stop(), twelve.stop()]).finally(() => process.exit(0));
   };
   process.on("SIGTERM", ende);
   process.on("SIGINT", ende);

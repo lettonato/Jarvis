@@ -4,9 +4,11 @@ import { DOC_LIMITS, PHASE_LABEL, type DocsSnapshot } from "./documents";
 import { formatSignedUsd } from "./format";
 import { AUTO_HOURS, TYPICAL_INTEL_COST_USD, type IntelSnapshot } from "./intel";
 import type { KostenPosten, KostenUebersicht } from "./kosten";
+import { metallSatz, METALLE_ZEITEN, type MetalleSnapshot } from "./metalle";
 import { MODELLE } from "./modelle";
 import { SAFETY, type DeskSnapshot } from "./paper";
 import { AGENTEN, type AgentName, type SicherheitsZustand } from "./sicherheit";
+import { taktText } from "./zeitplan";
 
 // Die Agentensteuerung: alle Agenten an einer Stelle, mit Zustand, letztem und nächstem Lauf, Ergebnis,
 // Fehler, Kosten und festen Grenzen. Hier wird nur zusammengestellt, was die Agenten selbst melden, ohne KI.
@@ -61,6 +63,7 @@ export type AgentenDaten = {
   gehirnBereit: boolean;
   sicherheit: SicherheitsZustand;
   intel: IntelSnapshot | null;
+  metalle: MetalleSnapshot | null;
   documents: DocsSnapshot | null;
   browser: BrowserStatus | null;
   desk: DeskSnapshot | null;
@@ -72,7 +75,7 @@ export type AgentenDaten = {
 // kosten: heute zusammen (die Summe der Agenten), der laufende Monat laut Kostenbuch und seit wann es zählt.
 export type AgentenSnapshot = { agenten: AgentLage[]; notaus: boolean; stand: string; kosten: { heuteUsd: number; monatUsd: number | null; seit: string | null } };
 
-const HREF: Record<AgentName, string> = { gehirn: "/fokus", browser: "/browser", analyst: "/dokumente", intel: "/intel", desk: "/trading" };
+const HREF: Record<AgentName, string> = { gehirn: "/fokus", browser: "/browser", analyst: "/dokumente", intel: "/intel", metalle: "/intel#edelmetalle", desk: "/trading" };
 
 const kurz = (text: string, max = 140) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
 const dollar = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
@@ -172,6 +175,32 @@ function intel(d: AgentenDaten): Roh {
   };
 }
 
+// Der Edelmetall-Agent rechnet nur: Kurse von Twelve Data, kein KI-Modell, kein Handel.
+function metalle(d: AgentenDaten): Roh {
+  const s = d.metalle;
+  return {
+    zustand: !s ? "bereit" : !s.eingerichtet ? "nicht-eingerichtet" : s.laeuft ? "laeuft" : s.fehler ? "fehler" : s.auto ? "wartet" : "bereit",
+    satz: !s
+      ? "Lädt noch."
+      : !s.eingerichtet
+        ? "Es fehlt der Twelve-Data-Schlüssel. Den trägst du in den Einstellungen unter Rohstoffe ein."
+        : s.laeuft
+          ? "Holt gerade die Kurse."
+          : s.auto
+            ? "Wartet auf den nächsten Lauf."
+            : "Liest nur auf Zuruf.",
+    takt: s?.auto === false ? "nur auf Zuruf" : taktText(s?.zeiten ?? METALLE_ZEITEN),
+    letzterLauf: s?.bericht?.erstelltAm ?? null,
+    naechsterLauf: s?.eingerichtet && !s.laeuft ? s.naechsterLauf : null,
+    ergebnis: s?.bericht ? `${s.veraltet ? "Veraltet: " : ""}${metallSatz(s.bericht)}` : null,
+    fehler: s?.fehler ?? null,
+    // Twelve Data rechnet nicht je Abfrage ab; ein Lauf ist eine Abfrage aus dem Kontingent des Plans.
+    kosten: s?.eingerichtet ? { heuteUsd: 0, budgetUsd: null, was: "Twelve Data, je Lauf zwei bis drei Abrufe aus dem Kontingent deines Plans (einer je Kursreihe)" } : null,
+    grenzen: ["Liest nur Kurse und handelt nicht", "Kein KI-Modell, nur Zahlen und feste Regeln", "Keine Prognose und keine Anlageberatung"],
+    aktionen: s?.eingerichtet && !s.laeuft ? ["starten"] : [],
+  };
+}
+
 // Der Desk bezahlt bis zu zwei Dienste: Grok liest X vor Käufen (mit Tagesbudget), und Claude bewertet als Chief
 // die Coins. Das Budget gilt nur für Grok; deshalb steht es beim Posten und nicht bei der Summe.
 function deskKosten(d: AgentenDaten): AgentLage["kosten"] {
@@ -218,7 +247,7 @@ function desk(d: AgentenDaten): Roh {
 
 export function agentenLage(d: AgentenDaten, now: Date): AgentLage[] {
   const heute = isoDate(now);
-  const roh: Record<AgentName, Roh> = { gehirn: gehirn(d), browser: browser(d), analyst: analyst(d, heute), intel: intel(d), desk: desk(d) };
+  const roh: Record<AgentName, Roh> = { gehirn: gehirn(d), browser: browser(d), analyst: analyst(d, heute), intel: intel(d), metalle: metalle(d), desk: desk(d) };
   return AGENTEN.map((a) => {
     const r = roh[a.name];
     const sperre = d.sicherheit.sperren[a.name];

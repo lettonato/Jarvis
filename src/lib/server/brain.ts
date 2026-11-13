@@ -25,6 +25,7 @@ import { ART_LABEL, EINTRAG_ARTEN, GRENZEN, quelleText, STATUS_LABEL as PROJEKT_
 import { akte, ProjektFehler, schlageVor, uebersicht } from "./projekte/projekte";
 import { ZUSTAND_LABEL } from "../agenten";
 import { agentenSnapshot } from "./agenten";
+import { metalleSnapshot } from "./metalle";
 import { bucheClaude } from "./kosten";
 import { MODELLE } from "../modelle";
 
@@ -114,7 +115,8 @@ ${
 - Nachrichten: Intel lässt Grok von xAI morgens und am Nachmittag die Nachrichten und X zu Bitcoin, Ethereum, Solana und ${name}s Themen lesen. Das letzte Lagebild liest du kostenlos mit nachrichten_lesen. Eine Suche auf X mit Grok (nachrichten_suchen) kostet etwa ${Math.round(TYPICAL_INTEL_COST_USD * 100)} Cent und dauert eine halbe Minute; nimm sie nur, wenn ${name} ausdrücklich wissen will, was auf X dazu gesagt wird. Für alles andere reicht web_search.
 - Im Browser arbeiten (browser_auftrag): JARVIS bedient ein eigenes Chrome auf ${name}s Mac; am Mac sieht ${name} in der Browser-Ansicht live zu. Er sucht, vergleicht Angebote auf mehreren Seiten, liest Seiten, die web_fetch nicht schafft, und füllt Formulare aus. Bestellen, abschicken, bezahlen und anmelden kann der Browser nicht; den letzten Klick macht ${name} selbst. Ein Auftrag dauert ein bis drei Minuten; sag vorher kurz, dass du in den Browser gehst. Für einfache Fragen zu Fakten reicht web_search.
 - Dokumente erstellen (dokument_erstellen): Will ${name} ein Dokument, einen Bericht oder eine Analyse zum Behalten, recherchiert dein Analyst im Hintergrund gründlich im Web und schreibt daraus ein PDF mit Tabellen, Grafiken und Quellen. Es landet im Ordner Dokumente/JARVIS auf dem Mac${remote ? "" : " und geht dort von selbst auf"}; ist das Handy gekoppelt, kommt es auch per Telegram. Das dauert meist fünf bis fünfzehn Minuten und kostet bei Anthropic ein paar Dollar; sag beides kurz dazu. Gib dem Analysten alles mit, was ${name} sich wünscht, und warte nicht auf ihn: Ihr könnt weiterreden. ${remote ? "Ein fertiges Dokument schickst du mit dokument_oeffnen noch einmal in den Chat." : "Ein fertiges Dokument öffnest du mit dokument_oeffnen."} Für eine schnelle Antwort im Gespräch reicht web_search.
-- Nach den Agenten sehen (agenten_lesen): ob Browser-Agent, Analyst, Intel und Spielgeld-Desk laufen, wann sie zuletzt gelaufen sind, was sie heute gekostet haben und ob einer gesperrt ist oder einen Fehler meldet. Die Steuerung selbst steht in der Ansicht Agenten.
+- Gold und Silber (edelmetalle_lesen): Der Edelmetall-Agent liest zweimal am Tag die Tageskurse und rechnet daraus ein Lagebild nach festen Regeln. Du bekommst Fakten (Zahlen mit Datum und Quelle) und davon getrennt eine Einordnung. Halte beides auch in deiner Antwort auseinander, nenn das Datum des Kurses, sag dazu, wenn ein Kurs der eines Fonds je Anteil ist und nicht der je Feinunze, und mach daraus keine Prognose und keine Kauf- oder Verkaufsempfehlung.
+- Nach den Agenten sehen (agenten_lesen): ob Browser-Agent, Analyst, Intel, Edelmetall-Agent und Spielgeld-Desk laufen, wann sie zuletzt gelaufen sind, was sie heute gekostet haben und ob einer gesperrt ist oder einen Fehler meldet. Die Steuerung selbst steht in der Ansicht Agenten.
 - Den Spielgeld-Handel abfragen und steuern: starten, pausieren, fortsetzen, Not-Aus. Dort handeln die Agenten Scan, Vet, Crawler, Chief, Size, Fills und Risk mit ${SAFETY.startCapitalUsd.toLocaleString("de-DE")} Dollar erfundenem Geld, um ${SAFETY.testDays} Tage lang zu testen, ob sich der Desk nach Kosten lohnt. Ab einer Grenze, die ${name} in den Einstellungen wählt, fragt der Desk vor jedem Kauf per Telegram und auf dem Trading-Desk nach und kauft erst nach ${name}s Ja; ohne Antwort verfällt die Frage nach ${APPROVAL.timeoutMinutes} Minuten. Freigeben kann nur ${name} selbst mit den Knöpfen dort, nicht du und auch nicht per Sprache. Will ${name} dir gegenüber Ja sagen, schick ihn freundlich zu den Knöpfen.
 
 Was du noch nicht kannst: Mails schreiben, beantworten oder löschen, bestehende Termine ändern oder löschen, telefonieren, im Web etwas bestellen, abschicken oder dich anmelden und mit echtem Geld handeln. Möchte ${name} so etwas, sag ehrlich, dass es später kommt, und biete an, es als Aufgabe zu notieren. Gib keine Kauf- oder Verkaufsempfehlungen für echtes Geld; die festen Regeln des Desks (Stop-Loss, 2 Prozent pro Trade, Tageslimit) kannst und darfst du nicht ändern.
@@ -165,6 +167,7 @@ const STATUS: Record<string, string> = {
   dokument_erstellen: "Ich gebe den Auftrag an den Analysten",
   dokument_oeffnen: "Ich hole das Dokument",
   agenten_lesen: "Ich sehe nach den Agenten",
+  edelmetalle_lesen: "Ich sehe nach Gold und Silber",
   projekte_lesen: "Ich sehe ins Projektgedächtnis",
   projekt_lesen: "Ich lese die Projektakte",
   projekt_vorschlagen: "Ich lege den Vorschlag zur Bestätigung vor",
@@ -704,6 +707,27 @@ export async function think(
           kosten_laufender_monat_usd: snap.kosten.monatUsd === null ? null : Math.round(snap.kosten.monatUsd * 100) / 100,
           kosten_gezaehlt_seit: snap.kosten.seit,
           hinweis: `Die Kosten sind nach Listenpreis geschätzt. Einzelheiten und die Knöpfe stehen in der Ansicht Agenten. Sperren, Entsperren und den Not-Aus lösen kann nur ${name} am Mac.`,
+        });
+      },
+    }),
+    betaTool({
+      name: "edelmetalle_lesen",
+      description:
+        "Liest das letzte Lagebild des Edelmetall-Agenten für Gold und Silber: Fakten (Kurs in US-Dollar mit Datum, Veränderung zum Vortag, in 5 und in 21 Handelstagen, Hoch und Tief, Verhältnis von Gold zu Silber; liefert der Kursdienst ein Metall nicht je Feinunze, steht dafür ein Fonds mit Kurs je Anteil, und das ist dabeigeschrieben) und davon getrennt die Einordnung nach festen Regeln (Trend aus dem Schnitt der letzten 20 und 50 Handelstage). Keine Prognose. Kostet nichts und fragt den Kursdienst nicht neu; ein neuer Lauf startet in der Ansicht Intel oder Agenten.",
+      inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
+      run: async () => {
+        const m = await metalleSnapshot(now);
+        if (!m.eingerichtet) throw new Error(`Für die Edelmetalle fehlt der Twelve-Data-Schlüssel. ${name} trägt ihn in den Einstellungen unter Rohstoffe ein.`);
+        // Nur Zahlen, Daten und feste Sätze des Programms. Der Fehlertext ist einer von wenigen festen Sätzen (metalle.ts).
+        return JSON.stringify({
+          lagebild: m.bericht ? { stand: m.bericht.erstelltAm, quelle: m.bericht.quelle, fakten: m.fakten, einordnung: m.einordnung } : null,
+          hinweis: m.hinweis,
+          veraltet: m.veraltet,
+          letzter_versuch: m.letzterVersuch,
+          letzter_versuch_fehlgeschlagen: m.fehler,
+          liest_gerade: m.laeuft,
+          liest_von_selbst: m.auto ? m.zeiten : "nur auf Zuruf",
+          naechster_lauf: m.naechsterLauf,
         });
       },
     }),

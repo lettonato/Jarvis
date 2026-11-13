@@ -40,6 +40,10 @@ export type TelegramConfig = {
   abschluss?: string | null;
 };
 
+// Der Edelmetall-Agent: ob er nach Zeitplan liest und zu welchen Uhrzeiten (HH:MM). Fehlt etwas, gilt der
+// Vorschlag aus src/lib/metalle.ts.
+export type MetalleConfig = { auto?: boolean; zeiten?: string[] };
+
 // Twelve Data liefert die Kurse für Gold, Silber und Öl. Der kostenlose Plan reicht.
 export type TwelveDataConfig = { apiKey: string };
 
@@ -61,6 +65,7 @@ export type JarvisConfig = {
   telegram?: TelegramConfig;
   approval?: ApprovalConfig;
   twelvedata?: TwelveDataConfig;
+  metalle?: MetalleConfig;
   elevenlabs?: ElevenlabsConfig;
   // Wo Schlüssel und Passwörter liegen: in dieser Datei (bisher) oder im macOS-Schlüsselbund.
   geheimnisse?: GeheimnisModus;

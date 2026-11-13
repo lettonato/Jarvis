@@ -27,7 +27,6 @@ const FILE = path.join(CONFIG_DIR, "intel.json");
 const HOUR = 3_600_000;
 // Nach einem Fehlschlag frühestens nach einer halben Stunde wieder von selbst.
 const RETRY_MS = 30 * 60_000;
-const CHECK_MS = 5 * 60_000;
 const DAY_START = 6;
 const DAY_END = 22;
 const TIMEOUT_MS = 180_000;
@@ -45,11 +44,10 @@ type Shared = {
   state: State | null;
   loading: Promise<State> | null;
   saving: Promise<void>;
-  timer: ReturnType<typeof setInterval> | null;
   running: { focus: string | null; since: string; done: Promise<IntelReport> } | null;
 };
 const holder = globalThis as typeof globalThis & { __jarvisIntel?: Shared };
-const shared: Shared = (holder.__jarvisIntel ??= { state: null, loading: null, saving: Promise.resolve(), timer: null, running: null });
+const shared: Shared = (holder.__jarvisIntel ??= { state: null, loading: null, saving: Promise.resolve(), running: null });
 
 const freshState = (): State => ({ report: null, search: null, day: { date: isoDate(new Date()), spentUsd: 0 }, lastTryAt: null, error: null });
 
@@ -180,22 +178,16 @@ export async function refreshIntel(focus: string | null, opts: { wait?: boolean;
   return null;
 }
 
-// Liest von selbst, wenn es Zeit ist: tagsüber, im Budget, und nicht gleich nach einem Fehlschlag.
-export async function autoIntel(now = new Date()) {
-  if (shared.running || !inDaytime(now)) return;
-  if (await agentSperre("intel")) return;
+// Ist es Zeit, von selbst zu lesen? Tagsüber, im Budget, und nicht gleich nach einem Fehlschlag. Den Takt dazu
+// gibt der gemeinsame Zeitplan (zeitplan-aufgaben.ts).
+export async function intelFaellig(now = new Date()): Promise<boolean> {
+  if (shared.running || !inDaytime(now)) return false;
+  if (await agentSperre("intel")) return false;
   const state = await load();
   const config = await readConfig();
   const next = nextAuto(state, config, now);
-  if (!next || next.getTime() > now.getTime()) return;
-  if (intelBudget(config) - spentToday(state, now) < TYPICAL_INTEL_COST_USD) return;
-  await refreshIntel(null, { now }).catch(() => {});
-}
-
-export function startIntel() {
-  if (shared.timer) return;
-  shared.timer = setInterval(() => void autoIntel(), CHECK_MS);
-  setTimeout(() => void autoIntel(), 20_000);
+  if (!next || next.getTime() > now.getTime()) return false;
+  return intelBudget(config) - spentToday(state, now) >= TYPICAL_INTEL_COST_USD;
 }
 
 const SYSTEM = `Du bist Intel, der Nachrichten-Agent eines persönlichen Assistenten. Du stellst ein kurzes Lagebild zusammen, das morgens im Briefing vorgelesen wird.

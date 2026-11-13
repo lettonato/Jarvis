@@ -48,8 +48,8 @@ describe("Agentensteuerung: Übersicht aus den echten Modulen", () => {
   test("ohne Schlüssel sind die Agenten da, aber nicht eingerichtet; mit Schlüsseln bereit", async () => {
     await config.writeConfig({ name: "Benedikt" });
     const ohne = await agenten.agentenSnapshot(JETZT);
-    assert.deepEqual(ohne.agenten.map((a) => a.name), ["gehirn", "browser", "analyst", "intel", "desk"]);
-    for (const name of ["gehirn", "browser", "analyst", "intel"]) assert.equal(ohne.agenten.find((a) => a.name === name)!.zustand, "nicht-eingerichtet", name);
+    assert.deepEqual(ohne.agenten.map((a) => a.name), ["gehirn", "browser", "analyst", "intel", "metalle", "desk"]);
+    for (const name of ["gehirn", "browser", "analyst", "intel", "metalle"]) assert.equal(ohne.agenten.find((a) => a.name === name)!.zustand, "nicht-eingerichtet", name);
     assert.equal(ohne.notaus, false);
 
     await config.writeConfig(cfg());
@@ -102,7 +102,7 @@ describe("Agentensteuerung: Werkzeug für das KI-Gehirn", () => {
     assert.equal(reply.reply, "Intel meldet einen Fehler, die übrigen sind bereit.");
     const ergebnis = JSON.parse(werkzeugErgebnisse(claude.anfragen[1]).at(-1)!.content) as { not_aus: boolean; agenten: { agent: string; zustand: string; meldet_fehler: boolean; kosten_heute_usd: number | null; tagesbudget_usd: number | null; zuletzt_gelaufen: string | null }[] };
     assert.equal(ergebnis.not_aus, false);
-    assert.equal(ergebnis.agenten.length, 5);
+    assert.equal(ergebnis.agenten.length, 6);
     const zahlen = ergebnis as unknown as { kosten_heute_zusammen_usd: number; kosten_laufender_monat_usd: number | null; agenten: { kosten_einzeln: { dienst: string; usd: number; tagesbudget_usd: number | null }[] }[] };
     assert.equal(typeof zahlen.kosten_heute_zusammen_usd, "number");
     assert.equal(typeof zahlen.kosten_laufender_monat_usd, "number");

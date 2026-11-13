@@ -19,13 +19,14 @@ export const KLASSE_TEXT: Record<Klasse, string> = {
 };
 
 // Die Agenten, die der Not-Aus anhält und die sich einzeln sperren lassen.
-export type AgentName = "gehirn" | "browser" | "analyst" | "intel" | "desk";
+export type AgentName = "gehirn" | "browser" | "analyst" | "intel" | "metalle" | "desk";
 
 export const AGENTEN: { name: AgentName; label: string; text: string }[] = [
   { name: "gehirn", label: "Gespräch (Claude)", text: "Antworten am Mac und per Telegram, mit allen Werkzeugen" },
   { name: "browser", label: "Browser-Agent", text: "bedient Chrome auf dem Mac" },
   { name: "analyst", label: "Analyst", text: "recherchiert und schreibt Dokumente" },
   { name: "intel", label: "Intel", text: "liest Nachrichten und X mit Grok" },
+  { name: "metalle", label: "Edelmetalle", text: "Lagebild für Gold und Silber aus Tageskursen" },
   { name: "desk", label: "Spielgeld-Desk", text: "Scan, Crawler, Chief und Handel" },
 ];
 

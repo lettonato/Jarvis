@@ -47,10 +47,16 @@ async function main() {
 
     await seite.goto(`${BASIS}/agenten`);
     await seite.locator('li[data-agent="desk"]').waitFor({ timeout: 30_000 });
-    assert.equal(await seite.locator("li[data-agent]").count(), 5);
+    assert.equal(await seite.locator("li[data-agent]").count(), 6);
     assert.equal(await zustand("gehirn"), "bereit");
     assert.equal(await zustand("intel"), "nicht-eingerichtet");
-    assert.equal(await seite.getByRole("button", { name: /Jetzt starten/ }).count(), 0, "ohne xAI-Schlüssel gibt es keinen Start-Knopf");
+    assert.equal(await zustand("metalle"), "nicht-eingerichtet");
+    assert.equal(await seite.getByRole("button", { name: /Jetzt starten/ }).count(), 0, "ohne xAI- und Twelve-Data-Schlüssel gibt es keinen Start-Knopf");
+    // Der gemeinsame Zeitplan steht unter der Steuerung: vier Zeilen, und was fehlt, steht als Grund da.
+    await seite.waitForSelector("#zeitplan li[data-aufgabe]");
+    assert.deepEqual(await seite.locator("#zeitplan li[data-aufgabe]").evaluateAll((zeilen) => zeilen.map((z) => z.getAttribute("data-aufgabe"))), ["intel", "metalle", "briefing", "abschluss"]);
+    assert.match(await seite.locator("#zeitplan li[data-aufgabe=metalle]").innerText(), /Es fehlt der Twelve-Data-Schlüssel\./);
+    assert.match(await seite.locator("#zeitplan li[data-aufgabe=briefing]").innerText(), /Telegram ist nicht verbunden\./);
     await bild("0-agenten");
 
     // Den Analysten sperren und wieder entsperren. Der Zustand folgt der Antwort des Servers.

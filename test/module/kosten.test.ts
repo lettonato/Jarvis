@@ -176,7 +176,7 @@ describe("Kostenbuch: Datei nicht lesbar", () => {
       const snap = await agenten.agentenSnapshot(new Date());
       assert.equal(snap.kosten.monatUsd, null);
       assert.equal(snap.agenten.find((a) => a.name === "gehirn")!.kosten, null, "keine Zahl statt einer falschen");
-      assert.equal(snap.agenten.length, 5);
+      assert.equal(snap.agenten.length, 6);
     } finally {
       rmSync(DATEI, { recursive: true });
       renameSync(weg, DATEI);

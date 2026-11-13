@@ -18,6 +18,10 @@ let kosten: typeof import("../../src/lib/server/kosten");
 const KEY = ["xai", "test", "nur", "fuer", "den", "mock"].join("-");
 const tag = (n: number, stunde = 10) => new Date(2026, 10, n, stunde, 0, 0);
 const meldung = (titel: string, extra: Record<string, unknown> = {}) => ({ titel, zusammenfassung: "Kurz.", thema: "Bitcoin", quelle: "Testblatt", url: "https://example.com/a", wichtigkeit: 0.5, wirkung: "neutral", von_x: false, ...extra });
+// So liest der gemeinsame Zeitplan von selbst: erst fragen, ob es Zeit ist, dann lesen (zeitplan-aufgaben.ts).
+const vonSelbst = async (now: Date) => {
+  if (await intel.intelFaellig(now)) await intel.refreshIntel(null, { now }).catch(() => {});
+};
 const lagebild = (extra: Record<string, unknown> = {}) => ({ stimmung: "ruhig", lage: "Ruhiger Tag.", meldungen: [meldung("Eins")], desk_warnung: { aktiv: false, grund: "" }, ...extra });
 
 before(async () => {
@@ -51,7 +55,7 @@ describe("Intel: Voraussetzungen", () => {
     await zustand.entsperreAgent("intel", "mac");
     await zustand.notausAn("Test", "mac");
     await assert.rejects(intel.refreshIntel(null, { wait: true, now: tag(1) }), intel.IntelError);
-    await intel.autoIntel(tag(1));
+    await vonSelbst(tag(1));
     await zustand.notausAus("FREIGEBEN", "mac");
     assert.equal(xai.anfragen.length, 0);
     assert.equal((await intel.intelSnapshot(tag(1))).spentTodayUsd, 0);
@@ -115,7 +119,7 @@ describe("Intel: Kostenbremse", () => {
     xai.naechste([{ antwort: lagebild(), kostenUsd: 0.3 }, { antwort: lagebild() }]);
     await intel.refreshIntel(null, { wait: true, now: tag(4) });
     await assert.rejects(intel.refreshIntel(null, { wait: true, now: tag(4, 12) }), /Budget .* aufgebraucht/);
-    await intel.autoIntel(tag(4, 20));
+    await vonSelbst(tag(4, 20));
     assert.equal(xai.anfragen.length, 1, "nur die erste Anfrage ging hinaus");
     assert.equal((await intel.intelSnapshot(tag(4, 12))).nextAt, null);
   });
@@ -146,10 +150,10 @@ describe("Intel: Kostenbremse", () => {
 
   test("nachts liest Intel nicht von selbst, tagsüber schon", async () => {
     xai.naechste([{ antwort: lagebild() }]);
-    await intel.autoIntel(tag(9, 23));
-    await intel.autoIntel(tag(9, 3));
+    await vonSelbst(tag(9, 23));
+    await vonSelbst(tag(9, 3));
     assert.equal(xai.anfragen.length, 0);
-    await intel.autoIntel(tag(9, 9));
+    await vonSelbst(tag(9, 9));
     await new Promise((r) => setTimeout(r, 300));
     assert.equal(xai.anfragen.length, 1);
   });

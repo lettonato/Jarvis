@@ -43,7 +43,7 @@ Die Entscheidung hängt nur von Tabelle, Zustand und Herkunft ab, nie vom Text d
 
 | Klasse | Bedeutung | Werkzeuge heute | Rückfrage |
 |---|---|---|---|
-| A Lesen | liest nur | aufgaben_lesen, termine_lesen, mails_lesen, mail_oeffnen, handel_status, nachrichten_lesen, dokument_oeffnen, agenten_lesen, projekte_lesen, projekt_lesen, ansicht_oeffnen, besprechung_starten, kalender_oeffnen, obsidian_oeffnen, web_search*, web_fetch* | nie |
+| A Lesen | liest nur | aufgaben_lesen, termine_lesen, mails_lesen, mail_oeffnen, handel_status, nachrichten_lesen, dokument_oeffnen, agenten_lesen, edelmetalle_lesen, projekte_lesen, projekt_lesen, ansicht_oeffnen, besprechung_starten, kalender_oeffnen, obsidian_oeffnen, web_search*, web_fetch* | nie |
 | B Vorbereiten | intern anlegen, begrenzt im Web | aufgabe_anlegen, notiz_merken, projekt_vorschlagen (nur Vorschlag, gilt erst nach Bestätigung am Mac, siehe 07-projektgedaechtnis.md), handel_steuern (pause, notaus), alle Browser-Aktionen, dokument_abgeben | nie |
 | B mit Außenwirkung/Kosten | | browser_auftrag, dokument_erstellen, nachrichten_suchen | sobald fremde Inhalte im Gespräch sind |
 | C Verändern | ändert Daten oder Zustände | aufgabe_erledigen, aufgabe_verschieben, mail_gelesen, termin_eintragen | standardmäßig immer; einstellbar auf „nur nach fremden Inhalten“ |

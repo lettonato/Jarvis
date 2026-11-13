@@ -10,7 +10,9 @@ npm run pruefen     # Lint, Typprüfung und Tests
   „Wartet auf dich“, überfällige Aufgaben, Projekte mit Frist, Termine mit Projektbezug) und die Routinen
   (`routinen.test.ts`: Projekte im Briefing, Tagesabschluss, was dabei nicht über Telegram gehen darf) und
   die Agentensteuerung (`agenten.test.ts`: Zustände, Vorrang von Not-Aus und Sperre, erlaubte Knöpfe, Kosten
-  je Agent). `modelle.test.ts` prüft die Modellwahl und die Preisrechnung gegen Zahlen aus der Preisliste.
+  je Agent). `zeitplan.test.ts` prüft die Regeln des gemeinsamen Zeitplans (fällig, nachholen, auch über
+  Mitternacht), `metalle.test.ts` die Rechnung des Edelmetall-Agenten mit von Hand gerechneten Zahlen (Trend,
+  Hoch und Tief, Fonds statt Feinunze). `modelle.test.ts` prüft die Modellwahl und die Preisrechnung gegen Zahlen aus der Preisliste.
   `geteilt.test.ts` prüft die geteilten Abfragen der Oberfläche (eine Abfrage für mehrere Stellen, keine
   veraltete Antwort über einem neueren Stand), mit gestellter Uhr.
 * `test/module/` prüft Module mit echten Dateien im Temp-Ordner und nachgebauten Diensten:
@@ -22,13 +24,17 @@ npm run pruefen     # Lint, Typprüfung und Tests
   `kosten.test.ts` prüft das Kostenbuch: Buchen je Agent und Tag, nur Zahlen in der Datei, gleichzeitige
   Buchungen, abgebrochene Antwort, nicht lesbare und kaputte Datei. Der nachgebaute Claude meldet je Antwort
   10 Token Eingabe und 5 Ausgabe und nennt das angefragte Modell; mit dem Zug `{ abbruch: true }` reißt eine
-  Antwort mittendrin ab.
+  Antwort mittendrin ab. `zeitplan.test.ts` prüft den Taktgeber mit erfundenen Aufgaben (Not-Aus, Sperre,
+  Überlappung, Fristen, Neustart mitten im Lauf), `metalle.test.ts` den Edelmetall-Agenten gegen ein
+  nachgebautes Twelve Data und als Werkzeug des KI-Gehirns, `zeitplan-aufgaben.test.ts` Intel und die
+  Edelmetalle über den gemeinsamen Taktgeber.
 * Nachgebaute Dienste in `test/mocks/`: Claude (`claude-mock.ts`), Telegram (`telegram-mock.ts`), xAI/Grok
   (`xai-mock.ts`), ElevenLabs mit Stimmenliste, Kontostand und einem stillen, echten MP3
   (`elevenlabs-mock.ts`), der Mac für Kalender und Programme (`osascript-mock.mjs`, `open-mock.mjs`), der
   macOS-Schlüsselbund (`security-mock.mjs`), ein Postfach (`imap-mock.ts`: IMAP auf 127.0.0.1 mit sieben
   Beispiel-Mails, schreibt jeden Befehl mit; `post.test.ts`) und der Markt für den Spielgeld-Desk
-  (`markt-mock.ts`: DexScreener, GeckoTerminal, CoinGecko, RugCheck; `desk-kauf.test.ts`). Der Desk merkt
+  (`markt-mock.ts`: DexScreener, GeckoTerminal, CoinGecko, RugCheck; `desk-kauf.test.ts`) und Twelve Data für
+  Tageskurse (`twelve-mock.ts`: je Symbol eine Kursreihe oder ein Fehler, schreibt Adresse und Schlüssel-Kopf mit). Der Desk merkt
   sich Kurse 15 Sekunden: Die Kaufpfad-Tests stellen deshalb die Uhr und springen je Runde 20 Sekunden.
 * `test/helfer/umgebung.ts` sorgt dafür, dass kein Test echte Einstellungen, echte Schlüssel oder echte
   Dienste berührt.
@@ -40,10 +46,11 @@ Seit Schritt 2 (8. November 2026) ist keine bekannte Lücke mehr offen; alle 13 
 normale Tests.
 
 `test/hand/` enthält Handprüfungen, die ein echtes Chrome brauchen und deshalb nicht bei `npm test` mitlaufen
-(Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung). Aufruf steht jeweils oben in der Datei.
+(Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung,
+Edelmetalle und Zeitplan). Aufruf steht jeweils oben in der Datei.
 
 `test/hand/glashaus-schau.ts` ist keine Prüfung, sondern eine Schau: Sie startet JARVIS mit Beispieldaten
-(nachgebautes Postfach, nachgebauter Markt, Kalender, Aufgaben, drei Projekte), damit man alle Räume gefüllt
+(nachgebautes Postfach, nachgebauter Markt, nachgebaute Tageskurse für Gold und den Silber-Fonds, Kalender, Aufgaben, drei Projekte), damit man alle Räume gefüllt
 ansehen und fotografieren kann. Vorher `npx next build`, dann `npx tsx test/hand/glashaus-schau.ts 3210 start`.
 Startet man dort den Spielgeld-Handel, bewertet der nachgebaute Chief die zwei Beispiel-Coins (ein Kauf, eine
 Absage), damit der Raum Trading Position, Trade und Urteile zeigt.

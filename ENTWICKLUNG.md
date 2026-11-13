@@ -28,14 +28,16 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 501 von 501 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 581 von 581 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
 mit Fensterfront, die Kamera fährt von Raum zu Raum. Alle Funktionen sind geblieben; die frühere 3D-Landschaft
 wird nicht mehr gezeigt, ihr Code liegt noch im Repo (Frage 7). Seit Schritt E3 sind auch die dichten Räume
 Trading und Einstellungen ruhig: keine weißen Kästen mehr, die Scan-Tabelle zeigt alle Spalten, die
-Einstellungen haben oben eine Sprungleiste.
+Einstellungen haben oben eine Sprungleiste. Seit Schritt F2 gibt es einen gemeinsamen Zeitplan für alles, was
+JARVIS von selbst tut, und den ersten neuen Agenten: ein Lagebild für Gold und Silber aus Tageskursen, nach
+festen Regeln und ohne KI-Modell. Er ist nur gegen ein nachgebautes Twelve Data geprüft.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
 dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
@@ -49,7 +51,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; zwei kleine Befunde aus den Durchsichten (siehe Schritt B5) |
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
-| F Agenten | **Testbereit** für die zentrale Steuerung der fünf vorhandenen Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre); **Offen** für weitere Agenten und einen gemeinsamen Zeitplan | Mac-Prüfliste Teil H; Marktagent, Edelmetallagent, Newsletter und weitere |
+| F Agenten | **Testbereit** für die zentrale Steuerung der sechs Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre), den gemeinsamen Zeitplan und den Edelmetall-Agenten (nur gegen Nachbau); **Offen** für weitere Agenten | Mac-Prüfliste Teile H und K; Marktagent, Newsletter und weitere; Morgenbriefing und Tagesabschluss auf den gemeinsamen Taktgeber umziehen |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss und Projektüberwachung im Briefing (einstellbar, abschaltbar); **Offen** für Mail-Entwürfe, Marktüberwachung über Intel hinaus | Mac-Prüfliste Teil G; Meldung im Lauf des Tages, wenn etwas überfällig wird; Mail-Unterstützung |
 | D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
 | H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
@@ -591,8 +593,9 @@ Kauf (Test). Die Ursache am Fehler enthält bei falscher Form nur die Länge der
 | F1.4 Die Steuerung hat keine eigenen Rechte: `/api/agenten` liest nur; die Knöpfe gehen an Intel, Desk und Sicherheitszentrale mit deren Prüfungen | Testbereit | POST auf `/api/agenten` gibt 405 |
 | F1.5 Werkzeug `agenten_lesen` für das KI-Gehirn (Klasse A): nur Zustände, Zeiten und Zahlen, kein Text aus dem Netz | Testbereit | Test mit eingeschleuster Anweisung im Lagebild |
 | F1.6 Ein Start von Intel von Hand steht im Audit-Log | Testbereit (nur gelesen, kein eigener Test) | `src/app/api/intel/route.ts` |
-| F2 Gemeinsamer Zeitplan für Agenten (heute hat nur Intel einen) | Offen | |
-| F3 Weitere Agenten: Markt, Edelmetalle, Newsletter, Unternehmen und Technologie, Investoren, Compliance; mit Quellen, Zeitstempeln, Trennung von Fakt und Prognose | Offen | neue bezahlte Datenquellen brauchen Benedikts Freigabe |
+| F2 Gemeinsamer Zeitplan für Agenten | Testbereit (Sandbox) | Schritt F2 unten. Intel und Edelmetalle laufen über einen Taktgeber; Morgenbriefing und Tagesabschluss zeigt er nur an |
+| F3.1 Edelmetall-Agent: Lagebild für Gold und Silber mit Quelle, Datum, Trennung von Fakt und Einordnung, ohne Prognose | Testbereit (nur gegen nachgebautes Twelve Data) | Schritt F2 unten |
+| F3.2 Weitere Agenten: Markt, Newsletter, Unternehmen und Technologie, Investoren, Compliance | Offen | neue bezahlte Datenquellen brauchen Benedikts Freigabe |
 | F4 Kosten je Agent auch für Gespräch und Browser zählen | Testbereit | Schritt J1 in Bereich J |
 
 ### Testergebnisse Schritt F1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
@@ -609,6 +612,72 @@ Kauf (Test). Die Ursache am Fehler enthält bei falscher Form nur die Länge der
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. Für Gespräch und
 Browser steht bei den Kosten „noch nicht gezählt“; das ist eine Lücke, kein Wert von null. **Sicherheitsrisiken:**
 keine neuen. Die Steuerung kann nichts, was die Ansichten dahinter nicht schon konnten.
+
+### Schritt F2: gemeinsamer Zeitplan und Edelmetall-Agent (13. November 2026)
+
+**Was gebaut wurde**
+
+* **Ein Taktgeber für alles, was JARVIS von selbst tut** (`src/lib/server/zeitplan.ts`, Regeln in
+  `src/lib/zeitplan.ts`, Aufgabenliste in `src/lib/server/zeitplan-aufgaben.ts`). Jede Minute fragt er die
+  angemeldeten Aufgaben, ob sie dran sind. Für alle gleich gilt: Mit Not-Aus oder Sperre des Agenten läuft
+  nichts; zwei Läufe derselben Aufgabe überschneiden sich nie (auch nicht, wenn Zeitgeber und eine geöffnete
+  Seite im selben Augenblick nachsehen); ein hängender Lauf wird nach zehn Minuten als fehlgeschlagen gezählt
+  und gibt die Aufgabe wieder frei. Jeder Lauf steht mit Beginn und Ausgang in `~/.jarvis/zeitplan.json`, der
+  Beginn sofort; wurde JARVIS mitten im Lauf beendet, steht das nach dem Neustart da. In der Datei und in der
+  Anzeige stehen nur Zeiten und feste Sätze des Programms, kein Fehlertext eines fremden Servers.
+* **Intel läuft jetzt über diesen Taktgeber** statt über einen eigenen Zeitgeber. Wann Intel dran ist
+  (tagsüber, im Budget, nicht gleich nach einem Fehlschlag), entscheidet weiter Intel selbst.
+* **Edelmetall-Agent „Edelmetalle“** (`src/lib/metalle.ts`, `src/lib/server/metalle.ts`): liest zweimal am Tag
+  (07:30 und 17:30, einstellbar, abschaltbar) die Tageskurse von Gold und Silber bei Twelve Data, mit dem
+  Schlüssel, den der Spielgeld-Desk schon nutzt. Kein KI-Modell, kein Handel, kein neuer Dienst. Das Lagebild
+  trennt **Fakten** (Kurs mit Datum, Veränderung zum Vortag, in 5 und 21 Handelstagen, Hoch und Tief, mittlere
+  Tagesspanne, Verhältnis Gold zu Silber, Quelle und Zeitpunkt) von der **Einordnung** (Trend nach fester
+  Regel: Kurs gegen den Schnitt der letzten 20 und 50 Handelstage, die Regel steht dabei). Eine Prognose gibt
+  er nicht ab; der Hinweis „keine Prognose und keine Anlageberatung“ steht immer dabei.
+* **Silber im kostenlosen Plan:** Am 13. November über den Twelve-Data-Konnektor nachgesehen: Das verbundene
+  Konto hat 800 Abrufe am Tag (kostenloser Plan), Gold je Feinunze (XAU/USD) kommt, Silber je Feinunze
+  (XAG/USD) erst ab dem Plan „Grow“, der Silber-Fonds SLV kommt. Deshalb fragt der Agent für ein Metall, das es
+  je Feinunze nicht gibt, den US-Fonds, der ihm folgt (SLV, für Gold GLD; dieselben Ausweichquellen wie beim
+  Desk). Der Fonds steht mit eigenem Namen und „je Anteil“ da, nie als Kurs je Feinunze, mit einem Satz, warum;
+  das Verhältnis Gold zu Silber gibt es dann nicht.
+* **Oberfläche:** im Raum Intel der Abschnitt „Gold und Silber“ (Zahlen, Einordnung, Knopf „Jetzt lesen“,
+  Uhrzeiten), im Raum Agenten die Zeile „Edelmetalle“ in der Steuerung und darunter der Abschnitt „Zeitplan“
+  (je Aufgabe Takt, letzter Lauf nach Plan mit Ausgang, nächster Termin oder der Grund, warum keiner ansteht).
+* **Im Gespräch:** Werkzeug `edelmetalle_lesen` (Klasse A, nur lesen, fragt Twelve Data nicht neu). JARVIS
+  bekommt Fakten und Einordnung getrennt und die Anweisung, daraus keine Prognose und keine Empfehlung zu machen.
+* **Nebenbei behoben:** Der Sprung zu einem Abschnitt (etwa aus der Steuerung nach „Intel, Gold und Silber“)
+  landete daneben, wenn die Seite nach dem Sprung noch gewachsen ist. Die Wand folgt jetzt ein paar Sekunden
+  und lässt los, sobald man selbst rollt. Im Raum Intel sind die letzten Punktketten („·“) durch Sätze ersetzt.
+
+**Entwurfsentscheidungen (im Rahmen des Dauerauftrags selbst getroffen)**
+
+* Platin und Palladium sind nicht dabei: ob der Plan sie liefert, ist nicht geprüft.
+* Nach einem gescheiterten Lauf (etwa: der Mac ist gerade aufgewacht, das Netz fehlt noch) versucht der Agent es
+  nach einer halben Stunde wieder, bis zwei Stunden nach der Uhrzeit. Ein verpasster Tag wird nicht nachgeholt.
+* Ein Lauf verbraucht bei Twelve Data zwei Abrufe (einen je Kursreihe, so steht es in deren Hilfe), mit Fonds
+  drei. Das sind bei zwei Läufen am Tag höchstens sechs von 800.
+* Morgenbriefing und Tagesabschluss verschickt weiter Telegram mit seinem eigenen Minutentakt; der Zeitplan
+  zeigt sie nur an. Der Umzug auf den gemeinsamen Taktgeber ist ein eigener Schritt (mit G2).
+
+### Testergebnisse Schritt F2 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **581 Tests: 581 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 80: Regeln des Zeitplans 9, Regeln der Edelmetalle 16, Taktgeber 16, Edelmetall-Agent gegen nachgebautes Twelve Data und als Werkzeug 23, Aufgaben des Zeitplans gegen die echten Module 11, Karte „Edelmetalle“ in der Agentensteuerung 5) |
+| `npx next build` | erfolgreich; neu `/api/metalle` und `/api/zeitplan` |
+| Handprüfungen im Browser (Chromium, gebauter Server) | neu `test/hand/metalle-rauch.ts`: Abschnitt im Raum Intel ohne Lagebild, „Jetzt lesen“, Gold je Feinunze und Silber-Fonds je Anteil mit Begründung, Einordnung getrennt, kein Text von Twelve Data in der Seite, Schlüssel nur im Kopf der Anfrage, unbrauchbare Uhrzeit abgelehnt, brauchbare gespeichert, „Jetzt starten“ in der Steuerung, gesperrt liest er nicht. Dazu Agentensteuerung (jetzt sechs Agenten und vier Zeilen im Zeitplan), Tagesabschluss, Projekte: alle in Ordnung |
+| Musteransicht (`test/hand/glashaus-schau.ts`, 1440 und 390 Pixel breit) | Abschnitt „Gold und Silber“, Zeile in der Steuerung und Zeitplan angesehen; nichts lässt sich seitlich schieben; alle zwölf Räume ohne herausragende Knöpfe; Sprünge zu vier Abschnitten landen kalt geladen und per Klick; nach eigenem Rollen holt die Wand einen nicht zurück |
+| Gegenproben (33 absichtlich eingebaute Fehler, Tests müssen fehlschlagen) | 32 erkannt (unter anderem: Not-Aus und Sperre im Taktgeber, Überlappung, Fristen, fester Satz statt Fehlertext, abgebrochener Lauf nach Neustart, Nachholen über Mitternacht, Trendregel, Fonds je Anteil, Verhältnis nur je Feinunze, kein Fonds bei leerem Kontingent, neuer Versuch nach Fehlschlag). Einer ist gleichwertig: Eine Aufgabe ohne Fälligkeitsprüfung läuft auch ohne die zusätzliche Abfrage nie |
+| Code-Review (zwei Durchgänge) | erster Durchgang zehn Punkte, zweiter zwei; alle eingearbeitet oder unten als Grenze genannt |
+| Gegen den echten Dienst geprüft | nur drei einzelne Lese-Abfragen über den Twelve-Data-Konnektor (Gold, Silber, SLV, je drei Tage) und der Verbrauch. Die Antwort auf eine Abfrage für zwei Kursreihen zugleich hat JARVIS selbst noch nie vom echten Twelve Data bekommen |
+| Nicht geprüft | echter Mac (Prüfliste Teil K); Lauf zur Uhrzeit über Stunden (im Test mit gestellter Uhr); echtes Aufwachen aus dem Ruhezustand; Platin, Palladium |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** Der Aufbau der Antwort bei zwei Kursreihen in
+einer Abfrage ist so angenommen, wie ihn der Desk seit jeher liest; stimmt er nicht, meldet der Agent „keine
+brauchbaren Kurse“ und zeigt nichts Falsches. Die Kurse des Fonds folgen dem Silberpreis nur ungefähr
+(Gebühren, Börsenzeiten); deshalb steht er als Fonds da. Ob der Schlüssel am Mac zum selben Konto gehört wie
+der Konnektor, weiß ich nicht. **Sicherheitsrisiken:** keine neuen. Der Agent kann nur lesen, hat kein
+KI-Modell und kein Werkzeug zum Handeln; der Schlüssel geht nur im Kopf der Anfrage an Twelve Data.
 
 ## Bereich G – Proaktive Routinen
 
@@ -782,6 +851,9 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
    Projekte hat sich damit erledigt). Ihr Code liegt noch im Repo. Soll er endgültig entfernt werden, oder
    möchtest du sie irgendwo behalten? Bis zu deiner Ansage bleibt er unangetastet.
 9. Glashaus am Mac ansehen (Prüfliste Teil J) und sagen, was noch stört.
+11. Twelve Data: Im kostenlosen Plan gibt es Silber nur über den Fonds SLV, nicht je Feinunze (dafür bräuchte
+    es den bezahlten Plan „Grow“). Der Edelmetall-Agent zeigt deshalb den Fonds und schreibt das dazu. Ein
+    bezahlter Plan wäre deine Entscheidung; nötig ist er nicht. Prüfliste Teil K am Mac durchgehen.
 10. Kosten: nach ein paar Tagen die Zahlen in „Agenten“ mit der Abrechnung bei Anthropic vergleichen
     (Prüfliste H8). Möchtest du ein gemeinsames Tagesbudget für alle Agenten, bei dem JARVIS warnt oder anhält?
     Bisher hat jeder Agent nur seine eigene Grenze.
@@ -811,6 +883,8 @@ Danach wie geplant:
 
 4. **J Kostenübersicht und Modelladapter: gebaut, Testbereit** (Schritt J1 in Bereich J). Offen: Vergleich mit
    der echten Abrechnung am Mac (Prüfliste H8), anderer Anbieter austauschbar, Wiederherstellungstests.
-5. **Als Nächstes: F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung). Neue bezahlte Datenquellen nur mit Benedikts Freigabe.
-6. G2/G3: Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
+5. **F2/F3.1: gebaut, Testbereit** (Schritt F2 in Bereich F): gemeinsamer Zeitplan, Edelmetall-Agent. Weitere
+   Agenten (F3.2) nur mit freigegebenen Datenquellen.
+6. **Als Nächstes: G2/G3:** Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
+   Dabei Morgenbriefing und Tagesabschluss auf den gemeinsamen Taktgeber umziehen.
 7. D Microsoft 365 nur gegen nachgebaute Schnittstellen.
