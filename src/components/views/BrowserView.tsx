@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "../icons";
-import { Brackets, Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { getJson, postJson } from "@/lib/api";
 import { BROWSER_RULES, hostLabel, MAX_MINUTES, TASK_LABEL, type BrowserStatus, type BrowserTask } from "@/lib/browser";
 
@@ -135,7 +135,7 @@ export function BrowserView() {
                   key={ex}
                   type="button"
                   onClick={() => setText(ex)}
-                  className="rounded-full border border-sky-300/25 bg-sky-400/5 px-3 py-1 text-left text-xs text-sky-100/80 transition hover:border-sky-300/60 hover:text-sky-50"
+                  className="rounded-full border border-schiefer/25 bg-gletscher/5 px-3 py-1 text-left text-xs text-schiefer/80 transition hover:border-schiefer/60 hover:text-schiefer"
                 >
                   {ex}
                 </button>
@@ -151,11 +151,11 @@ export function BrowserView() {
 
       <Panel className="max-w-3xl">
         <details open={!task}>
-          <summary className="cursor-pointer text-sm font-bold uppercase tracking-widest text-sky-100">Was JARVIS im Browser nie tut</summary>
-          <ul className="mt-2 space-y-1.5 text-sm text-sky-50/85">
+          <summary className="cursor-pointer text-sm font-bold text-schiefer">Was JARVIS im Browser nie tut</summary>
+          <ul className="mt-2 space-y-1.5 text-sm text-schiefer/85">
             {BROWSER_RULES.map((r) => (
               <li key={r} className="flex gap-2">
-                <Icon name="schild" className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+                <Icon name="schild" className="mt-0.5 h-4 w-4 shrink-0 text-see" />
                 <span>{r}</span>
               </li>
             ))}
@@ -177,21 +177,20 @@ function Stage({ task, status, running, busy, onTakeOver }: { task: BrowserTask;
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]">
       <LiveWindow status={status} running={running} caption={running && last ? last : null} taskId={task.id} />
-      <section className="relative rounded-xl border border-teal-300/25 bg-panel/90 p-4 shadow-[0_0_30px_rgba(45,212,191,0.12)]">
-        <Brackets />
+      <section className="relative rounded-xl border border-gletscher/25 bg-panel/90 p-4">
         <div className="mb-2 flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-teal-100">Auftrag</h2>
-          <span className={`text-[10px] font-bold uppercase tracking-widest ${running ? "text-teal-300" : task.state === "fertig" ? "text-green-300" : "text-red-300"}`}>
-            {running && <span className="browser-live-dot mr-1.5 inline-block h-2 w-2 rounded-full bg-teal-300 align-middle" aria-hidden />}
+          <h2 className="text-sm font-bold text-see">Auftrag</h2>
+          <span className={`text-xs font-bold ${running ? "text-see" : task.state === "fertig" ? "text-up" : "text-down"}`}>
+            {running && <span className="browser-live-dot mr-1.5 inline-block h-2 w-2 rounded-full bg-gletscher align-middle" aria-hidden />}
             {TASK_LABEL[task.state]}
           </span>
         </div>
-        <p className="mb-3 text-sm text-sky-50/90">„{task.auftrag}“</p>
+        <p className="mb-3 text-sm text-schiefer/90">„{task.auftrag}“</p>
         <ol className="max-h-[19rem] space-y-1.5 overflow-y-auto pr-1 text-xs" aria-live="polite">
           {task.steps.map((s, i) => (
             <li
               key={`${s.at}-${i}`}
-              className={`browser-step flex gap-2 ${s.blocked ? "text-amber-200" : i === task.steps.length - 1 && running ? "text-teal-50" : "text-sky-50/70"}`}
+              className={`browser-step flex gap-2 ${s.blocked ? "text-ocker" : i === task.steps.length - 1 && running ? "text-see" : "text-schiefer/70"}`}
             >
               <span className="shrink-0 font-mono text-quiet">{clock(s.at)}</span>
               {s.blocked && <Icon name="schild" className="mt-px h-3.5 w-3.5 shrink-0" />}
@@ -200,7 +199,7 @@ function Stage({ task, status, running, busy, onTakeOver }: { task: BrowserTask;
           ))}
         </ol>
         {task.result && (
-          <div className={`mt-4 rounded-lg border px-3 py-2 text-sm ${task.state === "fertig" ? "border-up/40 bg-up/10 text-green-100" : "border-sky-300/30 bg-sky-400/10 text-sky-100"}`}>
+          <div className={`mt-4 rounded-lg border px-3 py-2 text-sm ${task.state === "fertig" ? "border-up/40 bg-up/10 text-up" : "border-schiefer/30 bg-gletscher/10 text-schiefer"}`}>
             {task.result}
           </div>
         )}
@@ -225,32 +224,32 @@ function LiveWindow({ status, running, caption, taskId }: { status: BrowserStatu
   const src = status.open && !broken ? `/api/browser/live?k=${taskId}-${status.visible ? "f" : "j"}` : still;
   return (
     <div className="browser-fly">
-      <div className="browser-scan relative overflow-hidden rounded-2xl border border-teal-300/45 bg-[#04090f]/95 shadow-[0_0_70px_rgba(45,212,191,0.22),0_30px_90px_rgba(0,0,0,0.65)]">
-        <div className="flex items-center gap-3 border-b border-teal-300/20 bg-teal-950/50 px-3 py-2">
+      <div className="browser-scan relative overflow-hidden rounded-2xl border border-gletscher/45 bg-[#04090f]/95">
+        <div className="flex items-center gap-3 border-b border-gletscher/20 bg-schiefer/50 px-3 py-2">
           <span className="flex shrink-0 gap-1.5" aria-hidden>
-            <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-300/70" />
-            <span className="h-2.5 w-2.5 rounded-full bg-green-400/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-rot/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-sonne/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-up/70" />
           </span>
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-teal-300/15 bg-black/45 px-3 py-1 text-xs text-teal-50/90">
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-teal-300" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-gletscher/15 bg-black/45 px-3 py-1 text-xs text-see/90">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-see" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <rect x="5" y="11" width="14" height="9" rx="2" />
               <path d="M8 11V8a4 4 0 0 1 8 0v3" />
             </svg>
             <span className="truncate">{status.url ? shortUrl(status.url) : running ? "Chrome startet …" : "Neuer Tab"}</span>
           </div>
           {running ? (
-            <span className="flex shrink-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-300">
-              <span className="browser-live-dot h-2 w-2 rounded-full bg-red-400" aria-hidden />
+            <span className="flex shrink-0 items-center gap-1.5 text-xs font-bold text-down">
+              <span className="browser-live-dot h-2 w-2 rounded-full bg-rot" aria-hidden />
               Live
             </span>
           ) : (
-            status.url && <span className="hidden shrink-0 text-[10px] uppercase tracking-widest text-quiet sm:inline">{hostLabel(status.url)}</span>
+            status.url && <span className="hidden shrink-0 text-xs text-quiet sm:inline">{hostLabel(status.url)}</span>
           )}
         </div>
         <div className="relative aspect-[1280/820] bg-black">
           <div className="browser-boot absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_center,rgba(45,212,191,0.18),transparent_65%)]">
-            <span className="text-xs uppercase tracking-[0.3em] text-teal-200/80">{running ? "JARVIS öffnet Chrome" : "Kein Bild"}</span>
+            <span className="text-xs text-see/80">{running ? "JARVIS öffnet Chrome" : "Kein Bild"}</span>
           </div>
           {src && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -263,8 +262,8 @@ function LiveWindow({ status, running, caption, taskId }: { status: BrowserStatu
           )}
           {caption && (
             <div key={`${caption.at}-${caption.text}`} className="browser-step absolute inset-x-0 bottom-0 flex items-center gap-2.5 bg-gradient-to-t from-black/85 via-black/60 to-transparent px-4 pb-3 pt-8">
-              <span className="browser-live-dot h-3 w-3 shrink-0 rounded-full bg-teal-300 shadow-[0_0_12px_rgba(94,234,212,0.9)]" aria-hidden />
-              <span className={`truncate text-sm font-semibold ${caption.blocked ? "text-amber-200" : "text-teal-50"}`}>{caption.text}</span>
+              <span className="browser-live-dot h-3 w-3 shrink-0 rounded-full bg-gletscher" aria-hidden />
+              <span className={`truncate text-sm font-semibold ${caption.blocked ? "text-ocker" : "text-see"}`}>{caption.text}</span>
             </div>
           )}
         </div>

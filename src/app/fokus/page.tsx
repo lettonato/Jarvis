@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { FocusView } from "@/components/views/FocusView";
-import { HoloView } from "@/components/HoloView";
+import { RaumSeite } from "@/components/Raum";
 
 export const metadata: Metadata = { title: "JARVIS · Fokus" };
 
 export default function FocusPage() {
   return (
-    <HoloView>
+    <RaumSeite ort="/fokus">
       <FocusView />
-    </HoloView>
+    </RaumSeite>
   );
 }

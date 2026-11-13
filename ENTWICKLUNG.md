@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026 (Schritt F1)
+Letzte Aktualisierung: 13. November 2026 (Schritt E2, neue Oberfläche „Glashaus“)
 
 ## Aktueller Stand
 
@@ -27,10 +27,13 @@ Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
-Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 431 von 431 automatischen Tests
+Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 435 von 435 automatischen Tests
 bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
+Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
+mit Fensterfront, die Kamera fährt von Raum zu Raum. Alle Funktionen sind geblieben; die frühere 3D-Landschaft
+wird nicht mehr gezeigt, ihr Code liegt noch im Repo (Frage 7).
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
 dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
@@ -41,9 +44,9 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | Bereich (Auftrag vom 13.11.) | Stand | Was fehlt bis „Abgeschlossen“ |
 |---|---|---|
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
-| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und 3D-Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; zehn Befunde aus der Durchsicht vom 13.11. prüfen (siehe Schritt B2) |
+| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; acht Befunde aus der Durchsicht vom 13.11. prüfen (siehe Schritt B2 und B3) |
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
-| E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht und Agentenübersicht (13 Ansichten); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teil F; Unternehmensübersicht (braucht Microsoft 365); Projekte in der 3D-Übersicht (Frage 7) |
+| E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der fünf vorhandenen Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre); **Offen** für weitere Agenten und einen gemeinsamen Zeitplan | Mac-Prüfliste Teil H; Marktagent, Edelmetallagent, Newsletter und weitere; Kostenzählung für Gespräch und Browser (J) |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss und Projektüberwachung im Briefing (einstellbar, abschaltbar); **Offen** für Mail-Entwürfe, Marktüberwachung über Intel hinaus | Mac-Prüfliste Teil G; Meldung im Lauf des Tages, wenn etwas überfällig wird; Mail-Unterstützung |
 | D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
@@ -377,7 +380,7 @@ und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-ris
 | E1.2 Ansicht „Heute“ mit „Wartet auf dich“ (Not-Aus, Freigaben, Rückfragen des Desks, Intel-Warnung, Vorschläge fürs Projektgedächtnis, überfällige Aufgaben, dringende Projekte, wichtige Post, fertiges Dokument) und Karten für Termine, Aufgaben, Post, Projekte, Märkte und Nachrichten, Agenten | Testbereit | `src/components/views/TodayView.tsx`, `/heute`; im Browser geprüft |
 | E1.3 Bei Terminen, in deren Titel ein Projekt vorkommt: Verweis auf die Akte | Testbereit | wie oben |
 | E1.4 Zuruf: „Tagesübersicht“ oder „mein Tag“ öffnet „Heute“, „Projekte“ öffnet die Projekte | Testbereit | `src/lib/commands.ts` |
-| E2 Projekte in der 3D-Übersicht (eigener Fels) | Offen | Die Übersicht hat zehn feste Plätze; ein elfter würde das Bild verschieben. Vorschlag: Projekte statt des Platzhalters „Telefon“ (Frage 7) |
+| E2 Neue Oberfläche „Glashaus“: jeder Bereich ein heller Raum mit Fensterfront, Kamerafahrt beim Wechsel, Leiste unten mit allen Räumen und dem Feld für JARVIS | Testbereit | Schritt E2 unten. Die frühere 3D-Übersicht mit den Felsen wird nicht mehr gezeigt; die Projekte haben jetzt wie alles andere ihren eigenen Raum |
 | E3 Unternehmensübersicht (Teams, Dateien, Planner) | Blockiert | braucht Microsoft 365 (Bereich D) |
 | E4 Finanz- und Marktübersicht über Spielgeld-Desk und Intel hinaus | Offen | |
 | E5 Agentenübersicht mit Steuerung | Testbereit | Schritt F1: Ansicht „Agenten“, Karte in „Heute“ |
@@ -396,6 +399,67 @@ und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-ris
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Sicherheitsrisiken:**
 keine neuen. Die Tagesübersicht liest nur, schickt nichts an ein Modell und zeigt vertrauliche Projekte nur
 am Mac (wie die Ansicht „Projekte“).
+
+### Schritt E2: neue Oberfläche „Glashaus“ (13. November 2026)
+
+Benedikts Wunsch: ein ganz anderes Aussehen, „Richtung 4K, richtige Kino-Übergänge“. Aus den Entwürfen
+(`docs/design-entwuerfe/`) hat er B „Glashaus“ gewählt, so wie gezeigt. Umgesetzt mit dem Skill `frontend-design`.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| E2.1 Gestaltungsgrundlage: Farben (Kalkwand, Schiefer, Gletscher, Sonne), Schrift Archivo (liegt im Projekt, freie Lizenz OFL), Schriftgröße wächst mit dem Bildschirm | Testbereit | `src/app/globals.css`, `public/schrift/` |
+| E2.2 Der Raum: links die Wand mit dem Inhalt (nur sie rollt), rechts die Fensterfront mit dem Foto des Bereichs, unten der Boden mit Spiegelung und Sonnenlicht, davor Scheiben aus Milchglas für die wichtigsten Zahlen | Testbereit | `src/components/Raum.tsx`, `src/lib/raeume.ts` |
+| E2.3 Kamerafahrt beim Wechsel: alter Raum hinaus, dunkle Zwischenwand mit dem Namen des nächsten Raums, neuer Raum herein; Richtung nach der Reihenfolge in der Leiste. Mit „Bewegung reduzieren“ nur kurzes Überblenden | Testbereit | `globals.css` (Abschnitt Kamerafahrt), `test/regeln/raeume.test.ts` |
+| E2.4 Leiste auf dem Boden: Name, Räume mit Zählern, „Mehr“, Feld für JARVIS mit Mikrofon; darüber die letzte Antwort, aufklappbar zum ganzen Gespräch. Oben die Hinweise, die nicht warten können (Not-Aus, Freigaben, Rückfragen) | Testbereit | `src/components/AppFrame.tsx` |
+| E2.5 Alle zwölf Räume umgestellt: Heute (Eingang, mit dem nächsten Termin groß an der Wand), Aufgaben, Kalender, Post, Projekte, Trading, Intel, Agenten, Browser, Dokumente, Einstellungen, Gespräch | Testbereit | `src/components/views/`, `TradingDesk.tsx`, `CrawlerWeb.tsx` (das Netz der Spinne ist ein dunkler Bildschirm an der Wand) |
+| E2.6 Bildnachweis der Fotos steht offen unter Einstellungen → Aussehen; ein Test prüft, dass zu jedem Fenster Foto und Urheber vorhanden sind | Testbereit | `SettingsView.tsx`, `public/welt/QUELLEN.md`, `test/regeln/raeume.test.ts` |
+| E2.7 Schmale Bildschirme: Fenster oben, Inhalt darunter, Räume als Auswahl | Testbereit | bei 390 Pixeln Breite an zwei Räumen angesehen |
+
+**Was sich für dich ändert:** Die Startseite ist jetzt der Raum „Heute“ (die Adresse `/heute` führt in denselben
+Raum). Die frühere Kommandozentrale mit den Kacheln und die 3D-Landschaft werden nicht mehr gezeigt; die
+Auswahl „Gebirge oder Fotos“ und die Bildqualität in den Einstellungen sind deshalb entfallen. Der Code der
+Landschaft (`src/components/world/`, `src/lib/world.ts`, `src/lib/quality.ts`) liegt weiter im Repo, bis
+Benedikt entscheidet (Frage 7). Entfernt wurden nur die Teile, die ausschließlich zur alten Oberfläche
+gehörten: `CommandCenter.tsx`, `ModuleCard.tsx`, `HoloLink.tsx`, `HoloView.tsx`, `src/lib/holo.ts`; sie stehen
+im Verlauf vor diesem Commit. Alle Funktionen, Schnittstellen und Daten sind unverändert.
+
+### Testergebnisse Schritt E2 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **435 Tests: 435 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Räume 4) |
+| `npx next build` | erfolgreich |
+| Gegenprobe (Fahrtrichtung vertauscht; Foto eines Raums umbenannt) | je 1 Test schlägt fehl; danach wiederhergestellt |
+| Handprüfungen im Browser (Chromium, gebauter Server, Testdaten): `projekte-rauch`, `agenten-rauch`, `routinen-rauch`, `stimme-rauch`, `schleuse-rauch`, `browser-rauch`, `pdf-rauch` | alle Schritte in Ordnung; `stimme-rauch` an das neue Eingabefeld angepasst |
+| Alle zwölf Räume mit Beispieldaten (`test/hand/glashaus-schau.ts`) bei 1440 × 810 angesehen, Trading und Einstellungen auch weiter unten; acht Räume zusätzlich in 3840 × 2160 für Benedikt aufgenommen (davon „Heute“ angesehen) | dunkle Schrift auf heller Wand, nichts abgeschnitten; keine Fehler in der Seite |
+| Kamerafahrt in Zeitlupe gefilmt (Heute → Projekte → Kalender → Heute) | Raum, Zwischenwand und neuer Raum bewegen sich als eine Fahrt, die Leiste bleibt stehen |
+| „Bewegung reduzieren“ | nur zwei Überblendungen von 160 ms, keine Fahrt |
+| Sprung zu einem Abschnitt (`/einstellungen#aussehen`) | die Wand rollt zum Abschnitt, auch wenn er erst nach dem Laden erscheint |
+| Durchsicht mit dem Skill `code-review` (Stufe mittel) und Sicherheitsdurchsicht von Hand | siehe Ergebnis unter dieser Tabelle |
+| **Nicht geprüft** | echter Mac und Safari (die Fahrt nutzt „View Transitions“; ältere Browser wechseln ohne Fahrt); echte Daten; Geschwindigkeit des Milchglases auf dem Mac; sehr große Monitore über 1920 Pixel Breite nur über die Skalierung, nicht am Gerät; schmale Bildschirme nur an zwei Räumen; die langen Räume Trading und Einstellungen wurden an mehreren Stellen, aber nicht Zeile für Zeile angesehen; der Trading-Desk nur im Ruhezustand, nicht mit laufendem Handel |
+
+**Ergebnis der Durchsicht:** Der Skill hat wieder den ganzen Zweig durchgesehen (ohne GitHub fehlt ihm der
+Vergleichsstand). Zum Umbau der Oberfläche gab es keinen Befund. Von Hand geprüft: Der Umbau ändert keine
+Datei unter `src/lib/server` und keine Schnittstelle, fügt keine fremden Adressen, kein eingebettetes HTML und
+keine neuen Speicherorte im Browser hinzu; Schrift und Fotos liegen im Projekt. Die Durchsicht nannte aber zehn
+Befunde zu früheren Schritten: sechs der acht bekannten (Schritt B2) und **vier neue**, die noch nicht
+nachgestellt sind:
+
+| Neuer Befund (ungeprüft) | Stelle |
+|---|---|
+| Im Schlüsselbund-Betrieb kann `writeConfig` einen gespeicherten Schlüssel mit einem leeren Wert überschreiben, wenn die Einstellungen gelesen wurden, während der Schlüsselbund gesperrt war, und er inzwischen wieder lesbar ist | `src/lib/server/config.ts` (um Zeile 176) |
+| Morgenbriefing und Tagesabschluss sprechen Text aus Projekteinträgen, ohne ihn als „von Dritten“ zu kennzeichnen; die Kennzeichnung aus Schritt B3 greift dort nicht | `src/lib/commands.ts` (um Zeile 495) |
+| Ein Korrekturvorschlag merkt sich alle Felder zum Zeitpunkt des Vorschlags; wer den Eintrag danach von Hand ändert und dann übernimmt, bekommt die alten Werte zurück | `src/lib/server/projekte/projekte.ts` (um Zeile 375) |
+| Die Netzschleuse verbindet nur zur ersten gefundenen Adresse eines Servers, ohne Ausweichen auf die nächste | `src/lib/server/netzschleuse.ts` (um Zeile 78) |
+
+Die ersten beiden betreffen Sicherheit und kommen im nächsten Paket zuerst dran.
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** In den dichten Räumen (Trading, Einstellungen)
+stehen noch weiße Kästen aus der alten Oberfläche auf der Wand; das ist lesbar, aber noch nicht so ruhig wie
+„Heute“. Der Raum „Firma“ aus dem Entwurf fehlt, er braucht Microsoft 365 (E3). **Sicherheitsrisiken:** keine
+neuen. Der Umbau ändert nur die Darstellung; Schnittstellen, Gateway, Freigaben und Not-Aus sind unverändert
+und weiter in jedem Raum oben sichtbar.
 
 ## Bereich F – Agenten
 
@@ -530,8 +594,10 @@ einschaltet; das ist seine Entscheidung.
 8. ElevenLabs: Schlüssel am Mac eintragen (Einstellungen → Stimme), Wunschstimme im ElevenLabs-Konto zu „Meine
    Stimmen“ hinzufügen, Prüfliste Teil I. Der Gratis-Tarif hat 10.000 Zeichen im Monat (etwa 30 Antworten);
    ob du einen bezahlten Tarif nimmst (Starter 6 $ im Monat, Stand 13.11.), entscheidest du.
-7. 3D-Übersicht: Sollen die Projekte dort einen eigenen Felsen bekommen, an der Stelle des Platzhalters
-   „Telefon“? Bis dahin erreichst du „Heute“ und „Projekte“ über die Leiste oben und per Zuruf.
+7. 3D-Landschaft: Im Glashaus wird sie nicht mehr gezeigt (die frühere Frage nach einem Felsen für die
+   Projekte hat sich damit erledigt). Ihr Code liegt noch im Repo. Soll er endgültig entfernt werden, oder
+   möchtest du sie irgendwo behalten? Bis zu deiner Ansage bleibt er unangetastet.
+9. Glashaus am Mac ansehen (Prüfliste Teil J) und sagen, was noch stört.
 
 ## Sicherung
 
@@ -549,11 +615,13 @@ Benedikts Wünsche vom 13. November 2026 gehen vor:
 1. **H1 Stimme: gebaut, Testbereit** (siehe Bereich H). Offen ist nur die Prüfung mit Benedikts Schlüssel am Mac.
 2. **E-Design: Benedikt hat am 13.11. „Glashaus“ gewählt** („wir bleiben bei der Ursprungsversion“), also
    Entwurf B wie gezeigt, ohne Zutaten aus den anderen Entwürfen. Vorlage: `docs/design-entwuerfe/b.html`.
-   **Status: Offen**, der Umbau beginnt mit dem Skill `frontend-design`; alle Funktionen bleiben. An der
-   Oberfläche ist noch nichts geändert.
+   **Status: Testbereit** (Schritt E2 in Bereich E): alle zwölf Räume sind umgestellt, alle Funktionen
+   geblieben. Offen ist Benedikts Blick am Mac (Prüfliste Teil J) und der Feinschliff der dichten Räume
+   Trading und Einstellungen.
 3. **Befunde aus der Durchsicht vom 13.11.**: die zwei zum Schutz vertraulicher Projekte sind behoben
-   (Schritt B3). Die übrigen acht (Liste in den Testergebnissen von Schritt B2) einzeln nachstellen, mit Test
-   belegen, beheben.
+   (Schritt B3). Die übrigen acht (Liste in den Testergebnissen von Schritt B2) und die vier neuen aus der
+   Durchsicht zu Schritt E2 (Tabelle dort; zuerst Schlüsselbund und Kennzeichnung im Briefing) einzeln
+   nachstellen, mit Test belegen, beheben.
 
 Danach wie geplant:
 

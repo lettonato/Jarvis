@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { TradingDesk } from "@/components/TradingDesk";
-import { HoloView } from "@/components/HoloView";
+import { RaumSeite } from "@/components/Raum";
 
 export const metadata: Metadata = { title: "JARVIS · Trading-Desk" };
 
 export default function TradingPage() {
   return (
-    <HoloView>
+    <RaumSeite ort="/trading">
       <TradingDesk />
-    </HoloView>
+    </RaumSeite>
   );
 }

@@ -53,11 +53,11 @@ const SILK = "#fb923c";
 const JOINT = "#4ade80";
 
 const STATE_ICON: Record<CrawlState, { icon: string; tone: string; label: string }> = {
-  laeuft: { icon: "◌", tone: "text-sky-200", label: "läuft" },
+  laeuft: { icon: "◌", tone: "text-stein", label: "läuft" },
   ok: { icon: "✓", tone: "text-up", label: "weiter" },
   raus: { icon: "✕", tone: "text-down", label: "raus" },
-  warn: { icon: "!", tone: "text-amber-300", label: "unklar" },
-  gekauft: { icon: "★", tone: "text-sky-300", label: "gekauft" },
+  warn: { icon: "!", tone: "text-ocker", label: "unklar" },
+  gekauft: { icon: "★", tone: "text-see", label: "gekauft" },
 };
 
 // Ein Schritt bleibt mindestens so lange auf dem Bildschirm, damit du ihn siehst, auch wenn RugCheck
@@ -508,15 +508,13 @@ export function CrawlerWeb({ snap, desk }: { snap: MarketSnapshot | null; desk: 
   const xOff = desk ? !desk.x.enabled : false;
 
   return (
-    <section className="grid gap-3 rounded-md border border-line bg-panel p-3 lg:grid-cols-3">
+    <section className="grid gap-4 border-t-[3px] border-schiefer pt-4 lg:grid-cols-3">
       <div className="min-w-0 lg:col-span-2">
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: SILK }}>
-            Crawler · live
-          </h2>
-          <span className="text-[11px] text-quiet">die Spinne aus dem Video: jeder Coin, jede Prüfung, in Echtzeit</span>
+          <h2 className="text-base font-bold text-schiefer">Crawler, live</h2>
+          <span className="text-xs text-quiet">die Spinne aus dem Video: jeder Coin, jede Prüfung, in Echtzeit</span>
         </div>
-        <div ref={box} className="relative w-full" style={{ height: geo?.H ?? 400 }}>
+        <div ref={box} className="relative w-full overflow-hidden rounded bg-[#172024]" style={{ height: geo?.H ?? 400 }}>
           {geo && paths && (
             <svg width={geo.W} height={geo.H} viewBox={`0 0 ${geo.W} ${geo.H}`} className="absolute inset-0" role="img" aria-label="Netz der Prüfungen mit der Crawler-Spinne">
               <defs>
@@ -558,7 +556,7 @@ export function CrawlerWeb({ snap, desk }: { snap: MarketSnapshot | null; desk: 
                 return (
                   <g key={src.id} opacity={dim ? 0.35 : 1}>
                     {active && <circle cx={dot} cy={p.y} r={7} fill="none" stroke="#fde68a" strokeWidth={1.5} className="spider-pulse" />}
-                    <circle cx={dot} cy={p.y} r={4.5} fill={active ? "#fde68a" : "#151938"} stroke={active ? "#fde68a" : SILK} strokeWidth={1.2} />
+                    <circle cx={dot} cy={p.y} r={4.5} fill={active ? "#fde68a" : "#172024"} stroke={active ? "#fde68a" : SILK} strokeWidth={1.2} />
                     <text x={left ? dot + 10 : dot - 10} y={p.y - 1} textAnchor={left ? "start" : "end"} fontSize={11} fontWeight={700} fill={active ? "#fde68a" : "#e5e7eb"}>
                       {src.label}
                     </text>
@@ -588,7 +586,7 @@ export function CrawlerWeb({ snap, desk }: { snap: MarketSnapshot | null; desk: 
                       cx={p.x}
                       cy={p.y}
                       r={c.state === "gekauft" ? 5 : 4}
-                      fill={c.state === "wartet" ? "#10132a" : color}
+                      fill={c.state === "wartet" ? "#172024" : color}
                       stroke={color}
                       strokeWidth={1.5}
                       opacity={c.state === "raus" && c.ring === 0 ? 0.55 : 1}
@@ -633,7 +631,7 @@ function Legend() {
     ["gekauft", "gekauft, wird bewacht"],
   ];
   return (
-    <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-quiet">
+    <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-quiet">
       {items.map(([state, text]) => (
         <li key={state} className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full border" style={{ borderColor: COLOR[state], background: state === "wartet" ? "transparent" : COLOR[state] }} />
@@ -689,9 +687,9 @@ function Feed({
 
   return (
     <div className="flex min-w-0 flex-col gap-2 text-xs">
-      <div className="rounded border border-line bg-panel-2 px-3 py-2" aria-live="polite">
-        <p className="text-[10px] uppercase tracking-widest text-quiet">Gerade</p>
-        <p className={`mt-0.5 ${busy ? "text-amber-100" : "text-ink"}`}>{headline}</p>
+      <div className="border-l-[3px] border-sonne py-1 pl-3" aria-live="polite">
+        <p className="text-xs text-quiet">Gerade</p>
+        <p className="mt-0.5 text-sm text-schiefer">{headline}</p>
       </div>
       <ol className="flex max-h-[330px] flex-col gap-1 overflow-y-auto">
         {latest.map((e) => {
@@ -702,12 +700,12 @@ function Feed({
               <span className={`w-3 shrink-0 text-center font-bold ${s.tone} ${e.seq === current?.seq && busy ? "animate-pulse" : ""}`} title={s.label}>
                 {s.icon}
               </span>
-              <span className="w-10 shrink-0 font-bold uppercase" style={{ color: SILK }}>
+              <span className="w-10 shrink-0 font-bold text-ocker">
                 {STEP_LABEL[e.step]}
               </span>
               <span className="min-w-0">
                 {e.symbol && <span className="font-bold">${e.symbol} </span>}
-                <span className={e.state === "raus" ? "text-down" : e.state === "warn" ? "text-amber-200" : e.state === "gekauft" ? "text-sky-300" : "text-quiet"}>{e.text}</span>
+                <span className={e.state === "raus" ? "text-down" : e.state === "warn" ? "text-ocker" : e.state === "gekauft" ? "text-see" : "text-quiet"}>{e.text}</span>
                 {e.times > 1 && <span className="text-quiet"> · {e.times} Runden</span>}
               </span>
             </li>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HoloLink } from "./HoloLink";
+import { RaumLink } from "./RaumLink";
 import { Button, Notice, Panel } from "./ui";
 import { ZUSTAND_LABEL, type AgentAktion, type AgentLage, type AgentenSnapshot, type AgentZustand } from "@/lib/agenten";
 import { postJson } from "@/lib/api";
@@ -31,13 +31,13 @@ function wann(iso: string | null, jetzt: Date | null): string {
 
 const FARBE: Record<AgentZustand, string> = {
   laeuft: "bg-up/15 text-up",
-  bereit: "bg-sky-400/10 text-sky-200",
-  wartet: "bg-sky-400/10 text-sky-200",
-  pausiert: "bg-amber-400/15 text-amber-200",
-  gesperrt: "bg-down/15 text-red-200",
-  angehalten: "bg-down/15 text-red-200",
+  bereit: "bg-gletscher/10 text-stein",
+  wartet: "bg-gletscher/10 text-stein",
+  pausiert: "bg-sonne/15 text-ocker",
+  gesperrt: "bg-down/15 text-down",
+  angehalten: "bg-down/15 text-down",
   "nicht-eingerichtet": "bg-panel-2 text-quiet",
-  fehler: "bg-down/15 text-red-200",
+  fehler: "bg-down/15 text-down",
 };
 
 // Wohin ein Klick geht. Starten gibt es nur für Intel: Die anderen arbeiten auf Zuruf oder werden in ihrer Ansicht gestartet.
@@ -83,7 +83,7 @@ export function AgentControl() {
   return (
     <Panel>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-[0.25em] text-sky-100">Steuerung</h2>
+        <h2 className="text-xs font-bold text-schiefer">Steuerung</h2>
         <p className="text-xs text-quiet">Was jeder Agent gerade tut, wann er zuletzt gelaufen ist und was er heute gekostet hat.</p>
       </div>
       {(data?.notaus || note) && (
@@ -95,46 +95,46 @@ export function AgentControl() {
       {!data ? (
         <p className="text-sm text-quiet">Die Agenten melden sich …</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-sky-300/10">
+        <ul className="flex flex-col divide-y divide-schiefer/10">
           {data.agenten.map((a) => (
             <li key={a.name} data-agent={a.name} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 lg:flex-row lg:items-start lg:gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-sm font-bold text-sky-50">{a.label}</h3>
-                  <span data-zustand={a.zustand} className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${FARBE[a.zustand]}`}>
+                  <h3 className="text-sm font-bold text-schiefer">{a.label}</h3>
+                  <span data-zustand={a.zustand} className={`rounded px-2 py-0.5 text-xs font-bold ${FARBE[a.zustand]}`}>
                     {ZUSTAND_LABEL[a.zustand]}
                   </span>
                   <span className="text-xs text-quiet">{a.aufgabe}</span>
                 </div>
-                <p className="mt-1 text-sm text-sky-50/85">{a.satz}</p>
-                {a.fehler && <p className="mt-1 text-sm text-red-200">Fehler: {a.fehler}</p>}
-                {a.ergebnis && <p className="mt-1 text-xs text-sky-100/70">Letztes Ergebnis: {a.ergebnis}</p>}
+                <p className="mt-1 text-sm text-schiefer/85">{a.satz}</p>
+                {a.fehler && <p className="mt-1 text-sm text-down">Fehler: {a.fehler}</p>}
+                {a.ergebnis && <p className="mt-1 text-xs text-schiefer/70">Letztes Ergebnis: {a.ergebnis}</p>}
                 <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
                   <div>
                     <dt className="text-quiet">Zuletzt</dt>
-                    <dd className="text-sky-50">{wann(a.letzterLauf, now)}</dd>
+                    <dd className="text-schiefer">{wann(a.letzterLauf, now)}</dd>
                   </div>
                   <div>
                     <dt className="text-quiet">Nächster Lauf</dt>
-                    <dd className="text-sky-50">{a.naechsterLauf ? wann(a.naechsterLauf, now) : a.takt}</dd>
+                    <dd className="text-schiefer">{a.naechsterLauf ? wann(a.naechsterLauf, now) : a.takt}</dd>
                   </div>
                   <div>
                     <dt className="text-quiet">Kosten heute</dt>
-                    <dd className="text-sky-50" title={a.kosten?.was}>
+                    <dd className="text-schiefer" title={a.kosten?.was}>
                       {a.kosten ? `${dollar(a.kosten.heuteUsd)}${a.kosten.budgetUsd !== null ? ` von ${dollar(a.kosten.budgetUsd)}` : ""}` : "noch nicht gezählt"}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-quiet">Ansicht</dt>
                     <dd>
-                      <HoloLink href={a.href} className="font-bold text-sky-300 hover:text-sky-100">
+                      <RaumLink href={a.href} className="font-bold text-see hover:text-schiefer">
                         öffnen ›
-                      </HoloLink>
+                      </RaumLink>
                     </dd>
                   </div>
                 </dl>
                 <details className="mt-2 text-xs text-quiet">
-                  <summary className="cursor-pointer hover:text-sky-100">Feste Grenzen</summary>
+                  <summary className="cursor-pointer hover:text-schiefer">Feste Grenzen</summary>
                   <ul className="mt-1 list-disc pl-5">
                     {a.grenzen.map((g) => (
                       <li key={g}>{g}</li>

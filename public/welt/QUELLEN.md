@@ -2,7 +2,7 @@
 
 Die elf Landschaftsfotos hinter JARVIS stammen aus den Hintergrundbild-Paketen von Ubuntu und seinen Varianten. Alle stehen unter freien Creative-Commons-Lizenzen, die Weitergabe und Bearbeitung erlauben, solange der Urheber genannt wird (BY) und Bearbeitungen unter derselben Lizenz bleiben (SA).
 
-Für JARVIS wurden die Fotos auf 2560 × 1440 Pixel zugeschnitten und als WebP gespeichert. In der App werden sie zusätzlich abgedunkelt und leicht eingefärbt. Diese Bearbeitungen stehen unter derselben Lizenz wie das jeweilige Original.
+Für JARVIS wurden die Fotos auf 2560 × 1440 Pixel zugeschnitten und als WebP gespeichert. Im Glashaus stehen sie als Ausschnitt im Fenster des jeweiligen Raums; auf dem Boden davor liegt eine unscharfe Spiegelung. Diese Bearbeitungen stehen unter derselben Lizenz wie das jeweilige Original. Welcher Raum welches Foto zeigt, steht in `src/lib/raeume.ts`.
 
 | Datei | Ansicht | Motiv | Urheber | Lizenz | Original (Paket, Datei) |
 |---|---|---|---|---|---|
@@ -20,4 +20,4 @@ Für JARVIS wurden die Fotos auf 2560 × 1440 Pixel zugeschnitten und als WebP g
 
 Das Vorschaubild `vorschau-fotos.webp` in den Einstellungen ist ein Bildschirmfoto von JARVIS vor `uebersicht.webp` und steht deshalb ebenfalls unter CC BY-SA 4.0 (the5sheepdev).
 
-Urheber und Lizenz stehen jeweils in der Datei `debian/copyright` des genannten Pakets (archive.ubuntu.com). Die Liste zeigt JARVIS auch selbst unter Einstellungen → Aussehen → Bildnachweis.
+Urheber und Lizenz stehen jeweils in der Datei `debian/copyright` des genannten Pakets (archive.ubuntu.com). Die Liste zeigt JARVIS auch selbst unter Einstellungen → Aussehen.

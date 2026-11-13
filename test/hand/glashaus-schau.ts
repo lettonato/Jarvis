@@ -1,0 +1,86 @@
+// Handprüfung: JARVIS mit Beispieldaten starten, um die Oberfläche anzusehen (nicht Teil von npm test).
+// Alles läuft gegen nachgebaute Dienste auf diesem Rechner: Postfach, Markt, Kalender, Claude.
+//   npx tsx test/hand/glashaus-schau.ts [Port] [dev|start]
+// Der Server läuft, bis das Skript beendet wird. Mit „start“ vorher einmal `npx next build`.
+import { spawn } from "node:child_process";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
+import { starteClaudeMock } from "../mocks/claude-mock";
+import { beispielPost, MOCK_POST_ADRESSE, MOCK_POST_PASSWORT, starteImapMock } from "../mocks/imap-mock";
+import { guterCoin, starteMarktMock } from "../mocks/markt-mock";
+
+const PORT = Number(process.argv[2] ?? 3210);
+const MODUS = process.argv[3] === "start" ? "start" : "dev";
+
+async function main() {
+  const ordner = sichereUmgebung("glashaus");
+  const mac = testOrdner("glashaus-mac");
+  const tresor = testOrdner("glashaus-tresor");
+  const jetzt = new Date();
+  const tag = (plus: number) => new Date(jetzt.getFullYear(), jetzt.getMonth(), jetzt.getDate() + plus);
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const um = (plus: number, stunde: number, minute = 0) => new Date(jetzt.getFullYear(), jetzt.getMonth(), jetzt.getDate() + plus, stunde, minute).getTime();
+  const termin = (id: string, title: string, start: number, location = "") => ({ id, title, start, end: start + 3_600_000, allDay: false, location, calendar: "Firma" });
+
+  for (const f of ["test/mocks/osascript-mock.mjs", "test/mocks/open-mock.mjs"]) chmodSync(f, 0o755);
+  writeFileSync(
+    path.join(mac, "kalender.json"),
+    JSON.stringify({
+      zugriff: "ok",
+      kalender: [{ name: "Privat", writable: true }, { name: "Firma", writable: true }],
+      standard: "Firma",
+      events: [termin("a", "Bauleitung", um(0, 9)), termin("b", "Besprechung Hallenneubau", um(0, 23, 30), "Besprechungsraum 2"), termin("c", "Steuerberater", um(1, 16, 30)), termin("d", "Jour fixe Vertrieb", um(2, 10))],
+    }),
+  );
+  mkdirSync(path.join(tresor, "Aufgaben"), { recursive: true });
+  writeFileSync(
+    path.join(tresor, "Aufgaben", "Firma.md"),
+    [
+      `- [ ] Angebot Stahlbau nachfassen 📅 ${iso(tag(-1))}`,
+      `- [ ] Statik freigeben 📅 ${iso(tag(0))}`,
+      `- [ ] Mietvertrag Lager prüfen 📅 ${iso(tag(2))}`,
+      `- [ ] Unterlagen für den Steuerberater zusammenstellen 📅 ${iso(tag(4))}`,
+      `- [ ] Weihnachtsfeier planen 📅 ${iso(tag(12))}`,
+      `- [x] Bauantrag einreichen 📅 ${iso(tag(-3))}`,
+    ].join("\n"),
+  );
+
+  const [claude, post, markt] = await Promise.all([starteClaudeMock(), starteImapMock(beispielPost(jetzt.getTime())), starteMarktMock()]);
+  markt.coins.push(guterCoin("GOODDOG"), guterCoin("WELLE", { aenderung: { m5: 2, h1: 9, h6: 14, h24: 22 } }));
+  Object.assign(process.env, {
+    ANTHROPIC_BASE_URL: claude.url,
+    DEXSCREENER_URL: markt.url,
+    COINGECKO_URL: markt.url,
+    GECKOTERMINAL_URL: markt.url,
+    RUGCHECK_URL: markt.url,
+    JARVIS_OSASCRIPT: path.resolve("test/mocks/osascript-mock.mjs"),
+    JARVIS_OPEN: path.resolve("test/mocks/open-mock.mjs"),
+    JARVIS_MAC_STORE: path.join(mac, "kalender.json"),
+    JARVIS_MAC_LOG: path.join(mac, "aufrufe.log"),
+  });
+
+  const config = await import("../../src/lib/server/config");
+  await config.writeConfig({ name: "Benedikt", vaultPath: tresor, claude: { apiKey: "sk-test-nur-fuer-den-mock" }, mail: { provider: "andere", host: post.host, port: post.port, user: MOCK_POST_ADRESSE, password: MOCK_POST_PASSWORT } });
+  const p = await import("../../src/lib/server/projekte/projekte");
+  const halle = await p.legeProjektAn({ name: "Hallenneubau", beschreibung: "Neue Produktionshalle am Standort Süd", verantwortliche: "Thomas", fortschritt: 35 }, "mac");
+  await p.trageEin(halle.id, { art: "aufgabe", text: "Angebot Stahlbau nachfassen", zustaendig: "Thomas", faellig: iso(tag(3)) }, "mac");
+  await p.trageEin(halle.id, { art: "entscheidung", text: "Stahlbau statt Holz", datum: iso(tag(-8)) }, "mac");
+  await p.trageEin(halle.id, { art: "naechster_schritt", text: "Statik freigeben" }, "mac");
+  await p.trageEin(halle.id, { art: "risiko", text: "Lieferzeit Stahl über zwölf Wochen" }, "mac");
+  const dash = await p.legeProjektAn({ name: "KI-Dashboard", beschreibung: "Übersicht für die Geschäftsführung" }, "mac");
+  await p.trageEin(dash.id, { art: "naechster_schritt", text: "Testdaten aus dem Controlling anfordern" }, "mac");
+  await p.legeProjektAn({ name: "Lagerumbau", status: "pausiert" }, "mac");
+  await p.schlageVor({ projekt: "Hallenneubau", quelle_art: "mail", quelle_hinweis: "Mail vom Architekten", eintraege: [{ art: "aufgabe", text: "Brandschutzgutachten beauftragen", faellig: iso(tag(9)) }] }, { kanal: "mac", fremd: true });
+
+  const server = spawn("npx", ["next", MODUS, "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT) }, stdio: "inherit" });
+  console.log(`Einstellungen: ${ordner}\nJARVIS mit Beispieldaten: http://127.0.0.1:${PORT}`);
+  const ende = () => {
+    server.kill("SIGTERM");
+    void Promise.all([claude.stop(), post.stop(), markt.stop()]).finally(() => process.exit(0));
+  };
+  process.on("SIGTERM", ende);
+  process.on("SIGINT", ende);
+}
+
+void main();

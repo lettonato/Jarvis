@@ -1,224 +1,224 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { HoloLink } from "../HoloLink";
-import { Icon, type IconName } from "../icons";
 import { useJarvis } from "../JarvisProvider";
-import { PageHeader, Panel } from "../ui";
+import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
+import { RaumLink } from "../RaumLink";
+import { Abschnitt, PageHeader, Panel } from "../ui";
 import { clock } from "@/lib/calendar";
 import { spokenDue } from "@/lib/dates";
 import { ZUSTAND_LABEL, type AgentenSnapshot } from "@/lib/agenten";
-import { formatEur, formatPct } from "@/lib/format";
-import { tageslage, type Hinweis } from "@/lib/heute";
+import { formatPct } from "@/lib/format";
+import { tageslage, type Tageslage } from "@/lib/heute";
 import { MOOD_LABEL } from "@/lib/intel";
 import type { SicherheitsLage } from "@/lib/sicherheit";
 import { dateOf } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
 import { usePolling } from "@/lib/usePolling";
 
-// Heute: die Tagesübersicht für die Geschäftsführung. Oben, was auf dich wartet; darunter der Tag (Termine,
-// Aufgaben, Post), die Projekte, die heute auffallen, Märkte und Nachrichten und was die Agenten gerade tun.
-// Alles stammt aus den Ansichten dahinter und führt mit einem Klick dorthin. Zusammengestellt wird ohne KI.
+// Heute: der Eingangsraum. An der Wand steht groß, was als Nächstes kommt, darunter, was auf dich wartet, und
+// der Rest des Tages (Aufgaben, Post, Projekte). Vor dem Fenster hängen die Termine, die Märkte und die Agenten.
+// Alles stammt aus den Räumen dahinter und führt mit einem Klick dorthin. Zusammengestellt wird ohne KI.
 
 const DATUM = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 
-const HINWEIS_ICON: Record<Hinweis["art"], IconName> = {
-  notaus: "einstellungen",
-  freigabe: "einstellungen",
-  rueckfrage: "trading",
-  vorschlag: "projekte",
-  warnung: "intel",
-  aufgaben: "aufgaben",
-  projekt: "projekte",
-  post: "post",
-  dokument: "dokumente",
-};
+const leer = "text-[0.95rem] text-quiet";
+const mehrzahl = (n: number, eins: string, viele: string) => (n === 1 ? eins : `${n} ${viele}`);
 
-function Karte({ titel, href, children, zahl }: { titel: string; href: string; children: ReactNode; zahl?: string }) {
+// Der Satz unter dem großen Wort: der Rest des Tages in Zahlen, aus denselben Daten wie die Listen darunter.
+function tagesSatz(heute: Tageslage, wichtigePost: number): string {
+  const teile: string[] = [];
+  const ueberfaellig = heute.aufgaben.ueberfaellig.length;
+  const faellig = heute.aufgaben.heute.length;
+  if (faellig) teile.push(`${mehrzahl(faellig, "Eine Aufgabe ist", "Aufgaben sind")} heute fällig`);
+  if (ueberfaellig) teile.push(`${mehrzahl(ueberfaellig, "eine ist", "sind")} überfällig`);
+  if (wichtigePost) teile.push(mehrzahl(wichtigePost, "eine wichtige Mail ist neu", "wichtige Mails sind neu"));
+  if (!teile.length) return "Sonst liegt heute nichts an.";
+  const satz = teile.join(", ");
+  return `${satz[0].toUpperCase()}${satz.slice(1)}.`;
+}
+
+function Liste({ titel, href, zahl, children }: { titel: string; href: string; zahl?: string; children: ReactNode }) {
   return (
     <Panel>
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-[0.25em] text-sky-100">{titel}</h2>
-        <HoloLink href={href} className="shrink-0 text-[11px] font-bold uppercase tracking-widest text-sky-300 hover:text-sky-100">
-          {zahl ? `${zahl} · ` : ""}öffnen ›
-        </HoloLink>
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <Abschnitt>{titel}</Abschnitt>
+        <RaumLink href={href} className="shrink-0 text-sm font-bold text-see hover:text-schiefer">
+          {zahl ?? "Öffnen"}
+        </RaumLink>
       </div>
       {children}
     </Panel>
   );
 }
 
-const leer = "text-sm text-quiet";
-
 export function TodayView() {
   const { name, calendar, tasks, mail, projekte, desk, intel, documents, market, weather } = useJarvis();
   const now = useNow();
   const { data: sicherheit } = usePolling<SicherheitsLage>("/api/sicherheit", 10_000);
   const { data: agenten } = usePolling<AgentenSnapshot>("/api/agenten", 15_000);
-  if (!now) return <main className="p-6 text-sm text-quiet">Lade den Tag …</main>;
+  if (!now) return <main className="text-quiet">Lade den Tag …</main>;
 
   const heute = tageslage({ calendar, tasks, mail, projekte, desk, intel, documents, freigabenOffen: sicherheit?.freigaben.filter((f) => f.zustand === "offen").length ?? 0, notaus: sicherheit?.zustand.notaus.an ?? false }, now);
   const stunde = now.getHours();
   const gruss = stunde < 11 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend";
   const majors = market?.majors.quotes ?? [];
+  const wichtigePost = mail?.configured && !mail.error ? mail.importantUnread : 0;
+  const wetter = weather ? ` ${Math.round(weather.temperature)}\u00a0°C, ${weather.description} in ${weather.place}.` : "";
+
+  // Das große Wort: läuft gerade ein Termin, steht er dort; sonst die Uhrzeit des nächsten; sonst der Tag selbst.
+  const laeuft = heute.termine.find((t) => t.laeuft && !t.ganztags);
+  const dran = laeuft ?? heute.naechster;
+  const zeile = dran ? `${DATUM.format(now)}. ${laeuft ? "Läuft gerade, seit:" : "Als Nächstes:"}` : `${gruss}, ${name}. ${DATUM.format(now)}.${wetter}`;
+  const faellig = [...heute.aufgaben.ueberfaellig, ...heute.aufgaben.heute];
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
+    <main className="flex max-w-[52rem] flex-col gap-8">
       <PageHeader
-        icon="heute"
         title="Heute"
-        subtitle={`${gruss}, ${name}. ${DATUM.format(now)}${weather ? ` · ${Math.round(weather.temperature)} °C, ${weather.description} in ${weather.place}` : ""}`}
+        subtitle={zeile}
+        gross={dran ? clock(dran.start) : undefined}
+        satz={dran ? dran.titel : heute.termine.length ? "Für heute ist kein Termin mehr offen" : "Heute steht kein Termin an"}
       />
+      <div className="-mt-4 max-w-[36rem] text-[1.05rem] leading-relaxed text-stein">
+        {dran?.ort && <p>{dran.ort}</p>}
+        {dran?.projekte.map((p) => (
+          <p key={p.id}>
+            Zum Projekt {p.name} liegt die{" "}
+            <RaumLink href="/projekte" className="font-bold text-see underline-offset-4 hover:underline">
+              Vorbereitung in der Akte
+            </RaumLink>
+            .
+          </p>
+        ))}
+        <p>
+          {tagesSatz(heute, wichtigePost)}
+          {dran ? wetter : ""}
+        </p>
+      </div>
 
       <Panel glow={heute.brauchtDich.some((h) => h.dringend)}>
-        <h2 className="text-xs font-bold uppercase tracking-[0.25em] text-sky-100">Wartet auf dich</h2>
+        <Abschnitt>Wartet auf dich</Abschnitt>
         {heute.brauchtDich.length === 0 ? (
           <p className={`mt-2 ${leer}`}>Nichts wartet auf dich.</p>
         ) : (
-          <ul className="mt-2 flex flex-col gap-1.5">
+          <ul className="mt-1">
             {heute.brauchtDich.map((h, i) => (
-              <li key={i}>
-                <HoloLink
-                  href={h.href}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-sm transition hover:border-sky-300/60 ${h.dringend ? "border-amber-300/40 bg-amber-300/10 text-amber-50" : "border-sky-300/20 bg-sky-400/5 text-sky-50"}`}
-                >
-                  <span className={`shrink-0 ${h.dringend ? "text-amber-200" : "text-sky-300"}`} aria-hidden>
-                    <Icon name={HINWEIS_ICON[h.art]} className="h-4 w-4" />
-                  </span>
+              <li key={i} className="border-b border-schiefer/15">
+                <RaumLink href={h.href} className="group flex items-center gap-4 py-2.5 text-[1.1rem] font-medium leading-snug">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${h.dringend ? "bg-rot" : "bg-sonne"}`} aria-hidden />
                   <span className="min-w-0 flex-1">{h.text}</span>
-                  <span className="shrink-0 text-xs text-quiet" aria-hidden>
-                    ›
-                  </span>
-                </HoloLink>
+                  <span className="shrink-0 text-sm font-bold text-see group-hover:text-schiefer">Ansehen</span>
+                </RaumLink>
               </li>
             ))}
           </ul>
         )}
       </Panel>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Karte titel="Termine" href="/kalender" zahl={heute.termine.length ? String(heute.termine.length) : undefined}>
-          {calendar && calendar.access !== "ok" ? (
-            <p className={leer}>{calendar.access === "kein-mac" ? "Den Kalender gibt es nur auf dem Mac." : "Der Kalender ist noch nicht verbunden."}</p>
-          ) : heute.termine.length === 0 ? (
-            <p className={leer}>Heute steht kein Termin an.</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {heute.termine.map((t) => (
-                <li key={`${t.id}-${t.start}`} className={`text-sm ${t.vorbei ? "text-quiet" : "text-sky-50"}`}>
-                  <span className={`mr-2 inline-block w-14 font-bold tabular-nums ${t.laeuft ? "text-amber-200" : heute.naechster?.id === t.id ? "text-sky-200" : ""}`}>{t.ganztags ? "ganzt." : clock(t.start)}</span>
-                  <span className={t.vorbei ? "line-through" : ""}>{t.titel}</span>
-                  {t.laeuft && <span className="ml-2 text-xs text-amber-200">läuft</span>}
-                  {t.ort && <span className="block pl-16 text-xs text-quiet">{t.ort}</span>}
-                  {t.projekte.map((p) => (
-                    <HoloLink key={p.id} href="/projekte" className="ml-16 mt-0.5 block w-fit rounded-full border border-sky-300/30 px-2 text-[10px] font-bold uppercase tracking-widest text-sky-200 hover:border-sky-300/70">
-                      Projekt {p.name}: Vorbereitung in der Akte
-                    </HoloLink>
-                  ))}
-                </li>
-              ))}
-            </ul>
-          )}
-          {heute.termineMorgen > 0 && <p className="mt-2 text-xs text-quiet">Morgen: {heute.termineMorgen === 1 ? "ein Termin" : `${heute.termineMorgen} Termine`}</p>}
-        </Karte>
-
-        <Karte titel="Aufgaben" href="/aufgaben" zahl={heute.aufgaben.ueberfaellig.length + heute.aufgaben.heute.length ? String(heute.aufgaben.ueberfaellig.length + heute.aufgaben.heute.length) : undefined}>
+      <div className="grid gap-x-8 gap-y-8 xl:grid-cols-3">
+        <Liste titel="Aufgaben" href="/aufgaben" zahl={faellig.length ? mehrzahl(faellig.length, "Eine fällig", "fällig") : undefined}>
           {tasks && !tasks.configured ? (
             <p className={leer}>Obsidian ist noch nicht verbunden.</p>
-          ) : heute.aufgaben.ueberfaellig.length + heute.aufgaben.heute.length === 0 ? (
+          ) : faellig.length === 0 ? (
             <p className={leer}>Heute ist nichts fällig.</p>
           ) : (
-            <ul className="flex flex-col gap-1.5 text-sm">
-              {[...heute.aufgaben.ueberfaellig, ...heute.aufgaben.heute].slice(0, 7).map((t) => (
-                <li key={t.id} className="flex gap-2">
-                  <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dateOf(t)! < heute.datum ? "bg-down" : "bg-sky-300"}`} aria-hidden />
-                  <span className="min-w-0">
-                    <span className="text-sky-50">{t.text}</span>
-                    <span className={`block text-xs ${dateOf(t)! < heute.datum ? "text-red-200" : "text-quiet"}`}>{spokenDue(dateOf(t)!, heute.datum)}</span>
-                  </span>
+            <ul className="flex flex-col gap-2 text-[0.95rem]">
+              {faellig.slice(0, 7).map((t) => (
+                <li key={t.id}>
+                  <span className="block font-medium leading-snug">{t.text}</span>
+                  <span className={`block text-sm ${dateOf(t)! < heute.datum ? "font-bold text-down" : "text-quiet"}`}>{spokenDue(dateOf(t)!, heute.datum)}</span>
                 </li>
               ))}
             </ul>
           )}
-          {heute.aufgaben.dieseWoche > 0 && <p className="mt-2 text-xs text-quiet">In den nächsten sieben Tagen: {heute.aufgaben.dieseWoche === 1 ? "eine weitere" : `${heute.aufgaben.dieseWoche} weitere`}</p>}
-        </Karte>
+          {heute.aufgaben.dieseWoche > 0 && <p className="mt-2 text-sm text-quiet">In den nächsten sieben Tagen: {heute.aufgaben.dieseWoche === 1 ? "eine weitere" : `${heute.aufgaben.dieseWoche} weitere`}</p>}
+        </Liste>
 
-        <Karte titel="Post" href="/post" zahl={mail?.configured && !mail.error && mail.importantUnread ? String(mail.importantUnread) : undefined}>
+        <Liste titel="Post" href="/post" zahl={wichtigePost ? mehrzahl(wichtigePost, "Eine wichtige", "wichtige") : undefined}>
           {mail && !mail.configured ? (
             <p className={leer}>Das Postfach ist noch nicht verbunden.</p>
           ) : mail?.error ? (
-            <p className="text-sm text-red-200">Das Postfach antwortet nicht.</p>
+            <p className="text-[0.95rem] text-down">Das Postfach antwortet nicht.</p>
           ) : heute.post.length === 0 ? (
             <p className={leer}>Keine neuen wichtigen Mails.</p>
           ) : (
-            <ul className="flex flex-col gap-1.5 text-sm">
+            <ul className="flex flex-col gap-2 text-[0.95rem]">
               {heute.post.map((m) => (
                 <li key={m.uid} className="min-w-0">
-                  <span className="block truncate text-sky-50">{m.subject || "(ohne Betreff)"}</span>
-                  <span className="block truncate text-xs text-quiet">{m.from}</span>
+                  <span className="block truncate font-medium">{m.subject || "(ohne Betreff)"}</span>
+                  <span className="block truncate text-sm text-quiet">{m.from}</span>
                 </li>
               ))}
             </ul>
           )}
-        </Karte>
-      </div>
+        </Liste>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Karte titel="Projekte" href="/projekte" zahl={projekte ? `${projekte.projekte.filter((p) => p.status === "aktiv").length} aktiv` : undefined}>
+        <Liste titel="Projekte" href="/projekte" zahl={projekte ? `${projekte.projekte.filter((p) => p.status === "aktiv").length} aktiv` : undefined}>
           {projekte && projekte.projekte.length === 0 ? (
             <p className={leer}>Noch kein Projekt angelegt.</p>
           ) : heute.projekte.length === 0 ? (
             <p className={leer}>In den nächsten drei Tagen ist in keinem Projekt etwas fällig.</p>
           ) : (
-            <ul className="flex flex-col gap-2 text-sm">
+            <ul className="flex flex-col gap-2 text-[0.95rem]">
               {heute.projekte.slice(0, 6).map((p) => (
                 <li key={p.id}>
-                  <span className="font-bold text-sky-50">{p.name}</span>
-                  <span className={`block text-xs ${p.dringend ? "text-amber-100" : "text-quiet"}`}>{p.grund}</span>
+                  <span className="block font-bold">{p.name}</span>
+                  <span className={`block text-sm ${p.dringend ? "text-ocker" : "text-quiet"}`}>{p.grund}</span>
                 </li>
               ))}
             </ul>
           )}
-        </Karte>
-
-        <Karte titel="Märkte und Nachrichten" href="/intel">
-          {majors.length > 0 && (
-            <ul className="flex flex-col gap-1 text-sm">
-              {majors.map((q) => (
-                <li key={q.symbol} className="flex items-baseline justify-between gap-2">
-                  <span className="text-sky-50">{q.name}</span>
-                  <span className="tabular-nums text-sky-50">
-                    {formatEur(q.eur)} <span className={q.change24h >= 0 ? "text-up" : "text-down"}>{formatPct(q.change24h)}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {market?.majors.source === "demo" && <p className="mt-1 text-xs text-amber-200/90">Beispielkurse, keine echten Daten.</p>}
-          <p className="mt-2 text-xs text-quiet">
-            {!intel ? "Lade Nachrichten …" : !intel.configured ? "Nachrichten: kein xAI-Schlüssel eingetragen." : intel.report ? `Lage laut Intel: ${MOOD_LABEL[intel.report.mood]}. ${intel.report.items[0]?.title ?? ""}` : "Noch kein Lagebild."}
-          </p>
-        </Karte>
-
-        <Karte titel="Agenten" href="/agenten">
-          {!agenten ? (
-            <p className="text-sm text-quiet">Die Agenten melden sich …</p>
-          ) : (
-            <ul className="flex flex-col gap-1.5 text-sm">
-              {agenten.agenten.map((a) => (
-                <li key={a.name} className="flex justify-between gap-3">
-                  <span className="shrink-0 text-sky-50">{a.label}</span>
-                  <span className={`truncate text-right ${a.zustand === "laeuft" ? "text-sky-200" : a.zustand === "fehler" || a.zustand === "gesperrt" || a.zustand === "angehalten" ? "text-amber-200/90" : "text-quiet"}`} title={a.satz}>
-                    {ZUSTAND_LABEL[a.zustand]}
-                    {a.zustand === "laeuft" || a.zustand === "fehler" ? ` · ${a.fehler ?? a.satz}` : a.name === "desk" && a.ergebnis ? ` · ${a.ergebnis}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="mt-2 text-xs text-quiet">Der Desk handelt nur mit Spielgeld.</p>
-        </Karte>
+        </Liste>
       </div>
+
+      <Scheiben>
+        <Scheibe titel="Termine heute" href="/kalender">
+          {calendar && calendar.access !== "ok" ? (
+            <p className="text-[0.95rem] opacity-80">{calendar.access === "kein-mac" ? "Den Kalender gibt es nur auf dem Mac." : "Der Kalender ist noch nicht verbunden."}</p>
+          ) : heute.termine.length === 0 ? (
+            <p className="text-[0.95rem] opacity-80">Kein Termin.</p>
+          ) : (
+            <ul>
+              {heute.termine.slice(0, 6).map((t) => (
+                <ScheibenZeile key={`${t.id}-${t.start}`} vorn={t.ganztags ? "ganz" : clock(t.start)} stark={dran?.id === t.id}>
+                  <span className={t.vorbei ? "line-through opacity-60" : ""}>{t.titel}</span>
+                </ScheibenZeile>
+              ))}
+            </ul>
+          )}
+          {heute.termineMorgen > 0 && <p className="mt-2 text-sm opacity-75">Morgen: {mehrzahl(heute.termineMorgen, "ein Termin", "Termine")}</p>}
+        </Scheibe>
+
+        <Scheibe titel="Märkte" href="/intel">
+          <ul>
+            {majors.map((q) => (
+              <ScheibenZeile key={q.symbol} wert={<span className={q.change24h >= 0 ? "" : "opacity-70"}>{formatPct(q.change24h)}</span>}>
+                {q.name}
+              </ScheibenZeile>
+            ))}
+            {desk && desk.status !== "aus" && <ScheibenZeile wert={formatPct(desk.dayPnlPct)}>Spielgeld-Desk</ScheibenZeile>}
+          </ul>
+          {majors.length === 0 && (!desk || desk.status === "aus") && <p className="text-[0.95rem] opacity-80">Noch keine Kurse.</p>}
+          {market?.majors.source === "demo" && <p className="mt-2 text-sm opacity-75">Beispielkurse, keine echten Daten.</p>}
+          {intel?.report && <p className="mt-2 text-sm opacity-75">Lage laut Intel: {MOOD_LABEL[intel.report.mood]}</p>}
+        </Scheibe>
+
+        <Scheibe titel="Agenten" href="/agenten">
+          {!agenten ? (
+            <p className="text-[0.95rem] opacity-80">Die Agenten melden sich …</p>
+          ) : (
+            <ul>
+              {agenten.agenten.map((a) => (
+                <ScheibenZeile key={a.name} wert={<span title={a.fehler ?? a.satz}>{ZUSTAND_LABEL[a.zustand]}</span>}>
+                  {a.label}
+                </ScheibenZeile>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-sm opacity-75">Der Desk handelt nur mit Spielgeld.</p>
+        </Scheibe>
+      </Scheiben>
     </main>
   );
 }

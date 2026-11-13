@@ -1,53 +1,56 @@
 import type { ReactNode } from "react";
-import { Holo } from "./HoloView";
 import { Icon, type IconName } from "./icons";
 
-// Bausteine, die alle Ansichten teilen: Glas-Kacheln mit Eckwinkeln, Überschriften, Knöpfe.
+// Bausteine, die alle Räume teilen: die Tafel mit dem großen Wort, Abschnitte an der Wand, Knöpfe, Hinweise.
 
-export function Brackets() {
-  const base = "pointer-events-none absolute h-3 w-3 border-sky-300/70";
-  return (
-    <>
-      <span className={`${base} left-1.5 top-1.5 border-l-2 border-t-2`} />
-      <span className={`${base} right-1.5 top-1.5 border-r-2 border-t-2`} />
-      <span className={`${base} bottom-1.5 left-1.5 border-b-2 border-l-2`} />
-      <span className={`${base} bottom-1.5 right-1.5 border-b-2 border-r-2`} />
-    </>
-  );
-}
-
+// Ein Abschnitt an der Wand: ein kräftiger Strich oben, darunter der Inhalt. Kein Kasten, die Wand ist die Fläche.
+// glow hebt einen Abschnitt hervor, der dich heute braucht: Der Strich ist dann sonnengelb.
 export function Panel({ children, className = "", glow = false, id }: { children: ReactNode; className?: string; glow?: boolean; id?: string }) {
   return (
-    <section
-      id={id}
-      className={`relative scroll-mt-20 rounded-xl border bg-panel/95 p-4 ${
-        glow ? "border-sky-300/70 shadow-[0_0_28px_rgba(56,189,248,0.28)]" : "border-sky-300/20"
-      } ${className}`}
-    >
-      <Brackets />
+    <section id={id} className={`relative scroll-mt-6 border-t-[3px] pt-4 ${glow ? "border-sonne" : "border-schiefer"} ${className}`}>
       {children}
     </section>
   );
 }
 
-// `holo` nennt die Kachel der Übersicht, aus der diese Überschrift beim Öffnen herausfliegt.
-export function PageHeader({ icon, title, subtitle, holo, children }: { icon: IconName; title: string; subtitle?: ReactNode; holo?: string; children?: ReactNode }) {
-  const heading = (
-    <div className="flex min-w-0 items-center gap-3">
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-sky-300/40 bg-sky-400/10 text-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.25)]">
-        <Icon name={icon} className="h-6 w-6" />
-      </span>
-      <div className="min-w-0">
-        <h1 className="text-xl font-bold uppercase tracking-[0.25em] text-sky-100">{title}</h1>
-        {subtitle && <p className="truncate text-xs text-quiet">{subtitle}</p>}
-      </div>
-    </div>
-  );
+// Die Überschrift eines Abschnitts an der Wand.
+export function Abschnitt({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <h2 className={`text-base font-bold text-schiefer ${className}`}>{children}</h2>;
+}
+
+// Die Tafel eines Raums: eine kleine Zeile, darunter groß das Wichtigste (ohne `gross` der Name des Raums),
+// dann ein Satz dazu. Rechts daneben stehen die Knöpfe des Raums.
+export function PageHeader({
+  title,
+  subtitle,
+  gross,
+  satz,
+  children,
+}: {
+  // Das Symbol gehört zur alten Oberfläche; im Glashaus trägt die Schrift.
+  icon?: IconName;
+  title: string;
+  subtitle?: ReactNode;
+  // Das große Wort an der Wand, wenn es etwas Wichtigeres gibt als den Namen des Raums (eine Uhrzeit, eine Zahl).
+  gross?: string;
+  // Der Satz unter dem großen Wort.
+  satz?: ReactNode;
+  holo?: string;
+  children?: ReactNode;
+}) {
+  const wort = gross ?? title;
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      {holo ? <Holo name={holo}>{heading}</Holo> : heading}
-      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
-    </div>
+    <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+      <div className="min-w-0">
+        {subtitle && <p className="max-w-[46rem] text-[1.05rem] font-medium leading-snug text-quiet">{subtitle}</p>}
+        <h1 className="tafel-wort mt-1" data-lang={wort.length > 9 ? "" : undefined}>
+          {gross ? <span className="sr-only">{title}: </span> : null}
+          {wort}
+        </h1>
+        {satz && <p className="tafel-satz mt-2 max-w-[40rem]">{satz}</p>}
+      </div>
+      {children && <div className="flex flex-wrap items-center gap-2 pb-1">{children}</div>}
+    </header>
   );
 }
 
@@ -62,21 +65,20 @@ type ButtonProps = {
   small?: boolean;
 };
 
+const KNOPF = {
+  primary: "border-schiefer bg-schiefer text-kalk hover:bg-stein",
+  ghost: "border-schiefer/25 text-schiefer hover:border-schiefer/70 hover:bg-schiefer/5",
+  danger: "border-down/50 text-down hover:bg-down/10",
+};
+
 export function Button({ children, onClick, icon, tone = "ghost", disabled, type = "button", title, small }: ButtonProps) {
-  const tones = {
-    primary: "border-sky-400 bg-sky-500/80 text-white hover:bg-sky-500",
-    ghost: "border-sky-300/30 bg-sky-400/5 text-sky-100 hover:border-sky-300/60 hover:bg-sky-400/15",
-    danger: "border-down/50 bg-down/10 text-red-200 hover:bg-down/20",
-  };
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`inline-flex items-center gap-1.5 rounded-lg border font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-        small ? "px-2 py-1 text-[11px]" : "px-3 py-2 text-xs"
-      } ${tones[tone]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${small ? "px-3 py-1 text-xs" : "px-4 py-2 text-sm"} ${KNOPF[tone]}`}
     >
       {icon && <Icon name={icon} className={small ? "h-3.5 w-3.5" : "h-4 w-4"} />}
       {children}
@@ -86,10 +88,7 @@ export function Button({ children, onClick, icon, tone = "ghost", disabled, type
 
 export function LinkButton({ href, children, icon }: { href: string; children: ReactNode; icon?: IconName }) {
   return (
-    <a
-      href={href}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300/30 bg-sky-400/5 px-3 py-2 text-xs font-bold text-sky-100 transition hover:border-sky-300/60 hover:bg-sky-400/15"
-    >
+    <a href={href} className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${KNOPF.ghost}`}>
       {icon && <Icon name={icon} className="h-4 w-4" />}
       {children}
     </a>
@@ -98,12 +97,12 @@ export function LinkButton({ href, children, icon }: { href: string; children: R
 
 export function Notice({ tone = "info", children }: { tone?: "info" | "error" | "ok"; children: ReactNode }) {
   const tones = {
-    info: "border-sky-300/30 bg-sky-400/10 text-sky-100",
-    error: "border-down/50 bg-down/10 text-red-200",
-    ok: "border-up/40 bg-up/10 text-green-200",
+    info: "border-gletscher text-stein",
+    error: "border-rot text-down",
+    ok: "border-up text-up",
   };
-  return <p className={`rounded-lg border px-3 py-2 text-sm ${tones[tone]}`}>{children}</p>;
+  return <p className={`border-l-[3px] py-1 pl-3 text-sm ${tones[tone]}`}>{children}</p>;
 }
 
 export const inputClass =
-  "w-full min-w-0 rounded-lg border border-line bg-desk/80 px-3 py-2.5 text-sm text-ink placeholder:text-quiet focus:border-sky-300/60 focus:outline-none";
+  "w-full min-w-0 rounded border border-schiefer/25 bg-white/70 px-3 py-2.5 text-sm text-schiefer placeholder:text-quiet focus:border-schiefer focus:outline-none";

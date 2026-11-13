@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
 import { VaultSetup } from "../setup";
+import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { addDays, isoDate, shortDue } from "@/lib/dates";
 import { dateOf, dueSoon, groupTasks, type Task } from "@/lib/tasks";
@@ -23,7 +24,7 @@ export function TasksView() {
     return (
       <Shell>
         <Panel className="max-w-2xl">
-          <h2 className="mb-1 text-sm font-bold uppercase tracking-widest text-sky-100">Mit Obsidian verbinden</h2>
+          <h2 className="mb-1 text-sm font-bold text-schiefer">Mit Obsidian verbinden</h2>
           <p className="mb-4 text-sm text-quiet">
             JARVIS liest deine Aufgaben direkt aus deinem Obsidian-Tresor, sagt dir, was bis nächste Woche fällig ist, und hakt ab, was du erledigt hast.
             Hast du noch kein Obsidian, legt er dir einen Tresor mit den ersten Aufgaben an.
@@ -50,7 +51,7 @@ export function TasksView() {
           {tasks?.vault && (
             <a
               href={obsidianLink(tasks.vault.path)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300/30 bg-sky-400/5 px-3 py-2 text-xs font-bold text-sky-100 hover:bg-sky-400/15"
+              className="inline-flex items-center gap-1.5 rounded-full border border-schiefer/25 px-4 py-2 text-sm font-semibold text-schiefer transition-colors hover:border-schiefer/70 hover:bg-schiefer/5"
             >
               In Obsidian öffnen
             </a>
@@ -63,18 +64,22 @@ export function TasksView() {
     >
       {tasks?.error && <Notice tone="error">{tasks.error}</Notice>}
       {today && <AddTask today={today} />}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Stat label="Bis nächste Woche" value={soon.length} />
-        <Stat label="Überfällig" value={today ? soon.filter((t) => dateOf(t)! < today).length : 0} alert />
-        <Stat label="Heute erledigt" value={tasks?.doneToday ?? 0} ok />
-      </div>
+      <Scheiben>
+        <Scheibe titel="Auf einen Blick">
+          <ul>
+            <ScheibenZeile wert={soon.length}>Bis nächste Woche</ScheibenZeile>
+            <ScheibenZeile wert={today ? soon.filter((t) => dateOf(t)! < today).length : 0}>Überfällig</ScheibenZeile>
+            <ScheibenZeile wert={tasks?.doneToday ?? 0}>Heute erledigt</ScheibenZeile>
+          </ul>
+        </Scheibe>
+      </Scheiben>
       {tasks && today && groups.length === 0 && <Notice tone="ok">Keine offenen Aufgaben. Alles erledigt.</Notice>}
       {groups.map((g) => (
-        <Panel key={g.id} className={g.id === "ueberfaellig" ? "border-frame/40" : ""}>
-          <h2 className={`mb-2 text-xs font-bold uppercase tracking-[0.25em] ${g.id === "ueberfaellig" ? "text-pink-300" : "text-sky-300"}`}>
-            {g.title} · {g.tasks.length}
+        <Panel key={g.id} className={g.id === "ueberfaellig" ? "border-rot/40" : ""}>
+          <h2 className={`mb-2 text-xs font-bold ${g.id === "ueberfaellig" ? "text-down" : "text-see"}`}>
+            {g.title} <span className="font-medium text-quiet">{g.tasks.length}</span>
           </h2>
-          <ul className="divide-y divide-sky-300/10">
+          <ul className="divide-y divide-schiefer/10">
             {g.tasks.map((t) => (
               <TaskRow key={t.id} task={t} today={today!} active={t.id === current} vaultPath={tasks?.vault?.path} />
             ))}
@@ -96,15 +101,6 @@ function Shell({ children, subtitle, actions }: { children: ReactNode; subtitle?
   );
 }
 
-function Stat({ label, value, alert, ok }: { label: string; value: number; alert?: boolean; ok?: boolean }) {
-  const color = alert && value > 0 ? "text-pink-300" : ok && value > 0 ? "text-up" : "text-sky-50";
-  return (
-    <Panel className="px-3 py-3 sm:px-4">
-      <p className="text-[9px] uppercase tracking-widest text-quiet sm:text-[10px]">{label}</p>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-    </Panel>
-  );
-}
 
 function AddTask({ today }: { today: string }) {
   const { run, reloadTasks } = useJarvis();
@@ -148,19 +144,19 @@ function AddTask({ today }: { today: string }) {
             Notieren
           </Button>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
           {quick.map((q) => (
             <button
               key={q.label}
               type="button"
               onClick={() => setDue(due === q.date ? "" : q.date)}
-              className={`rounded-full border px-2.5 py-1 ${due === q.date ? "border-sky-300 bg-sky-400/20 text-sky-50" : "border-sky-300/20 text-sky-200/80 hover:text-sky-50"}`}
+              className={`rounded-full border px-2.5 py-1 ${due === q.date ? "border-schiefer bg-gletscher/20 text-schiefer" : "border-schiefer/20 text-stein/80 hover:text-schiefer"}`}
             >
               {q.label}
             </button>
           ))}
-          <label className="ml-1 inline-flex cursor-pointer items-center gap-1.5 text-sky-200/80">
-            <input type="checkbox" checked={important} onChange={(e) => setImportant(e.target.checked)} className="accent-pink-500" /> wichtig
+          <label className="ml-1 inline-flex cursor-pointer items-center gap-1.5 text-stein/80">
+            <input type="checkbox" checked={important} onChange={(e) => setImportant(e.target.checked)} className="accent-gletscher" /> wichtig
           </label>
           <span className="ml-auto text-quiet">landet in JARVIS/Eingang.md</span>
         </div>
@@ -198,7 +194,7 @@ function TaskRow({ task, today, active, vaultPath }: { task: Task; today: string
     <li
       ref={row}
       className={`flex flex-col gap-2 rounded-lg px-2 py-2.5 transition sm:flex-row sm:items-center ${
-        active ? "bg-sky-400/15 shadow-[0_0_0_1px_rgba(125,211,252,0.7),0_0_24px_rgba(56,189,248,0.3)]" : ""
+        active ? "bg-gletscher/15" : ""
       } ${busy ? "opacity-50" : ""}`}
     >
       <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -208,27 +204,27 @@ function TaskRow({ task, today, active, vaultPath }: { task: Task; today: string
           onClick={() => act({ type: "completeTask", task })}
           title={task.recurring ? "Wiederkehrende Aufgaben bitte in Obsidian abhaken" : "Erledigt"}
           aria-label={`${task.text} erledigt`}
-          className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border border-sky-300/60 text-transparent transition hover:border-up hover:bg-up/20 hover:text-up disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border border-schiefer/60 text-transparent transition hover:border-up hover:bg-up/20 hover:text-up disabled:cursor-not-allowed disabled:opacity-40"
         >
           ✓
         </button>
         <div className="min-w-0">
-          <p className="text-sm text-sky-50">
-            {task.important && <span className="mr-1.5 text-pink-300">▲</span>}
+          <p className="text-sm text-schiefer">
+            {task.important && <span className="mr-1.5 text-down">▲</span>}
             {task.text}
             {task.recurring && <span className="ml-1.5 text-quiet">↻</span>}
           </p>
-          <p className="mt-0.5 flex flex-wrap gap-x-3 text-[11px] text-quiet">
-            {d && <span className={overdue ? "font-bold text-pink-300" : "text-sky-200/80"}>{shortDue(d, today)}</span>}
+          <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-quiet">
+            {d && <span className={overdue ? "font-bold text-down" : "text-stein/80"}>{shortDue(d, today)}</span>}
             {vaultPath ? (
-              <a href={obsidianLink(`${vaultPath}/${task.file}`)} className="truncate hover:text-sky-200" title="In Obsidian öffnen">
+              <a href={obsidianLink(`${vaultPath}/${task.file}`)} className="truncate hover:text-stein" title="In Obsidian öffnen">
                 {task.file.replace(/\.md$/, "")}
               </a>
             ) : (
               <span className="truncate">{task.file}</span>
             )}
             {task.tags.map((t) => (
-              <span key={t} className="text-sky-300/70">
+              <span key={t} className="text-see/70">
                 #{t}
               </span>
             ))}
@@ -238,7 +234,7 @@ function TaskRow({ task, today, active, vaultPath }: { task: Task; today: string
       </div>
       <div className="flex shrink-0 flex-wrap gap-1.5 pl-8 sm:pl-0">
         {active ? (
-          <span className="rounded-full border border-sky-300/50 px-2 py-1 text-[10px] uppercase tracking-widest text-sky-200">JARVIS bespricht das</span>
+          <span className="rounded-full border border-schiefer/50 px-2 py-1 text-xs text-stein">JARVIS bespricht das</span>
         ) : (
           <Button small icon="fokus" onClick={() => discuss("aufgaben", task.id)}>
             Besprechen

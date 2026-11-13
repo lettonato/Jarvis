@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { ApprovalPanel, ApprovalRule } from "./Approvals";
-import { HoloLink } from "./HoloLink";
+import { RaumLink } from "./RaumLink";
+import { PageHeader } from "./ui";
 import { CrawlerWeb } from "./CrawlerWeb";
-import { Holo } from "./HoloView";
 import { useJarvis } from "./JarvisProvider";
 import { AGENTS, type Agent } from "@/lib/agents";
 import { postJson } from "@/lib/api";
@@ -68,7 +68,7 @@ export function TradingDesk() {
   const isDemo = snap ? snap.majors.source === "demo" || snap.scan.source === "demo" : false;
 
   return (
-    <main className="m-2 flex flex-1 flex-col gap-3 rounded-lg border-2 border-frame/80 bg-desk/60 p-3 sm:m-4 sm:p-4">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 sm:p-6">
       <Header now={now} isDemo={isDemo} loading={!snap} desk={desk} />
       {desk && <ApprovalPanel desk={desk} />}
       <AgentGrid snap={snap} desk={desk} />
@@ -103,33 +103,27 @@ function Header({ now, isDemo, loading, desk }: { now: Date | null; isDemo: bool
     ? "lädt …"
     : desk.status === "aus"
       ? "Spielgeld-Handel noch nicht gestartet"
-      : `Spielgeld · Tag ${Math.min(desk.testDay, SAFETY.testDays)} von ${SAFETY.testDays} · ${STATUS_LABEL[desk.status]}`;
+      : `Spielgeld, Tag ${Math.min(desk.testDay, SAFETY.testDays)} von ${SAFETY.testDays}, ${STATUS_LABEL[desk.status]}`;
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-      <Holo name="modul-trading">
-        <div>
-          <h1 className="text-xl font-bold uppercase tracking-[0.25em] text-frame">Trading-Desk</h1>
-          <p className="text-[11px] uppercase tracking-widest text-quiet">{subtitle}</p>
-        </div>
-      </Holo>
+    <PageHeader title="Trading" subtitle={subtitle}>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {desk && desk.status !== "aus" && <StatusPill desk={desk} />}
         {!loading && (
-          <span className={`rounded px-2 py-1 font-bold tracking-wider ${isDemo ? "bg-amber-500/15 text-amber-300" : "bg-up/15 text-up"}`}>
-            {isDemo ? "BEISPIELDATEN" : "● LIVE"}
+          <span className={`rounded px-2 py-1 font-bold ${isDemo ? "bg-sonne/15 text-ocker" : "bg-up/15 text-up"}`}>
+            {isDemo ? "Beispieldaten" : "live"}
           </span>
         )}
         <span className="rounded border border-line px-2 py-1 text-quiet">{now ? formatClock(now) : "--:--:--"} lokal</span>
-        <span className="rounded bg-panel-2 px-2 py-1 font-bold text-ink">{now ? formatClock(now, "UTC") : "--:--:--"} UTC</span>
+        <span className="rounded bg-panel-2 px-2 py-1 font-bold text-schiefer">{now ? formatClock(now, "UTC") : "--:--:--"} UTC</span>
       </div>
-    </header>
+    </PageHeader>
   );
 }
 
 function StatusPill({ desk }: { desk: DeskSnapshot }) {
   const tone =
-    desk.status === "laeuft" ? "bg-up/15 text-up" : desk.status === "notaus" ? "bg-down/20 text-down" : "bg-amber-500/15 text-amber-300";
-  return <span className={`rounded px-2 py-1 font-bold uppercase tracking-wider ${tone}`}>{STATUS_LABEL[desk.status]}</span>;
+    desk.status === "laeuft" ? "bg-up/15 text-up" : desk.status === "notaus" ? "bg-down/20 text-down" : "bg-sonne/15 text-ocker";
+  return <span className={`rounded px-2 py-1 font-bold ${tone}`}>{STATUS_LABEL[desk.status]}</span>;
 }
 
 type Metric = { value: string; detail: string; progress?: number };
@@ -191,18 +185,18 @@ function AgentTile({ agent, metric, state }: { agent: Agent; metric?: Metric; st
         <div className="flex items-center gap-2">
           <span
             className={`h-3 w-3 rounded-full ${state.live ? "animate-pulse" : "opacity-50"}`}
-            style={{ background: agent.color, boxShadow: state.live ? `0 0 10px ${agent.color}` : undefined }}
+            style={{ background: agent.color }}
           />
-          <h2 className="font-bold uppercase tracking-wider" style={{ color: agent.color }}>
+          <h2 className="font-bold" style={{ color: agent.color }}>
             {agent.name}
           </h2>
         </div>
-        <span className="whitespace-nowrap rounded bg-panel-2 px-1.5 py-0.5 text-[10px] uppercase text-quiet">{state.label}</span>
+        <span className="whitespace-nowrap rounded bg-panel-2 px-1.5 py-0.5 text-xs text-quiet">{state.label}</span>
       </div>
-      <p className="text-[11px] text-quiet">{agent.motto}</p>
+      <p className="text-xs text-quiet">{agent.motto}</p>
       {/* Auf dem Handy sind die Kacheln schmal: dann steht der Wert unter der Erklärung. */}
       <div className="mt-auto flex flex-col gap-0.5 pt-2 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
-        <span className="min-w-0 text-[11px] text-quiet">{metric?.detail ?? "wartet"}</span>
+        <span className="min-w-0 text-xs text-quiet">{metric?.detail ?? "wartet"}</span>
         <span className="max-w-full shrink-0 truncate font-bold sm:max-w-[60%] sm:text-right">{metric?.value ?? ""}</span>
       </div>
       {metric?.progress !== undefined && (
@@ -224,7 +218,7 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
     <section className="flex min-w-0 flex-col gap-3 rounded-md border border-line bg-panel p-3 lg:col-span-2">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-quiet">
+          <p className="text-xs text-quiet">
             Spielgeld-Konto{started ? ` · Tag ${day} von ${SAFETY.testDays}` : ""}
           </p>
           <p className="text-3xl font-bold">{formatUsd(desk?.equity ?? SAFETY.startCapitalUsd)}</p>
@@ -241,7 +235,7 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
         </div>
         <div className="flex flex-wrap gap-2">
           {desk?.status === "aus" && (
-            <button type="button" disabled={busy} onClick={() => act("start")} className="rounded bg-up/90 px-3 py-1.5 text-sm font-bold text-desk hover:bg-up disabled:opacity-50">
+            <button type="button" disabled={busy} onClick={() => act("start")} className="rounded bg-up/90 px-3 py-1.5 text-sm font-bold text-white hover:bg-up disabled:opacity-50">
               Spielgeld-Handel starten
             </button>
           )}
@@ -251,7 +245,7 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
             </button>
           )}
           {(desk?.status === "pausiert" || desk?.status === "notaus") && (
-            <button type="button" disabled={busy} onClick={() => act("weiter")} className="rounded bg-up/90 px-3 py-1.5 text-sm font-bold text-desk hover:bg-up disabled:opacity-50">
+            <button type="button" disabled={busy} onClick={() => act("weiter")} className="rounded bg-up/90 px-3 py-1.5 text-sm font-bold text-white hover:bg-up disabled:opacity-50">
               Weitermachen
             </button>
           )}
@@ -270,24 +264,24 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
       {started && (
         <div>
           <div className="h-1.5 overflow-hidden rounded bg-panel-2" title={`Testzeit: Tag ${day} von ${SAFETY.testDays}`}>
-            <div className="h-full rounded bg-frame" style={{ width: `${(day / SAFETY.testDays) * 100}%` }} />
+            <div className="h-full rounded bg-rot" style={{ width: `${(day / SAFETY.testDays) * 100}%` }} />
           </div>
-          <p className="mt-1 text-[11px] text-quiet">
+          <p className="mt-1 text-xs text-quiet">
             {desk.testDay > SAFETY.testDays
               ? `Die ${SAFETY.testDays} Testtage sind um. ${desk.pnlUsd > 0 ? "Der Desk liegt nach Kosten im Plus." : "Der Desk liegt nach Kosten nicht im Plus, also bleibt es bei Spielgeld."}`
               : `Echtes Geld erst, wenn der Desk nach ${SAFETY.testDays} Tagen nach Kosten im Plus ist und du zustimmst.`}
           </p>
         </div>
       )}
-      {desk?.statusReason && <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{desk.statusReason}</p>}
+      {desk?.statusReason && <p className="rounded border border-sonne/40 bg-sonne/10 px-3 py-2 text-xs text-ocker">{desk.statusReason}</p>}
       {desk?.intelWarning && (
-        <p className="rounded border border-down/50 bg-down/10 px-3 py-2 text-xs text-red-200">
+        <p className="rounded border border-down/50 bg-down/10 px-3 py-2 text-xs text-down">
           Intel warnt: {desk.intelWarning.text} Bis {new Date(desk.intelWarning.until).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr kauft der Desk nichts Neues,
           Stop-Loss bleibt aktiv.
         </p>
       )}
       {started && isDemo && (
-        <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        <p className="rounded border border-sonne/40 bg-sonne/10 px-3 py-2 text-xs text-ocker">
           Gerade keine Live-Daten von DexScreener. Mit Beispieldaten kauft der Desk nichts.
         </p>
       )}
@@ -363,22 +357,22 @@ function BalanceChart({ points, start }: { points: { at: string; equity: number 
         onPointerLeave={() => setHover(null)}
       >
         <line x1={0} x2={W} y1={y(start)} y2={y(start)} stroke="var(--color-line)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-        <path d={area} fill="#7dd3fc" opacity={0.1} />
-        <path d={line} fill="none" stroke="#7dd3fc" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        <path d={area} fill="#2f7f86" opacity={0.12} />
+        <path d={line} fill="none" stroke="#2f7f86" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         {shown && <line x1={x(shown.at)} x2={x(shown.at)} y1={pad.top} y2={H - pad.bottom} stroke="var(--color-quiet)" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
       </svg>
       <span
-        className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-300 ring-2 ring-panel"
+        className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gletscher ring-2 ring-panel"
         style={{ left: `${(x((shown ?? last).at) / W) * 100}%`, top: `${(y((shown ?? last).equity) / H) * 144}px` }}
       />
-      <figcaption className="flex justify-between text-[10px] text-quiet">
+      <figcaption className="flex justify-between text-xs text-quiet">
         <span>{when(points[0].at)}</span>
         <span>dünne Linie: Start {formatUsd(start)}</span>
         <span>{when(last.at)}</span>
       </figcaption>
       {shown && (
         <div
-          className="pointer-events-none absolute top-0 rounded border border-line bg-desk/95 px-2 py-1 text-[11px] shadow-lg"
+          className="pointer-events-none absolute top-0 rounded border border-line bg-desk/95 px-2 py-1 text-xs shadow-lg"
           style={{ left: `${Math.min(80, Math.max(0, (x(shown.at) / W) * 100 - 10))}%` }}
         >
           <p className="text-quiet">{when(shown.at)}</p>
@@ -395,7 +389,7 @@ function MajorCard({ quote }: { quote: MajorQuote }) {
     <article className="rounded-md border border-line bg-panel p-3">
       <div className="flex items-center justify-between text-xs text-quiet">
         <span>{quote.name}</span>
-        <span className="font-bold text-ink">{quote.symbol}</span>
+        <span className="font-bold text-schiefer">{quote.symbol}</span>
       </div>
       <p className="mt-1 text-xl font-bold">{formatEur(quote.eur)}</p>
       <p className={`text-sm ${up ? "text-up" : "text-down"}`}>{formatPct(quote.change24h)} in 24 Std</p>
@@ -407,7 +401,7 @@ function Positions({ desk, controls, now }: { desk: DeskSnapshot; controls: Cont
   return (
     <section className="rounded-md border border-line bg-panel">
       <div className="flex items-center justify-between border-b border-line px-3 py-2">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-sky-300">Offene Positionen · {desk.positions.length}</h2>
+        <h2 className="text-sm font-bold text-see">Offene Positionen <span className="font-medium text-quiet">{desk.positions.length}</span></h2>
         <button
           type="button"
           disabled={controls.busy}
@@ -419,7 +413,7 @@ function Positions({ desk, controls, now }: { desk: DeskSnapshot; controls: Cont
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] whitespace-nowrap text-left text-xs">
-          <thead className="text-[10px] uppercase tracking-wider text-quiet">
+          <thead className="text-xs text-quiet">
             <tr className="border-b border-line">
               <th className="px-3 py-2">Coin</th>
               <th className="px-3 py-2 text-right">Einsatz</th>
@@ -481,15 +475,15 @@ function Commodities({ desk, controls }: { desk: DeskSnapshot; controls: Control
   return (
     <section className="rounded-md border border-line bg-panel">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-sky-300">Rohstoffe · Gold, Silber, Öl</h2>
+        <h2 className="text-sm font-bold text-see">Rohstoffe: Gold, Silber, Öl</h2>
         <span className="text-xs text-quiet">{c.enabled ? `folgt dem Trend, je ${COMMODITY_RULES.tradeShare * 100} % des Kontos` : "aus"}</span>
       </div>
       {!c.enabled ? (
         <p className="px-3 py-3 text-xs text-quiet">
           Mit einem kostenlosen Schlüssel von Twelve Data handelt der Desk auch Gold, Silber und Öl. Eintragen unter{" "}
-          <HoloLink href="/einstellungen#rohstoffe" className="text-sky-300 hover:underline">
+          <RaumLink href="/einstellungen#rohstoffe" className="text-see hover:underline">
             Einstellungen → Rohstoffe
-          </HoloLink>
+          </RaumLink>
           .
         </p>
       ) : (
@@ -505,7 +499,7 @@ function Commodities({ desk, controls }: { desk: DeskSnapshot; controls: Control
           ))}
         </div>
       )}
-      {c.enabled && c.note && <p className="px-3 pb-3 text-[11px] text-amber-200">{c.note}</p>}
+      {c.enabled && c.note && <p className="px-3 pb-3 text-xs text-ocker">{c.note}</p>}
     </section>
   );
 }
@@ -527,7 +521,7 @@ function CommodityCard({
   return (
     <article className="flex min-w-0 flex-col gap-1 rounded border border-line bg-panel-2/40 p-3">
       <div className="flex items-center justify-between gap-2 text-xs">
-        <span className="font-bold text-ink">{name}</span>
+        <span className="font-bold text-schiefer">{name}</span>
         {quote && !quote.open ? (
           <span className="rounded bg-panel-2 px-1.5 py-0.5 text-quiet">Markt zu</span>
         ) : signal ? (
@@ -536,7 +530,7 @@ function CommodityCard({
           <span className="text-quiet">sammelt Kurse</span>
         ) : null}
       </div>
-      <p className="text-[11px] text-quiet">{quote ? quote.label : "noch kein Kurs"}</p>
+      <p className="text-xs text-quiet">{quote ? quote.label : "noch kein Kurs"}</p>
       <p className="text-xl font-bold">{quote ? formatPriceUsd(quote.price) : "–"}</p>
       {signal && <p className={`text-xs ${signal.change4h >= 0 ? "text-up" : "text-down"}`}>{formatPct(signal.change4h * 100)} in 4 Std</p>}
       {position ? (
@@ -555,7 +549,7 @@ function CommodityCard({
           </button>
         </div>
       ) : (
-        signal && <p className="mt-1 text-[11px] text-quiet">{signal.buy ? "Kaufsignal" : `Kein Kauf: ${signal.why}`}</p>
+        signal && <p className="mt-1 text-xs text-quiet">{signal.buy ? "Kaufsignal" : `Kein Kauf: ${signal.why}`}</p>
       )}
     </article>
   );
@@ -566,12 +560,12 @@ function ScannerTable({ snap, verdicts }: { snap: MarketSnapshot | null; verdict
   return (
     <section className="flex min-w-0 flex-col rounded-md border border-line bg-panel">
       <div className="flex items-center justify-between border-b border-line px-3 py-2">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-sky-300">Scan · Solana-Memecoins</h2>
+        <h2 className="text-sm font-bold text-see">Scan: Solana-Memecoins</h2>
         <span className="text-xs text-quiet">{snap ? `${snap.scan.scanned} gescannt` : "lädt …"}</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[820px] whitespace-nowrap text-left text-xs">
-          <thead className="text-[10px] uppercase tracking-wider text-quiet">
+          <thead className="text-xs text-quiet">
             <tr className="border-b border-line">
               <th className="px-3 py-2">Coin</th>
               <th className="px-3 py-2 text-right">Preis</th>
@@ -609,11 +603,11 @@ const VERDICT: Record<CoinVerdict["stage"], { label: string; tone: string }> = {
   chain_kill: { label: "Crawler: raus", tone: "bg-down/15 text-down" },
   skin_kill: { label: "Crawler: raus", tone: "bg-down/15 text-down" },
   x_kill: { label: "X warnt", tone: "bg-down/15 text-down" },
-  chief_nein: { label: "Chief: nein", tone: "bg-amber-500/15 text-amber-300" },
-  frage: { label: "fragt dich", tone: "bg-amber-400/20 font-bold text-amber-200" },
-  nicht_gekauft: { label: "Fills: nein", tone: "bg-amber-500/15 text-amber-300" },
+  chief_nein: { label: "Chief: nein", tone: "bg-sonne/15 text-ocker" },
+  frage: { label: "fragt dich", tone: "bg-sonne/20 font-bold text-ocker" },
+  nicht_gekauft: { label: "Fills: nein", tone: "bg-sonne/15 text-ocker" },
   nicht_geprueft: { label: "nicht geprüft", tone: "bg-panel-2 text-quiet" },
-  gekauft: { label: "GEKAUFT", tone: "bg-sky-500/15 font-bold text-sky-300" },
+  gekauft: { label: "gekauft", tone: "bg-schiefer/15 font-bold text-see" },
 };
 
 function CandidateRow({ c, verdict }: { c: Candidate; verdict?: CoinVerdict }) {
@@ -661,9 +655,9 @@ function HeatBar({ heat }: { heat: number }) {
   return (
     <span className="inline-flex items-center justify-end gap-1.5" title={value >= 30 ? "genug Schwung, der Crawler prüft ihn" : "zu wenig Schwung, wird übersprungen"}>
       <span className="h-1.5 w-10 overflow-hidden rounded bg-panel-2">
-        <span className="block h-full rounded bg-sky-300" style={{ width: `${value}%`, opacity: value >= 30 ? 1 : 0.4 }} />
+        <span className="block h-full rounded bg-gletscher" style={{ width: `${value}%`, opacity: value >= 30 ? 1 : 0.4 }} />
       </span>
-      <span className={value >= 30 ? "text-ink" : "text-quiet"}>{value}</span>
+      <span className={value >= 30 ? "text-schiefer" : "text-quiet"}>{value}</span>
     </span>
   );
 }
@@ -673,13 +667,13 @@ function Trades({ trades }: { trades: Trade[] }) {
   return (
     <section className="rounded-md border border-line bg-panel">
       <div className="border-b border-line px-3 py-2">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-sky-300">Trades mit Begründung</h2>
+        <h2 className="text-sm font-bold text-see">Trades mit Begründung</h2>
       </div>
       <ol className="divide-y divide-line/60 text-xs">
         {trades.slice(0, 20).map((t) => (
           <li key={t.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2">
             <span className="text-quiet">{new Date(t.at).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" })}</span>
-            <span className={`w-14 font-bold uppercase ${t.side === "kauf" ? "text-sky-300" : "text-amber-300"}`}>{t.side}</span>
+            <span className={`w-14 font-bold ${t.side === "kauf" ? "text-see" : "text-ocker"}`}>{t.side}</span>
             <span className="font-bold">{assetLabel(t)}</span>
             <span>{formatUsd(t.usd)}</span>
             {t.pnlUsd !== undefined && <span className={t.pnlUsd >= 0 ? "text-up" : "text-down"}>{formatSignedUsd(t.pnlUsd)}</span>}
@@ -696,31 +690,31 @@ function ThresholdsPanel() {
   const keys = Object.keys(HARD_FILTERS) as FilterKey[];
   return (
     <section className="rounded-md border border-line bg-panel p-3 text-xs">
-      <h2 className="mb-2 font-bold text-ink">thresholds.py</h2>
-      <p className="mb-2 text-[10px] uppercase tracking-wider text-quiet">Hart · reine Rechnung, kostet nichts</p>
+      <h2 className="mb-2 font-bold text-schiefer">thresholds.py</h2>
+      <p className="mb-2 text-xs text-quiet">Hart · reine Rechnung, kostet nichts</p>
       <ul className="space-y-1">
         {keys.map((key) => (
           <li key={key} className="flex justify-between gap-2">
-            <span className="text-sky-300">{FILTER_LABELS[key]}</span>
+            <span className="text-see">{FILTER_LABELS[key]}</span>
             <span>{HARD_FILTERS[key].toLocaleString("de-DE")}</span>
           </li>
         ))}
       </ul>
-      <p className="mb-2 mt-3 text-[10px] uppercase tracking-wider text-quiet">Weich · der Chief schätzt, die Grenze entscheidet</p>
+      <p className="mb-2 mt-3 text-xs text-quiet">Weich · der Chief schätzt, die Grenze entscheidet</p>
       <ul className="space-y-1">
         {SOFT_KEYS.map((key) => (
           <li key={key} className="flex justify-between gap-2" title={SOFT_FILTERS[key].label}>
-            <span className="truncate text-sky-300">{key}</span>
+            <span className="truncate text-see">{key}</span>
             <span className="shrink-0">
               {SOFT_FILTERS[key].limit} {SOFT_FILTERS[key].value.toLocaleString("de-DE")}
             </span>
           </li>
         ))}
       </ul>
-      <p className="mb-1 mt-3 text-[10px] uppercase tracking-wider text-quiet">filter.py · die Reihenfolge ist der Trick</p>
+      <p className="mb-1 mt-3 text-xs text-quiet">filter.py · die Reihenfolge ist der Trick</p>
       <ol className="flex flex-wrap gap-1">
         {FILTER_STAGES.map((stage) => (
-          <li key={stage.id} title={`${stage.agent}: ${stage.label}`} className="rounded border border-frame/50 px-1.5 py-0.5 text-[10px] text-frame">
+          <li key={stage.id} title={`${stage.agent}: ${stage.label}`} className="rounded border border-rot/50 px-1.5 py-0.5 text-xs text-down">
             {stage.id}
           </li>
         ))}
@@ -729,17 +723,17 @@ function ThresholdsPanel() {
   );
 }
 
-const TONE: Record<NonNullable<LogEntry["tone"]>, string> = { kill: "text-down", buy: "text-sky-300", sell: "text-amber-300", warn: "text-amber-200" };
+const TONE: Record<NonNullable<LogEntry["tone"]>, string> = { kill: "text-down", buy: "text-see", sell: "text-ocker", warn: "text-ocker" };
 
 function DeskLog({ log }: { log: LogEntry[] }) {
   return (
     <section className="flex min-h-48 flex-1 flex-col rounded-md border border-line bg-panel p-3 text-xs">
-      <h2 className="mb-2 font-bold text-ink">Protokoll</h2>
+      <h2 className="mb-2 font-bold text-schiefer">Protokoll</h2>
       <ol className="max-h-[420px] flex-1 space-y-1 overflow-y-auto">
         {log.map((e, i) => (
           <li key={`${e.at}-${i}`} className="flex gap-2">
             <span className="shrink-0 text-quiet">{formatClock(new Date(e.at))}</span>
-            <span className="w-14 shrink-0 font-bold uppercase text-frame">{e.agent}</span>
+            <span className="w-14 shrink-0 font-bold text-down">{e.agent}</span>
             <span className={e.tone ? TONE[e.tone] : ""}>{e.text}</span>
           </li>
         ))}
@@ -752,7 +746,7 @@ function DeskLog({ log }: { log: LogEntry[] }) {
 function Footer({ desk, controls }: { desk: DeskSnapshot | null; controls: Controls }) {
   const armed = desk && desk.status !== "aus" && desk.status !== "notaus";
   return (
-    <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-[11px] text-quiet">
+    <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-xs text-quiet">
       <span>
         Daten: CoinGecko, DexScreener, GeckoTerminal, RugCheck, Grok und Twelve Data · Risk wacht alle 10 Sekunden, neue Coins alle 30 Sekunden, die Spinne zeigt jeden
         Schritt sofort
@@ -762,7 +756,7 @@ function Footer({ desk, controls }: { desk: DeskSnapshot | null; controls: Contr
         disabled={!armed || controls.busy}
         onClick={() => controls.act("notaus")}
         title={armed ? "Stoppt sofort alle Agenten. Auch per Sprache: „Stopp alles“." : "Der Not-Aus greift, sobald der Spielgeld-Handel läuft."}
-        className="rounded border border-down px-3 py-1 font-bold uppercase tracking-wider text-down hover:bg-down/15 disabled:cursor-not-allowed disabled:border-down/40 disabled:text-down/50"
+        className="rounded border border-down px-3 py-1 font-bold text-down hover:bg-down/15 disabled:cursor-not-allowed disabled:border-down/40 disabled:text-down/50"
       >
         Not-Aus
       </button>

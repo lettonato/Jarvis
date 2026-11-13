@@ -2,8 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { AgentControl } from "../AgentControl";
-import { HoloLink } from "../HoloLink";
-import { Holo } from "../HoloView";
+import { RaumLink } from "../RaumLink";
 import { Icon } from "../icons";
 import { useJarvis } from "../JarvisProvider";
 import { PageHeader, Panel } from "../ui";
@@ -50,33 +49,31 @@ function AgentCard({ module, highlighted }: { module: JarvisModule; highlighted:
   const active = isActive(module, settings?.brain.configured);
   const ownView = !module.href.startsWith("/agenten");
   return (
-    <Holo name={`modul-${module.id}`}>
       <div id={module.id} className="scroll-mt-24">
         <Panel glow={highlighted} className={`h-full ${active ? "" : "opacity-80"}`}>
           <div className="flex items-start gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-sky-300/30 bg-sky-400/10 text-sky-300">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-schiefer/30 bg-gletscher/10 text-see">
               <Icon name={module.id} className="h-7 w-7" />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-bold uppercase tracking-[0.18em] text-sky-100">{module.name}</h2>
-                <span className="text-[10px] tracking-widest text-sky-200/60">{module.code}</span>
-                <span className={`ml-auto rounded px-2 py-0.5 text-[10px] font-bold tracking-widest ${active ? "bg-up/15 text-up" : "bg-panel-2 text-quiet"}`}>
-                  {active ? "● AKTIV" : module.phase >= 6 ? "SPÄTER" : `PHASE ${module.phase}`}
+                <h2 className="text-base font-bold text-schiefer">{module.name}</h2>
+                <span className="text-xs text-stein/60">{module.code}</span>
+                <span className={`ml-auto rounded px-2 py-0.5 text-xs font-bold ${active ? "bg-up/15 text-up" : "bg-panel-2 text-quiet"}`}>
+                  {active ? "aktiv" : module.phase >= 6 ? "später" : `Phase ${module.phase}`}
                 </span>
               </div>
-              <p className="mt-1.5 text-sm leading-relaxed text-sky-50/85">{module.about}</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-schiefer/85">{module.about}</p>
               {module.id === "wetter" && <WeatherDetail />}
               {ownView && (
-                <HoloLink href={module.href} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-sky-300 hover:text-sky-100">
-                  Ansicht öffnen →
-                </HoloLink>
+                <RaumLink href={module.href} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-see hover:text-schiefer">
+                  Ansicht öffnen
+                </RaumLink>
               )}
             </div>
           </div>
         </Panel>
       </div>
-    </Holo>
   );
 }
 
@@ -85,24 +82,24 @@ function WeatherDetail() {
   if (!weather) return <p className="mt-3 text-xs text-quiet">Wetter lädt …</p>;
   return (
     <div className="mt-3">
-      <p className="text-sm text-sky-50">
+      <p className="text-sm text-schiefer">
         <span className="text-2xl font-bold">{Math.round(weather.temperature)} °C</span> in {weather.place}, {weather.description}
       </p>
       <p className="text-xs text-quiet">
         gefühlt {Math.round(weather.feelsLike)} °C · Luftfeuchte {weather.humidity} % · Wind {Math.round(weather.windKmh)} km/h
-        {weather.source === "demo" && <span className="ml-2 text-amber-300">Beispieldaten</span>}
+        {weather.source === "demo" && <span className="ml-2 text-ocker">Beispieldaten</span>}
       </p>
       <div className="mt-2 grid grid-cols-4 gap-2">
         {weather.days.map((d, i) => (
-          <div key={d.date} className="rounded-lg border border-sky-300/15 bg-desk/50 px-2 py-1.5 text-center text-[11px]">
-            <p className="font-bold text-sky-200">{i === 0 ? "Heute" : WEEKDAY.format(fromIso(d.date))}</p>
-            <p className="text-sky-50">
+          <div key={d.date} className="rounded-lg border border-schiefer/15 bg-desk/50 px-2 py-1.5 text-center text-xs">
+            <p className="font-bold text-stein">{i === 0 ? "Heute" : WEEKDAY.format(fromIso(d.date))}</p>
+            <p className="text-schiefer">
               {Math.round(d.min)}° / {Math.round(d.max)}°
             </p>
             <p className="truncate text-quiet" title={d.description}>
               {d.description}
             </p>
-            <p className="text-sky-300/80">{d.rain} % Regen</p>
+            <p className="text-see/80">{d.rain} % Regen</p>
           </div>
         ))}
       </div>

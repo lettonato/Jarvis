@@ -97,8 +97,8 @@ export function CloudVoiceSetup() {
 
   return (
     <div className="space-y-3 text-sm" data-stimme={stimme?.aktiv ? "an" : "aus"}>
-      <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">Natürlichere Stimme mit ElevenLabs</h3>
-      <p className="text-sky-50/85">
+      <h3 className="text-xs font-bold text-stein">Natürlichere Stimme mit ElevenLabs</h3>
+      <p className="text-schiefer/85">
         Mit einem Schlüssel von ElevenLabs klingt JARVIS wie ein Mensch. Das ist ein Zusatz: Ohne Schlüssel, ausgeschaltet oder über dem Tageslimit spricht er mit
         der Stimme deines Macs weiter.
       </p>
@@ -114,10 +114,10 @@ export function CloudVoiceSetup() {
       {lage?.fehler && <Notice tone="error">{lage.fehler}</Notice>}
       <form onSubmit={submit} className="space-y-3">
         {!configured && (
-          <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+          <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
             <li>
               Auf{" "}
-              <a href="https://elevenlabs.io" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+              <a href="https://elevenlabs.io" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
                 elevenlabs.io
               </a>{" "}
               anmelden und dort die Stimme, die dir gefällt, zu „Meine Stimmen“ hinzufügen.
@@ -175,13 +175,13 @@ export function CloudVoiceSetup() {
           </div>
           <p className="text-xs text-quiet">{STIMME_MODELLE.find((m) => m.id === stimme.model)?.text} Fehlt deine Wunschstimme, füge sie bei ElevenLabs zu „Meine Stimmen“ hinzu.</p>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-3 text-sm text-sky-50/85">
+            <label className="flex items-center gap-3 text-sm text-schiefer/85">
               <input
                 type="checkbox"
                 checked={stimme.enabled}
                 disabled={busy || !stimme.voiceId}
                 onChange={(e) => void send({ action: "elevenlabsPrefs", enabled: e.target.checked }, e.target.checked ? "Eingeschaltet. Ab jetzt spreche ich mit dieser Stimme." : "Ausgeschaltet. Es spricht wieder der Mac.")}
-                className="h-4 w-4 accent-sky-400"
+                className="h-4 w-4 accent-gletscher"
                 aria-label="Mit der ElevenLabs-Stimme sprechen"
               />
               Mit dieser Stimme sprechen

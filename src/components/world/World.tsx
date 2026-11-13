@@ -6,7 +6,7 @@ import { useJarvis } from "../JarvisProvider";
 import { useTelemetry } from "../useTelemetry";
 import { setFocusHandler, setWorldStatus } from "./anchor";
 import type { World as WorldApi } from "./scene";
-import { holoTypes } from "@/lib/holo";
+import { fahrtArten } from "@/lib/raeume";
 import { readWorldStyle, STYLE_EVENT, STYLE_KEY } from "@/lib/photos";
 import { QUALITY_EVENT, type QualityChoice } from "@/lib/quality";
 import { biomeOf } from "@/lib/world";
@@ -48,7 +48,7 @@ export function World() {
         api = createWorld(mount, {
           initial: biomeOf(place.current),
           photos: readWorldStyle() === "fotos",
-          onOpen: (href) => router.push(href, { transitionTypes: holoTypes(place.current, href) }),
+          onOpen: (href) => router.push(href, { transitionTypes: fahrtArten(place.current, href) }),
           onLost,
         });
         world.current = api;

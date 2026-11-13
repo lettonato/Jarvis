@@ -162,7 +162,7 @@ export function MailSetup() {
           />
         </label>
       </div>
-      <p className="rounded-lg border border-sky-300/15 bg-desk/50 px-3 py-2 text-xs text-sky-100/80">{info.hint}</p>
+      <p className="rounded-lg border border-schiefer/15 bg-desk/50 px-3 py-2 text-xs text-schiefer/80">{info.hint}</p>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" tone="primary" disabled={busy || !user.trim()}>
           {busy ? "Prüfe Verbindung …" : saved ? "Speichern und prüfen" : "Verbinden"}
@@ -174,7 +174,7 @@ export function MailSetup() {
         )}
       </div>
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
-      <p className="text-[11px] text-quiet">Das Passwort bleibt auf deinem Mac in {settings?.configFile ?? "~/.jarvis/config.json"} und wird nie hochgeladen.</p>
+      <p className="text-xs text-quiet">Das Passwort bleibt auf deinem Mac in {settings?.configFile ?? "~/.jarvis/config.json"} und wird nie hochgeladen.</p>
     </form>
   );
 }
@@ -223,8 +223,8 @@ export function CalendarSetup() {
       {calendar.access === "offen" && (
         <>
           <p className="text-quiet">
-            Ein Klick, dann fragt macOS einmal, ob <b className="text-sky-100">Terminal</b> auf deine Kalender zugreifen darf (JARVIS läuft im Terminal). Wähle dort{" "}
-            <b className="text-sky-100">Erlauben</b> bzw. <b className="text-sky-100">Vollzugriff</b>.
+            Ein Klick, dann fragt macOS einmal, ob <b className="text-schiefer">Terminal</b> auf deine Kalender zugreifen darf (JARVIS läuft im Terminal). Wähle dort{" "}
+            <b className="text-schiefer">Erlauben</b> bzw. <b className="text-schiefer">Vollzugriff</b>.
           </p>
           <Button tone="primary" icon="kalender" disabled={busy !== null} onClick={() => send("zugriff")}>
             {busy === "zugriff" ? "Warte auf deine Antwort am Mac …" : "Kalender verbinden"}

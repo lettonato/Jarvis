@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { Icon } from "./icons";
 import { useConversation, useJarvis, type Turn } from "./JarvisProvider";
 import type { AvatarState } from "@/lib/avatar";
@@ -70,13 +70,11 @@ export function MicButton({ big = false }: { big?: boolean }) {
       onClick={voice.toggle}
       aria-label={voice.listening ? "Zuhören beenden" : "Sprechen"}
       title="Sprechen (Leertaste)"
-      className={`grid ${size} shrink-0 place-items-center rounded-full border transition-colors ${
-        voice.listening
-          ? "animate-pulse border-sky-300 bg-sky-400/30 shadow-[0_0_24px_rgba(56,189,248,0.85)]"
-          : "border-sky-300/40 bg-sky-400/10 hover:bg-sky-400/25"
+      className={`grid ${size} shrink-0 place-items-center rounded-full transition-colors ${
+        voice.listening ? "animate-pulse bg-sonne text-schiefer" : "bg-white/10 text-kalk hover:bg-white/20"
       }`}
     >
-      <Icon name="mic" className="h-5 w-5 text-sky-100" />
+      <Icon name="mic" className="h-5 w-5" />
     </button>
   );
 }
@@ -92,11 +90,11 @@ export function HandsFreeSwitch() {
       onClick={() => voice.setHandsFree(!on)}
       aria-pressed={on}
       title={on ? "JARVIS hört auf „Jarvis“. Antippen zum Ausschalten." : "Antippen, dann hört JARVIS von selbst auf „Jarvis“."}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
-        on ? "border-sky-300/50 bg-sky-400/10 text-sky-100 hover:bg-sky-400/20" : "border-line text-quiet hover:border-sky-300/40 hover:text-sky-100"
+      className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+        on ? "border-schiefer/30 text-schiefer hover:border-schiefer/70" : "border-schiefer/20 text-quiet hover:border-schiefer/60 hover:text-schiefer"
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${on && voice.waiting ? "animate-pulse bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.9)]" : on ? "bg-sky-300/60" : "bg-frame"}`} />
+      <span className={`h-2 w-2 rounded-full ${on && voice.waiting ? "animate-pulse bg-sonne" : on ? "bg-sonne/60" : "bg-schiefer/30"}`} />
       {on ? `Hört auf „Jarvis“${voice.local ? " · nur auf dem Mac" : ""}` : "Freihändig aus"}
     </button>
   );
@@ -115,7 +113,7 @@ export function NewConversation() {
         clearTurns();
       }}
       title="Neues Gespräch. Was JARVIS sich über dich gemerkt hat, bleibt."
-      className="flex shrink-0 items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[11px] text-quiet transition-colors hover:border-sky-300/40 hover:text-sky-100"
+      className="flex shrink-0 items-center gap-1.5 rounded-full border border-schiefer/20 px-3 py-1 text-xs font-medium text-quiet transition-colors hover:border-schiefer/60 hover:text-schiefer"
     >
       <Icon name="neu" className="h-3.5 w-3.5" /> Neues Gespräch
     </button>
@@ -133,10 +131,8 @@ export function Chips({ onFill, scroll = false, idle = true }: { onFill: (text: 
           key={c.label}
           type="button"
           onClick={() => (c.fill ? onFill(c.fill) : ask(c.text ?? c.label))}
-          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
-            session
-              ? "border-sky-300/50 bg-sky-400/10 text-sky-100 hover:bg-sky-400/25"
-              : "border-sky-300/20 text-sky-200/80 hover:border-sky-300/50 hover:text-sky-100"
+          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            session ? "border-schiefer bg-schiefer text-kalk hover:bg-stein" : "border-schiefer/20 text-stein hover:border-schiefer/70 hover:text-schiefer"
           }`}
         >
           {c.label}
@@ -169,8 +165,9 @@ function useBusy(): boolean {
 
 // Das Eingabefeld wie bei Claude: Enter schickt ab, Umschalt+Enter macht eine neue Zeile,
 // das Feld wächst mit bis etwa sechs Zeilen.
-export function Composer({ inputRef, draft, setDraft, big = false }: { inputRef: RefObject<HTMLTextAreaElement | null>; draft: string; setDraft: (v: string) => void; big?: boolean }) {
-  const { ask, stop } = useJarvis();
+// `vorn` steht links im Feld, etwa der Lichtpunkt von JARVIS in der Leiste.
+export function Composer({ inputRef, draft, setDraft, big = false, vorn }: { inputRef: RefObject<HTMLTextAreaElement | null>; draft: string; setDraft: (v: string) => void; big?: boolean; vorn?: ReactNode }) {
+  const { ask, stop, voice } = useJarvis();
   const busy = useBusy();
 
   useLayoutEffect(() => {
@@ -199,8 +196,9 @@ export function Composer({ inputRef, draft, setDraft, big = false }: { inputRef:
         e.preventDefault();
         send();
       }}
-      className="flex min-w-0 flex-1 items-end gap-2 rounded-2xl border border-sky-300/25 bg-panel-2 p-1.5 transition-colors focus-within:border-sky-300/60"
+      className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[1.75rem] bg-schiefer p-1.5 text-kalk"
     >
+      {vorn}
       <MicButton big={big} />
       <textarea
         ref={inputRef}
@@ -208,9 +206,9 @@ export function Composer({ inputRef, draft, setDraft, big = false }: { inputRef:
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Frag JARVIS etwas …"
+        placeholder={voice.canListen && voice.handsFree ? "Sag „Jarvis“ oder tippe" : "Schreib hier, was du brauchst"}
         aria-label="Nachricht an JARVIS"
-        className={`min-w-0 flex-1 resize-none bg-transparent px-2 text-sm leading-5 text-ink placeholder:text-quiet focus:outline-none ${big ? "py-3" : "py-2.5"}`}
+        className={`min-w-0 flex-1 resize-none bg-transparent px-2.5 text-[0.95rem] leading-5 text-kalk placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:text-[#9fb0b5] focus:outline-none ${big ? "py-3" : "py-2.5"}`}
       />
       {busy && !draft.trim() ? (
         <button
@@ -218,7 +216,7 @@ export function Composer({ inputRef, draft, setDraft, big = false }: { inputRef:
           onClick={stop}
           aria-label="Anhalten"
           title="Anhalten (Esc)"
-          className={`grid ${big ? "h-11 w-11" : "h-10 w-10"} shrink-0 place-items-center rounded-xl border border-sky-300/50 bg-sky-400/15 text-sky-100 transition-colors hover:bg-sky-400/30`}
+          className={`grid ${big ? "h-11 w-11" : "h-10 w-10"} shrink-0 place-items-center rounded-full bg-white/15 text-kalk transition-colors hover:bg-white/25`}
         >
           <Icon name="stopp" className="h-4 w-4" />
         </button>
@@ -227,7 +225,7 @@ export function Composer({ inputRef, draft, setDraft, big = false }: { inputRef:
           type="submit"
           aria-label="Senden"
           disabled={!draft.trim()}
-          className={`grid ${big ? "h-11 w-11" : "h-10 w-10"} shrink-0 place-items-center rounded-xl bg-sky-500 text-white transition-colors hover:bg-sky-400 disabled:bg-sky-500/25 disabled:text-sky-100/50`}
+          className={`grid ${big ? "h-11 w-11" : "h-10 w-10"} shrink-0 place-items-center rounded-full bg-sonne text-schiefer transition-colors hover:bg-[#ffc468] disabled:bg-white/10 disabled:text-white/35`}
         >
           <Icon name="senden" className="h-4 w-4" />
         </button>
@@ -257,7 +255,7 @@ function Sources({ sources }: { sources: Source[] }) {
           target="_blank"
           rel="noreferrer noopener"
           title={s.title}
-          className="inline-flex max-w-[16rem] items-center gap-1 rounded-full border border-line bg-panel-2 px-2 py-0.5 text-[11px] text-sky-200/90 transition-colors hover:border-sky-300/50 hover:text-sky-50"
+          className="inline-flex max-w-[16rem] items-center gap-1 rounded-full border border-schiefer/20 px-2.5 py-0.5 text-xs font-medium text-see transition-colors hover:border-schiefer/60 hover:text-schiefer"
         >
           <Icon name="extern" className="h-3 w-3 shrink-0" />
           <span className="truncate">{s.host}</span>
@@ -272,7 +270,7 @@ function Dots() {
   return (
     <span className="inline-flex items-center gap-1" aria-hidden>
       {[0, 1, 2].map((i) => (
-        <span key={i} className="h-1.5 w-1.5 animate-[jarvis-dot_1.2s_ease-in-out_infinite] rounded-full bg-sky-300" style={{ animationDelay: `${i * 0.16}s` }} />
+        <span key={i} className="h-1.5 w-1.5 animate-[jarvis-dot_1.2s_ease-in-out_infinite] rounded-full bg-sonne" style={{ animationDelay: `${i * 0.16}s` }} />
       ))}
     </span>
   );
@@ -284,7 +282,7 @@ const Message = memo(function Message({ turn }: { turn: Turn }) {
   if (turn.who === "du") {
     return (
       <div className="flex animate-[jarvis-in_220ms_ease-out] justify-end">
-        <p className="max-w-[85%] whitespace-pre-line break-words rounded-2xl rounded-br-md border border-sky-300/20 bg-sky-400/15 px-3.5 py-2 text-sm text-sky-50">{turn.text}</p>
+        <p className="max-w-[85%] whitespace-pre-line break-words rounded-[1.1rem] rounded-br-[3px] bg-schiefer px-4 py-2 text-[0.95rem] leading-relaxed text-kalk">{turn.text}</p>
       </div>
     );
   }
@@ -293,26 +291,26 @@ const Message = memo(function Message({ turn }: { turn: Turn }) {
     <div className="flex animate-[jarvis-in_220ms_ease-out] gap-3">
       <span
         aria-hidden
-        className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(125,211,252,0.9)] ${turn.live ? "animate-pulse" : ""}`}
+        className={`mt-[0.45rem] h-2.5 w-2.5 shrink-0 rounded-full bg-sonne ${turn.live ? "animate-pulse" : ""}`}
       />
-      <div className="min-w-0 flex-1 text-sm leading-relaxed text-ink">
+      <div className="min-w-0 flex-1 text-[0.95rem] leading-relaxed text-schiefer">
         <span className="sr-only">JARVIS: </span>
         {!empty && (
           <p className="whitespace-pre-line break-words">
             {turn.text}
-            {turn.live && <span aria-hidden className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] animate-[jarvis-caret_1s_steps(2)_infinite] bg-sky-300" />}
+            {turn.live && <span aria-hidden className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] animate-[jarvis-caret_1s_steps(2)_infinite] bg-schiefer" />}
           </p>
         )}
         {turn.live && (empty || turn.status) && (
-          <p className="flex items-center gap-2 py-1 text-xs text-sky-300/90" role="status">
+          <p className="flex items-center gap-2 py-1 text-xs font-medium text-quiet" role="status">
             <Dots />
             {turn.status && <span>{turn.status} …</span>}
           </p>
         )}
         {turn.sources && <Sources sources={turn.sources} />}
         {turn.fremd && !turn.live && (
-          <p className="mt-1.5 text-[10.5px] text-quiet" title="In diese Antwort ist Text von Dritten eingeflossen (Mail, Webseite, Termin oder Nachrichten). Solange sie im Gespräch steht, fragt JARVIS vor Änderungen und Aufträgen nach.">
-            Enthält Inhalte von Dritten · Änderungen danach nur mit deinem Ja
+          <p className="mt-1.5 text-xs text-quiet" title="In diese Antwort ist Text von Dritten eingeflossen (Mail, Webseite, Termin oder Nachrichten). Solange sie im Gespräch steht, fragt JARVIS vor Änderungen und Aufträgen nach.">
+            Enthält Inhalte von Dritten. Änderungen danach nur mit deinem Ja.
           </p>
         )}
       </div>
@@ -381,7 +379,7 @@ export function Messages({ limit, className = "" }: { limit?: number; className?
     <div className={`relative min-h-0 ${className}`}>
       <div
         ref={ref}
-        className="h-full overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_14px)] [scrollbar-color:rgba(125,211,252,0.25)_transparent] [scrollbar-width:thin]"
+        className="h-full overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_14px)] [scrollbar-color:rgba(31,42,46,0.25)_transparent] [scrollbar-width:thin]"
       >
         <div className="space-y-4 px-1 py-2" aria-live="polite">
           {shown.length === 0 && !interim && <p className="text-sm leading-relaxed text-quiet">{emptyText(voice.handsFree, voice.canListen)}</p>}
@@ -390,10 +388,10 @@ export function Messages({ limit, className = "" }: { limit?: number; className?
           ))}
           {state === "listening" && (
             <div className="flex justify-end">
-              <p className="max-w-[85%] rounded-2xl rounded-br-md border border-dashed border-sky-300/40 px-3.5 py-2 text-sm italic text-sky-100/80">{interim || "…"}</p>
+              <p className="max-w-[85%] rounded-[1.1rem] rounded-br-[3px] border border-dashed border-schiefer/40 px-4 py-2 text-[0.95rem] italic text-stein">{interim || "…"}</p>
             </div>
           )}
-          {voice.hint && <p className="text-sm text-amber-200">{voice.hint}</p>}
+          {voice.hint && <p className="text-sm text-ocker">{voice.hint}</p>}
           {voice.error && <p className="text-sm text-down">{voice.error}</p>}
         </div>
       </div>
@@ -402,40 +400,11 @@ export function Messages({ limit, className = "" }: { limit?: number; className?
           type="button"
           onClick={() => toBottom()}
           aria-label="Zur neuesten Nachricht"
-          className="absolute bottom-2 left-1/2 grid h-8 w-8 -translate-x-1/2 place-items-center rounded-full border border-sky-300/40 bg-panel-2 text-sky-100 shadow-[0_4px_16px_rgba(9,11,24,0.8)] hover:bg-sky-400/20"
+          className="absolute bottom-2 left-1/2 grid h-8 w-8 -translate-x-1/2 place-items-center rounded-full border border-schiefer/25 bg-white text-schiefer shadow-lg hover:border-schiefer"
         >
           <Icon name="runter" className="h-4 w-4" />
         </button>
       )}
-    </div>
-  );
-}
-
-// Das Gespräch unter dem Kopf in der Übersicht: die letzten Nachrichten, Eingabe und Vorschläge.
-export function Console() {
-  const { session, voice, state } = useJarvis();
-  const { turns, interim } = useConversation();
-  const { draft, setDraft, inputRef, fill } = useDraft();
-  // Solange ihr nicht redet, bleibt die Konsole flach und lässt der Landschaft Platz.
-  const talking = turns.length > 0 || Boolean(interim) || state === "listening";
-  return (
-    <div className="w-full max-w-[640px] rounded-2xl border border-sky-300/25 bg-panel/80 p-3 shadow-[0_0_40px_rgba(9,11,24,0.6)]">
-      {(session || voice.canListen || turns.length > 0) && (
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-[0.25em] text-sky-300">{sessionLabel(session)}</p>
-          <div className="flex items-center gap-1.5">
-            <NewConversation />
-            <HandsFreeSwitch />
-          </div>
-        </div>
-      )}
-      {(talking || voice.error || voice.hint) && <Messages limit={6} className={talking ? "h-32 animate-[jarvis-sheet_260ms_cubic-bezier(0.16,1,0.3,1)] sm:h-44" : "h-auto"} />}
-      <div className="mt-2">
-        <Composer inputRef={inputRef} draft={draft} setDraft={setDraft} />
-      </div>
-      <div className="mt-2">
-        <Chips onFill={fill} scroll />
-      </div>
     </div>
   );
 }

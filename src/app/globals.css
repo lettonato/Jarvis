@@ -1,24 +1,371 @@
 @import "tailwindcss";
 
-@theme {
-  --color-desk: #090b18;
-  --color-panel: #10132a;
-  --color-panel-2: #151938;
-  --color-line: #252a4d;
-  --color-frame: #ec4899;
-  --color-ink: #e5e7eb;
-  --color-quiet: #8b90b5;
-  --color-up: #22c55e;
-  --color-down: #ef4444;
-  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace;
+/* Glashaus: ein heller Raum mit Fensterfront. Das Wichtigste steht groß an der Wand, daneben die Aussicht,
+   davor Scheiben aus Milchglas, unten auf dem Boden die Leiste. Farben, Schrift und Maße stehen hier. */
+
+@font-face {
+  font-family: "Archivo";
+  src: url(/schrift/archivo-latin-standard-normal.woff2) format("woff2");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Archivo";
+  src: url(/schrift/archivo-latin-ext-standard-normal.woff2) format("woff2");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* Hinter allem liegt die 3D-Welt. Läuft sie nicht (kein WebGL), bleibt dieser Verlauf. */
-body {
-  background: radial-gradient(ellipse at top, #16204a 0%, var(--color-desk) 62%) fixed var(--color-desk);
-  color: var(--color-ink);
-  font-family: var(--font-mono);
+@theme {
+  --color-kalk: #eef0ee;
+  --color-wand: #f6f7f5;
+  --color-schiefer: #1f2a2e;
+  --color-stein: #3b4a4f;
+  --color-quiet: #56656a;
+  --color-gletscher: #2f7f86;
+  --color-see: #1d666d;
+  --color-sonne: #ffb23e;
+  --color-ocker: #8a5a00;
+  --color-rot: #d4442f;
+  --color-up: #136f43;
+  --color-down: #b93822;
+  --color-line: #cdd3d0;
+  --color-panel: #ffffff;
+  --color-panel-2: #e4e8e5;
+  --color-desk: #f6f7f5;
+  --font-sans: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  /* Kleine Schrift bleibt lesbar: eine Stufe größer als üblich. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.5;
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  --radius-2xl: 6px;
 }
+
+:root {
+  /* Höhe des Bodens, Breite des Fensters, Abstand der Schrift vom linken Rand. */
+  --boden: clamp(100px, 15vh, 168px);
+  --fenster: 30vw;
+  --rand: clamp(20px, 5.8vw, 112px);
+  --weich: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Die Kamerafahrt von Raum zu Raum. */
+  --fahrt: 1150ms;
+  --fahrt-kurve: cubic-bezier(0.7, 0, 0.2, 1);
+  --zwischenwand: 31vw;
+}
+
+/* Die Schrift wächst mit dem Bildschirm: auf einem großen Monitor steht alles so groß wie im Entwurf. */
+html {
+  font-size: clamp(15px, 0.52vw + 8.5px, 20px);
+}
+
+body {
+  background: var(--color-kalk);
+  color: var(--color-schiefer);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gletscher);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgb(255 178 62 / 0.45);
+}
+
+/* ───────────── Der Raum ───────────── */
+
+.raum {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background: linear-gradient(90deg, #f6f7f5 0%, #eceeeb 46%, #e3e6e3 100%);
+}
+.raum[data-fenster="weit"] {
+  --fenster: 52vw;
+}
+.raum[data-fenster="schmal"] {
+  --fenster: 22vw;
+}
+.raum[data-licht="abend"] {
+  background: linear-gradient(90deg, #eff1f0 0%, #e4e7e6 46%, #d8dcdc 100%);
+}
+
+/* Sonnenlicht, das durch die Fenster schräg auf die Wand fällt. */
+.raum-schein {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: var(--boden);
+  width: calc(100% - var(--fenster));
+  background:
+    linear-gradient(118deg, transparent 30%, rgb(255 236 200 / 0.5) 30.2% 52%, transparent 52.3%),
+    linear-gradient(118deg, transparent 56%, rgb(255 236 200 / 0.32) 56.2% 71%, transparent 71.3%);
+  filter: blur(5px);
+  pointer-events: none;
+}
+.raum[data-licht="abend"] .raum-schein,
+.raum[data-licht="abend"] .raum-sonne {
+  display: none;
+}
+
+/* Die Fensterfront mit Rahmen, zwei Sprossen und der Schwelle. */
+.raum-fenster {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: var(--boden);
+  width: var(--fenster);
+  border-left: 12px solid var(--color-schiefer);
+  border-bottom: 10px solid var(--color-schiefer);
+  background: var(--foto) var(--foto-lage, center 40%) / cover no-repeat #9fb0b5;
+  overflow: hidden;
+}
+.raum-fenster::before,
+.raum-fenster::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  background: var(--color-schiefer);
+}
+.raum-fenster::before {
+  left: 32.7%;
+}
+.raum-fenster::after {
+  left: 66.3%;
+}
+.raum[data-fenster="schmal"] .raum-fenster::after {
+  display: none;
+}
+.raum[data-fenster="schmal"] .raum-fenster::before {
+  left: 50%;
+}
+
+.raum-boden {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--boden);
+  background: linear-gradient(180deg, #d3d8d5, #e6e9e6 70%);
+  overflow: hidden;
+}
+.raum[data-licht="abend"] .raum-boden {
+  background: linear-gradient(180deg, #c6cccb, #dadedd 70%);
+}
+/* Die Aussicht spiegelt sich matt im Boden. */
+.raum-spiegel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--fenster) - 12px);
+  background: var(--foto) center bottom / cover no-repeat;
+  transform: scaleY(-1);
+  opacity: 0.62;
+  filter: blur(7px) saturate(0.75);
+  mask-image: linear-gradient(0deg, #000, transparent 85%);
+}
+/* Das Licht der drei Fensterfelder auf dem Boden, mit den Schatten der Sprossen. */
+.raum-sonne {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: calc(var(--fenster) * 0.4);
+  width: calc(var(--fenster) * 1.63);
+  transform: skewX(-58deg);
+  transform-origin: top right;
+  background: linear-gradient(
+    90deg,
+    transparent 0,
+    rgb(255 236 196 / 0) 8%,
+    rgb(255 240 208 / 0.85) 22% 49%,
+    rgb(31 42 46 / 0.1) 49% 50.5%,
+    rgb(255 240 208 / 0.85) 50.5% 78%,
+    rgb(31 42 46 / 0.1) 78% 79.5%,
+    rgb(255 240 208 / 0.85) 79.5% 100%
+  );
+  filter: blur(3px);
+  mix-blend-mode: soft-light;
+}
+
+/* Die Wand: Hier steht der Inhalt. Nur sie scrollt, der Raum bleibt stehen. */
+.raum-wand {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: var(--boden);
+  width: calc(100% - var(--fenster));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(28px, 7.5vh, 96px) clamp(20px, 3.4vw, 64px) 104px var(--rand);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent);
+  scrollbar-width: thin;
+  scrollbar-color: rgb(31 42 46 / 0.25) transparent;
+}
+
+/* Die Scheiben aus Milchglas hängen vor dem Fenster. */
+.raum-scheiben {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: calc(var(--boden) + 10px);
+  width: calc(var(--fenster) - 12px);
+  padding: 9vh 2.6vw 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5vw;
+  pointer-events: none;
+  overflow: hidden;
+}
+.raum-scheiben:empty {
+  display: none;
+}
+.raum-scheiben > * {
+  pointer-events: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.raum-scheiben > :nth-child(2) {
+  margin-top: 13vh;
+}
+.raum-scheiben > :nth-child(3) {
+  margin-top: 4vh;
+}
+.raum:not([data-fenster="weit"]) .raum-scheiben {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2.4vh;
+  padding: 8vh 1.6vw 0;
+}
+.raum:not([data-fenster="weit"]) .raum-scheiben > * {
+  flex: none;
+  margin-top: 0;
+}
+
+.glas {
+  padding: 1.15rem 1.25rem 1.3rem;
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.66), rgb(255 255 255 / 0.4));
+  backdrop-filter: blur(22px) saturate(1.25) brightness(1.12);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 3px;
+  box-shadow: 0 30px 60px -20px rgb(12 28 40 / 0.45);
+  color: var(--color-schiefer);
+}
+/* Vor einer dunklen Aussicht ist das Glas dunkel getönt und die Schrift hell. */
+.raum[data-licht="abend"] .glas {
+  background: linear-gradient(160deg, rgb(20 30 34 / 0.66), rgb(20 30 34 / 0.44));
+  backdrop-filter: blur(22px) saturate(1.2);
+  border-color: rgb(255 255 255 / 0.2);
+  color: var(--color-kalk);
+}
+
+/* Die Tafel: die kleine Zeile, das große Wort, der Satz darunter. */
+.tafel-wort {
+  font-weight: 800;
+  font-stretch: 66%;
+  font-size: clamp(3.4rem, 8vw, 10rem);
+  line-height: 0.88;
+  letter-spacing: -0.025em;
+  margin-left: -0.03em;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+.tafel-wort[data-lang] {
+  font-size: clamp(3rem, 6.4vw, 9rem);
+  line-height: 0.94;
+}
+.raum[data-fenster="weit"] .tafel-wort:not([data-lang]) {
+  font-size: clamp(4.5rem, 15.6vw, 20rem);
+}
+.tafel-satz {
+  font-weight: 600;
+  font-stretch: 112%;
+  font-size: clamp(1.35rem, 2.4vw, 2.9rem);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+}
+
+/* Die Wand zwischen zwei Räumen. Sie ist nur während der Kamerafahrt zu sehen. */
+.zwischenwand {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  width: var(--zwischenwand);
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(90deg, #141c1f, #243136 50%, #141c1f);
+  box-shadow: 0 0 80px rgb(0 0 0 / 0.35);
+  color: var(--color-kalk);
+  font-weight: 800;
+  font-stretch: 62%;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  view-transition-name: zwischenwand;
+}
+
+/* Schmale Bildschirme: kein Fenster, die Scheiben stehen unter dem Text an der Wand. */
+@media (max-width: 1023px) {
+  .raum,
+  .raum[data-fenster] {
+    --fenster: 0px;
+    overflow-y: auto;
+  }
+  .raum-fenster,
+  .raum-spiegel,
+  .raum-sonne,
+  .raum-schein {
+    display: none;
+  }
+  .raum-boden {
+    position: fixed;
+  }
+  .raum-wand {
+    position: static;
+    width: auto;
+    overflow: visible;
+    mask-image: none;
+    padding-bottom: 24px;
+  }
+  .raum-scheiben,
+  .raum:not([data-fenster="weit"]) .raum-scheiben {
+    position: static;
+    width: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 0 20px calc(var(--boden) + 40px) var(--rand);
+    overflow: visible;
+  }
+  .raum-scheiben > * {
+    flex: none;
+    margin-top: 0 !important;
+  }
+  .glas,
+  .raum[data-licht="abend"] .glas {
+    background: rgb(255 255 255 / 0.7);
+    color: var(--color-schiefer);
+    box-shadow: none;
+    border-color: var(--color-line);
+  }
+}
+
+/* ───────────── Bewegung ───────────── */
 
 @keyframes jarvis-spin {
   to {
@@ -29,21 +376,21 @@ body {
 @keyframes jarvis-breathe {
   0%,
   100% {
-    transform: scale(0.92);
-    opacity: 0.85;
+    transform: scale(0.86);
+    opacity: 0.7;
   }
   50% {
-    transform: scale(1.04);
+    transform: scale(1.05);
     opacity: 1;
   }
 }
 
 @keyframes jarvis-talk {
   from {
-    transform: scale(0.9);
+    transform: scale(0.85);
   }
   to {
-    transform: scale(1.12);
+    transform: scale(1.25);
   }
 }
 
@@ -90,23 +437,16 @@ body {
   }
 }
 
-/* ───────────── Übergänge zwischen den Ansichten ─────────────
-   Wie die Hologramme bei Tony Stark: Ansichten tauchen aus der Tiefe auf, klappen zu einer Lichtlinie
-   zusammen oder schwenken wie Tafeln um dich herum. Welche Bewegung läuft, steht in src/lib/holo.ts. */
+/* ───────────── Kamerafahrt zwischen den Räumen ─────────────
+   Die Kamera fährt seitlich: Der alte Raum gleitet hinaus, eine dunkle Wand mit dem Namen des nächsten Raums
+   zieht vorbei, der neue Raum gleitet herein. Alle drei bewegen sich gleich schnell, wie eine einzige Fahrt.
+   Die Richtung folgt der Reihenfolge in der Leiste (src/lib/raeume.ts). */
 
-:root {
-  --holo-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --holo-ease-in: cubic-bezier(0.42, 0, 0.9, 0.6);
-  --holo-glow: drop-shadow(0 0 14px rgb(56 189 248 / 0.75));
-  --holo-time: 760ms;
-}
-
-/* Klicks gehen während der Animation an die Seite durch. */
 ::view-transition {
   pointer-events: none;
 }
 
-/* Der Hintergrund bleibt stehen, nur die Ansichten bewegen sich. */
+/* Hinter den Räumen liegt nur die Wandfarbe; sie bleibt stehen. */
 ::view-transition-old(root) {
   display: none;
 }
@@ -114,311 +454,123 @@ body {
   animation: none;
 }
 
-/* Navigation oben und JARVIS unten bleiben ruhig im Bild. */
-::view-transition-group(jarvis-nav),
-::view-transition-group(jarvis-dock) {
+/* Die Leiste unten und die Hinweise oben bleiben ruhig im Bild. */
+::view-transition-group(jarvis-dock),
+::view-transition-group(jarvis-hinweise) {
   animation: none;
   z-index: 100;
 }
-::view-transition-old(jarvis-nav),
-::view-transition-old(jarvis-dock) {
+::view-transition-old(jarvis-dock),
+::view-transition-old(jarvis-hinweise) {
   display: none;
 }
-::view-transition-new(jarvis-nav),
-::view-transition-new(jarvis-dock) {
+::view-transition-new(jarvis-dock),
+::view-transition-new(jarvis-hinweise) {
   animation: none;
 }
-/* Kommt der kleine JARVIS dazu oder geht er, fährt er unten herein oder hinaus. */
-::view-transition-new(jarvis-dock):only-child {
-  animation: holo-dock-in var(--holo-time) var(--holo-ease) both;
+
+::view-transition-old(.fahrt-rechts) {
+  animation: fahrt-hinaus-links var(--fahrt) var(--fahrt-kurve) both;
 }
-::view-transition-old(jarvis-dock):only-child {
-  display: block;
-  animation: holo-dock-out 380ms var(--holo-ease-in) both;
+::view-transition-new(.fahrt-rechts) {
+  animation: fahrt-herein-rechts var(--fahrt) var(--fahrt-kurve) both;
+}
+::view-transition-old(.fahrt-links) {
+  animation: fahrt-hinaus-rechts var(--fahrt) var(--fahrt-kurve) both;
+}
+::view-transition-new(.fahrt-links) {
+  animation: fahrt-herein-links var(--fahrt) var(--fahrt-kurve) both;
+}
+/* Ohne Richtung, etwa mit der Zurück-Taste: weiches Überblenden. */
+::view-transition-old(.raum-blende) {
+  animation: raum-aus 260ms ease-out both;
+}
+::view-transition-new(.raum-blende) {
+  animation: raum-ein 380ms ease-out both;
 }
 
-/* Der Leuchtrahmen gleitet zum neuen Reiter. */
-::view-transition-group(nav-aktiv) {
-  z-index: 101;
-  animation-duration: 480ms;
-  animation-timing-function: var(--holo-ease);
+/* Die Zwischenwand liegt sonst unsichtbar hinter dem Raum. */
+::view-transition-group(zwischenwand) {
+  animation: none;
+  z-index: 50;
+}
+::view-transition-old(zwischenwand) {
+  display: none;
+}
+::view-transition-new(zwischenwand) {
+  animation: none;
+  opacity: 0;
+}
+:root:active-view-transition-type(fahrt-rechts)::view-transition-new(zwischenwand) {
+  opacity: 1;
+  animation: wand-nach-links var(--fahrt) var(--fahrt-kurve) both;
+}
+:root:active-view-transition-type(fahrt-links)::view-transition-new(zwischenwand) {
+  opacity: 1;
+  animation: wand-nach-rechts var(--fahrt) var(--fahrt-kurve) both;
 }
 
-/* JARVIS und die Modul-Kacheln fliegen als eigenes Hologramm an ihren neuen Platz. */
-::view-transition-group(.holo-morph) {
-  z-index: 110;
-  animation-duration: var(--holo-time);
-  animation-timing-function: var(--holo-ease);
-}
-::view-transition-image-pair(.holo-morph) {
-  animation: holo-flare var(--holo-time) ease-in-out both;
-}
-::view-transition-old(.holo-morph),
-::view-transition-new(.holo-morph) {
-  height: 100%;
-  object-fit: fill;
-}
-::view-transition-old(.holo-morph) {
-  animation: holo-fade-out calc(var(--holo-time) * 0.55) ease-out both;
-}
-::view-transition-new(.holo-morph) {
-  animation: holo-fade-in calc(var(--holo-time) * 0.7) ease-in both;
-}
-/* Fehlt das Gegenstück (die andere Ansicht lag schon im Hintergrund), leuchtet das Teil an seinem Platz auf,
-   während sich die Ansicht darum herum aufbaut. */
-::view-transition-new(.holo-morph):only-child {
-  animation: holo-lone var(--holo-time) ease-out both;
-}
-::view-transition-old(.holo-morph):only-child {
-  animation: holo-fade-out 280ms ease-in both;
-}
-
-/* Alle Ansichten drehen sich um die Mitte dessen, was du gerade siehst. */
-::view-transition-old(.holo-in),
-::view-transition-new(.holo-in),
-::view-transition-old(.holo-out),
-::view-transition-new(.holo-out),
-::view-transition-old(.holo-left),
-::view-transition-new(.holo-left),
-::view-transition-old(.holo-right),
-::view-transition-new(.holo-right) {
-  transform-origin: 50% min(50%, 50vh);
-}
-::view-transition-old(.holo-zoom-in),
-::view-transition-new(.holo-zoom-in),
-::view-transition-old(.holo-zoom-out),
-::view-transition-new(.holo-zoom-out) {
-  transform-origin: 50% min(32%, 32vh);
-}
-
-/* Übersicht oder Fokus → Arbeitsansicht: du fliegst durch den Raum hindurch, die Tafel faltet sich
-   aus einer Lichtlinie in der Tiefe auf. */
-::view-transition-old(.holo-in) {
-  animation: holo-pass 480ms var(--holo-ease-in) both;
-}
-::view-transition-new(.holo-in) {
-  animation: holo-unfold var(--holo-time) var(--holo-ease) 90ms both;
-}
-
-/* Arbeitsansicht → Übersicht oder Fokus: die Tafel klappt zur Linie zusammen und versinkt,
-   der Raum kommt von vorn zurück. */
-::view-transition-old(.holo-out) {
-  animation: holo-fold 560ms var(--holo-ease-in) both;
-}
-::view-transition-new(.holo-out) {
-  animation: holo-from-front var(--holo-time) var(--holo-ease) 140ms both;
-}
-
-/* Übersicht → Fokus: die Kamera fliegt auf JARVIS zu, die Kacheln rauschen seitlich vorbei. */
-::view-transition-old(.holo-zoom-in) {
-  animation: holo-dive 560ms var(--holo-ease-in) both;
-}
-::view-transition-new(.holo-zoom-in) {
-  animation: holo-emerge var(--holo-time) var(--holo-ease) 120ms both;
-}
-
-/* Fokus → Übersicht: die Kamera fährt zurück, die Kacheln fliegen von außen an ihren Platz. */
-::view-transition-old(.holo-zoom-out) {
-  animation: holo-recede 440ms var(--holo-ease-in) both;
-}
-::view-transition-new(.holo-zoom-out) {
-  animation: holo-from-beyond var(--holo-time) var(--holo-ease) 80ms both;
-}
-
-/* Von Tafel zu Tafel: alles schwenkt um dich herum, wie ein Ring aus Hologrammen.
-   --holo-side sagt, auf welcher Seite die Tafel gerade verschwindet oder herkommt. */
-::view-transition-old(.holo-left),
-::view-transition-new(.holo-right) {
-  --holo-side: -1;
-}
-::view-transition-old(.holo-right),
-::view-transition-new(.holo-left) {
-  --holo-side: 1;
-}
-::view-transition-old(.holo-left),
-::view-transition-old(.holo-right) {
-  animation: holo-swing-out 480ms var(--holo-ease-in) both;
-}
-::view-transition-new(.holo-left),
-::view-transition-new(.holo-right) {
-  animation: holo-swing-in var(--holo-time) var(--holo-ease) 60ms both;
-}
-
-/* Ohne Richtung, etwa mit der Zurück-Taste oder der Wischgeste: weiches Überblenden mit sanftem Aufleuchten,
-   ohne Flackern. */
-::view-transition-old(.holo-fade) {
-  animation: holo-fade-out 240ms ease-out both;
-}
-::view-transition-new(.holo-fade) {
-  animation: holo-glow-in 520ms ease-out 80ms both;
-}
-
-@keyframes holo-pass {
-  to {
-    opacity: 0;
-    transform: perspective(1200px) translateZ(460px);
-    filter: blur(10px) brightness(1.8);
-  }
-}
-
-@keyframes holo-from-front {
-  from {
-    opacity: 0;
-    transform: perspective(1200px) translateZ(460px);
-    filter: blur(10px) brightness(1.8);
-  }
-}
-
-@keyframes holo-unfold {
-  0% {
-    opacity: 0;
-    transform: perspective(1200px) translateZ(-760px) rotateX(16deg) scaleY(0.015);
-    filter: brightness(3.2) saturate(0.5) blur(3px);
-  }
-  30% {
-    opacity: 1;
-    transform: perspective(1200px) translateZ(-280px) rotateX(10deg) scaleY(0.015);
-    filter: brightness(3.2) saturate(0.5) blur(1px) var(--holo-glow);
-  }
-  72% {
-    filter: brightness(1.35) var(--holo-glow);
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-}
-
-@keyframes holo-fold {
-  0% {
-    filter: none;
-  }
-  45% {
-    opacity: 1;
-    transform: perspective(1200px) translateZ(-120px) scaleY(0.015);
-    filter: brightness(3) var(--holo-glow);
-  }
-  100% {
-    opacity: 0;
-    transform: perspective(1200px) translateZ(-900px) scale(0.3, 0.015);
-    filter: brightness(3) blur(2px);
-  }
-}
-
-@keyframes holo-dive {
-  to {
-    opacity: 0;
-    transform: scale(2.6);
-    filter: blur(9px) brightness(1.6);
-  }
-}
-
-@keyframes holo-from-beyond {
-  from {
-    opacity: 0;
-    transform: scale(2.6);
-    filter: blur(9px) brightness(1.6);
-  }
-}
-
-@keyframes holo-emerge {
-  from {
-    opacity: 0;
-    transform: scale(0.62);
-    filter: blur(6px) brightness(2);
-  }
-}
-
-@keyframes holo-recede {
-  to {
-    opacity: 0;
-    transform: scale(0.62);
-    filter: blur(6px) brightness(2);
-  }
-}
-
-@keyframes holo-swing-in {
-  from {
-    opacity: 0;
-    transform: perspective(1400px) translateX(calc(var(--holo-side) * 48%)) rotateY(calc(var(--holo-side) * 42deg)) scale(0.82);
-    filter: brightness(2.2) blur(2px) var(--holo-glow);
-  }
-  60% {
-    opacity: 1;
-  }
-}
-
-@keyframes holo-swing-out {
-  40% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-    transform: perspective(1400px) translateX(calc(var(--holo-side) * 48%)) rotateY(calc(var(--holo-side) * 42deg)) scale(0.82);
-    filter: brightness(0.7) blur(2px);
-  }
-}
-
-@keyframes holo-flare {
-  45% {
-    filter: brightness(1.9) var(--holo-glow);
-  }
-}
-
-@keyframes holo-dock-in {
-  from {
-    opacity: 0;
-    transform: translateY(110%);
-  }
-}
-
-@keyframes holo-dock-out {
-  to {
-    opacity: 0;
-    transform: translateY(110%);
-  }
-}
-
-@keyframes holo-fade-out {
-  to {
-    opacity: 0;
-    filter: blur(6px);
-  }
-}
-
-@keyframes holo-lone {
-  0%,
-  35% {
-    opacity: 0;
-    filter: brightness(2.6) blur(3px);
-  }
-  100% {
-    opacity: 1;
-    filter: none;
-  }
-}
-
-@keyframes holo-fade-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes holo-glow-in {
-  from {
-    opacity: 0;
-    filter: brightness(1.8) blur(4px);
-  }
-}
-
+/* Wer am Rechner „Bewegung reduzieren“ eingestellt hat, bekommt statt der Fahrt ein kurzes Überblenden. */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*),
-  ::view-transition-image-pair(*) {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
+  ::view-transition-old(.fahrt-rechts),
+  ::view-transition-old(.fahrt-links) {
+    animation: raum-aus 160ms linear both;
+  }
+  ::view-transition-new(.fahrt-rechts),
+  ::view-transition-new(.fahrt-links) {
+    animation: raum-ein 160ms linear both;
+  }
+  :root:active-view-transition-type(fahrt-rechts)::view-transition-new(zwischenwand),
+  :root:active-view-transition-type(fahrt-links)::view-transition-new(zwischenwand) {
+    opacity: 0;
+    animation: none;
+  }
+}
+
+@keyframes fahrt-hinaus-links {
+  to {
+    transform: translateX(calc(-100vw - var(--zwischenwand)));
+  }
+}
+@keyframes fahrt-herein-rechts {
+  from {
+    transform: translateX(calc(100vw + var(--zwischenwand)));
+  }
+}
+@keyframes fahrt-hinaus-rechts {
+  to {
+    transform: translateX(calc(100vw + var(--zwischenwand)));
+  }
+}
+@keyframes fahrt-herein-links {
+  from {
+    transform: translateX(calc(-100vw - var(--zwischenwand)));
+  }
+}
+@keyframes wand-nach-links {
+  from {
+    transform: translateX(100vw);
+  }
+  to {
+    transform: translateX(calc(-1 * var(--zwischenwand)));
+  }
+}
+@keyframes wand-nach-rechts {
+  from {
+    transform: translateX(calc(-1 * var(--zwischenwand)));
+  }
+  to {
+    transform: translateX(100vw);
+  }
+}
+@keyframes raum-aus {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes raum-ein {
+  from {
+    opacity: 0;
   }
 }
 
@@ -467,7 +619,7 @@ body {
 @media (prefers-reduced-motion: no-preference) {
   .browser-fly {
     transform-origin: 50% 80%;
-    animation: browser-fly 1.6s var(--holo-ease) both;
+    animation: browser-fly 1.6s var(--weich) both;
   }
   .browser-scan::after {
     content: "";
@@ -485,7 +637,7 @@ body {
     animation: browser-boot 1.6s ease-in-out infinite;
   }
   .browser-step {
-    animation: browser-step 0.5s var(--holo-ease) both;
+    animation: browser-step 0.5s var(--weich) both;
   }
 }
 

@@ -80,7 +80,7 @@ export function TelegramSetup() {
       {tg.configured && (
         <p className="text-xs text-quiet">
           Bot-Schlüssel {tg.hint} ·{" "}
-          <button type="button" disabled={busy} onClick={() => send({ action: "removeTelegram" })} className="text-red-200 underline hover:text-red-100 disabled:opacity-40">
+          <button type="button" disabled={busy} onClick={() => send({ action: "removeTelegram" })} className="text-down underline hover:text-down disabled:opacity-40">
             Bot entfernen
           </button>
         </p>
@@ -97,14 +97,14 @@ function TokenForm({ busy, onSave }: { busy: boolean; onSave: (token: string) =>
   };
   return (
     <form onSubmit={submit} className="space-y-3">
-      <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+      <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
         <li>Telegram auf dem Handy installieren und ein Konto anlegen, falls du noch keins hast.</li>
         <li>
           In Telegram den{" "}
-          <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+          <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
             BotFather
           </a>{" "}
-          öffnen (der mit dem blauen Haken) und ihm <code className="text-sky-200">/newbot</code> schicken.
+          öffnen (der mit dem blauen Haken) und ihm <code className="text-stein">/newbot</code> schicken.
         </li>
         <li>Einen Namen wählen, zum Beispiel „Jarvis“, und einen Benutzernamen, der auf „bot“ endet, zum Beispiel „benedikt_jarvis_bot“.</li>
         <li>Der BotFather schickt dir einen Schlüssel wie 123456789:AAH… Den hier einfügen.</li>
@@ -143,9 +143,9 @@ function TokenForm({ busy, onSave }: { busy: boolean; onSave: (token: string) =>
 // Schon beim Tippen sagen, ob das wie ein ganzer Schlüssel aussieht, und sonst, woran es hakt. Er hat rund 46 Zeichen.
 function TokenCheck({ text }: { text: string }) {
   const found = findToken(text);
-  if (found) return <p className="text-xs text-emerald-300">Sieht aus wie ein Bot-Schlüssel ({found.length} Zeichen).</p>;
+  if (found) return <p className="text-xs text-up">Sieht aus wie ein Bot-Schlüssel ({found.length} Zeichen).</p>;
   return (
-    <p className="text-xs text-amber-200">
+    <p className="text-xs text-ocker">
       Noch kein gültiger Schlüssel ({text.trim().length} Zeichen, meist sind es 46). {tokenProblem(text)}
     </p>
   );
@@ -159,15 +159,15 @@ function Pairing({ bot, code, until, busy, onRenew }: { bot: string; code: strin
       {link && code && (
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <QrCode text={link} />
-          <ol className="list-decimal space-y-1.5 pl-5 text-sky-50/85">
+          <ol className="list-decimal space-y-1.5 pl-5 text-schiefer/85">
             <li>Halte die Kamera deines Handys auf den Code und tippe auf den Link.</li>
             <li>In Telegram öffnet sich dein Bot. Tippe unten auf „Starten“.</li>
             <li>
-              Oder schick dem Bot diesen Code: <span className="font-mono text-base font-bold tracking-[0.2em] text-sky-50">{code}</span>
+              Oder schick dem Bot diesen Code: <span className="font-mono text-base font-bold text-schiefer">{code}</span>
             </li>
             <li className="text-xs text-quiet">
               Der Code gilt bis {until ? CLOCK.format(new Date(until)) : "gleich"} Uhr.{" "}
-              <a href={link} target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+              <a href={link} target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
                 Mit Telegram am Mac öffnen
               </a>
             </li>
@@ -175,7 +175,7 @@ function Pairing({ bot, code, until, busy, onRenew }: { bot: string; code: strin
         </div>
       )}
       <p className="flex items-center gap-2 text-xs text-quiet">
-        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-sky-300" aria-hidden />
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-gletscher" aria-hidden />
         Warte auf dein Handy …
         <Button small disabled={busy} onClick={onRenew}>
           Neuer Code
@@ -207,8 +207,8 @@ function QrCode({ text }: { text: string }) {
 function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean; onChange: (p: Partial<TelegramPrefs>) => void }) {
   const [time, setTime] = useState(prefs.briefing ?? TELEGRAM_DEFAULTS.briefing!);
   const [abend, setAbend] = useState(prefs.abschluss ?? ABSCHLUSS_VORSCHLAG);
-  const box = "h-4 w-4 accent-sky-400";
-  const row = "flex items-center gap-3 text-sky-50/85";
+  const box = "h-4 w-4 accent-gletscher";
+  const row = "flex items-center gap-3 text-schiefer/85";
   return (
     <fieldset className="space-y-2" disabled={busy}>
       <legend className="mb-1 text-xs text-quiet">Was aufs Handy kommt</legend>

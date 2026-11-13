@@ -114,13 +114,12 @@ async function main() {
 
     // 3. Eine Antwort von JARVIS: Satz für Satz über ElevenLabs, in der richtigen Reihenfolge, nichts doppelt.
     el.leeren();
-    const frage = seite.getByPlaceholder("Frag JARVIS etwas …").first();
+    const frage = seite.getByPlaceholder(/Schreib hier, was du brauchst|Sag „Jarvis“ oder tippe/).first();
     const vorher = await gespielt();
     await frage.fill("Briefing");
     await frage.press("Enter");
     await bis("erster Satz bei ElevenLabs", () => el.gesprochen().length >= 1);
-    // Zu Ende ist die Antwort, wenn der Browser jedes geholte Stück auch wirklich abgespielt hat. Das dauert hier
-    // länger als am Mac, weil die Landschaft im Hintergrund ohne Grafikkarte gerechnet wird.
+    // Zu Ende ist die Antwort, wenn der Browser jedes geholte Stück auch wirklich abgespielt hat.
     await bis("Antwort zu Ende gesprochen", async () => el.gesprochen().length >= 2 && (await gespielt()) - vorher === el.gesprochen().length, 90_000);
     await warte(1500);
     const saetze = el.gesprochen();

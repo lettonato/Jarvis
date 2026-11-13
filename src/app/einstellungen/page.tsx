@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { SettingsView } from "@/components/views/SettingsView";
-import { HoloView } from "@/components/HoloView";
+import { RaumSeite } from "@/components/Raum";
 
 export const metadata: Metadata = { title: "JARVIS · Einstellungen" };
 
 export default function SettingsPage() {
   return (
-    <HoloView>
+    <RaumSeite ort="/einstellungen">
       <SettingsView />
-    </HoloView>
+    </RaumSeite>
   );
 }

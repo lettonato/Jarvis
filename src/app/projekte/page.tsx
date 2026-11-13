@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { ProjectsView } from "@/components/views/ProjectsView";
-import { HoloView } from "@/components/HoloView";
+import { RaumSeite } from "@/components/Raum";
 
 export const metadata: Metadata = { title: "JARVIS · Projekte" };
 
 export default function ProjektePage() {
   return (
-    <HoloView>
+    <RaumSeite ort="/projekte">
       <ProjectsView />
-    </HoloView>
+    </RaumSeite>
   );
 }

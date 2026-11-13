@@ -13,8 +13,8 @@ import type { MemoryFact } from "@/lib/brain";
 import { COMMODITY_RULES } from "@/lib/commodities";
 import { SAFETY } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
-import { PHOTOS, readWorldStyle, saveWorldStyle, type WorldStyle } from "@/lib/photos";
-import { chooseQuality, QUALITY_LABEL, QUALITY_SHOWN_EVENT, readQuality, readQualityChoice, type QualityChoice, type QualityLevel } from "@/lib/quality";
+import { PHOTOS } from "@/lib/photos";
+import { RAEUME } from "@/lib/raeume";
 import { VOICE_KEY } from "@/lib/useVoice";
 
 // Einstellungen: wie JARVIS dich nennt, welcher Obsidian-Tresor und welches Postfach, welche Stimme.
@@ -98,14 +98,13 @@ export function SettingsView() {
           <Section
             id="aussehen"
             title="Aussehen"
-            text="Hinter JARVIS liegt eine Landschaft, und bei jedem Wechsel der Ansicht fliegst du in die nächste. Wähle das gerechnete Gebirge oder echte Fotos. Gilt für diesen Browser."
+            text="Jeder Raum hat ein eigenes Fenster mit eigener Aussicht. Beim Wechsel fährt die Kamera seitlich in den nächsten Raum. Alle Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu."
           >
-            <WorldStylePicker />
-            <WorldQualityPicker />
+            <Aussicht />
           </Section>
           <Section id="stimme" title="Stimme" text="So klingt JARVIS, wenn er dir antwortet. Die Stimme des Macs kostet nichts und bleibt auf dem Mac.">
             <VoicePicker />
-            <div className="mt-4 border-t border-sky-300/10 pt-4">
+            <div className="mt-4 border-t border-schiefer/10 pt-4">
               <CloudVoiceSetup />
             </div>
           </Section>
@@ -117,7 +116,7 @@ export function SettingsView() {
             <SicherheitsZentrale />
           </Section>
           <Section title="Datenschutz">
-            <ul className="space-y-1.5 text-sm text-sky-50/85">
+            <ul className="space-y-1.5 text-sm text-schiefer/85">
               <li>
                 Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
                 ihn zur Erkennung an Google, Safari an Apple. Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
@@ -144,7 +143,7 @@ export function SettingsView() {
               <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
               <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
               <li>
-                Deine Einstellungen liegen in <code className="text-sky-200">{settings.configFile}</code>, lesbar nur für deinen Benutzer. Schlüssel und Mail-Passwort
+                Deine Einstellungen liegen in <code className="text-stein">{settings.configFile}</code>, lesbar nur für deinen Benutzer. Schlüssel und Mail-Passwort
                 stehen dort im Klartext, bis du sie unter Sicherheit in den macOS-Schlüsselbund umziehst.
               </li>
             </ul>
@@ -158,7 +157,7 @@ export function SettingsView() {
 function Section({ id, title, text, children }: { id?: string; title: string; text?: string; children: ReactNode }) {
   return (
     <Panel id={id}>
-      <h2 className="text-sm font-bold uppercase tracking-[0.25em] text-sky-100">{title}</h2>
+      <h2 className="text-sm font-bold text-schiefer">{title}</h2>
       {text && <p className="mt-1 text-xs text-quiet">{text}</p>}
       <div className="mt-3">{children}</div>
     </Panel>
@@ -226,10 +225,10 @@ function BrainSetup() {
       {brain?.configured && (
         <Notice tone="ok">{brain.hint ? `Verbunden mit dem Schlüssel ${brain.hint}.` : "Verbunden über ANTHROPIC_API_KEY."} JARVIS versteht jetzt auch freie Sätze.</Notice>
       )}
-      <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+      <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
         <li>
           Auf{" "}
-          <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+          <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
             platform.claude.com
           </a>{" "}
           anmelden oder ein Konto anlegen.
@@ -302,9 +301,9 @@ function MemorySetup() {
         <ul className="divide-y divide-line rounded-lg border border-line">
           {[...memory].reverse().map((f) => (
             <li key={f.id} className="flex items-start gap-3 px-3 py-2">
-              <span className="min-w-0 flex-1 text-sky-50/90">
+              <span className="min-w-0 flex-1 text-schiefer/90">
                 {f.text}
-                <span className="ml-2 text-[11px] text-quiet">seit {SINCE.format(new Date(f.at))}</span>
+                <span className="ml-2 text-xs text-quiet">seit {SINCE.format(new Date(f.at))}</span>
               </span>
               <Button small tone="ghost" disabled={busy} onClick={() => send({ action: "vergessen", id: f.id })} title="Diesen Eintrag vergessen">
                 Vergessen
@@ -322,7 +321,7 @@ function MemorySetup() {
       {memory.length > 0 &&
         (sure ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-red-200">Wirklich alles vergessen?</span>
+            <span className="text-down">Wirklich alles vergessen?</span>
             <Button tone="danger" disabled={busy} onClick={() => send({ action: "alles" }).then(() => setSure(false))}>
               Ja, alles vergessen
             </Button>
@@ -380,10 +379,10 @@ function CrawlerSetup() {
         </Notice>
       )}
       <form onSubmit={submit} className="space-y-3">
-        <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+        <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
           <li>
             Auf{" "}
-            <a href="https://console.x.ai" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+            <a href="https://console.x.ai" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
               console.x.ai
             </a>{" "}
             anmelden, am einfachsten mit deinem X-Konto.
@@ -463,10 +462,10 @@ function CommoditySetup() {
     <div className="space-y-3 text-sm">
       {info?.configured && <Notice tone="ok">{info.hint ? `Verbunden mit dem Schlüssel ${info.hint}.` : "Verbunden über TWELVEDATA_API_KEY."} Der Desk schaut alle 6 Minuten auf Gold, Silber und Öl.</Notice>}
       <form onSubmit={submit} className="space-y-3">
-        <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+        <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
           <li>
             Auf{" "}
-            <a href="https://twelvedata.com" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+            <a href="https://twelvedata.com" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
               twelvedata.com
             </a>{" "}
             kostenlos registrieren. Der Plan „Basic“ kostet nichts, eine Karte brauchst du nicht.
@@ -488,7 +487,7 @@ function CommoditySetup() {
           </Button>
         </div>
       </form>
-      <ul className="space-y-1 text-xs text-sky-50/85">
+      <ul className="space-y-1 text-xs text-schiefer/85">
         <li>· Je Rohstoff höchstens {COMMODITY_RULES.tradeShare * 100} % des Kontos, zusammen also höchstens {COMMODITY_RULES.tradeShare * 300} %.</li>
         <li>· Gold kommt als Feinunze. Liefert dein Plan Silber und Öl nicht direkt, nimmt der Desk die US-Fonds SLV und USO. Die handeln nur zur Börsenzeit in New York (15:30 bis 22 Uhr).</li>
         <li>· Ist ein Markt zu, wird dort weder gekauft noch verkauft. Am Wochenende ruhen alle drei.</li>
@@ -540,7 +539,7 @@ function ApprovalSetup() {
               disabled={busy}
               onClick={() => choose(c.value)}
               className={`rounded-lg border px-3 py-2 text-xs font-bold transition disabled:opacity-50 ${
-                on ? "border-sky-300/80 bg-sky-400/20 text-sky-50 shadow-[0_0_18px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 text-sky-200/80 hover:border-sky-300/50"
+                on ? "border-schiefer/80 bg-gletscher/20 text-schiefer" : "border-schiefer/20 bg-gletscher/5 text-stein/80 hover:border-schiefer/50"
               }`}
             >
               {c.label}
@@ -557,7 +556,7 @@ function ApprovalSetup() {
             ? "Mit dieser Grenze fragt JARVIS also vor jedem Kauf. Schnelle Chancen sind manchmal weg, bis du antwortest."
             : "Mit dieser Grenze kauft der Desk kleinere Coins selbst; größere Käufe brauchen dein Ja."}
       </p>
-      <ul className="space-y-1 text-xs text-sky-50/85">
+      <ul className="space-y-1 text-xs text-schiefer/85">
         <li>· Freigeben kannst nur du mit den Knöpfen, nicht das KI-Gehirn und nicht per Sprache.</li>
         <li>· Nach deinem Ja prüft der Desk noch einmal den Kurs: Ist er seit der Frage um mehr als 5 % gestiegen, kauft er nicht.</li>
         <li>· Verkäufe wie Stop-Loss und Gewinnmitnahme fragen nie nach, dort kostet Warten Geld.</li>
@@ -573,8 +572,8 @@ function HandsFreeSetup() {
   if (!voice.canListen) return <p className="text-sm text-quiet">Dieser Browser kann nicht zuhören. Öffne JARVIS in Chrome oder Safari.</p>;
   return (
     <div className="space-y-2">
-      <label className="flex items-center gap-3 text-sm text-sky-50/85">
-        <input type="checkbox" checked={voice.handsFree} onChange={(e) => voice.setHandsFree(e.target.checked)} className="h-4 w-4 accent-sky-400" />
+      <label className="flex items-center gap-3 text-sm text-schiefer/85">
+        <input type="checkbox" checked={voice.handsFree} onChange={(e) => voice.setHandsFree(e.target.checked)} className="h-4 w-4 accent-gletscher" />
         Freihändig: auf „Jarvis“ hören, ohne Knopf
       </label>
       <p className="text-xs text-quiet">
@@ -588,133 +587,23 @@ function HandsFreeSetup() {
   );
 }
 
-const STYLES: { id: WorldStyle; title: string; text: string; preview: string }[] = [
-  {
-    id: "gebirge",
-    title: "Gebirge (3D)",
-    text: "Gerechnete Landschaft mit Gitter, Nordlicht und Holo-Tafeln. Jede Ansicht hat ihre eigene.",
-    preview: "/welt/vorschau-gebirge.webp",
-  },
-  {
-    id: "fotos",
-    title: "Echte Fotos",
-    text: "Zehn echte Landschaftsfotos, eins je Ansicht, leicht abgedunkelt. Beim Wechsel fliegst du ins Bild hinein.",
-    preview: "/welt/vorschau-fotos.webp",
-  },
-];
-
-function WorldStylePicker() {
-  const [style, setStyle] = useState<WorldStyle | null>(null);
-
-  useEffect(() => {
-    const first = setTimeout(() => setStyle(readWorldStyle()), 0);
-    return () => clearTimeout(first);
-  }, []);
-
-  const choose = (next: WorldStyle) => {
-    setStyle(next);
-    saveWorldStyle(next);
-  };
-
+// Die Aussicht jedes Raums ist ein Foto unter freier Lizenz. Der Nachweis steht offen da, nicht versteckt.
+function Aussicht() {
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Landschaft hinter JARVIS">
-        {STYLES.map((s) => {
-          const on = style === s.id;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => choose(s.id)}
-              className={`overflow-hidden rounded-xl border text-left transition ${
-                on ? "border-sky-300/80 bg-sky-400/15 shadow-[0_0_24px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 hover:border-sky-300/50"
-              }`}
-            >
-              <span aria-hidden className="block h-28 w-full bg-cover bg-center" style={{ backgroundImage: `url(${s.preview})` }} />
-              <span className="block p-3">
-                <span className="flex items-center justify-between gap-2 text-sm font-bold text-sky-50">
-                  {s.title}
-                  {on && <span className="rounded-full border border-sky-300/50 px-2 py-0.5 text-[10px] uppercase tracking-widest text-sky-200">Aktiv</span>}
-                </span>
-                <span className="mt-1 block text-xs text-quiet">{s.text}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <details className="text-xs text-quiet">
-        <summary className="cursor-pointer text-sky-200/80">Bildnachweis der Fotos</summary>
-        <p className="mt-2">Alle Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu.</p>
-        <ul className="mt-1.5 space-y-0.5">
-          {Object.values(PHOTOS).map((p) => (
-            <li key={p.src}>
-              {p.title}: {p.author}, {p.license}
-            </li>
-          ))}
-        </ul>
-      </details>
-    </div>
-  );
-}
-
-const QUALITY_CHOICES: { id: QualityChoice; title: string; text: string }[] = [
-  { id: "auto", title: "Automatisch", text: "Passt sich deinem Rechner an. Gewechselt wird nur im Flug, damit nichts springt." },
-  { id: 2, title: "Hoch", text: "Gestochen scharf, mit Leuchten. Braucht die meiste Grafikleistung." },
-  { id: 1, title: "Mittel", text: "Etwas weicher, mit Leuchten." },
-  { id: 0, title: "Einfach", text: "Ohne Leuchten, für ältere Rechner." },
-];
-
-// Wie fein die Landschaft gerechnet wird. Flackert oder ruckelt es, hilft eine feste Stufe.
-function WorldQualityPicker() {
-  const [choice, setChoice] = useState<QualityChoice | null>(null);
-  const [shown, setShown] = useState<QualityLevel | null>(null);
-
-  useEffect(() => {
-    const first = setTimeout(() => {
-      setChoice(readQualityChoice());
-      setShown(readQuality().level);
-    }, 0);
-    const onShown = (e: Event) => setShown((e as CustomEvent<QualityLevel>).detail);
-    window.addEventListener(QUALITY_SHOWN_EVENT, onShown);
-    return () => {
-      clearTimeout(first);
-      window.removeEventListener(QUALITY_SHOWN_EVENT, onShown);
-    };
-  }, []);
-
-  const choose = (next: QualityChoice) => {
-    setChoice(next);
-    if (next !== "auto") setShown(next);
-    chooseQuality(next);
-  };
-
-  return (
-    <div className="mt-4 space-y-2">
-      <p className="text-xs font-bold uppercase tracking-widest text-sky-200/80">Bildqualität</p>
-      <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Bildqualität der Landschaft">
-        {QUALITY_CHOICES.map((q) => {
-          const on = choice === q.id;
-          return (
-            <button
-              key={String(q.id)}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => choose(q.id)}
-              className={`flex flex-col justify-start rounded-lg border p-2.5 text-left transition ${
-                on ? "border-sky-300/80 bg-sky-400/20 shadow-[0_0_18px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 hover:border-sky-300/50"
-              }`}
-            >
-              <span className="block text-xs font-bold text-sky-50">{q.title}</span>
-              <span className="mt-0.5 block text-[11px] leading-snug text-quiet">{q.text}</span>
-            </button>
-          );
-        })}
-      </div>
-      {choice === "auto" && shown !== null && <p className="text-xs text-quiet">Zurzeit: {QUALITY_LABEL[shown]}.</p>}
-    </div>
+    <ul className="divide-y divide-schiefer/10 text-sm">
+      {RAEUME.map((r) => {
+        const foto = PHOTOS[r.foto as keyof typeof PHOTOS];
+        return (
+          <li key={r.href} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+            <span className="w-32 shrink-0 font-bold text-schiefer">{r.name}</span>
+            <span className="min-w-0 flex-1 text-stein">{foto.title}</span>
+            <span className="text-xs text-quiet">
+              Foto: {foto.author}, {foto.license}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
+import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { getJson, postJson } from "@/lib/api";
 import { isoDate } from "@/lib/dates";
@@ -32,8 +33,8 @@ import { useNow } from "@/lib/useNow";
 
 const tag = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString("de-DE", { day: "numeric", month: "numeric", year: "2-digit" });
 const zeit = (iso: string) => new Date(iso).toLocaleString("de-DE", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
-const chip = "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest";
-const CHIP = { ruhig: "border-sky-300/25 bg-sky-400/5 text-sky-200/80", gut: "border-up/40 bg-up/10 text-green-200", warn: "border-amber-300/40 bg-amber-300/10 text-amber-100", rot: "border-down/50 bg-down/10 text-red-200" };
+const chip = "rounded-full border px-2 py-0.5 text-xs font-bold";
+const CHIP = { ruhig: "border-schiefer/25 bg-gletscher/5 text-stein/80", gut: "border-up/40 bg-up/10 text-up", warn: "border-sonne/40 bg-sonne/10 text-schiefer", rot: "border-down/50 bg-down/10 text-down" };
 const ABHAKBAR: EintragArt[] = ["aufgabe", "risiko", "naechster_schritt"];
 // In dieser Reihenfolge steht die Akte: erst was zu tun ist, dann was feststeht.
 const REIHENFOLGE: EintragArt[] = ["aufgabe", "naechster_schritt", "entscheidung", "notiz", "risiko"];
@@ -100,20 +101,33 @@ export function ProjectsView() {
         </Button>
       </PageHeader>
 
+      {projekte && (
+        <Scheiben>
+          <Scheibe titel="Auf einen Blick">
+            <ul>
+              <ScheibenZeile wert={liste.filter((p) => p.status === "aktiv").length}>Aktive Projekte</ScheibenZeile>
+              <ScheibenZeile wert={liste.reduce((n, p) => n + p.offeneAufgaben, 0)}>Offene Aufgaben</ScheibenZeile>
+              <ScheibenZeile wert={liste.reduce((n, p) => n + p.ueberfaellig, 0)}>Überfällig</ScheibenZeile>
+              <ScheibenZeile wert={vorschlaege.length}>Warten auf dein Ja</ScheibenZeile>
+            </ul>
+          </Scheibe>
+        </Scheiben>
+      )}
+
       {!projekte && <p className="text-sm text-quiet">Lade Projekte …</p>}
       {error && <Notice tone="error">{error}</Notice>}
       {info && !error && <Notice tone="ok">{info}</Notice>}
 
       {neu && (
         <Panel>
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.25em] text-sky-100">Neues Projekt</h2>
+          <h2 className="mb-3 text-sm font-bold text-schiefer">Neues Projekt</h2>
           <ProjektFormular busy={busy} onSave={async (felder) => (await act({ aktion: "projekt_anlegen", ...felder })) && (setNeu(false), true)} />
         </Panel>
       )}
 
       {vorschlaege.length > 0 && (
         <Panel glow>
-          <h2 className="text-sm font-bold uppercase tracking-[0.25em] text-sky-100">Wartet auf deine Bestätigung ({vorschlaege.length})</h2>
+          <h2 className="text-sm font-bold text-schiefer">Wartet auf deine Bestätigung ({vorschlaege.length})</h2>
           <p className="mt-1 text-xs text-quiet">Das hat JARVIS vorgeschlagen. Nichts davon gilt, bevor du es übernimmst. Du kannst jeden Vorschlag vorher ändern oder ablehnen.</p>
           <div className="mt-3 flex flex-col gap-3">
             {vorschlaege.map((v) => (
@@ -127,7 +141,7 @@ export function ProjectsView() {
         <Panel>
           <p className="text-sm text-quiet">
             Noch kein Projekt. Leg oben eines an oder erzähl JARVIS davon, zum Beispiel:{" "}
-            <span className="text-sky-100">„Jarvis, im Projekt Hallenneubau haben wir heute entschieden, dass der Bauantrag bis Ende des Monats rausgeht. Zuständig ist Thomas.“</span> JARVIS
+            <span className="text-schiefer">„Jarvis, im Projekt Hallenneubau haben wir heute entschieden, dass der Bauantrag bis Ende des Monats rausgeht. Zuständig ist Thomas.“</span> JARVIS
             schlägt dann Einträge vor, und du bestätigst sie hier.
           </p>
         </Panel>
@@ -160,24 +174,24 @@ function ProjektKachel({ p, heute, aktiv, onOpen }: { p: ProjektKarte; heute: st
       type="button"
       onClick={onOpen}
       aria-expanded={aktiv}
-      className={`relative rounded-xl border bg-panel/95 p-4 text-left transition hover:border-sky-300/60 ${aktiv ? "border-sky-300/70 shadow-[0_0_28px_rgba(56,189,248,0.28)]" : "border-sky-300/20"}`}
+      className={`relative flex flex-col justify-start rounded-xl border bg-panel/95 p-4 text-left transition hover:border-schiefer/60 ${aktiv ? "border-schiefer/70" : "border-schiefer/20"}`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className={`${chip} ${p.status === "aktiv" ? CHIP.gut : CHIP.ruhig}`}>{STATUS_LABEL[p.status]}</span>
         {p.vertraulich && <span className={`${chip} ${CHIP.warn}`}>vertraulich</span>}
         {p.ueberfaellig > 0 && <span className={`${chip} ${CHIP.rot}`}>{p.ueberfaellig} überfällig</span>}
       </div>
-      <h2 className="mt-2 text-base font-bold text-sky-50">{p.name}</h2>
+      <h2 className="mt-2 text-base font-bold text-schiefer">{p.name}</h2>
       {p.verantwortliche.length > 0 && <p className="text-xs text-quiet">{p.verantwortliche.join(", ")}</p>}
       {p.fortschritt !== null && (
         <div className="mt-2 flex items-center gap-2" aria-label={`Fortschritt ${p.fortschritt} Prozent`}>
-          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-sky-300/15">
-            <span className="block h-full rounded-full bg-sky-300" style={{ width: `${p.fortschritt}%` }} />
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-gletscher/15">
+            <span className="block h-full rounded-full bg-gletscher" style={{ width: `${p.fortschritt}%` }} />
           </span>
-          <span className="text-xs font-bold tabular-nums text-sky-100">{p.fortschritt} %</span>
+          <span className="text-xs font-bold tabular-nums text-schiefer">{p.fortschritt} %</span>
         </div>
       )}
-      <p className="mt-2 text-xs text-sky-50/85">
+      <p className="mt-2 text-xs text-schiefer/85">
         {p.offeneAufgaben} offene {p.offeneAufgaben === 1 ? "Aufgabe" : "Aufgaben"}
         {p.risiken > 0 ? ` · ${p.risiken} ${p.risiken === 1 ? "Risiko" : "Risiken"}` : ""}
         {p.naechsteFrist && heute ? ` · nächste Frist: ${p.naechsteFrist.text.slice(0, 50)}, ${fristText(p.naechsteFrist.faellig, heute)}` : ""}
@@ -198,13 +212,13 @@ function VorschlagKarte({ v, busy, act }: { v: VorschlagAnzeige; busy: boolean; 
   const b = v.bisher;
   const neuer = (k: keyof EintragFelder) => b && i[k] !== undefined && i[k] !== b[k];
   return (
-    <article className="rounded-lg border border-sky-300/20 bg-sky-400/5 p-3">
-      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+    <article className="rounded-lg border border-schiefer/20 bg-gletscher/5 p-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className={`${chip} ${CHIP.ruhig}`}>
           {VORSCHLAG_LABEL[v.art]}
           {v.art !== "projekt" && i.art ? ` · ${ART_LABEL[i.art]}` : ""}
         </span>
-        <span className="font-bold text-sky-100">{v.projektName}</span>
+        <span className="font-bold text-schiefer">{v.projektName}</span>
         {v.art === "eintrag" && !v.projektId && <span className="text-quiet">(Projekt wird mit angelegt)</span>}
         <span className="text-quiet">
           {zeit(v.erstelltAm)} · {QUELLE_LABEL[v.quelle.art]}
@@ -214,11 +228,11 @@ function VorschlagKarte({ v, busy, act }: { v: VorschlagAnzeige; busy: boolean; 
       </div>
 
       {v.art === "projekt" ? (
-        <p className="mt-2 text-sm text-sky-50">{i.beschreibung || "Ohne Beschreibung."}</p>
+        <p className="mt-2 text-sm text-schiefer">{i.beschreibung || "Ohne Beschreibung."}</p>
       ) : (
         <>
           {b && neuer("text") && <p className="mt-2 text-sm text-quiet line-through">{b.text}</p>}
-          <p className="mt-2 text-sm text-sky-50">{i.text}</p>
+          <p className="mt-2 text-sm text-schiefer">{i.text}</p>
           <p className="mt-1 text-xs text-quiet">
             {[
               i.zustaendig && `Zuständig: ${i.zustaendig}${neuer("zustaendig") ? ` (bisher ${b!.zustaendig || "niemand"})` : ""}`,
@@ -233,7 +247,7 @@ function VorschlagKarte({ v, busy, act }: { v: VorschlagAnzeige; busy: boolean; 
       )}
 
       {v.quelle.fremd && (
-        <p className="mt-2 rounded border border-amber-300/30 bg-amber-300/10 px-2 py-1 text-xs text-amber-100">
+        <p className="mt-2 rounded border border-sonne/30 bg-sonne/10 px-2 py-1 text-xs text-schiefer">
           Beruht auf Text von Dritten (Mail, Webseite oder Termin). Lies bitte genau, bevor du übernimmst.
         </p>
       )}
@@ -279,9 +293,9 @@ function Akte({ akte, heute, busy, act, onClose }: { akte: ProjektAkte; heute: s
     <Panel glow>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-sky-300">Projektakte</p>
-          <h2 className="mt-1 text-lg font-bold text-sky-50">{p.name}</h2>
-          {p.beschreibung && <p className="mt-1 text-sm text-sky-50/85">{p.beschreibung}</p>}
+          <p className="text-xs font-bold text-see">Projektakte</p>
+          <h2 className="mt-1 text-lg font-bold text-schiefer">{p.name}</h2>
+          {p.beschreibung && <p className="mt-1 text-sm text-schiefer/85">{p.beschreibung}</p>}
           <p className="mt-1 text-xs text-quiet">
             {STATUS_LABEL[p.status]}
             {p.verantwortliche.length ? ` · Verantwortlich: ${p.verantwortliche.join(", ")}` : ""}
@@ -300,7 +314,7 @@ function Akte({ akte, heute, busy, act, onClose }: { akte: ProjektAkte; heute: s
       </div>
 
       {bearbeiten && (
-        <div className="mt-3 border-t border-sky-300/15 pt-3">
+        <div className="mt-3 border-t border-schiefer/15 pt-3">
           <ProjektFormular
             start={{ name: p.name, beschreibung: p.beschreibung, verantwortliche: p.verantwortliche.join(", "), stichworte: p.stichworte.join(", "), fortschritt: p.fortschritt === null ? "" : String(p.fortschritt), status: p.status, vertraulich: p.vertraulich }}
             busy={busy}
@@ -311,15 +325,15 @@ function Akte({ akte, heute, busy, act, onClose }: { akte: ProjektAkte; heute: s
       )}
 
       {akte.vorschlaege.length > 0 && (
-        <p className="mt-3 rounded border border-sky-300/30 bg-sky-400/10 px-3 py-2 text-xs text-sky-100">
+        <p className="mt-3 rounded border border-schiefer/30 bg-gletscher/10 px-3 py-2 text-xs text-schiefer">
           Zu diesem Projekt {akte.vorschlaege.length === 1 ? "wartet ein Vorschlag" : `warten ${akte.vorschlaege.length} Vorschläge`} oben auf deine Bestätigung.
         </p>
       )}
 
       {heute && akte.eintraege.length > 0 && (
         <details className="mt-3">
-          <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-sky-200">Vorbereitung für die nächste Besprechung</summary>
-          <p className="mt-2 whitespace-pre-line rounded-lg border border-sky-300/15 bg-sky-400/5 p-3 text-sm text-sky-50/90">{vorbereitung(akte, heute)}</p>
+          <summary className="cursor-pointer text-xs font-bold text-stein">Vorbereitung für die nächste Besprechung</summary>
+          <p className="mt-2 whitespace-pre-line rounded-lg border border-schiefer/15 bg-gletscher/5 p-3 text-sm text-schiefer/90">{vorbereitung(akte, heute)}</p>
         </details>
       )}
 
@@ -336,8 +350,8 @@ function Akte({ akte, heute, busy, act, onClose }: { akte: ProjektAkte; heute: s
         // Offenes zuerst, Erledigtes darunter.
         const sortiert = ABHAKBAR.includes(art) ? [...gruppe.filter((e) => !e.erledigt), ...gruppe.filter((e) => e.erledigt)] : gruppe;
         return (
-          <section key={art} className="mt-4 border-t border-sky-300/15 pt-3">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">
+          <section key={art} className="mt-4 border-t border-schiefer/15 pt-3">
+            <h3 className="text-xs font-bold text-stein">
               {ART_MEHRZAHL[art]} ({gruppe.length})
             </h3>
             <ul className="mt-2 flex flex-col gap-2">
@@ -351,8 +365,8 @@ function Akte({ akte, heute, busy, act, onClose }: { akte: ProjektAkte; heute: s
       {akte.eintraege.length === 0 && <p className="mt-3 text-sm text-quiet">Zu diesem Projekt ist noch nichts festgehalten.</p>}
 
       {akte.zurueckgezogen.length > 0 && (
-        <details className="mt-4 border-t border-sky-300/15 pt-3">
-          <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-quiet">Zurückgezogen ({akte.zurueckgezogen.length})</summary>
+        <details className="mt-4 border-t border-schiefer/15 pt-3">
+          <summary className="cursor-pointer text-xs font-bold text-quiet">Zurückgezogen ({akte.zurueckgezogen.length})</summary>
           <ul className="mt-2 space-y-2 text-xs text-quiet">
             {akte.zurueckgezogen.map((e) => (
               <li key={e.id}>
@@ -383,12 +397,12 @@ function EintragZeile({ e, heute, busy, act }: { e: Eintrag; heute: string | nul
   ].filter(Boolean);
   const ueberfaellig = Boolean(heute && e.faellig && !e.erledigt && e.faellig < heute);
   return (
-    <li className="rounded-lg border border-sky-300/15 bg-sky-400/5 p-3">
+    <li className="rounded-lg border border-schiefer/15 bg-gletscher/5 p-3">
       <div className="flex items-start gap-3">
         {abhakbar && (
           <input
             type="checkbox"
-            className="mt-1 h-4 w-4 shrink-0 accent-sky-400"
+            className="mt-1 h-4 w-4 shrink-0 accent-gletscher"
             checked={e.erledigt}
             disabled={busy}
             aria-label={e.erledigt ? "Wieder öffnen" : "Als erledigt abhaken"}
@@ -396,12 +410,12 @@ function EintragZeile({ e, heute, busy, act }: { e: Eintrag; heute: string | nul
           />
         )}
         <div className="min-w-0 flex-1">
-          <p className={`text-sm ${e.erledigt ? "text-quiet line-through" : "text-sky-50"}`}>{e.text}</p>
-          <p className={`mt-1 text-xs ${ueberfaellig ? "text-red-200" : "text-quiet"}`}>{meta.join(" · ")}</p>
-          {e.quelle.fremd && <p className="mt-1 text-xs text-amber-200/90">Stammt aus Text von Dritten.</p>}
+          <p className={`text-sm ${e.erledigt ? "text-quiet line-through" : "text-schiefer"}`}>{e.text}</p>
+          <p className={`mt-1 text-xs ${ueberfaellig ? "text-down" : "text-quiet"}`}>{meta.join(" · ")}</p>
+          {e.quelle.fremd && <p className="mt-1 text-xs text-ocker/90">Stammt aus Text von Dritten.</p>}
           {e.verlauf.length > 0 && (
             <details className="mt-1">
-              <summary className="cursor-pointer text-xs text-sky-200">
+              <summary className="cursor-pointer text-xs text-stein">
                 {e.verlauf.length === 1 ? "Einmal korrigiert" : `${e.verlauf.length}-mal korrigiert`}
                 {e.geaendertAm ? `, zuletzt am ${tag(e.geaendertAm)}` : ""}
               </summary>
@@ -579,8 +593,8 @@ function ProjektFormular({ start, busy, knopf = "Projekt anlegen", onSave, kurz 
               ))}
             </select>
           </Feld>
-          <label className="flex items-start gap-3 self-end text-xs text-sky-50/85">
-            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-sky-400" checked={vertraulich} onChange={(e) => setVertraulich(e.target.checked)} />
+          <label className="flex items-start gap-3 self-end text-xs text-schiefer/85">
+            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-gletscher" checked={vertraulich} onChange={(e) => setVertraulich(e.target.checked)} />
             <span>
               Vertraulich
               <span className="block text-quiet">Der Inhalt bleibt auf dem Mac: nichts davon geht an das KI-Gehirn oder über Telegram.</span>

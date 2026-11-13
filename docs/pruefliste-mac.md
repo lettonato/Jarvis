@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 40 Minuten.
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 45 Minuten.
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -12,7 +12,7 @@ Der erste Start dauert etwas länger.
 
 | Nr. | Was du tust | Was du sehen solltest |
 |---|---|---|
-| A1 | JARVIS starten | Die Kommandozentrale öffnet sich im Browser |
+| A1 | JARVIS starten | JARVIS öffnet sich im Browser im Raum „Heute“: helle Wand, rechts das Fenster, unten die Leiste mit den Räumen |
 | A2 | Kalender-Ansicht öffnen | Deine Termine erscheinen |
 | A3 | Sagen oder tippen: „Öffne Obsidian“, danach „Öffne den Kalender“ | Beide Programme öffnen sich |
 | A4 | Ein Dokument erstellen lassen, z. B. „Erstelle ein kurzes Dokument über Gold“ | Unter Dokumente liegt ein PDF, es lässt sich öffnen |
@@ -42,7 +42,7 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 
 | Nr. | Was du tust | Was du sehen solltest |
 |---|---|---|
-| E1 | Oben auf „Projekte“ gehen, „Neues Projekt“, z. B. „Testprojekt Halle“ anlegen | Das Projekt erscheint als Kachel, die Akte geht auf |
+| E1 | Unten in der Leiste auf „Projekte“ gehen, „Neues Projekt“, z. B. „Testprojekt Halle“ anlegen | Das Projekt erscheint als Kachel, die Akte geht auf |
 | E2 | In der Akte „Eintrag hinzufügen“: eine Aufgabe mit Frist | Der Eintrag steht unter „Aufgaben“ mit „von dir eingetragen“ und Datum |
 | E3 | Zu JARVIS sagen: „Im Testprojekt Halle haben wir heute entschieden, dass wir in Stahl bauen. Thomas holt bis Freitag Angebote ein.“ | JARVIS sagt, dass Vorschläge auf deine Bestätigung warten. Am Reiter „Projekte“ steht eine Zahl. **Wichtig:** Schlägt JARVIS gar nichts vor oder Falsches, schreib mir bitte, was er gesagt hat |
 | E4 | Einen Vorschlag „Übernehmen“, einen mit „Ändern“ anpassen und übernehmen, einen „Ablehnen“ | Übernommenes steht in der Akte, Abgelehntes nirgends |
@@ -57,7 +57,7 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 
 | Nr. | Was du tust | Was du sehen solltest |
 |---|---|---|
-| F1 | Oben auf „Heute“ gehen | Begrüßung mit Datum; Karten für Termine, Aufgaben, Post, Projekte, Märkte und Nachrichten, Agenten |
+| F1 | Unten in der Leiste auf „Heute“ gehen | Datum und groß an der Wand der nächste Termin (oder „Guten Tag“); darunter „Wartet auf dich“, Aufgaben, Post und Projekte; vor dem Fenster drei Glasscheiben: Termine heute, Märkte, Agenten |
 | F2 | Mit deinem Kalender und deinen Erinnerungen vergleichen | Dieselben Termine von heute und dieselben fälligen Aufgaben. **Wichtig:** Fehlt etwas oder steht etwas Falsches da, schreib mir bitte, was |
 | F3 | Im Testprojekt eine Aufgabe mit Frist von gestern eintragen, zurück zu „Heute“ | Unter „Wartet auf dich“ steht das Projekt mit der überfälligen Aufgabe |
 | F4 | Zu JARVIS sagen: „Tagesübersicht“ | Die Ansicht „Heute“ geht auf |
@@ -77,7 +77,7 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 
 | Nr. | Was du tust | Was du sehen solltest |
 |---|---|---|
-| H1 | Oben auf „Agenten“ gehen | Ganz oben steht „Steuerung“ mit fünf Agenten: Gespräch, Browser-Agent, Analyst, Intel, Spielgeld-Desk, jeder mit Zustand, „Zuletzt“ und „Kosten heute“ |
+| H1 | Unten in der Leiste auf „Agenten“ gehen | Ganz oben steht „Steuerung“ mit fünf Agenten: Gespräch, Browser-Agent, Analyst, Intel, Spielgeld-Desk, jeder mit Zustand, „Zuletzt“ und „Kosten heute“ |
 | H2 | Bei Intel mit den Angaben in der Intel-Ansicht vergleichen | Derselbe letzte Lauf und dieselben Kosten von heute |
 | H3 | Beim Analysten „Sperren“ drücken, dann JARVIS um ein Dokument bitten | Der Analyst steht auf „gesperrt“, JARVIS sagt, dass er gesperrt ist. Danach „Entsperren“ |
 | H4 | Läuft der Spielgeld-Desk: „Pausieren“, dann „Fortsetzen“ | Der Zustand wechselt auf „pausiert“ und zurück, auch auf dem Trading-Desk |
@@ -101,6 +101,21 @@ ElevenLabs** (Gratis-Tarif: 10.000 im Monat). I1 und I2 gehen ohne Schlüssel un
 | I7 | Während er mit der neuen Stimme spricht: „Stopp“ oder Escape | Er verstummt sofort |
 | I8 | Tageslimit auf 500 stellen und zwei, drei Fragen stellen | Nach kurzer Zeit spricht wieder die Stimme des Macs, und in den Einstellungen steht, dass das Tageslimit erreicht ist. Danach das Limit wieder hochstellen |
 | I9 | Schalter ausschalten | JARVIS spricht wieder mit der Stimme des Macs |
+
+## J. Neues Aussehen „Glashaus“ (Schritt E2, neu)
+
+Das Aussehen ist bisher nur in der Sandbox mit Beispieldaten geprüft, in Chrome. Am Mac zählt dein Eindruck.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| J1 | JARVIS in Chrome öffnen und in der Leiste unten nacheinander auf „Projekte“, „Kalender“, „Heute“ klicken | Die Kamera fährt seitlich in den nächsten Raum: Der alte Raum gleitet hinaus, eine dunkle Wand mit dem Namen des Raums zieht vorbei, der neue gleitet herein. Die Leiste bleibt stehen. **Wichtig:** Ruckelt es oder flackert etwas, schreib mir bitte, bei welchem Wechsel |
+| J2 | Dasselbe in Safari, falls du Safari nutzt | Entweder dieselbe Fahrt oder ein einfacher Wechsel ohne Fahrt. Beides ist in Ordnung; bitte schreib mir, was du siehst |
+| J3 | Jeden Raum einmal ansehen (unter „Mehr“ stehen die übrigen) | Überall dunkle Schrift auf heller Wand, nichts abgeschnitten, nichts übereinander, jede Schrift gut lesbar |
+| J4 | In einem langen Raum (Einstellungen, Trading) nach unten rollen | Nur die Wand rollt, Fenster und Leiste bleiben stehen; ganz unten ist nichts von der Leiste verdeckt |
+| J5 | Das Browserfenster schmal ziehen (etwa halbe Bildschirmbreite) | Das Fenster rückt nach oben, der Inhalt steht darunter, die Leiste zeigt „Räume“ als Auswahl |
+| J6 | In der Leiste rechts etwas an JARVIS schreiben oder „Jarvis“ sagen | Über der Leiste erscheint seine Antwort; ein Klick darauf klappt das ganze Gespräch auf |
+| J7 | Einstellungen → Aussehen | Eine Liste: zu jedem Raum das Foto mit dem Namen des Fotografen |
+| J8 | Gesamteindruck | Passt es zu dem Entwurf „Glashaus“, den du gewählt hast? Was stört dich, was fehlt dir? |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

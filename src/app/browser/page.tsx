@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { BrowserView } from "@/components/views/BrowserView";
-import { HoloView } from "@/components/HoloView";
+import { RaumSeite } from "@/components/Raum";
 
 export const metadata: Metadata = { title: "JARVIS · Browser" };
 
 export default function BrowserPage() {
   return (
-    <HoloView>
+    <RaumSeite ort="/browser">
       <BrowserView />
-    </HoloView>
+    </RaumSeite>
   );
 }

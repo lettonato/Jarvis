@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import type { AvatarState } from "@/lib/avatar";
 import { ApiError, getJson, postJson, postStream } from "@/lib/api";
-import { holoTypes } from "@/lib/holo";
+import { fahrtArten } from "@/lib/raeume";
 import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type Source } from "@/lib/brain";
 import type { CalendarSnapshot } from "@/lib/calendar";
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
@@ -330,7 +330,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       }
       setThinking(false);
       if (d.session !== undefined) setSession(d.session);
-      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: holoTypes(place.current, d.navigate) });
+      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: fahrtArten(place.current, d.navigate) });
       const first = [d.reply, said].filter(Boolean).join(" ");
       if (first) addTurn("jarvis", first);
       if (d.after) addTurn("jarvis", d.after);
@@ -393,7 +393,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
             pending = rest;
             ready.forEach((sentence) => speech.push(sentence));
           } else if (event.type === "navigate") {
-            if (event.href !== place.current) router.push(event.href, { transitionTypes: holoTypes(place.current, event.href) });
+            if (event.href !== place.current) router.push(event.href, { transitionTypes: fahrtArten(place.current, event.href) });
           } else if (event.type === "herkunft") updateTurn(id, { fremd: true });
           else if (event.type === "error") throw new Error(event.error);
           else result = event.reply;
@@ -450,7 +450,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         ? startSession(fresh, result.session, result.reply)
         : { reply: result.reply, navigate: result.navigate, ...(leaves ? { session: null } : {}) };
       if (d.session !== undefined) setSession(d.session);
-      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: holoTypes(place.current, d.navigate) });
+      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: fahrtArten(place.current, d.navigate) });
       // Was die Besprechung noch anhängt, kommt dazu, etwa „Bis nächste Woche ist nichts fällig“ oder der erste Punkt.
       const more = d.reply.startsWith(result.reply) ? d.reply.slice(result.reply.length).trim() : "";
       if (more) {

@@ -55,7 +55,7 @@ export function DocumentsView() {
 
       {documents && !documents.configured && (
         <Panel className="max-w-2xl">
-          <h2 className="mb-1 text-sm font-bold uppercase tracking-widest text-sky-100">Erst das KI-Gehirn verbinden</h2>
+          <h2 className="mb-1 text-sm font-bold text-schiefer">Erst das KI-Gehirn verbinden</h2>
           <p className="mb-4 text-sm text-quiet">Dokumente schreibt Claude. Dafür braucht JARVIS denselben Claude-Schlüssel wie im Gespräch.</p>
           <LinkButton href="/einstellungen#gehirn" icon="einstellungen">
             Claude-Schlüssel eintragen
@@ -70,7 +70,7 @@ export function DocumentsView() {
       {documents && list.length === 0 && !running && documents.configured && (
         <Panel>
           <p className="text-sm text-quiet">
-            Noch keine Dokumente. Sag zum Beispiel: <span className="text-sky-100">„Jarvis, {EXAMPLE.charAt(0).toLowerCase() + EXAMPLE.slice(1)}“</span> Das geht auch per Telegram; das PDF kommt
+            Noch keine Dokumente. Sag zum Beispiel: <span className="text-schiefer">„Jarvis, {EXAMPLE.charAt(0).toLowerCase() + EXAMPLE.slice(1)}“</span> Das geht auch per Telegram; das PDF kommt
             dann dorthin.
           </p>
         </Panel>
@@ -94,11 +94,11 @@ function Running({ job, now, onCancel }: { job: DocJob; now: Date | null; onCanc
     <Panel glow>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-sky-300">
-            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sky-300 shadow-[0_0_10px_#7dd3fc]" />
+          <p className="flex items-center gap-2 text-xs font-bold text-see">
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-gletscher" />
             Der Analyst {job.phase ? PHASE_LABEL[job.phase] : "arbeitet"}
           </p>
-          <h2 className="mt-1 text-lg font-bold text-sky-50">{job.thema}</h2>
+          <h2 className="mt-1 text-lg font-bold text-schiefer">{job.thema}</h2>
         </div>
         <Button tone="danger" icon="stopp" onClick={onCancel}>
           Abbrechen
@@ -108,8 +108,8 @@ function Running({ job, now, onCancel }: { job: DocJob; now: Date | null; onCanc
       <ol className="mt-4 grid grid-cols-4 gap-1.5" aria-label="Fortschritt">
         {PHASES.map((p, i) => (
           <li key={p} className="min-w-0">
-            <span className={`block h-1.5 rounded-full ${i < at ? "bg-sky-300" : i === at ? "animate-pulse bg-sky-300/80" : "bg-sky-300/15"}`} />
-            <span className={`mt-1 block truncate text-[10px] uppercase tracking-wider ${i <= at ? "text-sky-100" : "text-quiet"}`}>{PHASE_SHORT[p]}</span>
+            <span className={`block h-1.5 rounded-full ${i < at ? "bg-gletscher" : i === at ? "animate-pulse bg-gletscher/80" : "bg-gletscher/15"}`} />
+            <span className={`mt-1 block truncate text-xs ${i <= at ? "text-schiefer" : "text-quiet"}`}>{PHASE_SHORT[p]}</span>
           </li>
         ))}
       </ol>
@@ -122,9 +122,9 @@ function Running({ job, now, onCancel }: { job: DocJob; now: Date | null; onCanc
       </dl>
 
       {steps.length > 0 && (
-        <ol className="mt-3 space-y-1 border-t border-sky-300/15 pt-3 text-xs" aria-live="polite">
+        <ol className="mt-3 space-y-1 border-t border-schiefer/15 pt-3 text-xs" aria-live="polite">
           {steps.map((s, i) => (
-            <li key={`${s.at}-${i}`} className={`flex gap-2 ${i === steps.length - 1 ? "text-sky-50" : "text-quiet"}`}>
+            <li key={`${s.at}-${i}`} className={`flex gap-2 ${i === steps.length - 1 ? "text-schiefer" : "text-quiet"}`}>
               <span className="shrink-0 tabular-nums">{new Date(s.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
               <span className="min-w-0 truncate">{s.text}</span>
             </li>
@@ -141,9 +141,9 @@ function Running({ job, now, onCancel }: { job: DocJob; now: Date | null; onCanc
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-sky-300/15 bg-sky-400/5 px-3 py-2">
-      <dt className="text-[10px] uppercase tracking-widest text-quiet">{label}</dt>
-      <dd className="mt-0.5 font-bold tabular-nums text-sky-50">{value}</dd>
+    <div className="rounded-lg border border-schiefer/15 bg-gletscher/5 px-3 py-2">
+      <dt className="text-xs text-quiet">{label}</dt>
+      <dd className="mt-0.5 font-bold tabular-nums text-schiefer">{value}</dd>
     </div>
   );
 }
@@ -165,7 +165,7 @@ function Order({ busy, onOrder }: { busy: boolean; onOrder: (thema: string, auft
   return (
     <Panel>
       <details>
-        <summary className="cursor-pointer text-sm font-bold uppercase tracking-[0.25em] text-sky-100">Neues Dokument von Hand</summary>
+        <summary className="cursor-pointer text-sm font-bold text-schiefer">Neues Dokument von Hand</summary>
         <p className="mt-2 text-xs text-quiet">
           Am einfachsten sagst du es JARVIS. Hier geht es auch zum Tippen. Ein Dokument kostet bei Anthropic meist ein paar Dollar; ab etwa {DOC_LIMITS.maxUsd} Dollar hört der Analyst auf zu
           suchen und schreibt mit dem, was er hat.
@@ -193,9 +193,9 @@ function Order({ busy, onOrder }: { busy: boolean; onOrder: (thema: string, auft
 }
 
 const STATE_LABEL: Record<Exclude<DocJob["state"], "laeuft">, { text: string; tone: string }> = {
-  fertig: { text: "fertig", tone: "border-up/40 bg-up/10 text-green-200" },
-  fehler: { text: "nicht fertig geworden", tone: "border-down/50 bg-down/10 text-red-200" },
-  abgebrochen: { text: "abgebrochen", tone: "border-sky-300/25 bg-sky-400/5 text-sky-200/80" },
+  fertig: { text: "fertig", tone: "border-up/40 bg-up/10 text-up" },
+  fehler: { text: "nicht fertig geworden", tone: "border-down/50 bg-down/10 text-down" },
+  abgebrochen: { text: "abgebrochen", tone: "border-schiefer/25 bg-gletscher/5 text-stein/80" },
 };
 
 function Item({ job, now, onAction }: { job: DocJob; now: Date | null; onAction: (action: "oeffnen" | "finder") => void }) {
@@ -205,31 +205,31 @@ function Item({ job, now, onAction }: { job: DocJob; now: Date | null; onAction:
   const art = job.pdf ? "pdf" : "html";
   return (
     <Panel>
-      <div className="flex flex-wrap items-center gap-2 text-[11px]">
-        <span className={`rounded-full border px-2 py-0.5 font-bold uppercase tracking-widest ${label.tone}`}>{label.text}</span>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className={`rounded-full border px-2 py-0.5 font-bold ${label.tone}`}>{label.text}</span>
         <span className="text-quiet">
           {when(job.endedAt ?? job.startedAt, now)}
           {took ? ` · ${took} Min.` : ""} · {usd(job.costUsd)}
           {job.from === "telegram" ? " · per Telegram bestellt" : ""}
         </span>
       </div>
-      <h2 className="mt-2 text-base font-bold text-sky-50">{job.title ?? job.thema}</h2>
+      <h2 className="mt-2 text-base font-bold text-schiefer">{job.title ?? job.thema}</h2>
       {job.state === "fertig" && (
         <>
           <p className="mt-0.5 text-xs text-quiet">
             {job.sections} Abschnitte · {job.sources} Quellen · {job.searches} Suchen · {job.pdf ? "PDF" : "Webseite"}
           </p>
           {job.points.length > 0 && (
-            <ul className="mt-2 space-y-1 text-sm text-sky-50/85">
+            <ul className="mt-2 space-y-1 text-sm text-schiefer/85">
               {job.points.slice(0, 3).map((p, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-sky-300" />
+                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gletscher" />
                   <span>{plainPoint(p)}</span>
                 </li>
               ))}
             </ul>
           )}
-          {job.note && <p className="mt-2 text-xs text-amber-200/90">{job.note}</p>}
+          {job.note && <p className="mt-2 text-xs text-ocker/90">{job.note}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
             <Button small tone="primary" icon="dokumente" onClick={() => onAction("oeffnen")}>
               Öffnen
@@ -238,7 +238,7 @@ function Item({ job, now, onAction }: { job: DocJob; now: Date | null; onAction:
               href={`/api/dokumente/datei?id=${encodeURIComponent(job.id)}&art=${art}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300/30 bg-sky-400/5 px-2 py-1 text-[11px] font-bold text-sky-100 transition hover:border-sky-300/60 hover:bg-sky-400/15"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-schiefer/30 bg-gletscher/5 px-2 py-1 text-xs font-bold text-schiefer transition hover:border-schiefer/60 hover:bg-gletscher/15"
             >
               Im Browser ansehen
             </a>
@@ -248,7 +248,7 @@ function Item({ job, now, onAction }: { job: DocJob; now: Date | null; onAction:
           </div>
         </>
       )}
-      {job.state !== "fertig" && job.error && <p className="mt-1 text-sm text-red-200/90">{job.error}</p>}
+      {job.state !== "fertig" && job.error && <p className="mt-1 text-sm text-down/90">{job.error}</p>}
     </Panel>
   );
 }

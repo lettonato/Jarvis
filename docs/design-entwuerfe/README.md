@@ -21,3 +21,6 @@ Die Schriften liegen nicht im Projekt. Zum Ansehen in diesem Ordner einmal ausf�
 
 Stand: Benedikt gefällt B „Glashaus“ am besten (13.11.). Er wollte weitere Ideen in dieser Richtung sehen und hat dazu
 „Terrasse“, „Lichtspiel“ und „Farbglas“ bekommen. Ist nichts Besseres dabei, wird B gebaut. Gebaut wird erst nach seiner Wahl.
+
+Entschieden am 13.11.: Benedikt bleibt bei B „Glashaus“, so wie gezeigt. Gebaut in Schritt E2 (siehe `ENTWICKLUNG.md`,
+Bereich E). Die Entwürfe hier bleiben als Vorlage und zum Vergleich liegen.

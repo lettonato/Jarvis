@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { HoloLink } from "./HoloLink";
+import { RaumLink } from "./RaumLink";
 import { Button, inputClass, Notice } from "./ui";
 import { postJson } from "@/lib/api";
 import { AGENTEN, KLASSE_LABEL, KLASSE_TEXT, NOTAUS_BESTAETIGUNG, type AgentName, type Freigabe, type Klasse, type SicherheitsLage, type ZugangsdatenStatus } from "@/lib/sicherheit";
@@ -48,11 +48,11 @@ const restMinuten = (f: Freigabe, jetzt: number) => Math.max(0, Math.ceil((Date.
 function FreigabeZeile({ f, send, busy, klein }: { f: Freigabe; send: (b: object) => Promise<boolean>; busy: boolean; klein?: boolean }) {
   const now = useNow(5000);
   return (
-    <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 ${klein ? "" : "rounded border border-violet-300/30 bg-desk/70 p-3"}`}>
-      <span className="font-bold text-violet-200">🔐 Freigabe</span>
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 ${klein ? "" : "rounded border border-gletscher/30 bg-desk/70 p-3"}`}>
+      <span className="font-bold text-see">Freigabe</span>
       <span className="min-w-0 flex-1">
-        <span className="text-ink">{f.was}</span>
-        <span className="ml-2 text-[11px] text-quiet">
+        <span className="text-schiefer">{f.was}</span>
+        <span className="ml-2 text-xs text-quiet">
           {KLASSE_LABEL[f.klasse]} · {f.kanal === "telegram" ? "aus Telegram" : "vom Mac"}
           {now ? ` · noch ${restMinuten(f, now.getTime())} Min.` : ""}
         </span>
@@ -63,7 +63,7 @@ function FreigabeZeile({ f, send, busy, klein }: { f: Freigabe; send: (b: object
           type="button"
           disabled={busy}
           onClick={() => send({ aktion: "freigabe", id: f.id, ja: true })}
-          className="rounded bg-up/90 px-3 py-1 text-xs font-bold text-desk hover:bg-up disabled:opacity-50"
+          className="rounded-full bg-up px-3.5 py-1 text-xs font-bold text-white hover:bg-up/90 disabled:opacity-50"
         >
           Ja, ausführen
         </button>
@@ -71,7 +71,7 @@ function FreigabeZeile({ f, send, busy, klein }: { f: Freigabe; send: (b: object
           type="button"
           disabled={busy}
           onClick={() => send({ aktion: "freigabe", id: f.id, ja: false })}
-          className="rounded border border-line px-3 py-1 text-xs font-bold hover:bg-panel-2 disabled:opacity-50"
+          className="rounded-full border border-line px-3.5 py-1 text-xs font-bold hover:bg-panel-2 disabled:opacity-50"
         >
           Nein
         </button>
@@ -87,29 +87,29 @@ export function SicherheitsLeiste() {
   const notaus = lage?.zustand.notaus.an ? lage.zustand.notaus : null;
   if (!notaus && offen.length === 0 && !note) return null;
   return (
-    <div className="mx-2 mb-2 space-y-2 sm:mx-5" role="status" aria-live="polite">
+    <div className="space-y-2" role="status" aria-live="polite">
       {notaus && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border-2 border-down bg-down/20 px-3 py-2 text-sm shadow-lg">
-          <span className="font-bold uppercase tracking-wider text-red-100">🛑 Not-Aus</span>
-          <span className="min-w-0 flex-1 text-red-100">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border-l-4 border-down bg-white/92 px-4 py-2.5 text-sm shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl">
+          <span className="font-bold text-down">Not-Aus</span>
+          <span className="min-w-0 flex-1 text-down">
             Alle Agenten stehen seit {zeit(notaus.seit)} ({notaus.grund}).
           </span>
-          <HoloLink href="/einstellungen#sicherheit" className="rounded px-2 py-1 text-xs font-bold text-red-100 underline">
+          <RaumLink href="/einstellungen#sicherheit" className="rounded px-2 py-1 text-xs font-bold text-down underline">
             Lösen in den Einstellungen
-          </HoloLink>
+          </RaumLink>
         </div>
       )}
       {offen.length > 0 && (
-        <div className="rounded-lg border border-violet-400/60 bg-desk/95 px-3 py-2 text-sm shadow-lg">
+        <div className="rounded-2xl border-l-4 border-gletscher bg-white/92 px-4 py-2.5 text-sm shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl">
           <FreigabeZeile f={offen[0]} send={send} busy={busy} klein />
           {offen.length > 1 && (
-            <HoloLink href="/einstellungen#sicherheit" className="mt-1 block text-xs text-sky-300 hover:underline">
+            <RaumLink href="/einstellungen#sicherheit" className="mt-1 block text-xs text-see hover:underline">
               und {offen.length - 1} weitere Freigaben
-            </HoloLink>
+            </RaumLink>
           )}
         </div>
       )}
-      {note && <p className={`rounded-lg bg-desk/95 px-3 py-1 text-xs ${note.tone === "ok" ? "text-up" : "text-amber-200"}`}>{note.text}</p>}
+      {note && <p className={`rounded-2xl bg-white/92 px-4 py-1.5 text-xs shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl ${note.tone === "ok" ? "text-up" : "text-ocker"}`}>{note.text}</p>}
     </div>
   );
 }
@@ -145,7 +145,7 @@ export function SicherheitsZentrale() {
       {note && <Notice tone={note.tone === "ok" ? "ok" : "error"}>{note.text}</Notice>}
 
       <div className="space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">Not-Aus</h3>
+        <h3 className="text-xs font-bold text-stein">Not-Aus</h3>
         {zustand.notaus.an ? (
           <>
             <Notice tone="error">
@@ -168,9 +168,9 @@ export function SicherheitsZentrale() {
               type="button"
               disabled={busy}
               onClick={() => send({ aktion: "notaus_an" })}
-              className="rounded-lg border-2 border-down bg-down/80 px-4 py-2 text-sm font-bold uppercase tracking-wider text-white hover:bg-down disabled:opacity-50"
+              className="rounded-lg border-2 border-down bg-down/80 px-4 py-2 text-sm font-bold text-white hover:bg-down disabled:opacity-50"
             >
-              🛑 Not-Aus
+              Not-Aus
             </button>
             <p className="min-w-0 flex-1 text-xs text-quiet">
               Hält sofort alle Agenten an: Gespräch, Browser, Analyst, Intel und Desk. Offene Freigaben verfallen. Auch per Telegram mit /notaus. Lösen geht nur hier.
@@ -180,7 +180,7 @@ export function SicherheitsZentrale() {
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">Agenten einzeln sperren</h3>
+        <h3 className="text-xs font-bold text-stein">Agenten einzeln sperren</h3>
         <ul className="space-y-1.5">
           {AGENTEN.map((a) => {
             const s = zustand.sperren[a.name];
@@ -189,7 +189,7 @@ export function SicherheitsZentrale() {
                 <span className={`inline-block h-2 w-2 rounded-full ${zustand.notaus.an || s ? "bg-down" : "bg-up"}`} aria-hidden />
                 <span className="min-w-0 flex-1">
                   <b>{a.label}</b> <span className="text-xs text-quiet">{a.text}</span>
-                  {s && <span className="ml-2 text-xs text-red-200">gesperrt seit {zeit(s.seit)}</span>}
+                  {s && <span className="ml-2 text-xs text-down">gesperrt seit {zeit(s.seit)}</span>}
                 </span>
                 <Button small tone={s ? "ghost" : "danger"} disabled={busy} onClick={() => sperren(a.name, !s)}>
                   {s ? "Entsperren" : "Sperren"}
@@ -201,11 +201,11 @@ export function SicherheitsZentrale() {
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">Freigaben</h3>
+        <h3 className="text-xs font-bold text-stein">Freigaben</h3>
         <ul className="space-y-1 text-xs text-quiet">
           {(["A", "B", "C", "D"] as Klasse[]).map((k) => (
             <li key={k}>
-              <b className="text-sky-100">{KLASSE_LABEL[k]}</b>: {KLASSE_TEXT[k]}
+              <b className="text-schiefer">{KLASSE_LABEL[k]}</b>: {KLASSE_TEXT[k]}
             </li>
           ))}
         </ul>
@@ -226,7 +226,7 @@ export function SicherheitsZentrale() {
         <p className="text-xs text-quiet">Gedächtnis-Einträge und das Starten oder Fortsetzen des Handels fragen immer.</p>
         {offen.length === 0 ? <p className="text-xs text-quiet">Keine offenen Freigaben.</p> : offen.map((f) => <FreigabeZeile key={f.id} f={f} send={send} busy={busy} />)}
         {erledigt.length > 0 && (
-          <ul className="space-y-0.5 text-[11px] text-quiet">
+          <ul className="space-y-0.5 text-xs text-quiet">
             {erledigt.map((f) => (
               <li key={f.id}>
                 {zeit(f.entschieden ?? f.erstellt)} · {f.was}: <b>{ZUSTAND_TEXT[f.zustand]}</b>
@@ -242,17 +242,17 @@ export function SicherheitsZentrale() {
 
       <div className="space-y-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">Audit-Log</h3>
-          <span className={`text-xs ${pruefung.ok ? "text-up" : "text-red-200"}`}>
+          <h3 className="text-xs font-bold text-stein">Audit-Log</h3>
+          <span className={`text-xs ${pruefung.ok ? "text-up" : "text-down"}`}>
             {pruefung.ok ? `✓ ${pruefung.eintraege} Einträge, Prüfkette intakt` : `⚠️ ${pruefung.fehler}`}
           </span>
         </div>
         {audit.length === 0 ? (
           <p className="text-xs text-quiet">Noch keine Einträge.</p>
         ) : (
-          <ul className="max-h-80 space-y-0.5 overflow-y-auto font-mono text-[11px] text-sky-50/80">
+          <ul className="max-h-80 space-y-0.5 overflow-y-auto font-mono text-xs text-schiefer/80">
             {(alleAudit ? audit : audit.slice(0, 15)).map((e) => (
-              <li key={e.nr} className={e.ergebnis.startsWith("abgelehnt") || e.art === "alarm" ? "text-amber-200" : ""}>
+              <li key={e.nr} className={e.ergebnis.startsWith("abgelehnt") || e.art === "alarm" ? "text-ocker" : ""}>
                 {zeit(e.zeit)} · {e.agent}/{e.kanal} · {e.was}
                 {e.klasse ? ` [${e.klasse}]` : ""} → {e.ergebnis}
                 {e.grund ? ` (${e.grund.slice(0, 120)})` : ""}
@@ -287,14 +287,14 @@ function Zugangsdaten({ z, send, busy }: { z: ZugangsdatenStatus; send: (b: obje
   const klartext = z.eintraege.some((e) => e.ort === "datei");
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">Zugangsdaten</h3>
+      <h3 className="text-xs font-bold text-stein">Zugangsdaten</h3>
       <ul className="space-y-0.5 text-xs">
         {z.eintraege.map((e) => (
           <li key={e.name} className="flex flex-wrap gap-x-2">
-            <span className={`inline-block h-2 w-2 translate-y-1 rounded-full ${e.ort === "datei" ? "bg-amber-400" : e.ort ? "bg-up" : "bg-line"}`} aria-hidden />
-            <b className="text-sky-100">{e.label}</b>
+            <span className={`inline-block h-2 w-2 translate-y-1 rounded-full ${e.ort === "datei" ? "bg-sonne" : e.ort ? "bg-up" : "bg-line"}`} aria-hidden />
+            <b className="text-schiefer">{e.label}</b>
             <span className="text-quiet">{e.ort ? ORT[e.ort] : "nicht eingerichtet"}</span>
-            {e.fehler && <span className="text-red-200">{e.fehler}</span>}
+            {e.fehler && <span className="text-down">{e.fehler}</span>}
           </li>
         ))}
       </ul>
@@ -303,7 +303,7 @@ function Zugangsdaten({ z, send, busy }: { z: ZugangsdatenStatus; send: (b: obje
           <div className="space-y-2">
             <p className="text-xs text-quiet">
               {klartext ? "Schlüssel und Passwörter stehen im Klartext in " : "Neue Schlüssel und Passwörter landen sonst im Klartext in "}
-              <code className="text-sky-200">{z.datei}</code>. Im macOS-Schlüsselbund sind sie verschlüsselt und nur mit deinem Mac-Login lesbar. JARVIS prüft jeden Wert nach dem
+              <code className="text-stein">{z.datei}</code>. Im macOS-Schlüsselbund sind sie verschlüsselt und nur mit deinem Mac-Login lesbar. JARVIS prüft jeden Wert nach dem
               Speichern; geht etwas schief, bleibt alles, wie es war.
             </p>
             <label className="flex items-start gap-2 text-xs">
