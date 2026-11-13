@@ -178,8 +178,12 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   // Die laufende Antwort von Claude; eine neue Frage oder „Stopp“ bricht sie ab.
   const brainAbort = useRef<AbortController | null>(null);
 
+  // Die ElevenLabs-Stimme spricht nur, wenn der Server sie als aktiv meldet; lehnt er ab, lädt die Seite den Zustand neu.
+  const cloudOff = useCallback(() => void reloadSettings(), [reloadSettings]);
   const { canListen, handsFree, listening, waiting, interim, local, speaking, error, hint, listen, stopListening, speak, speakStream, stopSpeaking } = useVoice(
     useCallback((text: string) => heard.current(text), []),
+    settings?.stimme?.aktiv === true,
+    cloudOff,
   );
   const name = settings?.name ?? "Benedikt";
 

@@ -200,9 +200,17 @@ wird zu Wissen, wenn ein Mensch ihn ungelesen übernimmt. Gemildert: gelbe Marki
 Vorschlag und am Eintrag; liest JARVIS so einen Eintrag später, gilt das Gespräch als fremd beeinflusst, und
 Änderungen brauchen ein Ja; spitze Klammern werden entfernt, Längen begrenzt, höchstens 100 offene Vorschläge.
 
+**R-20 Vorgelesenes geht an ElevenLabs (neu mit Schritt H1, nur bei eingeschalteter ElevenLabs-Stimme):** Jeder
+Satz, den JARVIS laut vorliest, geht dann zum Vertonen an ElevenLabs, auch Inhalt aus Mails, Terminen und
+Aufgaben. Gemildert: ab Werk aus und ohne eigenen Schlüssel nicht möglich; Schalter, Tageslimit in Zeichen und
+Not-Aus halten es an; das Einschalten steht im Audit-Log; vertrauliche Projekte nennt JARVIS im Gespräch am Mac
+ohnehin nicht beim Namen; gespeichert wird bei JARVIS nur die Zeichenzahl des Tages. Nicht gelöst: Für D&S-Daten
+fehlen Vertrag, Aufbewahrung und Datenstandort bei ElevenLabs; was der Dienst mit den Texten macht, hängt von
+Benedikts Tarif dort ab. Für vertrauliche Firmeninhalte die Stimme ausgeschaltet lassen.
+
 ## Was bereits gut ist und erhalten bleiben soll
 
-* Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt F1 sind es 19) prüfen Host, Herkunft und einen eigenen Header.
+* Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt H1 sind es 20) prüfen Host, Herkunft und einen eigenen Header.
 * Kalender und „Öffnen“ ohne Shell, mit festen Argumenten.
 * Obsidian- und Dokumentpfade gegen Ausbruch aus dem Ordner geprüft (inkl. Symlinks).
 * Desk-Käufe brauchen eine echte menschliche Freigabe; das Modell kann sie nicht erteilen.

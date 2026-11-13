@@ -26,8 +26,10 @@ Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 
 Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
-Tagesabschluss) und die Agentensteuerung (Schritt F1) sind gebaut und in der Sandbox geprüft: 339 von 339
-automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO.
+Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
+Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 376 von 376 automatischen Tests
+bestehen, 0 übersprungen, 0 bekannte Lücken als TODO. Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
+Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
 dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
@@ -44,7 +46,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | F Agenten | **Testbereit** für die zentrale Steuerung der fünf vorhandenen Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre); **Offen** für weitere Agenten und einen gemeinsamen Zeitplan | Mac-Prüfliste Teil H; Marktagent, Edelmetallagent, Newsletter und weitere; Kostenzählung für Gespräch und Browser (J) |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss und Projektüberwachung im Briefing (einstellbar, abschaltbar); **Offen** für Mail-Entwürfe, Marktüberwachung über Intel hinaus | Mac-Prüfliste Teil G; Meldung im Lauf des Tages, wenn etwas überfällig wird; Mail-Unterstützung |
 | D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
-| H Sprache und Desktop | Teilweise vorhanden (Weckwort, Vorlesen, Programme öffnen auf macOS) | Unterbrechen, Desktop-Agent mit Regeln |
+| H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
 | I Azure | **Blockiert** (Entscheidung und Kostenfreigabe) | Vorbereitung: Speicher- und Modellschicht austauschbar, Anleitung |
 | J Qualität | läuft mit | Modelladapter, Kostenübersicht, Wiederherstellungstests |
 
@@ -410,6 +412,47 @@ schon gekoppelt ist, sieht `/abschluss` erst nach erneutem Koppeln im Telegram-M
 **Sicherheitsrisiken:** keine neuen. Titel von Terminen und Texte von Aufgaben standen schon bisher im
 Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Schalter.
 
+## Bereich H – Sprache und Desktop
+
+Benedikts Wunsch vom 13. November 2026: eine bessere Stimme über ElevenLabs. Sie ist ein Zusatz zur Stimme des
+Macs, nie ein Ersatz: Ohne Schlüssel, ausgeschaltet, über dem Tageslimit, beim Not-Aus oder bei einem Fehler
+spricht der Mac weiter. Der Schlüssel liegt nur auf dem Server (`src/lib/server/stimme.ts`), die Seite bekommt
+nur den Ton. **Wichtig:** Ist die Stimme eingeschaltet, geht jeder Satz, den JARVIS laut vorliest, an
+ElevenLabs, auch Inhalt aus Mails, Terminen und Aufgaben (R-20 in `docs/jarvis-2.0/02-risiken.md`).
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| H1.1 ElevenLabs einrichten: Schlüssel prüfen und speichern (zieht mit in den Schlüsselbund um), Stimme aus dem eigenen Konto wählen, Modell, Probe mit festem Satz, Schalter; nichts schaltet sich von selbst ein | Testbereit (nur Nachbau) | Einstellungen → Stimme; `stimmeEinstellen`; `test/module/stimme.test.ts` |
+| H1.2 Vorlesen Satz für Satz über `/api/stimme`; der nächste Satz wird geholt, während der aktuelle läuft; fällt ElevenLabs aus, spricht der Mac den Rest | Testbereit (nur Nachbau) | `src/lib/useVoice.ts`; im Browser geprüft (`test/hand/stimme-rauch.ts`) |
+| H1.3 Tageslimit in Zeichen (Voreinstellung 5.000), gezählt vor dem Senden; Not-Aus hält auch die Probe | Testbereit | `sprich`, `stimmeStatus` |
+| H1.4 Fehler von ElevenLabs als eigener Satz von JARVIS (nie der Text des Dienstes), sichtbar in den Einstellungen und einmal als Hinweis | Testbereit | `fehlerText` |
+| H1.5 Unterbrechen: „Stopp“, „Halt“, „Ruhe“, „Hör auf“ ohne „Jarvis“, während er spricht; Escape und „Jarvis …“ wie bisher. Bricht auch die Wolkenstimme sofort ab | Testbereit (Regel und Escape geprüft; das gesprochene „Stopp“ nur als Regel, ohne Mikrofon) | `stopsSpeech` in `src/lib/voiceText.ts` |
+| H1.6 Mit echtem ElevenLabs-Schlüssel am Mac prüfen | Offen (Benedikt) | Prüfliste Teil I; kostet Zeichen aus seinem Tarif |
+| H2 Desktop-Agent mit Regeln | Offen | |
+
+### Testergebnisse Schritt H1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **376 Tests: 376 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Regeln der Stimme und des Unterbrechens 17, gegen den nachgebauten ElevenLabs-Dienst 20) |
+| `npx next build` | erfolgreich; neu `/api/stimme` |
+| Handprüfung im Browser (Chromium, gebauter Server, nachgebautes ElevenLabs mit echtem, stillem MP3) | fremde Herkunft und fehlender JARVIS-Kopf: 403; falscher Schlüssel wird nicht gespeichert; richtiger Schlüssel schaltet nichts ein und steht nirgends in der Seite; Stimme wählen, Probe wird abgespielt, einschalten; eine Antwort wird in zwei Stücken geholt und beide werden im Browser bis zum Ende abgespielt; Escape: kein weiterer Satz; Ausfall des Dienstes: höchstens zwei Versuche, keine Fehler in der Seite; Tageslimit: 429 und Hinweis in den Einstellungen; Schlüssel entfernen. Bildschirmfotos angesehen |
+| Code-Review (Skill `code-review`, Stufe mittel) | zehn Befunde, alle behoben und, wo es eine Regel ist, mit Test belegt: Probe kam bei ausgeschaltetem Schalter am Not-Aus vorbei; Stimme blieb nach einer Ablehnung bis zum Neuladen aus; „Stopp“ griff schon bei halb gehörten Sätzen; Tonfreigabe des Browsers wurde zu früh als erteilt gemerkt; Echo-Schutz sperrte „Hör auf“ bei Alltagswörtern; ein nicht belegtes Modell (v4 Turbo) entfernt; Fehler des Dienstes waren unsichtbar; neuer Schlüssel behielt Stimme und Schalter; Frist schnitt lange Sätze ab; Rückbuchung nach Mitternacht |
+| Sicherheitsprüfung (von Hand; der Skill `security-review` lief nicht, weil er `origin/HEAD` braucht und GitHub gesperrt ist) | Schlüssel nie in Antworten, im Audit-Log oder in der Seite; Schnittstelle nur von diesem Mac mit JARVIS-Kopf; Stimmenkennung nur aus der Liste des Kontos und nur Buchstaben und Ziffern; Text des Dienstes wird nie angezeigt oder vorgelesen; gespeichert wird nur die Zeichenzahl des Tages |
+| Gegenproben (Schutz entfernt, Tests müssen fehlschlagen) | Schalter ignoriert: 3 schlagen fehl; Not-Aus ignoriert: 2; Limit nicht geprüft: 1; Probe schickt fremden Text: 1; Probe trotz Not-Aus: 2; beliebige Stimme gespeichert: 1; Fehler zählen als Verbrauch: 1; Sprachcode für Multilingual: 1; Schlüssel schaltet gleich ein: 1; „Stopp“ ohne Echo-Schutz: 1; „Danke“ unterbricht: 1; Rückbuchung nach Mitternacht: 1. Danach wiederhergestellt |
+| Nicht geprüft | **das echte ElevenLabs** (kein Schlüssel, keine Kosten von hier): ob der Dienst Anfragen genau so annimmt, wie der Nachbau es tut, zeigt erst Prüfliste Teil I; Klang und Verzögerung; Safari; das gesprochene „Stopp“ mit echtem Mikrofon und Lautsprecher (Echo) |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** Der Nachbau ist nach der Dokumentation von
+ElevenLabs vom 13. November gebaut (`/v2/voices`, `/v1/text-to-speech/…/stream`, `/v1/user/subscription`);
+die Fehlerantworten des echten Dienstes sind dort nicht beschrieben, deshalb wertet JARVIS nur den Statuscode aus.
+Ob Stimmen aus der ElevenLabs-Bibliothek im Gratis-Tarif über die API gehen, ist nicht belegt.
+**Vorfall:** Ein Versuch, über den ElevenLabs-Konnektor von der Cloud aus drei Hörproben zu erzeugen, wurde von
+ElevenLabs abgelehnt („ungewöhnliche Aktivität“, Gratis-Zugang gesperrt). Berechnet wurde nichts; Benedikt ist
+informiert; von der Cloud aus wird nichts mehr erzeugt. **Sicherheitsrisiken:** neu R-20 (Vorgelesenes geht
+an ElevenLabs). Laufende Kosten entstehen erst, wenn Benedikt einen bezahlten Tarif wählt und die Stimme
+einschaltet; das ist seine Entscheidung.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -425,7 +468,7 @@ Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Sc
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis H). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis I). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
@@ -436,6 +479,9 @@ Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Sc
    gehen weder Name noch Inhalt an Anthropic oder über Telegram, R-17).
 6. Soll die Vorbereitung vor Besprechungen auch per Telegram kommen? Steht auf aus; du schaltest es selbst in
    den Einstellungen ein, wenn du es willst.
+8. ElevenLabs: Schlüssel am Mac eintragen (Einstellungen → Stimme), Wunschstimme im ElevenLabs-Konto zu „Meine
+   Stimmen“ hinzufügen, Prüfliste Teil I. Der Gratis-Tarif hat 10.000 Zeichen im Monat (etwa 30 Antworten);
+   ob du einen bezahlten Tarif nimmst (Starter 6 $ im Monat, Stand 13.11.), entscheidest du.
 7. 3D-Übersicht: Sollen die Projekte dort einen eigenen Felsen bekommen, an der Stelle des Platzhalters
    „Telefon“? Bis dahin erreichst du „Heute“ und „Projekte“ über die Leiste oben und per Zuruf.
 
@@ -452,10 +498,10 @@ Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Sc
 
 Benedikts Wünsche vom 13. November 2026 gehen vor:
 
-1. **H1 Stimme:** ElevenLabs als wählbare Stimme, geprüft gegen einen nachgebauten Dienst; aus, bis Benedikt
-   seinen Schlüssel einträgt (kostet Geld, und was JARVIS vorliest, geht dann an ElevenLabs). Dazu Unterbrechen
-   beim Sprechen prüfen und verbessern.
-2. **E-Design:** zwei bis drei Entwürfe für ein neues Design als Bilder, Benedikt wählt die Richtung, danach Umbau.
+1. **H1 Stimme: gebaut, Testbereit** (siehe Bereich H). Offen ist nur die Prüfung mit Benedikts Schlüssel am Mac.
+2. **E-Design (als Nächstes):** Benedikt will das Design „komplett anders, Richtung 4K, richtige
+   Kino-Übergänge“. Erst Ideen und zwei bis drei Entwürfe als Bilder, er wählt die Richtung, danach Umbau.
+   Dafür den Skill `frontend-design` einsetzen (Benedikts Vorgabe vom 13.11.: passende Skills von selbst nutzen).
 
 Danach wie geplant:
 

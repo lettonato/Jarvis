@@ -43,6 +43,10 @@ export type TelegramConfig = {
 // Twelve Data liefert die Kurse für Gold, Silber und Öl. Der kostenlose Plan reicht.
 export type TwelveDataConfig = { apiKey: string };
 
+// ElevenLabs gibt JARVIS eine natürlichere Stimme. Ohne Schlüssel und ohne Schalter (enabled) spricht der Mac.
+// tagesZeichen begrenzt, wie viele Zeichen am Tag an ElevenLabs gehen dürfen.
+export type ElevenlabsConfig = { apiKey: string; enabled?: boolean; voiceId?: string; voiceName?: string; model?: string; tagesZeichen?: number };
+
 // Ab welchem Betrag der Desk vor einem Kauf fragt (src/lib/approval.ts). Fehlt der Wert, gilt die Grenze von dort.
 export type ApprovalConfig = { limitUsd: ApprovalLimit };
 
@@ -57,6 +61,7 @@ export type JarvisConfig = {
   telegram?: TelegramConfig;
   approval?: ApprovalConfig;
   twelvedata?: TwelveDataConfig;
+  elevenlabs?: ElevenlabsConfig;
   // Wo Schlüssel und Passwörter liegen: in dieser Datei (bisher) oder im macOS-Schlüsselbund.
   geheimnisse?: GeheimnisModus;
 };
@@ -74,6 +79,7 @@ export const GEHEIMNISSE = [
   { name: "twelvedata.apiKey", label: "Twelve-Data-Schlüssel", umgebung: "TWELVEDATA_API_KEY" },
   { name: "mail.password", label: "Mail-Passwort", umgebung: null },
   { name: "telegram.token", label: "Telegram-Bot-Schlüssel", umgebung: null },
+  { name: "elevenlabs.apiKey", label: "ElevenLabs-Schlüssel", umgebung: null },
 ] as const;
 
 export type GeheimnisName = (typeof GEHEIMNISSE)[number]["name"];

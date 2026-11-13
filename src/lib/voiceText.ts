@@ -18,6 +18,16 @@ export const isStop = (text: string) => STOP.test(text.replace(/[.!?,]+/g, "").t
 
 const words = (s: string) => s.toLowerCase().match(/[a-zäöüß0-9]+/g) ?? [];
 
+// „Stopp“ ohne „Jarvis“, während JARVIS spricht: Er hört auf. Es zählen nur klare Haltewörter am Ende eines
+// fertig gehörten Satzes, kein „Danke“. Sagt JARVIS genau dieses Haltewort gerade selbst, war es wohl der Lautsprecher.
+const BARGE = /(?:^|\s)(stopp?|halt|ruhe|sei still|sei ruhig|hör auf|aufhören|abbrechen)$/i;
+export function stopsSpeech(heard: string, speaking: string): boolean {
+  if (!speaking) return false;
+  const m = BARGE.exec(heard.replace(/[.!?,]+/g, " ").replace(/\s+/g, " ").trim());
+  if (!m) return false;
+  return !` ${words(speaking).join(" ")} `.includes(` ${words(m[1]).join(" ")} `);
+}
+
 // Hat das Mikrofon nur JARVIS selbst gehört? Ab drei Wörtern, die fast alle eben gesagt wurden.
 export function looksLikeEcho(heard: string, spoken: string): boolean {
   const h = words(heard);

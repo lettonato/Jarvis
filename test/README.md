@@ -17,7 +17,8 @@ npm run pruefen     # Lint, Typprüfung und Tests
   Projektgedächtnis: nur ein Mensch am Mac bestätigt, Vorschläge sind kein Wissen, Korrekturverlauf,
   vertrauliche Projekte, Speicher in der Datei und auf einem zweiten Speicher ohne Datei.
 * Nachgebaute Dienste in `test/mocks/`: Claude (`claude-mock.ts`), Telegram (`telegram-mock.ts`), xAI/Grok
-  (`xai-mock.ts`), der Mac für Kalender und Programme (`osascript-mock.mjs`, `open-mock.mjs`) und der
+  (`xai-mock.ts`), ElevenLabs mit Stimmenliste, Kontostand und einem stillen, echten MP3
+  (`elevenlabs-mock.ts`), der Mac für Kalender und Programme (`osascript-mock.mjs`, `open-mock.mjs`) und der
   macOS-Schlüsselbund (`security-mock.mjs`).
 * `test/helfer/umgebung.ts` sorgt dafür, dass kein Test echte Einstellungen, echte Schlüssel oder echte
   Dienste berührt.

@@ -22,7 +22,7 @@ const shared: Shared = (holder.__jarvisAudit ??= { letzter: null, schreiben: Pro
 // Schlüssel, deren Werte nie ins Log gehören.
 const GEHEIM_SCHLUESSEL = /(key|token|passw|secret|geheim|iban|kartennummer|cvc|cvv|^pin$|^tan$|cookie|authorization)/i;
 // Werte, die nach einem Schlüssel aussehen, auch wenn sie unter einem harmlosen Namen stehen.
-const GEHEIM_WERT = [/sk-ant-[A-Za-z0-9_-]{8,}/g, /\b\d{5,12}:[A-Za-z0-9_-]{30,60}\b/g, /\bxai-[A-Za-z0-9]{16,}\b/g, /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}\b/g];
+const GEHEIM_WERT = [/sk-ant-[A-Za-z0-9_-]{8,}/g, /\b\d{5,12}:[A-Za-z0-9_-]{30,60}\b/g, /\bxai-[A-Za-z0-9]{16,}\b/g, /\bsk_[A-Za-z0-9_]{20,}\b/g, /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}\b/g];
 
 export function schwaerzen(wert: unknown, tiefe = 0): unknown {
   if (tiefe > 4) return "…";

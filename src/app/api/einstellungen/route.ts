@@ -8,6 +8,7 @@ import { brainKey, testKey } from "@/lib/server/brain";
 import { protokolliere } from "@/lib/server/gateway/audit";
 import { guard, readBody } from "@/lib/server/guard";
 import { testMail } from "@/lib/server/mail";
+import { stimmeEinstellen, stimmeStatusVon, type StimmeAktion } from "@/lib/server/stimme";
 import { explainTelegramError, prefsOf, renewCode, resetTelegram, sendTest, telegramStatus, testTelegramToken, unpairTelegram, wakeTelegram } from "@/lib/server/telegram";
 import { createVault, detectVaults, vaultProblem } from "@/lib/server/obsidian";
 import { providerById } from "@/lib/mailProviders";
@@ -41,6 +42,7 @@ async function settings(config: JarvisConfig): Promise<Settings> {
       fromEnv: !config.twelvedata?.apiKey && Boolean(process.env.TWELVEDATA_API_KEY),
     },
     telegram: telegramStatus(config),
+    stimme: await stimmeStatusVon(config),
     approval: { limitUsd: approvalLimitOf(config.approval?.limitUsd) },
     configFile: path.join(CONFIG_DIR, "config.json"),
   };
@@ -74,7 +76,8 @@ type Action =
   | { action: "removeTelegram" }
   | { action: "approval"; limitUsd: ApprovalLimit }
   | { action: "twelvedata"; apiKey: string }
-  | { action: "removeTwelvedata" };
+  | { action: "removeTwelvedata" }
+  | StimmeAktion;
 
 // Mehr als 20 $ am Tag sind für einen Spielgeld-Test sicher ein Tippfehler.
 const MAX_X_BUDGET_USD = 20;
@@ -220,6 +223,11 @@ export async function POST(request: Request) {
     return Response.json({ ...(await settings(config)), message: "Verbunden. Ab jetzt schaut der Desk auch auf Gold, Silber und Öl." });
   } else if (body.action === "removeTwelvedata") {
     delete config.twelvedata;
+  } else if (body.action === "elevenlabs" || body.action === "elevenlabsPrefs" || body.action === "removeElevenlabs") {
+    const result = await stimmeEinstellen(config, body);
+    if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+    await writeConfig(config);
+    return Response.json({ ...(await settings(config)), ...(result.message ? { message: result.message } : {}) });
   } else if (body.action === "approval") {
     if (!isApprovalLimit(body.limitUsd)) return Response.json({ error: "Diese Grenze gibt es nicht." }, { status: 400 });
     config.approval = { limitUsd: body.limitUsd };

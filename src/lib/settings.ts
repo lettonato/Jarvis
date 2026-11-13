@@ -1,5 +1,6 @@
 import type { ApprovalLimit } from "./approval";
 import type { MailProviderId } from "./mailProviders";
+import type { StimmeStatus } from "./stimme";
 import type { TelegramStatus } from "./telegram";
 
 // Was die Einstellungen-Seite vom Server bekommt. Ein Passwort ist nie dabei.
@@ -16,6 +17,8 @@ export type Settings = {
   commodities: { configured: boolean; hint: string | null; fromEnv: boolean };
   // JARVIS auf dem Handy über Telegram.
   telegram: TelegramStatus;
+  // Die ElevenLabs-Stimme: ob ein Schlüssel da ist, ob sie an ist und wie viel heute schon vorgelesen wurde.
+  stimme: StimmeStatus;
   // Ab welchem Betrag der Desk vor einem Kauf fragt.
   approval: { limitUsd: ApprovalLimit };
   configFile: string;

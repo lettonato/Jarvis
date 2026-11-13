@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { CloudVoiceSetup } from "../CloudVoiceSetup";
 import { useJarvis } from "../JarvisProvider";
 import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
 import { SicherheitsZentrale } from "../Sicherheit";
@@ -90,7 +91,7 @@ export function SettingsView() {
           <Section
             id="sprache"
             title="Sprache"
-            text="Sag „Jarvis“ und dann, was du brauchst, zum Beispiel „Jarvis, wie läuft der Handel?“. Nach seiner Antwort hört er noch ein paar Sekunden zu, da reicht die nächste Frage ohne „Jarvis“. „Jarvis, stopp“ unterbricht ihn."
+            text="Sag „Jarvis“ und dann, was du brauchst, zum Beispiel „Jarvis, wie läuft der Handel?“. Nach seiner Antwort hört er noch ein paar Sekunden zu, da reicht die nächste Frage ohne „Jarvis“. Unterbrechen kannst du ihn jederzeit: Sag einfach „Stopp“, drück Escape oder sprich ihn mit „Jarvis“ neu an."
           >
             <HandsFreeSetup />
           </Section>
@@ -102,8 +103,11 @@ export function SettingsView() {
             <WorldStylePicker />
             <WorldQualityPicker />
           </Section>
-          <Section title="Stimme">
+          <Section id="stimme" title="Stimme" text="So klingt JARVIS, wenn er dir antwortet. Die Stimme des Macs kostet nichts und bleibt auf dem Mac.">
             <VoicePicker />
+            <div className="mt-4 border-t border-sky-300/10 pt-4">
+              <CloudVoiceSetup />
+            </div>
           </Section>
           <Section
             id="sicherheit"
@@ -117,6 +121,10 @@ export function SettingsView() {
               <li>
                 Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
                 ihn zur Erkennung an Google, Safari an Apple. Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
+              </li>
+              <li>
+                Mit eingeschalteter ElevenLabs-Stimme geht jeder Satz, den JARVIS laut vorliest, zum Vertonen an ElevenLabs, auch wenn er aus Mails, Terminen oder
+                Aufgaben stammt. Ausgeschaltet oder ohne Schlüssel spricht der Mac, und nichts davon verlässt ihn.
               </li>
               <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, und für Intel deine Themen. Sonst nichts von dir.</li>
               <li>

@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 30 Minuten.
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 40 Minuten.
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -83,6 +83,24 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 | H4 | Läuft der Spielgeld-Desk: „Pausieren“, dann „Fortsetzen“ | Der Zustand wechselt auf „pausiert“ und zurück, auch auf dem Trading-Desk |
 | H5 | Zu JARVIS sagen: „Was machen die Agenten gerade?“ | Er nennt, wer läuft, wer bereit ist und ob einer einen Fehler meldet |
 | H6 | Nur wenn du magst (kostet etwa 40 Cent bei xAI): bei Intel „Jetzt starten“ | Intel steht auf „läuft“, danach steht ein neuer letzter Lauf da |
+
+## I. Stimme mit ElevenLabs und Unterbrechen (Schritt H1, neu)
+
+Die ElevenLabs-Stimme ist bisher nur gegen einen nachgebauten Dienst geprüft. Mit deinem Schlüssel zeigt sich
+zum ersten Mal, ob das echte ElevenLabs alles genauso annimmt. **Das kostet Zeichen aus deinem Tarif bei
+ElevenLabs** (Gratis-Tarif: 10.000 im Monat). I1 und I2 gehen ohne Schlüssel und kosten nichts.
+
+| Nr. | Was du tust | Was du sehen oder hören solltest |
+|---|---|---|
+| I1 | JARVIS etwas Längeres fragen und, während er spricht, „Stopp“ sagen | Er hört auf zu sprechen, ohne dass du „Jarvis“ sagen musst. Mit Kopfhörern klappt es am sichersten |
+| I2 | Dasselbe mit der Taste Escape | Er verstummt sofort |
+| I3 | Bei ElevenLabs die Wunschstimme zu „Meine Stimmen“ hinzufügen und unter „Developers“ → „API Keys“ einen Schlüssel erstellen | Ein Schlüssel, der meist mit sk_ beginnt. Nicht in einen Chat kopieren |
+| I4 | In JARVIS: Einstellungen → Stimme, Schlüssel einfügen, „Prüfen und speichern“ | „Verbunden. In deinem Konto sind … Stimmen.“ Der Schalter ist noch aus. Lehnt ElevenLabs ab, steht dort ein Satz mit dem Grund; den bitte an mich weitergeben |
+| I5 | Stimme auswählen, „Probe hören“ | Du hörst „Hallo Benedikt, so klinge ich jetzt …“ in der gewählten Stimme |
+| I6 | „Mit dieser Stimme sprechen“ anhaken, dann JARVIS etwas fragen | Er antwortet mit der neuen Stimme, ohne lange Pause zwischen den Sätzen. Oben steht, wie viele Zeichen heute vorgelesen wurden |
+| I7 | Während er mit der neuen Stimme spricht: „Stopp“ oder Escape | Er verstummt sofort |
+| I8 | Tageslimit auf 500 stellen und zwei, drei Fragen stellen | Nach kurzer Zeit spricht wieder die Stimme des Macs, und in den Einstellungen steht, dass das Tageslimit erreicht ist. Danach das Limit wieder hochstellen |
+| I9 | Schalter ausschalten | JARVIS spricht wieder mit der Stimme des Macs |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

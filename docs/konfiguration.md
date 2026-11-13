@@ -72,6 +72,7 @@ Alle optional. Ohne sie gilt der Wert in der Spalte „Standard“.
 | `RUGCHECK_URL` | `https://api.rugcheck.xyz` |
 | `OPEN_METEO_URL` | `https://api.open-meteo.com` |
 | `TWELVEDATA_URL` | `https://api.twelvedata.com` |
+| `ELEVENLABS_BASE_URL` | `https://api.elevenlabs.io` (ElevenLabs-Stimme) |
 | `JARVIS_SEARCH_URL` | DuckDuckGo-HTML-Suche (Browser-Agent) |
 
 ### Orte und Programme
