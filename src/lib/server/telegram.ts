@@ -7,6 +7,7 @@ import type { BrainTurn } from "../brain";
 import type { CalendarSnapshot } from "../calendar";
 import { deskSentence, situation } from "../commands";
 import { isoDate } from "../dates";
+import { abschlussNachricht, istFaellig, tagesabschluss } from "../routinen";
 import { formatPct, formatUsd } from "../format";
 import { marketSnapshot } from "../market";
 import { getWeather } from "../weather";
@@ -29,11 +30,11 @@ import { CONFIG_DIR, readConfig, writeConfig, type JarvisConfig, type TelegramCo
 import { answerApproval, approvalStateOf, control, DeskError, deskSnapshot } from "./desk/engine";
 import { intelSnapshot } from "./intel";
 import { readMail } from "./mail";
-import { entscheideFreigabe, FreigabeFehler, freigabeZustand } from "./gateway/freigaben";
-import { notausAn } from "./gateway/zustand";
+import { entscheideFreigabe, FreigabeFehler, freigabeZustand, offeneFreigaben } from "./gateway/freigaben";
+import { notausAktiv, notausAn } from "./gateway/zustand";
 import { onNotice, type Notice } from "./notify";
 import { readTasks } from "./obsidian";
-import { terminVorbereitung } from "./projekte/projekte";
+import { terminVorbereitung, uebersicht } from "./projekte/projekte";
 
 // JARVIS auf dem Handy: JARVIS fragt bei Telegram ständig nach neuen Nachrichten an deinen Bot („long
 // polling“). Dafür muss niemand von außen an deinen Mac heran; er bleibt nur unter 127.0.0.1 erreichbar.
@@ -70,7 +71,7 @@ type TgUpdate = { update_id: number; message?: TgMessage; callback_query?: TgCal
 // asks: welche Telegram-Nachricht zu welcher Rückfrage gehört, damit JARVIS dort später das Ergebnis
 // einträgt und die Knöpfe entfernt.
 type Ask = { id: string; messageId: number; text: string };
-type State = { offset: number; history: BrainTurn[]; lastAt: string | null; reminded: string[]; briefedOn: string | null; asks: Ask[] };
+type State = { offset: number; history: BrainTurn[]; lastAt: string | null; reminded: string[]; briefedOn: string | null; abgeschlossenAm: string | null; asks: Ask[] };
 
 type Shared = {
   running: boolean;
@@ -103,7 +104,7 @@ const shared: Shared = (holder.__jarvisTelegram ??= {
   calendar: null,
 });
 
-const freshState = (): State => ({ offset: 0, history: [], lastAt: null, reminded: [], briefedOn: null, asks: [] });
+const freshState = (): State => ({ offset: 0, history: [], lastAt: null, reminded: [], briefedOn: null, abgeschlossenAm: null, asks: [] });
 
 async function load(): Promise<State> {
   if (shared.state) return shared.state;
@@ -264,6 +265,7 @@ export const prefsOf = (tg?: TelegramConfig): TelegramPrefs => ({
   reminders: tg?.reminders ?? TELEGRAM_DEFAULTS.reminders,
   projekte: tg?.projekte ?? TELEGRAM_DEFAULTS.projekte,
   briefing: tg?.briefing === undefined ? TELEGRAM_DEFAULTS.briefing : tg.briefing,
+  abschluss: tg?.abschluss ?? TELEGRAM_DEFAULTS.abschluss,
 });
 
 // Nach dem Speichern eines neuen Schlüssels: von vorn, mit frischem Code.
@@ -296,7 +298,7 @@ export async function unpairTelegram(): Promise<void> {
   const tg = config.telegram;
   if (!tg) return;
   if (tg.chatId) await send(tg.token, tg.chatId, "JARVIS ist jetzt von diesem Chat getrennt. Neu koppeln kannst du am Mac unter Einstellungen → Handy.").catch(() => {});
-  config.telegram = { token: tg.token, bot: tg.bot, trades: tg.trades, warnings: tg.warnings, reminders: tg.reminders, projekte: tg.projekte, briefing: tg.briefing };
+  config.telegram = { token: tg.token, bot: tg.bot, trades: tg.trades, warnings: tg.warnings, reminders: tg.reminders, projekte: tg.projekte, briefing: tg.briefing, abschluss: tg.abschluss };
   await writeConfig(config);
   const state = await load();
   state.history = [];
@@ -400,6 +402,8 @@ async function runCommand(command: TelegramCommand, config: JarvisConfig): Promi
     switch (command) {
       case "briefing":
         return await briefing(config, new Date());
+      case "abschluss":
+        return await abschluss(config, new Date());
       case "handel":
         return deskStatus(await deskSnapshot());
       case "pause":
@@ -472,15 +476,31 @@ async function converse(token: string, chatId: number, text: string, config: Jar
 // ---------- Von selbst: Meldungen, Briefing, Erinnerungen ----------
 
 async function briefing(config: JarvisConfig, now: Date): Promise<string> {
-  const [weather, calendar, mail, tasks, intel, desk] = await Promise.all([
+  const [weather, calendar, mail, tasks, intel, desk, projekte] = await Promise.all([
     getWeather().catch(() => null),
     readCalendar().catch(() => null),
     config.mail ? readMail(config.mail).catch(() => null) : null,
     config.vaultPath ? readTasks(config.vaultPath).catch(() => null) : null,
     intelSnapshot(now).catch(() => null),
     deskSnapshot(now).catch(() => null),
+    uebersicht(now).catch(() => null),
   ]);
-  return briefingMessage({ name: config.name, now, weather, calendar, mail, tasks, intel, desk });
+  return briefingMessage({ name: config.name, now, weather, calendar, mail, tasks, intel, desk, projekte, projektNamen: prefsOf(config.telegram).projekte });
+}
+
+// Der Tagesabschluss: was heute offen blieb, was morgen kommt, was noch auf ein Ja oder Nein wartet.
+async function abschluss(config: JarvisConfig, now: Date): Promise<string> {
+  const [calendar, tasks, intel, desk, projekte, freigaben, notaus] = await Promise.all([
+    readCalendar().catch(() => null),
+    config.vaultPath ? readTasks(config.vaultPath).catch(() => null) : null,
+    intelSnapshot(now).catch(() => null),
+    deskSnapshot(now).catch(() => null),
+    uebersicht(now).catch(() => null),
+    offeneFreigaben().catch(() => []),
+    notausAktiv().catch(() => false),
+  ]);
+  const a = tagesabschluss({ calendar, tasks, mail: null, projekte, desk, intel, documents: null, freigabenOffen: freigaben.length, notaus }, now);
+  return abschlussNachricht(a, { name: config.name, namen: prefsOf(config.telegram).projekte, handel: deskSentence(desk, true) });
 }
 
 // Rückfragen kommen immer, auch wenn Meldungen zu Trades abgeschaltet sind: Ohne dein Ja kauft der Desk nicht.
@@ -552,16 +572,16 @@ export async function telegramMinute(now = new Date()) {
   const today = isoDate(now);
   let changed = false;
 
-  if (prefs.briefing && state.briefedOn !== today) {
-    const [h, m] = prefs.briefing.split(":").map(Number);
-    const due = new Date(now);
-    due.setHours(h, m, 0, 0);
-    const late = now.getTime() - due.getTime();
-    if (late >= 0 && late < BRIEFING_WINDOW_MS) {
-      state.briefedOn = today;
-      await save(state);
-      await send(tg.token, tg.chatId, await briefing(config, now)).catch((e) => console.error("Telegram-Briefing:", explainTelegramError(e)));
-    }
+  if (istFaellig(prefs.briefing, now, state.briefedOn, BRIEFING_WINDOW_MS)) {
+    state.briefedOn = today;
+    await save(state);
+    await send(tg.token, tg.chatId, await briefing(config, now)).catch((e) => console.error("Telegram-Briefing:", explainTelegramError(e)));
+  }
+
+  if (istFaellig(prefs.abschluss, now, state.abgeschlossenAm, BRIEFING_WINDOW_MS)) {
+    state.abgeschlossenAm = today;
+    await save(state);
+    await send(tg.token, tg.chatId, await abschluss(config, now)).catch((e) => console.error("Telegram-Tagesabschluss:", explainTelegramError(e)));
   }
 
   if (prefs.reminders) {

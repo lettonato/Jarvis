@@ -130,6 +130,15 @@ describe("Telegram: nur der gekoppelte Chat", () => {
     assert.match(tg.texteAn(ICH)[0], /Schreib mir einfach/);
     assert.equal(claude.anfragen.length, vorher);
   });
+
+  test("/abschluss antwortet ohne Claude mit dem Tagesabschluss", async () => {
+    const vorher = claude.anfragen.length;
+    tg.leeren();
+    tg.nachricht(ICH, "/abschluss");
+    await warteBis(() => tg.texteAn(ICH).length > 0, "Tagesabschluss");
+    assert.match(tg.texteAn(ICH)[0], /^Feierabend, Benedikt\. Dein Tag in Kürze:/);
+    assert.equal(claude.anfragen.length, vorher);
+  });
 });
 
 describe("Telegram: Freigaben per Knopf", () => {

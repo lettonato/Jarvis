@@ -36,6 +36,8 @@ export type TelegramConfig = {
   reminders?: boolean;
   projekte?: boolean;
   briefing?: string | null;
+  // Uhrzeit (HH:MM) für den Tagesabschluss oder null. Fehlt der Wert, kommt keiner.
+  abschluss?: string | null;
 };
 
 // Twelve Data liefert die Kurse für Gold, Silber und Öl. Der kostenlose Plan reicht.

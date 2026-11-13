@@ -28,7 +28,8 @@ export type TagesTermin = {
 };
 
 // Ein Projekt, das heute Aufmerksamkeit braucht, mit dem Grund in einem Satz.
-export type ProjektHinweis = { id: string; name: string; grund: string; dringend: boolean };
+// vertraulich: Der Name darf weder an das KI-Gehirn noch über Telegram gehen (src/lib/routinen.ts achtet darauf).
+export type ProjektHinweis = { id: string; name: string; grund: string; dringend: boolean; vertraulich: boolean };
 
 export type Tageslage = {
   datum: string;
@@ -75,10 +76,10 @@ function projektHinweis(p: ProjektKarte, heute: string): ProjektHinweis | null {
   if (p.status !== "aktiv") return null;
   if (p.ueberfaellig > 0) {
     const was = p.naechsteFrist && p.naechsteFrist.faellig < heute ? `: ${p.naechsteFrist.text}, ${fristText(p.naechsteFrist.faellig, heute)}` : "";
-    return { id: p.id, name: p.name, grund: `${mehrzahl(p.ueberfaellig, "Eine Aufgabe ist", "Aufgaben sind")} überfällig${was}`, dringend: true };
+    return { id: p.id, name: p.name, grund: `${mehrzahl(p.ueberfaellig, "Eine Aufgabe ist", "Aufgaben sind")} überfällig${was}`, dringend: true, vertraulich: p.vertraulich };
   }
   if (p.naechsteFrist && p.naechsteFrist.faellig <= addDays(heute, 3)) {
-    return { id: p.id, name: p.name, grund: `${p.naechsteFrist.text}, ${fristText(p.naechsteFrist.faellig, heute)}`, dringend: p.naechsteFrist.faellig === heute };
+    return { id: p.id, name: p.name, grund: `${p.naechsteFrist.text}, ${fristText(p.naechsteFrist.faellig, heute)}`, dringend: p.naechsteFrist.faellig === heute, vertraulich: p.vertraulich };
   }
   return null;
 }

@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026 (Schritt E1)
+Letzte Aktualisierung: 13. November 2026 (Schritt G1)
 
 ## Aktueller Stand
 
@@ -24,12 +24,14 @@ Routinen und Agenten → Microsoft 365 (zuerst nur mit Testdaten) → Sprache, D
 Grenzen: keine echten Firmendaten, keine Kosten, keine echten Mails/Termine, keine Änderung an echten
 Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 
-Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1) und die Tagesübersicht
-„Heute“ (Schritt E1) sind gebaut und in der Sandbox geprüft: 305 von 305 automatischen Tests bestehen,
+Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
+„Heute“ (Schritt E1) und die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
+Tagesabschluss) sind gebaut und in der Sandbox geprüft: 322 von 322 automatischen Tests bestehen,
 0 übersprungen, 0 bekannte Lücken als TODO.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
-„Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft; echte vertrauliche Projektdaten gehören
-erst nach Benedikts Freigabe hinein (siehe „Offene Fragen“).
+„Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
+dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
+(siehe „Offene Fragen“, Punkt 5).
 
 ## Gesamtfortschritt
 
@@ -40,7 +42,7 @@ erst nach Benedikts Freigabe hinein (siehe „Offene Fragen“).
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“ und Projektübersicht (13 Ansichten); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teil F; Unternehmensübersicht (braucht Microsoft 365); Agentenübersicht kommt mit F; Projekte in der 3D-Übersicht (Frage 7) |
 | F Agenten | Offen (Browser, Analyst, Intel, Crawler, Desk vorhanden) | zentrale Steuerung mit Zeitplan, weitere Agenten |
-| G Proaktive Routinen | Offen (Telegram-Briefing, Erinnerungen vorhanden) | Morgenbriefing, Tagesabschluss, einstellbar und abschaltbar |
+| G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss und Projektüberwachung im Briefing (einstellbar, abschaltbar); **Offen** für Mail-Entwürfe, Marktüberwachung über Intel hinaus | Mac-Prüfliste Teil G; Meldung im Lauf des Tages, wenn etwas überfällig wird; Mail-Unterstützung |
 | D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
 | H Sprache und Desktop | Teilweise vorhanden (Weckwort, Vorlesen, Programme öffnen auf macOS) | Unterbrechen, Desktop-Agent mit Regeln |
 | I Azure | **Blockiert** (Entscheidung und Kostenfreigabe) | Vorbereitung: Speicher- und Modellschicht austauschbar, Anleitung |
@@ -84,7 +86,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Intelligente Erinnerung vor Folgeterminen | Vorbereitung aus bestätigten Einträgen, wenn der Termin ein Projekt nennt; am Mac im Gespräch, per Telegram nur nach Einschalten | frühere Entscheidungen mit Quelle | 6 | Testbereit |
 | **Einheitliche Oberfläche** | | | | |
 | Kommandozentrale mit Ansichten und 3D-Welt | vorhanden (13 Ansichten) | Geschäftsführungsdashboard | 7 | Testbereit |
-| Tagesübersicht, Projektübersicht, Unternehmensüberblick | Briefing, Aufgaben, Post, Kalender | alle Bereiche aus Phase 7 | 7 | Offen |
+| Tagesübersicht, Projektübersicht, Unternehmensüberblick | Ansichten „Heute“ und „Projekte“; Unternehmensüberblick fehlt | alle Bereiche aus Phase 7 | 7 | Testbereit (Tag, Projekte), Offen (Unternehmen) |
 | JARVIS-Chat (Text und Sprache, öffnet Bereiche) | vorhanden, öffnet Ansichten | zentral im Dashboard | 7/8 | Testbereit |
 | Mitarbeiterkapazitäten | fehlt | nur offizielle Zeiterfassung, keine Überwachung | 7 | Offen |
 | **Gemeinsame Agentensteuerung** | | | | |
@@ -94,7 +96,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Grok-Marktbeobachtung (Intel) | 2× täglich, Tagesbudget | proaktive Berichte | 9 | Testbereit |
 | Webcrawler | gemeinsamer Netzschutz `netz.ts` (alle IP-Formen, feste geprüfte IP je Abruf) | gemeinsam nutzbar, Lücken geschlossen | 2/9 | Testbereit (R-05 behoben) |
 | Trading-Simulation (Spielgeld) | vorhanden, kein Echtgeld-Code | strikt getrennt von Echtgeld | 9 | Testbereit |
-| Proaktive Routinen (Kalender, Projekte, Rückmeldungen, Berichte) | Telegram-Briefing, Erinnerungen | kontrollierbar, protokolliert, abschaltbar | 9 | Offen |
+| Proaktive Routinen (Kalender, Projekte, Rückmeldungen, Berichte) | Briefing mit Projekten, Tagesabschluss, Erinnerungen mit Vorbereitung; jede einzeln abschaltbar | kontrollierbar, protokolliert, abschaltbar | 9 | Testbereit (Briefing, Abschluss), Offen (Rückmeldungen, Berichte) |
 | Verkehrsplanung | fehlt | echte Verkehrsdaten | 9 | Offen |
 | **Sichere Unternehmensintegrationen** | | | | |
 | Kalender | Apple-Kalender (macOS), lesen und eintragen | Outlook über Microsoft Graph | 5 | Testbereit (Apple), Graph Offen |
@@ -297,7 +299,7 @@ Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-proj
 | C1.8 Vertrauliche Projekte: nichts davon an das KI-Gehirn oder über Telegram | Testbereit | Test „geht nicht an Anthropic“ |
 | C2 Persönliches Gedächtnis in dieselbe Speicherschicht (Bestätigung gibt es dort schon über das Gateway) | Offen | |
 | C3 Mails und Besprechungsnotizen von selbst Projekten zuordnen und Vorschläge machen | Offen | braucht die Freigabe, Mailinhalte dafür auszuwerten |
-| C4 Projektüberwachung (Überfälliges und Risiken von selbst melden) | Offen | kommt mit G |
+| C4 Projektüberwachung (Überfälliges und nahe Fristen von selbst melden) | Testbereit im Morgenbriefing, im Tagesabschluss und in „Heute“ | Schritt G1; offen: Meldung im Lauf des Tages, offene Risiken |
 | C5 PostgreSQL-Umsetzung der Speicherschnittstelle | Blockiert | braucht eine Datenbank (Azure, Phase 3) |
 
 ### Testergebnisse Schritt C1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
@@ -344,6 +346,40 @@ und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-ris
 keine neuen. Die Tagesübersicht liest nur, schickt nichts an ein Modell und zeigt vertrauliche Projekte nur
 am Mac (wie die Ansicht „Projekte“).
 
+## Bereich G – Proaktive Routinen
+
+Alles hier entsteht ohne KI aus Daten, die JARVIS schon hat (`src/lib/routinen.ts`, aufbauend auf der Tageslage
+von „Heute“). Zwei feste Regeln: Ein vertrauliches Projekt wird nie beim Namen genannt, weder über Telegram
+noch im Gespräch am Mac (was JARVIS dort sagt, steht im Verlauf und ginge mit der nächsten Frage an das
+KI-Gehirn). Über Telegram stehen Projektnamen und -inhalte nur, wenn der Schalter „Projekte beim Namen“ an ist.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| G1.1 Morgenbriefing mit Projekten: am Mac als Satz, über Telegram als Absatz (ohne Schalter nur Zahlen) | Testbereit | `projekteAbsatz`, `projektSatz`; `test/regeln/routinen.test.ts` |
+| G1.2 Tagesabschluss: was erledigt ist, was heute offen blieb, Termine und Aufgaben von morgen, Projekte, was noch auf ein Ja wartet | Testbereit | `tagesabschluss`, `abschlussNachricht`, `abschlussSatz` |
+| G1.3 Tagesabschluss per Telegram zur eingestellten Uhrzeit, einmal am Tag; **Voreinstellung: aus**. Auf Zuruf jederzeit: `/abschluss` oder „Feierabend“ in Telegram, „Tagesabschluss“ am Mac | Testbereit | `telegramMinute`, Einstellungen → Handy |
+| G1.4 Projektüberwachung: Überfälliges und Fristen bis drei Tage voraus erscheinen von selbst im Briefing, im Abschluss und unter „Wartet auf dich“ | Testbereit | wie oben |
+| G1.5 Abschaltbar: Briefing, Tagesabschluss, Erinnerungen, Projektnamen, Warnungen und Trades je mit eigenem Schalter | Testbereit | im Browser geprüft (`test/hand/routinen-rauch.ts`) |
+| G2 Meldung im Lauf des Tages, sobald etwas überfällig wird oder eine Rückmeldung fehlt | Offen | braucht eine Regel gegen zu viele Meldungen |
+| G3 Mail-Unterstützung: Antwortentwürfe vorbereiten | Offen | Entwürfe ja, Senden nur mit Freigabe |
+| G4 Marktüberwachung über Intel und Desk hinaus | Offen | kommt mit den Agenten (F) |
+
+### Testergebnisse Schritt G1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **322 Tests: 322 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Routinen 14, Briefing und Tagesabschluss über den nachgebauten Telegram-Server 3) |
+| `npx next build` | erfolgreich |
+| Handprüfung im Browser (Chromium, gebauter Server, nachgebauter Telegram-Server) | Tagesabschluss ist aus; einschalten speichert 18:00, Uhrzeit ändern speichert, ausschalten speichert; eine unsinnige Uhrzeit lehnt die Schnittstelle ab; keine Fehler in der Seite |
+| Gegenproben (Schutz entfernt, Tests müssen fehlschlagen) | Namen trotz ausgeschaltetem Schalter: 3 schlagen fehl; vertrauliche Projekte beim Namen: 7; zweite Meldung am selben Tag: 2; Tagesabschluss ungefragt eingeschaltet: 2. Danach wiederhergestellt |
+| Nicht geprüft | echtes Handy und echter Mac (Prüfliste Teil G); ob die Uhrzeit hält, wenn der Mac schläft (nachgeholt wird bis drei Stunden später, sonst fällt die Meldung an dem Tag aus) |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. Bekannte Grenze: Wer
+schon gekoppelt ist, sieht `/abschluss` erst nach erneutem Koppeln im Telegram-Menü; getippt geht es sofort.
+**Sicherheitsrisiken:** keine neuen. Titel von Terminen und Texte von Aufgaben standen schon bisher im
+Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Schalter.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -359,13 +395,15 @@ am Mac (wie die Ansicht „Projekte“).
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis F).
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis G). Benedikt hat sie am 13. November
+   als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
 4. Vor Phase 8: Läuft der Geschäftsführungs-PC mit Windows oder macOS?
-5. Projektgedächtnis: Dürfen echte Projektdaten von D&S hinein? Beim Nachfragen liest das KI-Gehirn die Akte,
-   ihr Inhalt geht dann an Anthropic (wie heute schon Mails und Termine, R-14 und R-17). Bis zu deiner
-   Entscheidung: nur Testdaten oder Unkritisches, Heikles als „vertraulich“ markieren.
+5. **Entschieden am 13. November 2026:** Ins Projektgedächtnis dürfen Benedikts eigene, unkritische
+   Projektdaten („nur Sachen zu mir, nichts Wichtiges“). Für sensible Dinge überlegt er sich noch etwas; bis
+   dahin bleiben vertrauliche Firmen- und Kundendaten draußen oder werden als „vertraulich“ markiert (dann
+   gehen weder Name noch Inhalt an Anthropic oder über Telegram, R-17).
 6. Soll die Vorbereitung vor Besprechungen auch per Telegram kommen? Steht auf aus; du schaltest es selbst in
    den Einstellungen ein, wenn du es willst.
 7. 3D-Übersicht: Sollen die Projekte dort einen eigenen Felsen bekommen, an der Stelle des Platzhalters
@@ -382,8 +420,8 @@ am Mac (wie die Ansicht „Projekte“).
 
 ## Nächste Schritte
 
-1. **G Proaktive Routinen:** Morgenbriefing und Tagesabschluss mit Projekten (aus derselben Tageslage wie
-   „Heute“), Projektüberwachung (C4), einstellbar und abschaltbar.
-2. **F Agentensteuerung:** eine Stelle für Zeitplan, Start von Hand, Kosten- und Sicherheitsgrenzen.
-3. B-Rest: nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
+1. **F Agentensteuerung:** eine Stelle für alle Agenten (Zustand, letzter Lauf, nächster Lauf, Start von Hand,
+   Kosten- und Sicherheitsgrenzen), dazu die Agentenübersicht im Dashboard (E5).
+2. B-Rest: nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
+3. G2/G3: Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
 4. D Microsoft 365 nur gegen nachgebaute Schnittstellen; J Modelladapter und Kostenübersicht.

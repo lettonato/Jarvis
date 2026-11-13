@@ -520,3 +520,56 @@ describe("Projektgedächtnis: Vorbereitung vor einer Besprechung", () => {
     assert.ok(!mit.some((t) => t.includes("Millionen")), "Vertrauliches geht nie über Telegram");
   });
 });
+
+describe("Projektgedächtnis: Briefing und Tagesabschluss per Telegram", () => {
+  const fuelle = async () => {
+    const projekt = await p.legeProjektAn({ name: "Hallenneubau" }, "mac", JETZT);
+    await p.trageEin(projekt.id, { art: "aufgabe", text: "Statik prüfen", faellig: "2026-11-10" }, "mac", JETZT);
+    const geheim = await p.legeProjektAn({ name: "Adler", vertraulich: true }, "mac", JETZT);
+    await p.trageEin(geheim.id, { art: "aufgabe", text: "Kaufpreis nachverhandeln", faellig: "2026-11-11" }, "mac", JETZT);
+    // Ein leerer Kalender: Titel von Terminen stehen ohnehin im Briefing, hier geht es nur um das Projektgedächtnis.
+    writeFileSync(STORE, JSON.stringify({ zugriff: "ok", kalender: [{ name: "Privat", writable: true }], standard: "Privat", events: [] }));
+    await kalender.readCalendar({ force: true });
+  };
+  // Erinnerungen aus: Hier zählen nur Briefing und Tagesabschluss.
+  const basis = { token: TOKEN, bot: "jarvis_test_bot", chatId: ICH, reminders: false };
+  const am = (tag: number, stunde: number, minute: number) => new Date(2026, 10, tag, stunde, minute);
+
+  test("im Briefing stehen Projekte ohne den Schalter nur als Zahl, mit ihm beim Namen; vertrauliche nie", async () => {
+    await fuelle();
+    tg.leeren();
+    await config.writeConfig({ ...cfg(), telegram: { ...basis, briefing: "07:30" } });
+    await telegram.telegramMinute(am(13, 7, 31));
+    const [zahlen] = tg.texteAn(ICH);
+    assert.match(zahlen, /Projekte: 2 brauchen dich, alle dringend\. Einzelheiten am Mac unter „Heute“\./);
+    for (const wort of ["Hallenneubau", "Statik", "Adler", "Kaufpreis"]) assert.ok(!zahlen.includes(wort), `„${wort}“ ging ohne Schalter über Telegram`);
+
+    tg.leeren();
+    await config.writeConfig({ ...cfg(), telegram: { ...basis, briefing: "07:30", projekte: true } });
+    await telegram.telegramMinute(am(14, 7, 31));
+    const [namen] = tg.texteAn(ICH);
+    assert.match(namen, /• Hallenneubau: Eine Aufgabe ist überfällig: Statik prüfen, seit 4 Tagen überfällig/);
+    assert.match(namen, /• ein vertrauliches Projekt: Einzelheiten nur am Mac/);
+    for (const wort of ["Adler", "Kaufpreis"]) assert.ok(!namen.includes(wort), `„${wort}“ ging über Telegram`);
+  });
+
+  test("der Tagesabschluss kommt nur, wenn eine Uhrzeit eingestellt ist, dann einmal am Tag", async () => {
+    await fuelle();
+    tg.leeren();
+    await config.writeConfig({ ...cfg(), telegram: { ...basis, briefing: null } });
+    await telegram.telegramMinute(am(13, 18, 1));
+    assert.equal(tg.texteAn(ICH).length, 0, "Voreinstellung: kein Tagesabschluss");
+
+    await config.writeConfig({ ...cfg(), telegram: { ...basis, briefing: null, abschluss: "18:00" } });
+    await telegram.telegramMinute(am(13, 17, 59));
+    assert.equal(tg.texteAn(ICH).length, 0, "vor der Zeit nichts");
+    await telegram.telegramMinute(am(13, 18, 1));
+    const texte = tg.texteAn(ICH);
+    assert.equal(texte.length, 1);
+    assert.match(texte[0], /^Feierabend, Benedikt\. Dein Tag in Kürze:/);
+    assert.match(texte[0], /Projekte: 2 haben Überfälliges oder eine Frist von heute\. Einzelheiten am Mac unter „Heute“\./);
+    for (const wort of ["Hallenneubau", "Statik", "Adler", "Kaufpreis"]) assert.ok(!texte[0].includes(wort), `„${wort}“ ging ohne Schalter über Telegram`);
+    await telegram.telegramMinute(am(13, 18, 2));
+    assert.equal(tg.texteAn(ICH).length, 1, "kein zweiter Tagesabschluss am selben Tag");
+  });
+});

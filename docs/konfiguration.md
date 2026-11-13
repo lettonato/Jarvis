@@ -21,7 +21,7 @@ Umgebungsvariablen.
 | `xai.apiKey`, `xai.dailyBudgetUsd` | Grok (xAI) für X und Intel, Tagesbudget | Schlüssel **ja** |
 | `twelvedata.apiKey` | Kurse für Gold, Silber, Öl | **ja** |
 | `telegram.token` | Schlüssel des eigenen Telegram-Bots | **ja** |
-| `telegram.bot`, `chatId`, `chatName`, `trades`, `warnings`, `reminders`, `briefing` | Kopplung und Meldungen | nein |
+| `telegram.bot`, `chatId`, `chatName`, `trades`, `warnings`, `reminders`, `projekte`, `briefing`, `abschluss` | Kopplung und Meldungen | nein |
 | `calendar.target` | Kalender für neue Termine | nein |
 | `intel.topics`, `budgetUsd`, `auto` | Themen und Budget für Intel | nein |
 | `approval.limitUsd` | Ab welchem Betrag der Desk vor Käufen fragt (`null` = nie) | nein |

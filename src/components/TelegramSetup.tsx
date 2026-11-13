@@ -6,7 +6,7 @@ import { useJarvis } from "./JarvisProvider";
 import { Button, inputClass, Notice } from "./ui";
 import { getJson, postJson } from "@/lib/api";
 import type { Settings } from "@/lib/settings";
-import { findToken, pairLink, tokenProblem, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
+import { ABSCHLUSS_VORSCHLAG, findToken, pairLink, tokenProblem, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
 
 // Einstellungen → Handy: Bot-Schlüssel eintragen, Handy koppeln, festlegen, was aufs Handy kommt.
 
@@ -206,6 +206,7 @@ function QrCode({ text }: { text: string }) {
 
 function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean; onChange: (p: Partial<TelegramPrefs>) => void }) {
   const [time, setTime] = useState(prefs.briefing ?? TELEGRAM_DEFAULTS.briefing!);
+  const [abend, setAbend] = useState(prefs.abschluss ?? ABSCHLUSS_VORSCHLAG);
   const box = "h-4 w-4 accent-sky-400";
   const row = "flex items-center gap-3 text-sky-50/85";
   return (
@@ -223,11 +224,11 @@ function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean;
         <input type="checkbox" className={box} checked={prefs.reminders} onChange={(e) => onChange({ reminders: e.target.checked })} />
         Erinnerung {REMINDER_MINUTES} Minuten vor jedem Termin
       </label>
-      <label className={`${row} ${prefs.reminders ? "" : "opacity-50"}`}>
-        <input type="checkbox" className={box} checked={prefs.projekte} disabled={!prefs.reminders} onChange={(e) => onChange({ projekte: e.target.checked })} />
+      <label className={row}>
+        <input type="checkbox" className={box} checked={prefs.projekte} onChange={(e) => onChange({ projekte: e.target.checked })} />
         <span>
-          Dazu die Vorbereitung aus dem Projektgedächtnis, wenn der Termin zu einem Projekt gehört
-          <span className="block text-xs text-quiet">Aus, bis du es willst: Entscheidungen und offene Punkte gehen dann über Telegram. Vertrauliche Projekte nie.</span>
+          Projekte beim Namen: Vorbereitung vor Terminen, die zu einem Projekt gehören, und Projektnamen im Briefing und im Tagesabschluss
+          <span className="block text-xs text-quiet">Aus, bis du es willst: Namen, Entscheidungen und offene Punkte gehen dann über Telegram. Ohne den Haken nennt JARVIS dort nur Zahlen. Vertrauliche Projekte nie.</span>
         </span>
       </label>
       <div className={`${row} flex-wrap`}>
@@ -245,6 +246,23 @@ function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean;
             className={`${inputClass} w-32`}
           />
           <span className="text-xs text-quiet">Uhr</span>
+        </span>
+      </div>
+      <div className={`${row} flex-wrap`}>
+        <label className="flex items-center gap-3">
+          <input type="checkbox" className={box} checked={prefs.abschluss !== null} onChange={(e) => onChange({ abschluss: e.target.checked ? abend : null })} />
+          Tagesabschluss jeden Abend um
+        </label>
+        <span className="flex items-center gap-2">
+          <input
+            type="time"
+            value={abend}
+            onChange={(e) => setAbend(e.target.value)}
+            onBlur={() => prefs.abschluss !== null && abend && abend !== prefs.abschluss && onChange({ abschluss: abend })}
+            aria-label="Uhrzeit für den Tagesabschluss"
+            className={`${inputClass} w-32`}
+          />
+          <span className="text-xs text-quiet">Uhr: was offen blieb, was morgen kommt, was auf dich wartet</span>
         </span>
       </div>
     </fieldset>

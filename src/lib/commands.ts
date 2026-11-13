@@ -5,6 +5,9 @@ import { intelBriefing, intelSentence, itemsAbout, searchSentence, type IntelSna
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { MarketSnapshot } from "./market";
 import { SAFETY, type DeskSnapshot } from "./paper";
+import type { ProjekteSnapshot } from "./projekte";
+import { abschlussSatz, projektSatz, tagesabschluss } from "./routinen";
+import { tageslage, type TagesDaten } from "./heute";
 import { dateOf, dueSoon, type Task, type TasksSnapshot } from "./tasks";
 import type { WeatherSnapshot } from "./weather";
 
@@ -55,6 +58,7 @@ export type CommandContext = {
   desk: DeskSnapshot | null;
   calendar?: CalendarSnapshot | null;
   intel?: IntelSnapshot | null;
+  projekte?: ProjekteSnapshot | null;
   session: Session | null;
 };
 
@@ -111,6 +115,25 @@ function scanSentence(market: MarketSnapshot | null): string {
   const passed = market.scan.candidates.filter((c) => c.passed);
   const best = passed[0] ? ` Am stärksten gehandelt wird gerade ${passed[0].symbol}.` : "";
   return `Ich habe ${market.scan.scanned} neue Solana-Coins gescannt. ${passed.length} bestehen die harten Filter.${best}`;
+}
+
+// Was JARVIS im Gespräch über den Tag weiß. Freigaben und Not-Aus kennt nur die Sicherheitszentrale.
+const tagesDaten = (ctx: CommandContext): TagesDaten => ({
+  calendar: ctx.calendar ?? null,
+  tasks: ctx.tasks,
+  mail: ctx.mail,
+  projekte: ctx.projekte ?? null,
+  desk: ctx.desk,
+  intel: ctx.intel ?? null,
+  documents: null,
+  freigabenOffen: 0,
+  notaus: false,
+});
+
+// Projekte im Briefing: nur, wenn eines dich braucht oder Vorschläge warten. Vertrauliche werden nie genannt.
+function projekteSentence(ctx: CommandContext): string {
+  if (!ctx.projekte) return "";
+  return projektSatz(tageslage(tagesDaten(ctx), ctx.now), ctx.projekte.vorschlaege.length);
 }
 
 function mailSentence(mail: MailSnapshot | null): string {
@@ -452,6 +475,11 @@ const RULES: Rule[] = [
     },
   },
   {
+    // Der Tagesabschluss: was offen blieb und was morgen kommt. Freigaben und Not-Aus zeigt die Ansicht „Heute“.
+    match: /tagesabschluss|feierabend|tagesrückblick|was (ist|blieb) heute (offen|liegen)/,
+    run: (ctx) => ({ reply: abschlussSatz(tagesabschluss(tagesDaten(ctx), ctx.now), ctx.name), navigate: "/heute" }),
+  },
+  {
     match: /guten morgen|guten tag|guten abend|\bhallo\b|\bhey\b|\bservus\b|briefing|was steht an|was gibt.{0,3} neues|\blage\b|lagebericht/,
     run: (ctx) => {
       const hour = ctx.now.getHours();
@@ -464,6 +492,7 @@ const RULES: Rule[] = [
         intelBriefing(ctx.intel ?? null, ctx.now),
         mailSentence(ctx.mail),
         taskSentence(ctx.tasks, today(ctx)),
+        projekteSentence(ctx),
         deskSentence(ctx.desk, true),
       ]
         .filter(Boolean)

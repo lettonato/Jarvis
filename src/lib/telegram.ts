@@ -4,6 +4,9 @@ import { isoDate } from "./dates";
 import { intelBriefing, type IntelSnapshot } from "./intel";
 import { importantMails, type MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
+import type { ProjekteSnapshot } from "./projekte";
+import { projekteAbsatz } from "./routinen";
+import { tageslage } from "./heute";
 import { dateOf, dueSoon, type TasksSnapshot } from "./tasks";
 import type { WeatherSnapshot } from "./weather";
 
@@ -25,11 +28,15 @@ export type TelegramStatus = {
   prefs: TelegramPrefs;
 };
 
-// projekte: Vor einem Termin, der zu einem Projekt gehört, kommt die Vorbereitung aus dem Projektgedächtnis mit.
-// Aus, bis du es einschaltest: Damit gehen Projektinhalte über Telegram, also über einen Dienst außer Haus.
-export type TelegramPrefs = { trades: boolean; warnings: boolean; reminders: boolean; projekte: boolean; briefing: string | null };
+// projekte: Projektnamen und -inhalte dürfen aufs Handy: die Vorbereitung vor einem Termin, der zu einem Projekt
+// gehört, und die Namen im Briefing und im Tagesabschluss. Aus, bis du es einschaltest: Damit gehen Projektinhalte
+// über Telegram, also über einen Dienst außer Haus. Ohne den Schalter nennt JARVIS dort nur Zahlen.
+// abschluss: Uhrzeit für den Tagesabschluss am Abend oder null. Aus, bis du eine Uhrzeit einstellst.
+export type TelegramPrefs = { trades: boolean; warnings: boolean; reminders: boolean; projekte: boolean; briefing: string | null; abschluss: string | null };
 
-export const TELEGRAM_DEFAULTS: TelegramPrefs = { trades: true, warnings: true, reminders: true, projekte: false, briefing: "07:30" };
+export const TELEGRAM_DEFAULTS: TelegramPrefs = { trades: true, warnings: true, reminders: true, projekte: false, briefing: "07:30", abschluss: null };
+// Die Uhrzeit, die die Einstellungen beim Einschalten des Tagesabschlusses vorschlagen.
+export const ABSCHLUSS_VORSCHLAG = "18:00";
 
 // So viele Minuten vor einem Termin erinnert JARVIS dich.
 export const REMINDER_MINUTES = 15;
@@ -72,6 +79,7 @@ export const pairLink = (bot: string, code: string) => `https://t.me/${bot}?star
 // Erscheint im Telegram-Menü unter „/“.
 export const COMMANDS = [
   { command: "briefing", description: "Was heute ansteht" },
+  { command: "abschluss", description: "Was offen blieb und was morgen kommt" },
   { command: "handel", description: "Stand des Spielgeld-Handels" },
   { command: "pause", description: "Handel pausieren, der Stop-Loss bleibt" },
   { command: "weiter", description: "Handel fortsetzen" },
@@ -80,7 +88,7 @@ export const COMMANDS = [
 ];
 
 // Was eine Nachricht ohne KI-Gehirn bedeutet. Alles andere geht an Claude.
-export type TelegramCommand = "briefing" | "handel" | "pause" | "weiter" | "notaus" | "hilfe";
+export type TelegramCommand = "briefing" | "abschluss" | "handel" | "pause" | "weiter" | "notaus" | "hilfe";
 
 export function commandOf(text: string): TelegramCommand | null {
   const t = text.trim().toLowerCase();
@@ -92,6 +100,7 @@ export function commandOf(text: string): TelegramCommand | null {
   // Ein einzelnes „Stopp“ hält den Handel an. Pause statt Not-Aus, damit der Stop-Loss weiter aufpasst.
   if (/^(stopp?|halt)[.!]*$/.test(t)) return "pause";
   if (/^(briefing|lage)[.!?]*$/.test(t)) return "briefing";
+  if (/^(abschluss|tagesabschluss|feierabend)[.!?]*$/.test(t)) return "abschluss";
   return null;
 }
 
@@ -103,6 +112,7 @@ export function helpText(name: string, brain: boolean): string {
     `Hallo ${name}, hier ist JARVIS. ${free}`,
     "",
     "/briefing – was heute ansteht",
+    "/abschluss – was heute offen blieb und was morgen kommt",
     "/handel – Stand des Spielgeld-Handels",
     "/pause – keine neuen Käufe, der Stop-Loss bleibt (oder einfach „Stopp“)",
     "/weiter – Handel fortsetzen",
@@ -122,13 +132,16 @@ export type BriefingInput = {
   tasks: TasksSnapshot | null;
   intel: IntelSnapshot | null;
   desk: DeskSnapshot | null;
+  // Das Projektgedächtnis. projektNamen: ob Namen und Inhalte genannt werden dürfen (Schalter „projekte“).
+  projekte?: ProjekteSnapshot | null;
+  projektNamen?: boolean;
 };
 
 const DAY = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 const MAX_LINES = 5;
 
 // Das Briefing fürs Handy: kurze Absätze, Termine und Mails als Liste.
-export function briefingMessage({ name, now, weather, calendar, mail, tasks, intel, desk }: BriefingInput): string {
+export function briefingMessage({ name, now, weather, calendar, mail, tasks, intel, desk, projekte, projektNamen }: BriefingInput): string {
   const today = isoDate(now);
   const hour = now.getHours();
   const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
@@ -177,6 +190,13 @@ export function briefingMessage({ name, now, weather, calendar, mail, tasks, int
       const lines = dueToday.slice(0, MAX_LINES).map((t) => `• ${t.text}`);
       parts.push(lines.length ? `${head}\nHeute dran:\n${lines.join("\n")}` : head);
     }
+  }
+
+  if (projekte) {
+    // Nur die Projekte zählen hier; alles andere steht oben schon.
+    const lage = tageslage({ calendar: null, tasks: null, mail: null, projekte, desk: null, intel: null, documents: null, freigabenOffen: 0, notaus: false }, now);
+    const absatz = projekteAbsatz(lage, projekte.vorschlaege.length, projektNamen === true);
+    if (absatz) parts.push(absatz);
   }
 
   const news = intelBriefing(intel, now);

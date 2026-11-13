@@ -68,7 +68,7 @@ type Action =
   | { action: "removeXai" }
   | { action: "telegram"; token: string }
   | { action: "telegramCode" }
-  | { action: "telegramPrefs"; trades?: boolean; warnings?: boolean; reminders?: boolean; projekte?: boolean; briefing?: string | null }
+  | { action: "telegramPrefs"; trades?: boolean; warnings?: boolean; reminders?: boolean; projekte?: boolean; briefing?: string | null; abschluss?: string | null }
   | { action: "telegramTest" }
   | { action: "telegramUnpair" }
   | { action: "removeTelegram" }
@@ -187,6 +187,10 @@ export async function POST(request: Request) {
     if (body.briefing !== undefined) {
       if (body.briefing !== null && !isClock(String(body.briefing))) return Response.json({ error: "Bitte eine Uhrzeit wie 07:30 eintragen." }, { status: 400 });
       next.briefing = body.briefing;
+    }
+    if (body.abschluss !== undefined) {
+      if (body.abschluss !== null && !isClock(String(body.abschluss))) return Response.json({ error: "Bitte eine Uhrzeit wie 18:00 eintragen." }, { status: 400 });
+      next.abschluss = body.abschluss;
     }
     config.telegram = next;
   } else if (body.action === "telegramTest") {

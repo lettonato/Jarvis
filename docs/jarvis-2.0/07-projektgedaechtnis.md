@@ -61,6 +61,8 @@ Risiken, nächster Schritt, alles mit Datum und nur aus bestätigten Einträgen.
 * Am Mac erscheint sie im Gespräch direkt nach der Erinnerung.
 * Per Telegram kommt sie nur, wenn es in den Einstellungen eingeschaltet ist. **Voreinstellung: aus**, weil
   damit Projektinhalte über einen Dienst außer Haus gehen.
+* Derselbe Schalter („Projekte beim Namen“) gilt seit Schritt G1 für das Morgenbriefing und den Tagesabschluss
+  über Telegram: Ohne ihn stehen dort nur Zahlen („2 Projekte brauchen dich“), mit ihm Namen und der Anlass.
 * Der Titel des Termins wird nur im Programm verglichen und nie als Anweisung gelesen.
 
 ## Vertrauliche Projekte

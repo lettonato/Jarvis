@@ -184,7 +184,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const name = settings?.name ?? "Benedikt";
 
   useEffect(() => {
-    latest.current = { name, market, weather, tasks, mail, desk, calendar, intel };
+    latest.current = { name, market, weather, tasks, mail, desk, calendar, intel, projekte };
     place.current = pathname;
     history.current = turns;
     brain.current = Boolean(settings?.brain.configured);

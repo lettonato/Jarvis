@@ -63,6 +63,16 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 | F4 | Zu JARVIS sagen: „Tagesübersicht“ | Die Ansicht „Heute“ geht auf |
 | F5 | Auf deinem Bildschirm die Leiste oben ansehen | Alle Einträge passen in eine Zeile. Wenn nicht, schreib mir die Breite deines Fensters |
 
+## G. Morgenbriefing und Tagesabschluss (Schritt G1, neu)
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| G1 | Zu JARVIS sagen: „Briefing“ (im Testprojekt liegt noch die überfällige Aufgabe aus F3) | Im Briefing nennt JARVIS das Projekt und die überfällige Aufgabe |
+| G2 | Zu JARVIS sagen: „Tagesabschluss“ | JARVIS sagt, was offen blieb und was morgen ansteht, und öffnet „Heute“ |
+| G3 | In Telegram `/abschluss` schreiben | Eine Nachricht „Feierabend, …“ mit den Terminen von morgen. Projekte stehen nur als Zahl darin |
+| G4 | Einstellungen → Handy: „Tagesabschluss jeden Abend um“ anhaken und eine Uhrzeit in zwei Minuten einstellen | Zur Uhrzeit kommt die Nachricht von selbst, danach an dem Tag nicht noch einmal. Den Haken kannst du wieder herausnehmen |
+| G5 | Einstellungen → Handy: „Projekte beim Namen“ anhaken, dann in Telegram `/briefing` | Jetzt steht das Testprojekt mit Namen im Briefing. Ein als „Vertraulich“ markiertes Projekt steht nie mit Namen da |
+
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 
 Das ist der einzige Teil, der echte Zugangsdaten bewegt. **Mach ihn nur, wenn du das möchtest.** Er lässt
