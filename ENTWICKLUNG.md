@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026 (Schritt B4, nach E2 „Glashaus“)
+Letzte Aktualisierung: 13. November 2026 (Schritt B5, nach E2 „Glashaus“)
 
 ## Aktueller Stand
 
@@ -27,7 +27,7 @@ Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
-Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 444 von 444 automatischen Tests
+Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 454 von 454 automatischen Tests
 bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
@@ -44,7 +44,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | Bereich (Auftrag vom 13.11.) | Stand | Was fehlt bis „Abgeschlossen“ |
 |---|---|---|
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
-| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; acht Befunde aus der Durchsicht vom 13.11. prüfen (siehe Schritt B2 und B3) |
+| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; zwei kleine Befunde aus den Durchsichten (siehe Schritt B5) |
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der fünf vorhandenen Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre); **Offen** für weitere Agenten und einen gemeinsamen Zeitplan | Mac-Prüfliste Teil H; Marktagent, Edelmetallagent, Newsletter und weitere; Kostenzählung für Gespräch und Browser (J) |
@@ -357,8 +357,34 @@ Beide ließen sich nachstellen (Tests zuerst rot) und sind behoben:
 | Handprüfung im Browser (gebauter Server, Beispieldaten) | „Wetter“ und der Satz mit der Zahl der Mails bleiben ohne Kennzeichen; „Die Mail ist von Petra Bauer. Betreff: …“ trägt es |
 | Nicht geprüft | echter macOS-Schlüsselbund; ob das Gateway nach einer so gekennzeichneten Antwort am Mac wirklich nachfragt (die Weitergabe des Kennzeichens an den Server ist seit Schritt 2 gebaut und dort getestet, hier nicht erneut) |
 
-**Offen aus der Durchsicht:** die acht Befunde aus Schritt B2 und zwei neue aus Schritt E2 (Korrekturvorschlag
-überschreibt Handänderungen; Netzschleuse ohne Ausweichadresse). Keiner davon betrifft Zugangsdaten.
+**Offen aus der Durchsicht:** siehe Schritt B5.
+
+### Schritt B5: acht weitere Befunde aus den Durchsichten (13. November 2026)
+
+Jeder Befund wurde zuerst mit einem Test nachgestellt (rot), dann behoben. Ausnahme ist die Tonfreigabe, die
+sich nur im Browser zeigt; dort lief die Handprüfung der Stimme.
+
+| Befund | Was passierte | Behoben in | Beleg |
+|---|---|---|---|
+| Projekt falsch zugeordnet | Ein Projekt „IT“ wurde in „Weiterbildung Mitarbeiter“ gefunden, weil nach Buchstabenfolgen gesucht wurde | `src/lib/projekte.ts` (`findeProjekt`: nur ganze Wörter) | `test/regeln/projekt-suche.test.ts` (5) |
+| Umbenanntes Projekt verliert seine Einträge | Wer einen Projektvorschlag beim Übernehmen umbenannte, bekam mit dem ersten wartenden Eintrag ein zweites Projekt unter dem alten Namen | `src/lib/server/projekte/projekte.ts` | `projekte.test.ts` (neu) |
+| Korrektur überschreibt Handänderung | Ein Korrekturvorschlag stellte beim Übernehmen alle Felder auf den Stand vom Vorschlag zurück | wie oben; der Vorschlag merkt sich, welche Felder JARVIS ändern will (`geaendert`) | `projekte.test.ts` (neu) |
+| Gleichzeitiges Speichern der Einstellungen | Zwei Speichervorgänge zur selben Zeit: einer scheiterte mit Fehler, weil beide dieselbe Nebendatei nutzten | `src/lib/server/config.ts` (nacheinander, eigene Nebendatei) | `zugangsdaten.test.ts` (neu, vorher 11 von 12 Aufrufen fehlgeschlagen) |
+| Gesperrter Schlüsselbund wird dauernd gefragt | Jedes Lesen der Einstellungen startete `security` neu für jeden unlesbaren Eintrag (im Test 18 statt 3 Aufrufe) | `config.ts`: 20 Sekunden Pause nach einem Fehlversuch | `zugangsdaten.test.ts` (neu) |
+| Falscher Alarm nach dem Umzug | Ein Passwort, das zufällig auch als Name in der Datei steht, ließ den Umzug mit „noch im Klartext“ enden, obwohl alles umgezogen war | `src/lib/server/zugangsdaten.ts`: kurze Werte nur an ihrer Stelle prüfen, lange Schlüssel weiter in der ganzen Datei | `zugangsdaten.test.ts` (neu) |
+| „Projekt“ kapert Sätze | Jeder kurze Satz mit dem Wort Projekt öffnete die Projektansicht, statt an Claude oder an die Regeln für Post und Aufgaben zu gehen | `src/lib/commands.ts` | `test/regeln/heute.test.ts` (erweitert) |
+| Ton bleibt nach einer Blockade aus | Nach „Klick einmal irgendwo auf die Seite“ gab der Klick den Ton nicht frei, weil JARVIS die beendete Sprachschlange noch für aktiv hielt | `src/lib/useVoice.ts` | kein automatischer Test möglich; `stimme-rauch` läuft weiter durch. Die Blockade selbst ist **nicht nachgestellt** |
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **454 Tests: 454 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** |
+| `npx next build` | erfolgreich |
+| Handprüfungen `projekte-rauch`, `stimme-rauch`, `agenten-rauch` | alle Schritte in Ordnung |
+| Nicht geprüft | echter macOS-Schlüsselbund; die Tonblockade im Browser; ob 20 Sekunden Pause am Mac angenehm sind (nach dem Entsperren des Schlüsselbunds dauert es bis zu 20 Sekunden, bis die Dienste wieder als eingerichtet gelten) |
+
+**Noch offen aus den Durchsichten (beide ohne Sicherheitsbezug):** Die Netzschleuse verbindet nur zur ersten
+Adresse eines Servers und weicht nicht auf die nächste aus (`netzschleuse.ts`); „Heute“ und die Hinweisleiste
+fragen beide alle 10 Sekunden `/api/sicherheit` ab (doppelt, aber billig).
 
 ## Bereich C – Gehirn und Projektgedächtnis
 
@@ -641,10 +667,8 @@ Benedikts Wünsche vom 13. November 2026 gehen vor:
    **Status: Testbereit** (Schritt E2 in Bereich E): alle zwölf Räume sind umgestellt, alle Funktionen
    geblieben. Offen ist Benedikts Blick am Mac (Prüfliste Teil J) und der Feinschliff der dichten Räume
    Trading und Einstellungen.
-3. **Befunde aus der Durchsicht vom 13.11.**: die zwei zum Schutz vertraulicher Projekte sind behoben
-   (Schritt B3), ebenso Schlüsselbund und Kennzeichnung eigener Antworten (Schritt B4). Die übrigen acht
-   (Liste in den Testergebnissen von Schritt B2) und die zwei übrigen neuen aus der Durchsicht zu Schritt E2
-   (Korrekturvorschlag, Netzschleuse) einzeln nachstellen, mit Test belegen, beheben.
+3. **Befunde aus den Durchsichten vom 13.11.**: behoben in den Schritten B3, B4 und B5. Offen sind nur noch
+   zwei ohne Sicherheitsbezug (Netzschleuse ohne Ausweichadresse, doppelte Abfrage in „Heute“), siehe Schritt B5.
 
 Danach wie geplant:
 

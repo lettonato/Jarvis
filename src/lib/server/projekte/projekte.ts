@@ -334,7 +334,7 @@ export async function schlageVor(eingabe: VorschlagEingabe, lage: { kanal: "mac"
           uebersprungen.push(`Schon vorgeschlagen: ${f.text.slice(0, 60)}`);
           continue;
         }
-        await lege({ art: "korrektur", projektId: ziel.projektId, projektName, eintragId: ziel.id, inhalt });
+        await lege({ art: "korrektur", projektId: ziel.projektId, projektName, eintragId: ziel.id, inhalt, geaendert: FELDER.filter((k) => ziel[k] !== f[k]) });
         continue;
       }
       const doppelt = vorhandene.some((e) => e.art === f.art && gleich(e.text, f.text)) || [...offen, ...angelegt].some((v) => v.art === "eintrag" && gleich(v.projektName, projektName) && v.inhalt.art === f.art && gleich(v.inhalt.text ?? "", f.text));
@@ -376,7 +376,11 @@ export async function entscheide(vorschlagId: string, ja: boolean, von: Wer, aen
     const projektName = sauber(aenderung.projektName ?? v.projektName, GRENZEN.name);
 
     if (v.art === "korrektur") {
-      const eintrag = await aendereEintrag(v.eintragId!, inhalt, `Vorschlag von JARVIS (${quelle.hinweis || quelle.art})`, wer, jetzt);
+      // Übernommen wird nur, was JARVIS ändern wollte, und was der Mensch beim Übernehmen selbst eingetragen hat.
+      // Alles andere bleibt, wie der Eintrag jetzt ist, auch wenn er seit dem Vorschlag von Hand geändert wurde.
+      const nur = v.geaendert ? new Set<string>([...v.geaendert, ...Object.keys(aenderung).filter((k) => aenderung[k] !== undefined && aenderung[k] !== v.inhalt[k as keyof VorschlagInhalt])]) : null;
+      const felderDazu = nur ? Object.fromEntries(Object.entries(inhalt).filter(([k]) => nur.has(k))) : inhalt;
+      const eintrag = await aendereEintrag(v.eintragId!, felderDazu, `Vorschlag von JARVIS (${quelle.hinweis || quelle.art})`, wer, jetzt);
       await s.speichereVorschlag(fertig);
       return { vorschlag: fertig, eintrag };
     }
@@ -386,6 +390,11 @@ export async function entscheide(vorschlagId: string, ja: boolean, von: Wer, aen
       if (projekt) throw new ProjektFehler(`Das Projekt „${projekt.name}“ gibt es inzwischen schon.`);
       projekt = await neuesProjekt({ name: projektName, beschreibung: inhalt.beschreibung, verantwortliche: inhalt.verantwortliche }, quelle, jetzt);
       await s.speichereVorschlag({ ...fertig, projektId: projekt.id });
+      // Einträge, die auf dieses Projekt gewartet haben, hängen jetzt fest an ihm, auch wenn der Mensch es beim
+      // Übernehmen umbenannt hat. Sonst entstünde mit dem ersten Eintrag ein zweites Projekt unter dem alten Namen.
+      for (const x of await s.vorschlaege("offen")) {
+        if (x.id !== v.id && x.art !== "projekt" && !x.projektId && gleich(x.projektName, v.projektName)) await s.speichereVorschlag({ ...x, projektId: projekt.id, projektName: projekt.name });
+      }
       return { vorschlag: { ...fertig, projektId: projekt.id }, projekt };
     }
     // Ein Eintrag für ein Projekt, das noch nicht bestätigt ist: Mit dem Eintrag bestätigt der Mensch auch das Projekt.

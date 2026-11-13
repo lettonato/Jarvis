@@ -96,9 +96,14 @@ function geheimnisSetzen(config: JarvisConfig, name: GeheimnisName, wert: string
   if (obj) obj[feld] = wert;
 }
 
-type Tresor = { werte: Map<string, string>; unlesbar: Map<string, string> };
+// versucht: wann ein Eintrag zuletzt vergeblich gelesen wurde. Solange die Pause läuft, fragt JARVIS den
+// Schlüsselbund nicht erneut; sonst startete jede Anfrage das Programm `security` neu und macOS fragte bei
+// gesperrtem Schlüsselbund womöglich immer wieder nach dem Passwort.
+type Tresor = { werte: Map<string, string>; unlesbar: Map<string, string>; versucht: Map<string, number> };
 const holder = globalThis as typeof globalThis & { __jarvisTresor?: Tresor };
-const tresor: Tresor = (holder.__jarvisTresor ??= { werte: new Map(), unlesbar: new Map() });
+const tresor: Tresor = (holder.__jarvisTresor ??= { werte: new Map(), unlesbar: new Map(), versucht: new Map() });
+tresor.versucht ??= new Map();
+export const SCHLUESSELBUND_PAUSE_MS = 20_000;
 
 // Welche Einträge sich zuletzt nicht aus dem Schlüsselbund lesen ließen, mit Grund.
 export const unlesbareGeheimnisse = () => new Map(tresor.unlesbar);
@@ -106,6 +111,7 @@ export const unlesbareGeheimnisse = () => new Map(tresor.unlesbar);
 export const vergissGeheimnisse = () => {
   tresor.werte.clear();
   tresor.unlesbar.clear();
+  tresor.versucht.clear();
 };
 export const merkeGeheimnis = (name: string, wert: string) => tresor.werte.set(name, wert);
 
@@ -130,23 +136,28 @@ export async function readConfigFile(): Promise<JarvisConfig> {
   }
 }
 
-export async function readConfig(): Promise<JarvisConfig> {
+export async function readConfig(jetzt = Date.now()): Promise<JarvisConfig> {
   const config = await readConfigFile();
   if (config.geheimnisse !== "schluesselbund") return config;
   for (const { name } of GEHEIMNISSE) {
     if (geheimnisLesen(config, name) !== GEHEIM_MARKE) continue;
     let wert = tresor.werte.get(name);
-    if (wert === undefined) {
+    const zuletzt = tresor.versucht.get(name);
+    if (wert === undefined && (zuletzt === undefined || jetzt - zuletzt >= SCHLUESSELBUND_PAUSE_MS || jetzt < zuletzt)) {
       try {
         const gelesen = await lies(name);
-        if (gelesen === null) tresor.unlesbar.set(name, "fehlt im Schlüsselbund");
-        else {
+        if (gelesen === null) {
+          tresor.unlesbar.set(name, "fehlt im Schlüsselbund");
+          tresor.versucht.set(name, jetzt);
+        } else {
           wert = gelesen;
           tresor.werte.set(name, gelesen);
           tresor.unlesbar.delete(name);
+          tresor.versucht.delete(name);
         }
       } catch (e) {
         tresor.unlesbar.set(name, e instanceof SchluesselbundFehler ? e.message : "nicht lesbar");
+        tresor.versucht.set(name, jetzt);
       }
     }
     // Ohne Wert gilt der Dienst als nicht eingerichtet; die Marke bleibt in der Datei (siehe writeConfig).
@@ -155,7 +166,18 @@ export async function readConfig(): Promise<JarvisConfig> {
   return config;
 }
 
-export async function writeConfig(config: JarvisConfig): Promise<void> {
+// Speichern läuft immer nacheinander: Zwei Anfragen zur selben Zeit (Einstellungen und Telegram etwa) würden
+// sich sonst die Nebendatei gegenseitig wegziehen oder halb überschreiben.
+const warteschlange = globalThis as typeof globalThis & { __jarvisConfigSchreiben?: Promise<unknown> };
+let nebendatei = 0;
+
+export function writeConfig(config: JarvisConfig): Promise<void> {
+  const lauf = (warteschlange.__jarvisConfigSchreiben ?? Promise.resolve()).then(() => schreibeConfig(config));
+  warteschlange.__jarvisConfigSchreiben = lauf.catch(() => {});
+  return lauf;
+}
+
+async function schreibeConfig(config: JarvisConfig): Promise<void> {
   const datei: JarvisConfig = structuredClone(config);
   if (config.geheimnisse === "schluesselbund") {
     const vorher = await readConfigFile();
@@ -166,6 +188,7 @@ export async function writeConfig(config: JarvisConfig): Promise<void> {
         if (geheimnisLesen(vorher, name) === GEHEIM_MARKE) await loesche(name);
         tresor.werte.delete(name);
         tresor.unlesbar.delete(name);
+        tresor.versucht.delete(name);
         continue;
       }
       if (wert === "" && (tresor.unlesbar.has(name) || geheimnisLesen(vorher, name) === GEHEIM_MARKE)) {
@@ -179,14 +202,21 @@ export async function writeConfig(config: JarvisConfig): Promise<void> {
         await schreibe(name, wert);
         tresor.werte.set(name, wert);
         tresor.unlesbar.delete(name);
+        tresor.versucht.delete(name);
       }
       geheimnisSetzen(datei, name, GEHEIM_MARKE);
     }
   }
   await fs.mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
   // Erst in eine Nebendatei, dann umbenennen: Bricht etwas ab, bleibt die alte Datei ganz.
-  await fs.writeFile(`${FILE}.tmp`, JSON.stringify(datei, null, 2), { mode: 0o600 });
-  await fs.rename(`${FILE}.tmp`, FILE);
+  const tmp = `${FILE}.${process.pid}.${++nebendatei}.tmp`;
+  try {
+    await fs.writeFile(tmp, JSON.stringify(datei, null, 2), { mode: 0o600 });
+    await fs.rename(tmp, FILE);
+  } catch (e) {
+    await fs.rm(tmp, { force: true });
+    throw e;
+  }
 }
 
 export const CONFIG_FILE = FILE;

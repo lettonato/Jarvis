@@ -164,5 +164,15 @@ describe("Kurze Befehle zu den neuen Ansichten", () => {
 
   test("eine ganze Frage zu einem Projekt geht mit KI-Gehirn an Claude, nicht an die Regel", () => {
     assert.equal(decide("Was ist der Stand im Projekt Hallenneubau und was ist offen?", ctx, true), null);
+    // Das Wort „Projekt“ allein öffnet nicht die Ansicht: Kurze Fragen zu einem Projekt gehen an das KI-Gehirn …
+    assert.equal(decide("Was macht Projekt Hallenneubau", ctx, true), null);
+    assert.equal(decide("Stand Projekt Halle", ctx, true), null);
+    // … und ohne KI-Gehirn greifen die Regeln für Post und Aufgaben, nicht die Projektansicht.
+    assert.notEqual(decide("Mails zum Projekt Alpha", ctx, false)?.navigate, "/projekte");
+    assert.notEqual(decide("Aufgaben im Projekt Alpha", ctx, false)?.navigate, "/projekte");
+    for (const satz of ["Projekt", "Meine Projekte", "Zeig mir die Projekte", "Projektübersicht", "Öffne das Projektgedächtnis", "Geh zu den Projekten", "Projekte zeigen"]) {
+      assert.equal(decide(satz, ctx, true)?.navigate, "/projekte", satz);
+      assert.equal(decide(satz, ctx, false)?.navigate, "/projekte", `${satz} (ohne KI-Gehirn)`);
+    }
   });
 });

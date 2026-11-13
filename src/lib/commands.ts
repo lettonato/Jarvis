@@ -426,7 +426,9 @@ const RULES: Rule[] = [
     run: () => ({ reply: "Hier ist dein Tag im Überblick.", navigate: "/heute" }),
   },
   {
-    match: /\bprojekt(e|en|übersicht|gedächtnis)?\b/,
+    // Nur wer die Ansicht selbst meint („Projekte“, „zeig mir die Projekte“), landet dort. Ein Satz, in dem das
+    // Wort Projekt bloß vorkommt („Mails zum Projekt Alpha“), gehört den anderen Regeln oder dem KI-Gehirn.
+    match: /^(?:(?:zeige?|öffne|gehe?)\s+(?:mir\s+)?)?(?:(?:zu|zum|zur|auf|in)\s+)?(?:(?:die|den|das|der|meine|meinen|alle)\s+)?(?:projekt|projekte|projekten|projektübersicht|projektgedächtnis)(?:\s+(?:zeigen|öffnen|ansehen|bitte))*$/,
     run: () => ({ reply: "Hier sind die Projekte und was dazu festgehalten ist.", navigate: "/projekte" }),
   },
   {

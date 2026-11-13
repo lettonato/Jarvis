@@ -28,10 +28,18 @@ export async function zugangsdatenStatus(): Promise<ZugangsdatenStatus> {
   };
 }
 
-// Prüft, dass kein gespeicherter Wert mehr im Klartext in der Datei steht.
+// Prüft, dass an den Stellen der Schlüssel und Passwörter nur noch die Marke steht, und dass kein langer Wert
+// (ein Schlüssel) irgendwo sonst in der Datei auftaucht. Kurze Werte werden nur an ihrer Stelle geprüft: Ein
+// Passwort, das zufällig wie der Name oder der Server heißt, wäre in der ganzen Datei gesucht ein falscher Alarm.
+const LANG = 16;
 async function dateiFrei(werte: string[]): Promise<boolean> {
+  const datei = await readConfigFile();
+  const stellen = GEHEIMNISSE.every((g) => {
+    const wert = geheimnisLesen(datei, g.name);
+    return wert === undefined || wert === "" || wert === GEHEIM_MARKE;
+  });
   const roh = await fs.readFile(CONFIG_FILE, "utf8").catch(() => "");
-  return werte.every((w) => !roh.includes(w));
+  return stellen && werte.filter((w) => w.length >= LANG).every((w) => !roh.includes(w) && !roh.includes(JSON.stringify(w).slice(1, -1)));
 }
 
 export async function inSchluesselbund(von: Wer): Promise<string> {

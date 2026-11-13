@@ -66,6 +66,10 @@ export type Vorschlag = {
   projektName: string;
   eintragId: string | null;
   inhalt: VorschlagInhalt;
+  // Nur bei einer Korrektur: welche Felder JARVIS ändern will. `inhalt` zeigt den ganzen Eintrag, wie er danach
+  // aussähe; übernommen werden nur diese Felder, damit eine Handänderung dazwischen nicht verloren geht.
+  // Fehlt bei Vorschlägen von vor dem 13.11.2026; dann gilt wie früher der ganze Inhalt.
+  geaendert?: (keyof VorschlagInhalt)[];
   quelle: Quelle;
   erstelltAm: string;
   zustand: "offen" | "uebernommen" | "abgelehnt";
@@ -115,12 +119,16 @@ export const namensliste = (wert: unknown, max: number, laenge: number): string[
 const schluessel = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 // Findet ein Projekt über seine Nummer, seinen genauen Namen oder einen eindeutigen Teil des Namens.
+// Ein Teil zählt nur als ganze Wörter: „IT“ steckt nicht in „Weiterbildung“, „Hall“ ist nicht „Hallenneubau“.
 export function findeProjekt<P extends Pick<Projekt, "id" | "name" | "stichworte">>(projekte: P[], gesucht: string): P | null {
   const g = schluessel(gesucht ?? "");
   if (!g) return null;
   const genau = projekte.find((p) => p.id === gesucht || schluessel(p.name) === g || p.stichworte.some((s) => schluessel(s) === g));
   if (genau) return genau;
-  const teil = projekte.filter((p) => schluessel(p.name).includes(g) || (g.length >= 4 && g.includes(schluessel(p.name))));
+  const teil = projekte.filter((p) => {
+    const name = schluessel(p.name);
+    return ` ${name} `.includes(` ${g} `) || (name.length >= 4 && ` ${g} `.includes(` ${name} `));
+  });
   return teil.length === 1 ? teil[0] : null;
 }
 

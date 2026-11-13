@@ -151,7 +151,7 @@ describe("Zugangsdaten: Umzug in den Schlüsselbund", () => {
     assert.equal(alt.telegram?.token, "");
     // Der Schlüsselbund geht wieder auf, Anfrage B liest alles richtig.
     delete process.env.JARVIS_SECURITY_KAPUTT;
-    assert.equal((await config.readConfig()).claude?.apiKey, CLAUDE);
+    assert.equal((await config.readConfig(Date.now() + config.SCHLUESSELBUND_PAUSE_MS + 1000)).claude?.apiKey, CLAUDE);
     // Jetzt speichert A ihren alten Stand (sie wollte nur den Namen ändern).
     alt.name = "Benedikt S.";
     await config.writeConfig(alt);
@@ -163,6 +163,44 @@ describe("Zugangsdaten: Umzug in den Schlüsselbund", () => {
     assert.equal(danach.name, "Benedikt S.");
     assert.equal(danach.claude?.apiKey, CLAUDE, "JARVIS liest weiter den echten Schlüssel");
     assert.equal(danach.telegram?.token, TELEGRAM);
+  });
+
+  test("gleichzeitiges Speichern: jeder Aufruf gelingt, die Datei bleibt ganz, keine Nebendatei bleibt liegen", async () => {
+    const basis = await config.readConfig();
+    const ergebnisse = await Promise.allSettled(Array.from({ length: 12 }, (_, i) => config.writeConfig({ ...basis, name: `Benedikt ${i}` })));
+    assert.deepEqual(ergebnisse.filter((e) => e.status === "rejected").map((e) => String((e as PromiseRejectedResult).reason)), [], "kein Speichern schlägt fehl");
+    const danach = JSON.parse(datei()) as { name: string; claude: { apiKey: string } };
+    assert.match(danach.name, /^Benedikt \d+$/);
+    assert.equal(danach.claude.apiKey, CLAUDE);
+    assert.deepEqual((await fs.readdir(dir)).filter((f) => f.includes(".tmp")), [], "keine Nebendatei übrig");
+  });
+
+  test("ein Passwort, das zufällig auch anderswo in der Datei vorkommt, löst keinen falschen Alarm aus", async () => {
+    // Das Mail-Passwort ist hier dasselbe Wort wie der Name; der Name bleibt zu Recht im Klartext in der Datei.
+    await config.writeConfig({ ...(await config.readConfig()), name: "Benedikt", mail: { provider: "other" as never, host: "imap.example.com", port: 993, user: "b@example.com", password: "Benedikt" } });
+    const meldung = await z.inSchluesselbund("mac");
+    assert.match(meldung, /liegen jetzt im Schlüsselbund/);
+    assert.equal(ablageInhalt()["JARVIS/mail.password"], "Benedikt");
+    const roh = JSON.parse(datei()) as { name: string; mail: { password: string } };
+    assert.equal(roh.mail.password, "@schluesselbund");
+    assert.equal(roh.name, "Benedikt");
+    assert.ok((await audit.leseAudit()).some((e) => e.was === "Zugangsdaten in den Schlüsselbund"), "der Umzug steht im Audit-Log");
+  });
+
+  test("gesperrter Schlüsselbund: JARVIS fragt nicht bei jedem Lesen neu, sondern erst nach einer Pause wieder", async () => {
+    await z.inSchluesselbund("mac");
+    config.vergissGeheimnisse();
+    process.env.JARVIS_SECURITY_KAPUTT = "lesen";
+    await fs.rm(LOG, { force: true });
+    const start = new Date("2026-11-13T10:00:00Z").getTime();
+    for (let i = 0; i < 6; i++) assert.equal((await config.readConfig(start + i * 1000)).claude?.apiKey, "");
+    const aufrufe = () => readFileSync(LOG, "utf8").trim().split("\n").filter(Boolean).length;
+    assert.equal(aufrufe(), 3, "drei Einträge, je einmal gefragt, nicht bei jedem der sechs Lesevorgänge");
+    assert.ok((await z.zugangsdatenStatus()).eintraege.find((e) => e.name === "claude.apiKey")?.fehler, "der Grund bleibt sichtbar");
+    // Nach der Pause fragt JARVIS wieder, und ist der Schlüsselbund dann offen, sind die Werte da.
+    delete process.env.JARVIS_SECURITY_KAPUTT;
+    assert.equal((await config.readConfig(start + config.SCHLUESSELBUND_PAUSE_MS + 6000)).claude?.apiKey, CLAUDE);
+    assert.equal(config.unlesbareGeheimnisse().size, 0);
   });
 
   test("Rückweg in die Datei stellt den alten Zustand her und leert den Schlüsselbund", async () => {

@@ -513,6 +513,8 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
       };
       // Läuft schon ein Satz, ist die Erlaubnis da. Wird gerade einer geholt, bleibt der Spieler unberührt.
       if (!el.paused) return free();
+      // stopCloud steht nur, solange eine Schlange wirklich arbeitet; danach und nach einem Fehler ist es leer,
+      // damit genau der Klick, um den JARVIS nach einer Blockade bittet, den Ton freigibt.
       if (stopCloud) return;
       el.src = SILENCE;
       // Nicht anhalten, wenn es losgeht: Bis dahin kann schon ein echter Satz laufen. Der leere Ton endet von selbst.
@@ -659,9 +661,14 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
       const queue = cloudQueue(
         () => run === speechRun,
         () => {
-          if (--open === 0) done();
+          if (--open === 0) {
+            // Die Schlange ist leer: Ein Klick darf den Ton jetzt wieder freigeben (siehe unlock).
+            if (stopCloud === queue.stop) stopCloud = null;
+            done();
+          }
         },
         (rest, why) => {
+          if (stopCloud === queue.stop) stopCloud = null;
           cloudFailed(why);
           if (synth && run === speechRun) speakLocal(synth, rest, run, done);
           else done();
@@ -779,10 +786,12 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
         live,
         () => {
           open = Math.max(0, open - 1);
+          if (open === 0 && queue && stopCloud === queue.stop) stopCloud = null;
           settle();
         },
         (rest, why) => {
           viaCloud = false;
+          if (queue && stopCloud === queue.stop) stopCloud = null;
           cloudFailed(why);
           open = Math.max(0, open - rest.length);
           if (!synth) mute = true;

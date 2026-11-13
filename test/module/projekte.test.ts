@@ -297,6 +297,36 @@ describe("Projektgedächtnis: bestätigen, ändern, ablehnen", () => {
     assert.match(fertig.eintrag!.verlauf[0].grund, /Vorschlag von JARVIS/);
   });
 
+  test("eine Korrektur ändert nur, was JARVIS vorgeschlagen hat: Was du inzwischen von Hand geändert hast, bleibt", async () => {
+    const projekt = await p.legeProjektAn({ name: "Hallenneubau" }, "mac", JETZT);
+    const e = await p.trageEin(projekt.id, { art: "aufgabe", text: "Bauantrag einreichen", zustaendig: "Thomas", faellig: "2026-11-30" }, "mac", JETZT);
+    // JARVIS schlägt vor, die Aufgabe als erledigt zu führen.
+    await p.schlageVor({ projekt: "Hallenneubau", eintraege: [{ ersetzt: e.id, erledigt: true }] }, { kanal: "mac", fremd: false }, JETZT);
+    const [v] = (await p.uebersicht()).vorschlaege;
+    assert.equal(v.art, "korrektur");
+    // Bevor du übernimmst, änderst du Frist und Text von Hand.
+    await p.korrigiere(e.id, { text: "Bauantrag mit Statik einreichen", faellig: "2026-12-10" }, "von Hand", "mac", JETZT);
+    const fertig = await p.entscheide(v.id, true, "mac", {}, JETZT);
+    assert.equal(fertig.eintrag?.erledigt, true, "der Vorschlag selbst gilt");
+    assert.equal(fertig.eintrag?.text, "Bauantrag mit Statik einreichen", "dein Text bleibt");
+    assert.equal(fertig.eintrag?.faellig, "2026-12-10", "deine Frist bleibt");
+    assert.equal(fertig.eintrag?.zustaendig, "Thomas");
+  });
+
+  test("ein umbenanntes Projekt nimmt seine wartenden Einträge mit: kein zweites Projekt unter dem alten Namen", async () => {
+    const r = await p.schlageVor({ projekt: "Halle", beschreibung: "Neue Halle", eintraege: [{ art: "aufgabe", text: "Bauantrag fertigstellen" }, { art: "notiz", text: "Kickoff war gut" }] }, { kanal: "mac", fremd: false }, JETZT);
+    const [projekt, aufgabe, notiz] = r.angelegt;
+    const angelegt = await p.entscheide(projekt.id, true, "mac", { projektName: "Hallenneubau Nord" }, JETZT);
+    assert.equal(angelegt.projekt?.name, "Hallenneubau Nord");
+    const offen = (await p.uebersicht()).vorschlaege;
+    assert.ok(offen.every((x) => x.projektId === angelegt.projekt!.id && x.projektName === "Hallenneubau Nord"), "die wartenden Einträge zeigen auf das umbenannte Projekt");
+    await p.entscheide(aufgabe.id, true, "mac", {}, JETZT);
+    await p.entscheide(notiz.id, true, "mac", {}, JETZT);
+    const snap = await p.uebersicht();
+    assert.deepEqual(snap.projekte.map((x) => x.name), ["Hallenneubau Nord"], "es gibt nur ein Projekt");
+    assert.equal((await p.akte(angelegt.projekt!.id)).eintraege.length, 2);
+  });
+
   test("schlägt das Übernehmen fehl, bleibt alles beim Alten und der Vorschlag offen", async () => {
     const projekt = await p.legeProjektAn({ name: "Hallenneubau" }, "mac", JETZT);
     const e = await p.trageEin(projekt.id, { art: "aufgabe", text: "Bauantrag einreichen" }, "mac", JETZT);
