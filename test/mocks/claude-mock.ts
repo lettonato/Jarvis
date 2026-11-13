@@ -39,6 +39,14 @@ export async function starteClaudeMock(): Promise<ClaudeMock> {
     anfragen.push(anfrage);
     const zug = zuege.shift() ?? { text: "Erledigt." };
     const id = `msg_${++n}`;
+    // Ohne Streaming (Browser-Agent, Chief) kommt die ganze Antwort als ein JSON.
+    if (anfrage.stream !== true) {
+      const content = "text" in zug ? [{ type: "text", text: zug.text }] : [{ type: "tool_use", id: `toolu_${n}`, name: zug.werkzeug, input: zug.eingabe }];
+      res.writeHead(200, { "content-type": "application/json" }).end(
+        JSON.stringify({ id, type: "message", role: "assistant", model: "claude-opus-5-5", content, stop_reason: "text" in zug ? "end_turn" : "tool_use", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5 } }),
+      );
+      return;
+    }
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
     const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     send("message_start", {

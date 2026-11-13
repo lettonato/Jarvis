@@ -24,7 +24,8 @@ import type { WeatherSnapshot } from "@/lib/weather";
 // über allen Seiten. Wechselst du die Ansicht, redet er einfach weiter.
 
 // live: Claude schreibt noch; status: was JARVIS gerade tut, etwa „Ich suche im Web“.
-export type Turn = { id: number; who: "du" | "jarvis"; text: string; live?: boolean; status?: string; sources?: Source[] };
+// fremd: Für diese Antwort hat JARVIS Text von Dritten gelesen; der Server fragt danach bei Änderungen nach.
+export type Turn = { id: number; who: "du" | "jarvis"; text: string; live?: boolean; status?: string; sources?: Source[]; fremd?: boolean };
 
 type Jarvis = {
   name: string;
@@ -121,7 +122,7 @@ function storedTurns(): Turn[] {
     return raw
       .filter((t): t is Turn => (t?.who === "du" || t?.who === "jarvis") && typeof t?.text === "string" && t.text.trim() !== "")
       .slice(-KEEP_TURNS)
-      .map((t) => ({ id: turnId++, who: t.who, text: t.text, sources: Array.isArray(t.sources) ? t.sources : undefined }));
+      .map((t) => ({ id: turnId++, who: t.who, text: t.text, sources: Array.isArray(t.sources) ? t.sources : undefined, ...(t.fremd === true ? { fremd: true } : {}) }));
   } catch {
     return [];
   }
@@ -221,7 +222,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!restored.current) return;
     try {
-      const keep = turns.filter((t) => !t.live && t.text.trim()).map(({ who, text, sources }) => ({ who, text, sources }));
+      const keep = turns.filter((t) => !t.live && t.text.trim()).map(({ who, text, sources, fremd }) => ({ who, text, sources, ...(fremd ? { fremd: true } : {}) }));
       localStorage.setItem(TURNS_KEY, JSON.stringify(keep.slice(-KEEP_TURNS)));
     } catch {
       // Ohne Speicher hält das Gespräch bis zum Neuladen.
@@ -384,7 +385,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
             ready.forEach((sentence) => speech.push(sentence));
           } else if (event.type === "navigate") {
             if (event.href !== place.current) router.push(event.href, { transitionTypes: holoTypes(place.current, event.href) });
-          } else if (event.type === "error") throw new Error(event.error);
+          } else if (event.type === "herkunft") updateTurn(id, { fremd: true });
+          else if (event.type === "error") throw new Error(event.error);
           else result = event.reply;
         }
       } catch (e) {
@@ -410,7 +412,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         return;
       }
       speech.push(takeSentences(pending, true).ready.join(" "));
-      updateTurn(id, { live: false, status: undefined, text: result.reply, sources: result.sources });
+      updateTurn(id, { live: false, status: undefined, text: result.reply, sources: result.sources, ...(result.fremd ? { fremd: true } : {}) });
 
       if (result.tasks) setTasks(result.tasks);
       if (result.mail) setMail(result.mail);
@@ -464,7 +466,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       const earlier = history.current
         .filter((t) => !t.live && t.text.trim())
         .slice(-24)
-        .map(({ who, text }) => ({ who, text }));
+        .map(({ who, text, fremd }) => ({ who, text, ...(fremd ? { fremd: true } : {}) }));
       addTurn("du", clean);
       setThinking(true);
       setTimeout(() => {

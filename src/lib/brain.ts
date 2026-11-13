@@ -8,7 +8,9 @@ import type { TasksSnapshot } from "./tasks";
 // Das KI-Gehirn: Claude führt das Gespräch. Hier steht, was die Seite an den Server schickt und was
 // zurückkommt; die Arbeit macht src/lib/server/brain.ts.
 
-export type BrainTurn = { who: "du" | "jarvis"; text: string };
+// fremd: In dieser Antwort hat JARVIS Text von Dritten gelesen (Mail, Webseite, Termin, Grok). Solange so ein
+// Satz im Gesprächsverlauf steht, gilt das ganze Gespräch als fremd beeinflusst, und das Gateway fragt nach.
+export type BrainTurn = { who: "du" | "jarvis"; text: string; fremd?: boolean };
 
 export type BrainRequest = {
   text: string;
@@ -32,6 +34,8 @@ export type Source = { title: string; url: string };
 
 export type BrainReply = {
   reply: string;
+  // Ob in dieser Antwort oder im Verlauf davor Text von Dritten im Spiel war.
+  fremd?: boolean;
   // Woher Claude sein Wissen aus dem Web hat.
   sources?: Source[];
   // Das Gedächtnis, wenn Claude sich etwas gemerkt oder etwas vergessen hat.
@@ -62,6 +66,8 @@ export type BrainEvent =
   | { type: "text"; text: string }
   // JARVIS führt dich schon während der Antwort in eine Ansicht, etwa in den Browser, wenn er dort loslegt.
   | { type: "navigate"; href: string }
+  // Ab jetzt ist Text von Dritten im Gespräch. Kommt sofort, damit es auch bei einer unterbrochenen Antwort gilt.
+  | { type: "herkunft"; fremd: true }
   | { type: "done"; reply: BrainReply }
   | { type: "error"; error: string };
 

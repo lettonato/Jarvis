@@ -454,7 +454,7 @@ async function converse(token: string, chatId: number, text: string, config: Jar
     });
     reply = answer.reply;
     if (answer.sources?.length) reply += `\n\nQuellen:\n${answer.sources.map((s) => `• ${s.title}: ${s.url}`).join("\n")}`;
-    state.history = [...state.history, { who: "du" as const, text }, { who: "jarvis" as const, text: answer.reply }].slice(-HISTORY_TURNS);
+    state.history = [...state.history, { who: "du" as const, text }, { who: "jarvis" as const, text: answer.reply, ...(answer.fremd ? { fremd: true } : {}) }].slice(-HISTORY_TURNS);
     state.lastAt = new Date().toISOString();
     await save(state);
   } catch (e) {

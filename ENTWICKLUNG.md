@@ -14,20 +14,47 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026
+Letzte Aktualisierung: 13. November 2026 (Schritt 2.6)
 
 ## Aktueller Stand
 
-Schritt 1 (Sicherheitsnetz) ist abgeschlossen. Schritt 2 (zentrale Sicherheitsarchitektur) ist umgesetzt
-und in der Sandbox geprüft: Security Gateway mit Klassen A–D und Deny by Default, zentraler Not-Aus,
-Freigaben durch einen Menschen, Audit-Log mit Prüfkette, gemeinsamer Netzschutz. Alle 13 bekannten
-Sicherheitslücken aus Schritt 1 sind behoben und als normale Tests grün (179 von 179). Beschreibung:
-[Schritt 2](docs/jarvis-2.0/04-security-gateway.md). Offen: Prüfung auf dem Mac (Prüfliste unten).
+Seit 13. November 2026 gilt Benedikts Dauerauftrag: JARVIS eigenständig fertigentwickeln, in der Reihenfolge
+Sicherheit und Stabilität → Gehirn und Projektgedächtnis → Dashboard und Agentensteuerung → proaktive
+Routinen und Agenten → Microsoft 365 (zuerst nur mit Testdaten) → Sprache, Desktop, Azure-Vorbereitung.
+Grenzen: keine echten Firmendaten, keine Kosten, keine echten Mails/Termine, keine Änderung an echten
+Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 
-Schritt 2.3 (Zugangsdaten in den macOS-Schlüsselbund, R-07) ist gebaut und in der Sandbox mit einem
-nachgebauten Schlüsselbund geprüft (188 von 188 Tests). Umgezogen wird erst auf dem Mac per Knopf.
-Beschreibung: [Schritt 2.3](docs/jarvis-2.0/05-zugangsdaten.md). Hochladen nach GitHub steht aus, weil
-der GitHub-Zugang seit 13. November gesperrt ist; der Stand liegt gesichert in den Projektdateien.
+Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6) ist gebaut und in der Sandbox geprüft: 217 von 217
+automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO. Offen ist die Prüfung auf dem Mac
+([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf „Testbereit“.
+
+## Gesamtfortschritt
+
+| Bereich (Auftrag vom 13.11.) | Stand | Was fehlt bis „Abgeschlossen“ |
+|---|---|---|
+| A Sicherheitsarchitektur | **Testbereit** (217 Tests, Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
+| B Bestehende Funktionen stabilisieren | **In Arbeit** | automatische Tests für Telegram, Intel, Dokumente, Mail, Kalender mit nachgebauten Diensten |
+| C Gehirn und Projektgedächtnis | Offen | Projektakten, Bestätigungs- und Korrekturprozess, Speicher auf PostgreSQL vorbereitet |
+| E Geschäftsführungsdashboard | Offen (Oberfläche mit 11 Ansichten vorhanden) | Tages-, Projekt-, Unternehmens-, Markt- und Agentenübersicht |
+| F Agenten | Offen (Browser, Analyst, Intel, Crawler, Desk vorhanden) | zentrale Steuerung mit Zeitplan, weitere Agenten |
+| G Proaktive Routinen | Offen (Telegram-Briefing, Erinnerungen vorhanden) | Morgenbriefing, Tagesabschluss, einstellbar und abschaltbar |
+| D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
+| H Sprache und Desktop | Teilweise vorhanden (Weckwort, Vorlesen, Programme öffnen auf macOS) | Unterbrechen, Desktop-Agent mit Regeln |
+| I Azure | **Blockiert** (Entscheidung und Kostenfreigabe) | Vorbereitung: Speicher- und Modellschicht austauschbar, Anleitung |
+| J Qualität | läuft mit | Modelladapter, Kostenübersicht, Wiederherstellungstests |
+
+## Wiederaufnahmepunkt
+
+Für jede Fortsetzung, auch nach einer Unterbrechung:
+
+* **Letzter gesicherter Stand:** siehe Abschnitt „Sicherung“ am Ende dieser Datei (Commit und Dateien).
+* **Arbeitsort:** Cloud-Sandbox, nicht dauerhaft. Dauerhaft sind nur die Sicherungen in den Projektdateien
+  (`jarvis/sicherung/`): ein Git-Bündel des Arbeitszweigs, ein Bündel aller Zweige, ein ZIP zum Entpacken.
+  Wiederherstellen: `git clone jarvis-<datum>.bundle -b claude/project-thread-200bzy`, dann `npm ci`,
+  `npm run pruefen`.
+* **GitHub:** seit 13. November gesperrt (Konto). Letzter hochgeladener Stand `093129f`. Hochladen erst nach
+  Benedikts Freigabe, kein Force-Push.
+* **Exakt nächster Schritt:** steht unter „Nächste Schritte“ am Ende dieser Datei.
 
 ---
 
@@ -59,7 +86,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Mitarbeiterkapazitäten | fehlt | nur offizielle Zeiterfassung, keine Überwachung | 7 | Offen |
 | **Gemeinsame Agentensteuerung** | | | | |
 | KI-Gehirn mit Werkzeugen | 24 Werkzeuge + Websuche, alle über das Gateway | über Gateway, Datenminimierung | 2/4 | Testbereit |
-| Browser-Agent | eigenes Chrome, harte Kauf-/Passwortsperren, jede Aktion über das Gateway, DNS-geprüfte Adressen | über Gateway, DNS-geprüfte Adressen | 2/9 | Testbereit (R-04 behoben) |
+| Browser-Agent | eigenes Chrome, harte Kauf-/Passwortsperren, jede Aktion über das Gateway, jede Verbindung über die Netzschleuse (kein DNS-Rebinding, auch WebSockets geprüft) | über Gateway, DNS-geprüfte Adressen | 2/9 | Testbereit (R-04 samt Rest behoben, Mac offen) |
 | Dokumentenagent (Recherche → PDF) | vorhanden, Kostenbremse 10 $, Abgabe über das Gateway, Not-Aus bricht ab | über Gateway, Ablage SharePoint/Blob | 9 | Testbereit |
 | Grok-Marktbeobachtung (Intel) | 2× täglich, Tagesbudget | proaktive Berichte | 9 | Testbereit |
 | Webcrawler | gemeinsamer Netzschutz `netz.ts` (alle IP-Formen, feste geprüfte IP je Abruf) | gemeinsam nutzbar, Lücken geschlossen | 2/9 | Testbereit (R-05 behoben) |
@@ -151,6 +178,8 @@ nachgebautem Claude (10), Spielgeld-Desk (7).
 | 2.4 Schutz vor manipulierten Inhalten | Testbereit | Herkunftsmarkierung, R-03/R-04/R-05 behoben, R-02 durch Freigabepflicht nach fremden Inhalten eingedämmt; Tests „Herkunft“ (3) und Netzschutz (alle früheren TODO-Tests) |
 | 2.5 Zentraler Not-Aus, Agentensperre | Testbereit | R-06 behoben; Tests „zentraler Not-Aus“ (7), „Agentensperren“ (2) |
 | 2.5 Audit-Log, Alarmierung, Manipulationsschutz | Testbereit | R-08 lokal behoben (Kette, Schwärzung, Alarm); Tests „Audit-Log“ (4); unveränderliche Ablage erst mit Azure |
+| 2.6 Netzschleuse für den Browser (DNS-Rebinding, WebSockets) | Testbereit | [Beschreibung](docs/jarvis-2.0/06-netzschleuse-und-herkunft.md); Tests „Netzschleuse“ (26) und Handprüfung mit echtem Chromium; Google Chrome auf dem Mac offen |
+| 2.6 Herkunft im ganzen Gespräch | Testbereit | fremde Inhalte wirken über die Antwort hinaus; Tests „Herkunft“ (jetzt 6) mit Gegenprobe |
 
 ### Testergebnisse Schritt 2 (8. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -207,6 +236,21 @@ besten eine Kopie von `~/.jarvis/config.json` an einem sicheren Ort ablegen:
 7. Empfehlung: danach Claude-, xAI-, Twelve-Data- und Telegram-Schlüssel sowie das Mail-App-Passwort neu
    ausstellen, weil alte Kopien der Datei in Backups liegen können. Das entscheidest du.
 
+### Testergebnisse Schritt 2.6 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **217 Tests: 217 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: 26 Netzschleuse, 3 Herkunft) |
+| Gegenprobe Netzschleuse (Prüfung testweise entfernt) | 16 von 26 Tests schlagen fehl; danach wiederhergestellt |
+| `next build` | erfolgreich |
+| Handprüfungen mit echtem Chromium (`test/hand/`) | interner Dienst von einer geöffneten Seite aus nicht erreichbar (fetch, WebSocket, Navigation, Name → 127.0.0.1): 0 Treffer; Gegenprobe 2 Treffer; Browser-Agent liest Testseite weiter; PDF wird erzeugt |
+| Google Chrome auf dem Mac | **nicht geprüft** |
+| CI auf GitHub | **nicht gelaufen** (Hochladen gesperrt) |
+
+Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pruefliste-mac.md](docs/pruefliste-mac.md)
+(Teile A bis D, etwa 20 Minuten).
+
 **Verbleibende Risiken nach Schritt 2:** siehe [Schritt 2, Abschnitt „Verbleibende Risiken“](docs/jarvis-2.0/04-security-gateway.md#verbleibende-risiken).
 
 ## Phase 3 bis 10
@@ -224,7 +268,24 @@ besten eine Kopie von `~/.jarvis/config.json` an einem sicheren Ort ablegen:
 
 ## Offene Fragen an Benedikt
 
-1. Prüflisten Schritt 2 und 2.3 auf dem Mac, dann Freigabe für den nächsten Schritt.
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis D).
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
 4. Vor Phase 8: Läuft der Geschäftsführungs-PC mit Windows oder macOS?
+
+## Sicherung
+
+| Was | Wo | Stand |
+|---|---|---|
+| Arbeitszweig als Git-Bündel | Projektdateien `jarvis/sicherung/jarvis-2026-11-13.bundle` | wird nach jedem Arbeitspaket erneuert; Wiederherstellung am 13.11. geprüft (gleicher Commit, gleicher Dateibaum) |
+| Alle Zweige (alle PRs) | Projektdateien `jarvis/sicherung/jarvis-alle-zweige-2026-11-13.bundle` | Stand 13.11. |
+| ZIP zum Entpacken auf dem Mac | Projektdateien `jarvis/sicherung/Jarvis-aktuell.zip` | wie der Arbeitszweig, ohne `node_modules` |
+| GitHub | `lettonato/jarvis`, PR #18 | Stand `093129f` vom 8.11.; alles danach nur lokal |
+
+## Nächste Schritte
+
+1. **B Stabilisieren:** nachgebaute Dienste für Telegram, Grok/Intel, Analyst und Markt ins Repo holen und
+   die bisher nur von Hand geprüften Funktionen automatisch testen.
+2. **C Projektgedächtnis:** Speicherschicht (heute Datei, später PostgreSQL), Projektakten, Vorschläge mit
+   Bestätigung und Korrektur, Werkzeuge für das Gehirn, Ansicht „Projekte“.
+3. Danach E (Tages- und Projektübersicht), G (Morgenbriefing, Tagesabschluss), F (Agentensteuerung).

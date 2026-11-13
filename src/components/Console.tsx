@@ -310,6 +310,11 @@ const Message = memo(function Message({ turn }: { turn: Turn }) {
           </p>
         )}
         {turn.sources && <Sources sources={turn.sources} />}
+        {turn.fremd && !turn.live && (
+          <p className="mt-1.5 text-[10.5px] text-quiet" title="In diese Antwort ist Text von Dritten eingeflossen (Mail, Webseite, Termin oder Nachrichten). Solange sie im Gespräch steht, fragt JARVIS vor Änderungen und Aufträgen nach.">
+            Enthält Inhalte von Dritten · Änderungen danach nur mit deinem Ja
+          </p>
+        )}
       </div>
     </div>
   );

@@ -77,7 +77,7 @@ export const FREIGABE_MINUTEN = 15;
 export type AuditEintrag = {
   nr: number;
   zeit: string;
-  art: "werkzeug" | "freigabe" | "notaus" | "sperre" | "einstellung" | "desk" | "alarm";
+  art: "werkzeug" | "freigabe" | "notaus" | "sperre" | "einstellung" | "desk" | "alarm" | "netz";
   agent: AgentName | "mensch" | "system";
   kanal: Kanal | Wer;
   was: string;

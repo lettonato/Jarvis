@@ -16,9 +16,9 @@ eine Cloud-Bereitstellung dazukommen.
 | Nr. | Risiko | Bewertung | Beleg |
 |---|---|---|---|
 | R-01 | Kein Security Gateway: Claude ruft alle 25 Werkzeuge direkt auf | Kritisch | aus dem Code, **behoben in Schritt 2** (Security Gateway) |
-| R-02 | Prompt Injection kann zu Datenabfluss über den Browser-Agenten führen | Kritisch | aus dem Code, **eingedämmt in Schritt 2** (Freigabe nach fremden Inhalten); Rest siehe 04-security-gateway.md |
+| R-02 | Prompt Injection kann zu Datenabfluss über den Browser-Agenten führen | Kritisch | aus dem Code, **eingedämmt in Schritt 2** (Freigabe nach fremden Inhalten) **und 2.6** (Herkunft gilt im ganzen Gespräch); Rest siehe 04-security-gateway.md |
 | R-03 | Gedächtnis wird ohne Bestätigung beschrieben (dauerhafte Injection) | Hoch | aus dem Code, **behoben in Schritt 2** (Freigabe für jeden Eintrag) |
-| R-04 | Browser-Agent prüft Adressen nur nach Namen, nicht nach aufgelöster IP | Hoch | bestätigt, **behoben in Schritt 2** (DNS-Prüfung je Anfrage); Rest: Rebinding innerhalb von Chrome |
+| R-04 | Browser-Agent prüft Adressen nur nach Namen, nicht nach aufgelöster IP | Hoch | bestätigt, **behoben in Schritt 2** (DNS-Prüfung je Anfrage) **und 2.6** (Netzschleuse: Chrome löst keinen Namen mehr selbst auf) |
 | R-05 | Crawler-SSRF-Schutz hat Lücken (Azure-Endpunkt, IPv6-Formen, DNS-Rebinding) | Hoch (in Azure) | bestätigt, **behoben in Schritt 2** (gemeinsamer Netzschutz, feste geprüfte IP) |
 | R-06 | Kein zentraler Not-Aus; Desk-Not-Aus kann das Modell selbst aufheben | Hoch | aus dem Code, **behoben in Schritt 2** (zentraler Not-Aus, lösen nur am Mac) |
 | R-07 | Geheimnisse im Klartext in `~/.jarvis/config.json`, ein Schlüssel für alles | Hoch | aus dem Code, **eingedämmt in Schritt 2.3** (Umzug in den macOS-Schlüsselbund per Knopf am Mac, Sandbox geprüft, Mac offen); Key Vault und Trennung Test/Prod in Phase 3 |

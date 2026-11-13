@@ -7,6 +7,8 @@ import { agentSperre } from "./gateway/zustand";
 import { clickProblem, enterProblem, hostLabel, MAX_MINUTES, MAX_STEPS, typeProblem, urlProblem, type BrowserStatus, type BrowserStep, type BrowserTask, type ElementInfo } from "../browser";
 import { CONFIG_DIR, type JarvisConfig } from "./config";
 import { adresseProblem } from "./netz";
+import { starteSchleuse, type Schleuse } from "./netzschleuse";
+import { protokolliere } from "./gateway/audit";
 
 // Der Browser-Agent. JARVIS startet ein eigenes Chrome mit eigenem Profil (Anmeldungen bleiben darin
 // gespeichert, getrennt von deinem normalen Chrome) und lässt Claude es bedienen. Chrome läuft dabei ohne
@@ -55,6 +57,9 @@ export class BrowserError extends Error {}
 type Shared = {
   context: BrowserContext | null;
   launching: Promise<BrowserContext> | null;
+  // Die Netzschleuse, über die Chrome jede Verbindung aufbaut (einmal je Lauf von JARVIS).
+  schleuse?: Promise<Schleuse> | null;
+  gemeldet?: Map<string, number>;
   // Ob Chrome gerade mit sichtbarem Fenster läuft (nach „Selbst übernehmen“).
   visible: boolean;
   // Die Kennung von Chrome ohne „Headless“, damit Seiten JARVIS wie ein normales Chrome behandeln.
@@ -132,6 +137,29 @@ async function watch(p: Page) {
   }
 }
 
+// Chrome verbindet nur über die Netzschleuse (netzschleuse.ts). Sie prüft jede Adresse und verbindet genau
+// zur geprüften. Startet sie nicht, startet auch Chrome nicht. Gesperrte Ziele kommen ins Audit-Log,
+// je Ziel höchstens einmal in zehn Minuten, damit eine Seite mit vielen Bildern das Log nicht flutet.
+function schleuse(): Promise<Schleuse> {
+  shared.schleuse ??= starteSchleuse({
+    erlaubt: ALLOW_LOCAL,
+    gesperrt: ({ host, port, grund, intern }) => {
+      // Ins Audit-Log kommen nur Versuche, ins Heimnetz oder auf diesen Rechner zu gelangen, keine Tippfehler.
+      if (!intern) return;
+      const merk = (shared.gemeldet ??= new Map());
+      const jetzt = Date.now();
+      if (jetzt - (merk.get(host) ?? 0) < 600_000) return;
+      merk.set(host, jetzt);
+      if (merk.size > 300) merk.delete(merk.keys().next().value!);
+      void protokolliere({ art: "netz", agent: "browser", kanal: "intern", was: "Netzschleuse", ergebnis: "abgelehnt", grund, daten: { host, port } }).catch(() => {});
+    },
+  }).catch((e) => {
+    shared.schleuse = null;
+    throw new BrowserError(`Der Netzschutz für den Browser startet nicht (${e instanceof Error ? e.message : String(e)}). Ohne ihn öffne ich kein Chrome.`);
+  });
+  return shared.schleuse;
+}
+
 async function launch(visible = false): Promise<BrowserContext> {
   let chromium;
   try {
@@ -141,6 +169,7 @@ async function launch(visible = false): Promise<BrowserContext> {
   }
   const exe = process.env.JARVIS_CHROME;
   const headless = NEVER_VISIBLE || !visible;
+  const proxy = await schleuse();
   const open = (userAgent: string | null) =>
     chromium.launchPersistentContext(PROFILE_DIR, {
       ...(exe ? { executablePath: exe } : { channel: "chrome" }),
@@ -150,7 +179,18 @@ async function launch(visible = false): Promise<BrowserContext> {
       locale: "de-DE",
       timezoneId: "Europe/Berlin",
       acceptDownloads: false,
-      args: ["--no-first-run", "--no-default-browser-check", "--window-size=1300,960"],
+      // Alles läuft über die Netzschleuse, auch Adressen auf diesem Rechner („<-loopback>“).
+      proxy: { server: proxy.server, username: proxy.username, password: proxy.password, bypass: "<-loopback>" },
+      args: [
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--window-size=1300,960",
+        // Chrome löst keinen Namen selbst auf; das macht nur die Schleuse. Und keine Direktverbindungen an ihr vorbei.
+        "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1",
+        "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+        "--webrtc-ip-handling-policy=disable_non_proxied_udp",
+        "--disable-quic",
+      ],
     });
   let context: BrowserContext;
   try {

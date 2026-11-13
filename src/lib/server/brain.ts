@@ -214,7 +214,15 @@ export async function think(
 
   // Herkunft: Sobald Text von Dritten im Gespräch ist (Mail, Webseite, Termin, Grok), gilt es als fremd, und
   // das Gateway fragt bei Änderungen und bei Aufträgen mit Außenwirkung vorher nach.
-  const lage = { fremd: false };
+  // Das gilt auch für spätere Fragen: Steht im Verlauf eine Antwort, die auf fremdem Text beruht, kann eine
+  // eingeschleuste Anweisung darin nachwirken. Deshalb bleibt das Gespräch fremd, solange sie im Verlauf steht.
+  const lage = { fremd: request.history.slice(-HISTORY_TURNS).some((t) => t.fremd === true) };
+  const markiereFremd = () => {
+    if (lage.fremd) return;
+    lage.fremd = true;
+    emit({ type: "herkunft", fremd: true });
+  };
+  if (lage.fremd) emit({ type: "herkunft", fremd: true });
   const vault = config.vaultPath;
   const mailbox = config.mail;
   const now = new Date();
@@ -684,7 +692,7 @@ export async function think(
     const item = mail?.items.find((m) => m.uid === Number(request.focus!.id));
     if (item) {
       lines.push(`Gerade in der Besprechung: Mail uid ${item.uid} von ${item.from}, Betreff „${item.subject}“`);
-      lage.fremd = true;
+      markiereFremd();
     }
   }
   const cal = await readCalendar().catch(() => null);
@@ -729,7 +737,7 @@ export async function think(
         return await durchGateway({ werkzeug: t.name, agent: "gehirn", kanal, eingabe, fremd: lage.fremd }, async () => t.run(input));
       } finally {
         // Auch ein Fehler kann Text von Dritten enthalten; im Zweifel gilt das Gespräch ab hier als fremd.
-        if (regelFuer(t.name)?.liefertFremdes) lage.fremd = true;
+        if (regelFuer(t.name)?.liefertFremdes) markiereFremd();
       }
     },
   })) as typeof tools;
@@ -788,7 +796,7 @@ export async function think(
     // Websuche und Webseiten laufen bei Anthropic. JARVIS protokolliert sie, und danach gilt das Gespräch als fremd.
     stream.on("contentBlock", (block) => {
       if (block.type !== "server_tool_use") return;
-      lage.fremd = true;
+      markiereFremd();
       void serverWerkzeugGesehen(block.name, "gehirn", kanal, (block.input ?? {}) as Record<string, unknown>);
     });
     stream.on("streamEvent", (event) => {
@@ -818,6 +826,7 @@ export async function think(
 
   return {
     reply,
+    fremd: lage.fremd || undefined,
     sources: sources.length ? sources.slice(0, 5) : undefined,
     navigate: outcome.navigate,
     session: outcome.session,

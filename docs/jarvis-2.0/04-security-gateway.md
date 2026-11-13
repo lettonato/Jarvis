@@ -115,10 +115,10 @@ Identität des Nutzers in den Aufruf.
 
 | Risiko | Einordnung | Wie weiter |
 |---|---|---|
-| Chrome löst Namen selbst auf: DNS-Rebinding innerhalb von Chrome theoretisch möglich (JARVIS prüft jede Anfrage, Chrome kann danach anders auflösen) | Mittel | Proxy für Chrome mit fester IP (Phase 9) |
+| Chrome löst Namen selbst auf: DNS-Rebinding innerhalb von Chrome theoretisch möglich (JARVIS prüft jede Anfrage, Chrome kann danach anders auflösen) | Mittel | **behoben in [Schritt 2.6](06-netzschleuse-und-herkunft.md)** (Netzschleuse) |
 | Audit-Log und `sicherheit.json` liegen auf dem Mac; wer dort Zugriff hat, kann sie ab einer Stelle neu schreiben | Mittel | unveränderliche Ablage in Azure (Phase 3) |
 | Websuche und Webseiten laufen bei Anthropic; JARVIS kann sie nur protokollieren, nicht einzeln sperren | Niedrig | `web_fetch` öffnet keine Links aus Mails (seit Schritt 1) |
-| Der Gesprächsverlauf gilt nicht als fremd; eine frühere Zusammenfassung einer Mail könnte im nächsten Satz nachwirken | Niedrig bis Mittel | Klasse C fragt standardmäßig immer; später Herkunft je Gesprächszeile |
+| Der Gesprächsverlauf gilt nicht als fremd; eine frühere Zusammenfassung einer Mail könnte im nächsten Satz nachwirken | Niedrig bis Mittel | **behoben in [Schritt 2.6](06-netzschleuse-und-herkunft.md)** (Herkunft je Antwort im Verlauf) |
 | Freigaben über Telegram: wer den Telegram-Account übernimmt, kann Ja drücken (aber keinen Not-Aus lösen) | Mittel | Firmendaten nicht über Telegram (Phase 5/7), Entra ID mit MFA |
 | Zugangsdaten im Klartext in `~/.jarvis/config.json` (R-07) | Hoch | Schlüsselbund gebaut in [Schritt 2.3](05-zugangsdaten.md) (Umzug am Mac offen), Key Vault in Phase 3 |
 | Keine Anmeldung, nur ein Nutzer und localhost | Mittel | Entra ID (Phase 5) |
