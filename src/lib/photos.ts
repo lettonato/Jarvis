@@ -15,6 +15,8 @@ export const PHOTOS: Record<BiomeId, Photo> = {
   trading: { src: "/welt/trading.webp", title: "Lichtspuren bei Nacht", author: "Giridhar Mahadevan", license: "CC BY-SA 4.0" },
   intel: { src: "/welt/intel.webp", title: "Sonnenaufgang am Brauneck", author: "Uday Nakade", license: "CC BY-SA 4.0" },
   dokumente: { src: "/welt/dokumente.webp", title: "Felswände der Dolomiten", author: "Felix Hartlieb", license: "CC BY 4.0" },
+  // Die Projekte teilen sich vorerst das Foto der Einstellungen; ein eigenes kommt mit dem Dashboard.
+  projekte: { src: "/welt/einstellungen.webp", title: "Berge bei Krasnaja Poljana", author: "Alexander Lyubavin", license: "CC BY-SA 4.0" },
   agenten: { src: "/welt/agenten.webp", title: "Milchstraße über dem Wald", author: "Jeff Morgan", license: "CC BY 4.0" },
   einstellungen: { src: "/welt/einstellungen.webp", title: "Berge bei Krasnaja Poljana", author: "Alexander Lyubavin", license: "CC BY-SA 4.0" },
 };

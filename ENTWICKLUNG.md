@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026 (Schritt B1)
+Letzte Aktualisierung: 13. November 2026 (Schritt C1)
 
 ## Aktueller Stand
 
@@ -24,9 +24,11 @@ Routinen und Agenten → Microsoft 365 (zuerst nur mit Testdaten) → Sprache, D
 Grenzen: keine echten Firmendaten, keine Kosten, keine echten Mails/Termine, keine Änderung an echten
 Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 
-Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6) ist gebaut und in der Sandbox geprüft: 264 von 264
-automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO. Offen ist die Prüfung auf dem Mac
-([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf „Testbereit“.
+Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6) und das Projektgedächtnis (Schritt C1) sind gebaut und in
+der Sandbox geprüft: 294 von 294 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO.
+Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
+„Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft; echte vertrauliche Projektdaten gehören
+erst nach Benedikts Freigabe hinein (siehe „Offene Fragen“).
 
 ## Gesamtfortschritt
 
@@ -34,8 +36,8 @@ automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO. Offe
 |---|---|---|
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
 | B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk, Obsidian, Gedächtnis; **Offen** für Mail (IMAP), Sprache, 3D-Oberfläche | nachgebautes Postfach; Oberflächentests im Browser; Mac-Prüfliste |
-| C Gehirn und Projektgedächtnis | Offen | Projektakten, Bestätigungs- und Korrekturprozess, Speicher auf PostgreSQL vorbereitet |
-| E Geschäftsführungsdashboard | Offen (Oberfläche mit 11 Ansichten vorhanden) | Tages-, Projekt-, Unternehmens-, Markt- und Agentenübersicht |
+| C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
+| E Geschäftsführungsdashboard | Offen (Oberfläche mit 12 Ansichten vorhanden, darunter „Projekte“) | Tages-, Projekt-, Unternehmens-, Markt- und Agentenübersicht |
 | F Agenten | Offen (Browser, Analyst, Intel, Crawler, Desk vorhanden) | zentrale Steuerung mit Zeitplan, weitere Agenten |
 | G Proaktive Routinen | Offen (Telegram-Briefing, Erinnerungen vorhanden) | Morgenbriefing, Tagesabschluss, einstellbar und abschaltbar |
 | D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
@@ -76,16 +78,16 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Modelladapter | Anthropic fest in 4 Dateien | Claude primär, andere Modelle austauschbar | 4 | Offen |
 | **Zentrales Gedächtnis** | | | | |
 | Persönliches Gedächtnis | `gedaechtnis.json`, jeder Eintrag erst nach Ja per Knopf | Teil des Projektgedächtnisses, mit Bestätigung | 2/6 | Testbereit (Bestätigung), Umbau Offen |
-| Projektakten (Verantwortliche, Termine, Aufgaben, Entscheidungen, Risiken, Quellen) | fehlt | PostgreSQL mit Quelle und Zeitstempel | 6 | Offen |
-| Gesprächsnachbereitung (Aufgaben/Entscheidungen aus Notizen, Vorschlag zur Bestätigung) | fehlt | strukturiert, erst nach Bestätigung gespeichert | 6 | Offen |
-| Intelligente Erinnerung vor Folgeterminen | fehlt | frühere Entscheidungen mit Quelle | 6 | Offen |
+| Projektakten (Verantwortliche, Termine, Aufgaben, Entscheidungen, Risiken, Quellen) | `projekte.json` hinter einer Speicherschnittstelle; jeder Eintrag mit Quelle, Zeitstempel und Korrekturverlauf; Ansicht „Projekte“ | PostgreSQL mit Quelle und Zeitstempel | 6 | Testbereit (Datei, Testdaten); PostgreSQL Offen (Phase 3) |
+| Gesprächsnachbereitung (Aufgaben/Entscheidungen aus Notizen, Vorschlag zur Bestätigung) | JARVIS schlägt im Gespräch Einträge vor; sie gelten erst nach Bestätigung am Mac (auch geändert) | strukturiert, erst nach Bestätigung gespeichert | 6 | Testbereit (im Gespräch); aus Mails und Besprechungsnotizen von selbst Offen |
+| Intelligente Erinnerung vor Folgeterminen | Vorbereitung aus bestätigten Einträgen, wenn der Termin ein Projekt nennt; am Mac im Gespräch, per Telegram nur nach Einschalten | frühere Entscheidungen mit Quelle | 6 | Testbereit |
 | **Einheitliche Oberfläche** | | | | |
-| Kommandozentrale mit Ansichten und 3D-Welt | vorhanden (11 Ansichten) | Geschäftsführungsdashboard | 7 | Testbereit |
+| Kommandozentrale mit Ansichten und 3D-Welt | vorhanden (12 Ansichten) | Geschäftsführungsdashboard | 7 | Testbereit |
 | Tagesübersicht, Projektübersicht, Unternehmensüberblick | Briefing, Aufgaben, Post, Kalender | alle Bereiche aus Phase 7 | 7 | Offen |
 | JARVIS-Chat (Text und Sprache, öffnet Bereiche) | vorhanden, öffnet Ansichten | zentral im Dashboard | 7/8 | Testbereit |
 | Mitarbeiterkapazitäten | fehlt | nur offizielle Zeiterfassung, keine Überwachung | 7 | Offen |
 | **Gemeinsame Agentensteuerung** | | | | |
-| KI-Gehirn mit Werkzeugen | 24 Werkzeuge + Websuche, alle über das Gateway | über Gateway, Datenminimierung | 2/4 | Testbereit |
+| KI-Gehirn mit Werkzeugen | 27 Werkzeuge + Websuche, alle über das Gateway | über Gateway, Datenminimierung | 2/4 | Testbereit |
 | Browser-Agent | eigenes Chrome, harte Kauf-/Passwortsperren, jede Aktion über das Gateway, jede Verbindung über die Netzschleuse (kein DNS-Rebinding, auch WebSockets geprüft) | über Gateway, DNS-geprüfte Adressen | 2/9 | Testbereit (R-04 samt Rest behoben, Mac offen) |
 | Dokumentenagent (Recherche → PDF) | vorhanden, Kostenbremse 10 $, Abgabe über das Gateway, Not-Aus bricht ab | über Gateway, Ablage SharePoint/Blob | 9 | Testbereit |
 | Grok-Marktbeobachtung (Intel) | 2× täglich, Tagesbudget | proaktive Berichte | 9 | Testbereit |
@@ -278,6 +280,41 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 | Gegenprobe Telegram (Prüfung des Absenders bei Knöpfen entfernt; Zähler der Fehlversuche entfernt) | 2 bzw. 5 Tests schlagen fehl; danach wiederhergestellt |
 | Dabei gefundene Fehler | keine im Verhalten. Ergänzt: `stopTelegram()` zum sauberen Anhalten, Wetteradresse über `OPEN_METEO_URL` umlenkbar (Tests fragen keinen echten Dienst), nachgebauter Claude antwortet auch ohne Streaming |
 
+## Bereich C – Gehirn und Projektgedächtnis
+
+Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-projektgedaechtnis.md).
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| C1.1 Datenformen: Projekt, Eintrag (Aufgabe, Entscheidung, Besprechungsnotiz, Risiko, nächster Schritt), Vorschlag; jeder Eintrag mit Quelle und Zeitstempel | Testbereit | `src/lib/projekte.ts` |
+| C1.2 Speicherschicht mit austauschbarem Speicher (heute Datei, später PostgreSQL), Transaktionen, beschädigte Datei wird nie überschrieben | Testbereit | `src/lib/server/projekte/speicher.ts`; Tabellenentwurf in der Doku |
+| C1.3 Bestätigungsprozess: JARVIS schlägt vor, ein Mensch am Mac übernimmt, ändert oder lehnt ab; genau einmal | Testbereit | `src/lib/server/projekte/projekte.ts`, `/api/projekte` |
+| C1.4 Korrekturprozess: Verlauf mit altem Stand, Grund und Zeit; Zurückziehen statt Löschen | Testbereit | wie oben |
+| C1.5 Werkzeuge für das Gehirn (`projekte_lesen`, `projekt_lesen`, `projekt_vorschlagen`) über das Gateway; Herkunft vom Server | Testbereit | `brain.ts`, `richtlinien.ts` |
+| C1.6 Ansicht „Projekte“: Eingang für Vorschläge, Projektliste, Akte, Formulare | Testbereit | im Browser durchgeklickt (`test/hand/projekte-rauch.ts`) |
+| C1.7 Vorbereitung vor Besprechungen (Mac; Telegram nur nach Einschalten) | Testbereit | `terminVorbereitung` |
+| C1.8 Vertrauliche Projekte: nichts davon an das KI-Gehirn oder über Telegram | Testbereit | Test „geht nicht an Anthropic“ |
+| C2 Persönliches Gedächtnis in dieselbe Speicherschicht (Bestätigung gibt es dort schon über das Gateway) | Offen | |
+| C3 Mails und Besprechungsnotizen von selbst Projekten zuordnen und Vorschläge machen | Offen | braucht die Freigabe, Mailinhalte dafür auszuwerten |
+| C4 Projektüberwachung (Überfälliges und Risiken von selbst melden) | Offen | kommt mit G |
+| C5 PostgreSQL-Umsetzung der Speicherschnittstelle | Blockiert | braucht eine Datenbank (Azure, Phase 3) |
+
+### Testergebnisse Schritt C1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **294 Tests: 294 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Projektgedächtnis 30) |
+| `npx next build` | erfolgreich; neu `/projekte` und `/api/projekte` |
+| Handprüfung im Browser (Chromium, gebauter Server, Testdaten) | Vorschlag übernehmen, geändert übernehmen, ablehnen, Eintrag korrigieren, zurückziehen: in Ordnung; Datei danach wie erwartet; POST ohne eigenen Header und von fremder Seite → 403; keine Fehler in der Seite |
+| Gegenproben (Schutz entfernt, Tests müssen fehlschlagen) | Bestätigen durch jeden: 4 schlagen fehl; vertrauliches Projekt lesbar: 1; beschädigte Datei ersetzt: 1; doppeltes Übernehmen: 2; Herkunft nicht vom Server: 4; Vorbereitung aus vertraulichen Projekten: 2. Danach wiederhergestellt, 30 von 30 bestehen |
+| Dabei gefundener Fehler | Ein älterer Test der Dokumente schlug im Gesamtlauf gelegentlich fehl (2 von 7 Läufen, einzeln 5 von 5 bestanden). Ursache: Die Testhilfe `documentDone()` wartete nicht auf Speichern und Meldung, wenn das Dokument sehr schnell fertig war. Behoben; danach 4 Gesamtläufe hintereinander mit 294 von 294 |
+| Nicht geprüft | echter Mac (Prüfliste Teil E); echtes Claude-Modell (nur nachgebaut: ob Claude von sich aus sinnvoll vorschlägt, zeigt erst der Mac); echte Erinnerung aus dem Apple-Kalender; Sprachausgabe der Vorbereitung |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Sicherheitsrisiken:**
+R-17 (Projektinhalte gehen beim Lesen an Anthropic; gemildert durch „vertraulich“), R-18 (Datei unverschlüsselt
+und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-risiken.md).
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -285,7 +322,7 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 | 3 Azure-Infrastruktur | Blockiert | D&S-Abonnement, IT-Verantwortliche, freigegebene Dienste, Kosten klären |
 | 4 Claude sicher integrieren | Offen | persönlicher API-Schlüssel; AVV, Aufbewahrung, ZDR klären (R-14) |
 | 5 Microsoft 365 / Entra ID | Blockiert | braucht Phase 2 und einen Test-Tenant bzw. Testpostfach |
-| 6 Projektgedächtnis | Offen | |
+| 6 Projektgedächtnis | Testbereit (Schritt C1, Datei statt Datenbank) | siehe Bereich C |
 | 7 Geschäftsführungsdashboard | Offen | bestehende Oberfläche als Ausgangspunkt |
 | 8 Desktop Agent, Sprache | Blockiert | Windows oder Mac (R-15) |
 | 9 Verkehr, Automatisierungen, Agenten | Offen | Trading bleibt Spielgeld |
@@ -293,10 +330,15 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis D).
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis E).
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
 4. Vor Phase 8: Läuft der Geschäftsführungs-PC mit Windows oder macOS?
+5. Projektgedächtnis: Dürfen echte Projektdaten von D&S hinein? Beim Nachfragen liest das KI-Gehirn die Akte,
+   ihr Inhalt geht dann an Anthropic (wie heute schon Mails und Termine, R-14 und R-17). Bis zu deiner
+   Entscheidung: nur Testdaten oder Unkritisches, Heikles als „vertraulich“ markieren.
+6. Soll die Vorbereitung vor Besprechungen auch per Telegram kommen? Steht auf aus; du schaltest es selbst in
+   den Einstellungen ein, wenn du es willst.
 
 ## Sicherung
 
@@ -309,7 +351,10 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 
 ## Nächste Schritte
 
-1. **C Projektgedächtnis:** Speicherschicht (heute Datei, später PostgreSQL), Projektakten, Vorschläge mit
-   Bestätigung und Korrektur, Werkzeuge für das Gehirn, Ansicht „Projekte“.
-2. Danach E (Tages- und Projektübersicht), G (Morgenbriefing, Tagesabschluss), F (Agentensteuerung).
-3. B-Rest: nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
+1. **E Tages- und Projektübersicht im Dashboard:** Projekte in der Übersicht (Kachel, überfällige Aufgaben,
+   wartende Vorschläge), Tagesübersicht aus Terminen, Aufgaben, Post und Projekten.
+2. **G Proaktive Routinen:** Morgenbriefing und Tagesabschluss mit Projekten, Projektüberwachung (C4),
+   einstellbar und abschaltbar.
+3. **F Agentensteuerung:** eine Stelle für Zeitplan, Start von Hand, Kosten- und Sicherheitsgrenzen.
+4. B-Rest: nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
+5. D Microsoft 365 nur gegen nachgebaute Schnittstellen; J Modelladapter und Kostenübersicht.

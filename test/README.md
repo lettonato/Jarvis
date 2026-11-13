@@ -10,7 +10,9 @@ npm run pruefen     # Lint, Typprüfung und Tests
 * `test/module/` prüft Module mit echten Dateien im Temp-Ordner und nachgebauten Diensten:
   Obsidian, Gedächtnis, Dokumentablage, KI-Gehirn (nachgebauter Claude in `test/mocks/claude-mock.ts`),
   Spielgeld-Desk und das Security Gateway (`gateway.test.ts`: Deny by Default, Klassen, Freigaben,
-  Not-Aus, Agentensperren, Audit-Log, ein manipuliertes Modell).
+  Not-Aus, Agentensperren, Audit-Log, ein manipuliertes Modell). `projekte.test.ts` prüft das
+  Projektgedächtnis: nur ein Mensch am Mac bestätigt, Vorschläge sind kein Wissen, Korrekturverlauf,
+  vertrauliche Projekte, Speicher in der Datei und auf einem zweiten Speicher ohne Datei.
 * Nachgebaute Dienste in `test/mocks/`: Claude (`claude-mock.ts`), Telegram (`telegram-mock.ts`), xAI/Grok
   (`xai-mock.ts`), der Mac für Kalender und Programme (`osascript-mock.mjs`, `open-mock.mjs`) und der
   macOS-Schlüsselbund (`security-mock.mjs`).
@@ -24,7 +26,7 @@ Seit Schritt 2 (8. November 2026) ist keine bekannte Lücke mehr offen; alle 13 
 normale Tests.
 
 `test/hand/` enthält Handprüfungen, die ein echtes Chrome brauchen und deshalb nicht bei `npm test` mitlaufen
-(Netzschleuse, Browser-Agent, PDF). Aufruf steht jeweils oben in der Datei.
+(Netzschleuse, Browser-Agent, PDF, Ansicht „Projekte“). Aufruf steht jeweils oben in der Datei.
 
 Neue Werkzeuge: Der Test „jedes Werkzeug steht in der Tabelle“ liest alle `betaTool({ name })` aus
 `brain.ts` und `browser.ts`. Ein Werkzeug ohne Zeile in `src/lib/server/gateway/richtlinien.ts` lässt ihn

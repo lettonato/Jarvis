@@ -43,6 +43,8 @@ type Shared = {
   loading: Promise<State> | null;
   saving: Promise<void>;
   running: { job: DocJob; abort: AbortController; done: Promise<void> } | null;
+  // Das zuletzt gestartete Dokument, bis einschließlich Speichern und Meldung. running ist schon vorher wieder frei.
+  last?: Promise<void>;
 };
 const holder = globalThis as typeof globalThis & { __jarvisDocs?: Shared };
 const shared: Shared = (holder.__jarvisDocs ??= { state: null, loading: null, saving: Promise.resolve(), running: null });
@@ -87,8 +89,8 @@ export async function documentsSnapshot(): Promise<DocsSnapshot> {
   return { configured: hasKey(config), folder: docsDir(), running: shared.running?.job ?? null, jobs: state.jobs };
 }
 
-// Nur für Tests: warten, bis das laufende Dokument fertig ist.
-export const documentDone = () => shared.running?.done ?? Promise.resolve();
+// Nur für Tests: warten, bis das zuletzt gestartete Dokument ganz fertig ist, samt Speichern und Meldung.
+export const documentDone = () => shared.last ?? Promise.resolve();
 
 function step(job: DocJob, text: string) {
   job.steps = [...job.steps, { at: new Date().toISOString(), text }].slice(-KEEP_STEPS);
@@ -132,6 +134,7 @@ export async function startDocument(config: JarvisConfig, apiKey: string, input:
   const abort = new AbortController();
   const done = work(job, config, apiKey, abort).catch((e) => console.error("Dokument:", e));
   shared.running = { job, abort, done };
+  shared.last = done;
   await save(state);
   return job;
 }

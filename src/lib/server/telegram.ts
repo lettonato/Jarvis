@@ -33,6 +33,7 @@ import { entscheideFreigabe, FreigabeFehler, freigabeZustand } from "./gateway/f
 import { notausAn } from "./gateway/zustand";
 import { onNotice, type Notice } from "./notify";
 import { readTasks } from "./obsidian";
+import { terminVorbereitung } from "./projekte/projekte";
 
 // JARVIS auf dem Handy: JARVIS fragt bei Telegram ständig nach neuen Nachrichten an deinen Bot („long
 // polling“). Dafür muss niemand von außen an deinen Mac heran; er bleibt nur unter 127.0.0.1 erreichbar.
@@ -261,6 +262,7 @@ export const prefsOf = (tg?: TelegramConfig): TelegramPrefs => ({
   trades: tg?.trades ?? TELEGRAM_DEFAULTS.trades,
   warnings: tg?.warnings ?? TELEGRAM_DEFAULTS.warnings,
   reminders: tg?.reminders ?? TELEGRAM_DEFAULTS.reminders,
+  projekte: tg?.projekte ?? TELEGRAM_DEFAULTS.projekte,
   briefing: tg?.briefing === undefined ? TELEGRAM_DEFAULTS.briefing : tg.briefing,
 });
 
@@ -294,7 +296,7 @@ export async function unpairTelegram(): Promise<void> {
   const tg = config.telegram;
   if (!tg) return;
   if (tg.chatId) await send(tg.token, tg.chatId, "JARVIS ist jetzt von diesem Chat getrennt. Neu koppeln kannst du am Mac unter Einstellungen → Handy.").catch(() => {});
-  config.telegram = { token: tg.token, bot: tg.bot, trades: tg.trades, warnings: tg.warnings, reminders: tg.reminders, briefing: tg.briefing };
+  config.telegram = { token: tg.token, bot: tg.bot, trades: tg.trades, warnings: tg.warnings, reminders: tg.reminders, projekte: tg.projekte, briefing: tg.briefing };
   await writeConfig(config);
   const state = await load();
   state.history = [];
@@ -576,6 +578,11 @@ export async function telegramMinute(now = new Date()) {
         state.reminded = [...state.reminded, key].slice(-100);
         changed = true;
         await send(tg.token, tg.chatId, reminderMessage(e, now.getTime())).catch((err) => console.error("Telegram-Erinnerung:", explainTelegramError(err)));
+        if (prefs.projekte) {
+          for (const v of await terminVorbereitung(e.title, now).catch(() => [])) {
+            await send(tg.token, tg.chatId, v.text).catch((err) => console.error("Telegram-Vorbereitung:", explainTelegramError(err)));
+          }
+        }
       }
     }
   }

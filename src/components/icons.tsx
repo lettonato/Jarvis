@@ -34,6 +34,12 @@ const PATHS = {
       <path d="M14 3v5h5M9 12.5h7M9 15.5h7M9 18.5h4" />
     </>
   ),
+  projekte: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16M15 4v16M5 8h2M11 8h2M17 8h2M5 11.5h2M11 11.5h2M5 15h2" />
+    </>
+  ),
   ordner: <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z" />,
   trading: (
     <>

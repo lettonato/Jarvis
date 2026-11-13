@@ -223,6 +223,13 @@ function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean;
         <input type="checkbox" className={box} checked={prefs.reminders} onChange={(e) => onChange({ reminders: e.target.checked })} />
         Erinnerung {REMINDER_MINUTES} Minuten vor jedem Termin
       </label>
+      <label className={`${row} ${prefs.reminders ? "" : "opacity-50"}`}>
+        <input type="checkbox" className={box} checked={prefs.projekte} disabled={!prefs.reminders} onChange={(e) => onChange({ projekte: e.target.checked })} />
+        <span>
+          Dazu die Vorbereitung aus dem Projektgedächtnis, wenn der Termin zu einem Projekt gehört
+          <span className="block text-xs text-quiet">Aus, bis du es willst: Entscheidungen und offene Punkte gehen dann über Telegram. Vertrauliche Projekte nie.</span>
+        </span>
+      </label>
       <div className={`${row} flex-wrap`}>
         <label className="flex items-center gap-3">
           <input type="checkbox" className={box} checked={prefs.briefing !== null} onChange={(e) => onChange({ briefing: e.target.checked ? time : null })} />

@@ -25,9 +25,11 @@ export type TelegramStatus = {
   prefs: TelegramPrefs;
 };
 
-export type TelegramPrefs = { trades: boolean; warnings: boolean; reminders: boolean; briefing: string | null };
+// projekte: Vor einem Termin, der zu einem Projekt gehört, kommt die Vorbereitung aus dem Projektgedächtnis mit.
+// Aus, bis du es einschaltest: Damit gehen Projektinhalte über Telegram, also über einen Dienst außer Haus.
+export type TelegramPrefs = { trades: boolean; warnings: boolean; reminders: boolean; projekte: boolean; briefing: string | null };
 
-export const TELEGRAM_DEFAULTS: TelegramPrefs = { trades: true, warnings: true, reminders: true, briefing: "07:30" };
+export const TELEGRAM_DEFAULTS: TelegramPrefs = { trades: true, warnings: true, reminders: true, projekte: false, briefing: "07:30" };
 
 // So viele Minuten vor einem Termin erinnert JARVIS dich.
 export const REMINDER_MINUTES = 15;

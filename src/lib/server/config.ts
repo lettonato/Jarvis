@@ -34,6 +34,7 @@ export type TelegramConfig = {
   trades?: boolean;
   warnings?: boolean;
   reminders?: boolean;
+  projekte?: boolean;
   briefing?: string | null;
 };
 

@@ -13,6 +13,7 @@ import { docDoneSentence, type DocsSnapshot } from "@/lib/documents";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
 import type { DeskSnapshot } from "@/lib/paper";
+import type { ProjekteSnapshot } from "@/lib/projekte";
 import type { Settings } from "@/lib/settings";
 import type { TasksSnapshot } from "@/lib/tasks";
 import { usePolling } from "@/lib/usePolling";
@@ -53,6 +54,9 @@ type Jarvis = {
   // Dokumente, die der Analyst schreibt oder geschrieben hat.
   documents: DocsSnapshot | null;
   setDocuments: (d: DocsSnapshot) => void;
+  // Das Projektgedächtnis: bestätigte Projekte und Vorschläge, die auf dein Ja warten.
+  projekte: ProjekteSnapshot | null;
+  setProjekte: (p: ProjekteSnapshot) => void;
   mailText: Record<number, MailMessage>;
   // Die Mails, die Claude zuletzt geöffnet hat; n zählt mit, damit dieselbe Mail wieder aufklappt.
   spotlight: { uids: number[]; n: number };
@@ -153,6 +157,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const { data: calendar, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
   const { data: intel, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
   const { data: documents, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
+  const { data: projekte, set: setProjekte } = usePolling<ProjekteSnapshot>("/api/projekte", 60_000);
   const { data: memoryData, set: setMemoryData } = usePolling<{ facts: MemoryFact[] }>("/api/gedaechtnis", 10 * 60_000);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
@@ -421,6 +426,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       if (result.intel) setIntel(result.intel);
       if (result.memory) setMemoryData({ facts: result.memory });
       if (result.documents) setDocuments(result.documents);
+      if (result.projekte) setProjekte(result.projekte);
       if (result.opened) {
         const opened = result.opened;
         setMailText((prev) => ({ ...prev, ...Object.fromEntries(opened.map((m) => [m.uid, m])) }));
@@ -453,7 +459,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       }
       speech.end(listenAfter);
     },
-    [context, addTurn, updateTurn, speakStream, listen, router, setSession, setTasks, setMail, setDesk, setCalendar, setIntel, setMemoryData, setDocuments],
+    [context, addTurn, updateTurn, speakStream, listen, router, setSession, setTasks, setMail, setDesk, setCalendar, setIntel, setMemoryData, setDocuments, setProjekte],
   );
 
   const handle = useCallback(
@@ -534,6 +540,12 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       const text = minutes <= 1 ? `Jetzt beginnt ${due.title}.` : `In ${minutes} Minuten: ${due.title}.`;
       addTurn("jarvis", text);
       speak(text);
+      // Gehört der Termin zu einem Projekt, blendet JARVIS ein, was dazu festgehalten ist.
+      void getJson<{ vorbereitung: { projekt: string; text: string; fremd: boolean }[] }>(`/api/projekte?termin=${encodeURIComponent(due.title)}`)
+        .then(({ vorbereitung }) => {
+          for (const v of vorbereitung) addTurn("jarvis", v.text, v.fremd ? { fremd: true } : {});
+        })
+        .catch(() => {});
     };
     const first = setTimeout(check, 2000);
     const timer = setInterval(check, 30_000);
@@ -609,6 +621,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setIntel,
       documents,
       setDocuments,
+      projekte,
+      setProjekte,
       mailText,
       spotlight,
       memory: memoryData?.facts ?? null,
@@ -643,6 +657,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setIntel,
       documents,
       setDocuments,
+      projekte,
+      setProjekte,
       mailText,
       spotlight,
       memoryData,

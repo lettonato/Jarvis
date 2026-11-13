@@ -71,6 +71,8 @@ export const RICHTLINIEN: Record<string, Regel> = {
   handel_status: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Spielgeld-Desk", daten: "Kontostand, Positionen" }),
   nachrichten_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Intel", daten: "Lagebild", liefertFremdes: true }),
   dokument_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Dokumente/JARVIS", daten: "eigene PDFs" }),
+  projekte_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Projektgedächtnis", daten: "Projektübersicht (nur Bestätigtes)" }),
+  projekt_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Projektgedächtnis", daten: "Projektakte (nur Bestätigtes)" }),
   ansicht_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Bildschirm", daten: "keine", kanaele: MAC }),
   besprechung_starten: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Bildschirm", daten: "keine", kanaele: MAC }),
   kalender_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Kalender-App", daten: "keine", kanaele: MAC }),
@@ -81,6 +83,9 @@ export const RICHTLINIEN: Record<string, Regel> = {
   // ---- Gehirn: Vorbereiten (B) ----
   aufgabe_anlegen: gehirn({ agent: "gehirn", klasse: "B", freigabe: "nie", ziel: "Obsidian JARVIS/Eingang.md", daten: "neue Aufgabe" }),
   notiz_merken: gehirn({ agent: "gehirn", klasse: "B", freigabe: "nie", ziel: "Obsidian JARVIS/Notizen.md", daten: "neue Notiz" }),
+  // Nur ein Vorschlag: Er landet im Eingang der Ansicht Projekte und gilt erst, wenn ein Mensch ihn am Mac
+  // übernimmt. Die Bestätigung dort ist die Freigabe; die KI hat kein Werkzeug, das Einträge schreibt.
+  projekt_vorschlagen: gehirn({ agent: "gehirn", klasse: "B", freigabe: "nie", ziel: "Projektgedächtnis (Eingang für Vorschläge)", daten: "Vorschlag, gilt erst nach Bestätigung am Mac" }),
   browser_auftrag: gehirn({
     agent: "browser",
     klasse: "B",

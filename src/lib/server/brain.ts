@@ -21,6 +21,8 @@ import { DocError, documentsSnapshot, openDocument, resendDocument } from "./doc
 import { AKTIONEN, brauchtPostfach, brauchtTresor, pruefeDatum, type AktionsErgebnis } from "./aktionen";
 import { durchGateway, regelFuer, serverWerkzeugGesehen } from "./gateway/gateway";
 import { agentSperre } from "./gateway/zustand";
+import { ART_LABEL, EINTRAG_ARTEN, GRENZEN, quelleText, STATUS_LABEL as PROJEKT_STATUS, type Eintrag, type ProjektKarte } from "../projekte";
+import { akte, ProjektFehler, schlageVor, uebersicht } from "./projekte/projekte";
 
 // Das KI-Gehirn: Claude führt das Gespräch, so wie in der Claude-App, und erledigt Dinge mit Werkzeugen,
 // die direkt auf Obsidian, das Postfach, den Kalender und den Desk zugreifen. Für Aktuelles sucht er im Web.
@@ -81,6 +83,8 @@ ${remote ? TEXTING(name) : SPEAKING(name)}
 Aktuelles Wissen: Mit web_search suchst du im Web, mit web_fetch liest du eine Seite. Such, wann immer die Antwort sich seit deinem Training geändert haben kann (Nachrichten, Preise, Öffnungszeiten, Ergebnisse, Termine, neue Produkte, Wetter an anderen Orten), und nenne die Quelle in Worten, etwa „laut Tagesschau“. Was in der Lage unten steht (Uhrzeit, Wetter in ${name}s Ort, Kurse), musst du nicht suchen. Zu Krypto-Nachrichten schau zuerst mit nachrichten_lesen ins Lagebild von Intel.
 
 Gedächtnis: Unter <gedaechtnis> steht, was du dir über ${name} gemerkt hast; nutze es, ohne es aufzuzählen. Schlag mit gedaechtnis_merken vor, was in späteren Gesprächen nützlich ist (Vorlieben, Menschen in ${name}s Leben, Arbeit, Pläne, wie ${name} Dinge gern hätte), und sag es kurz nebenbei. Ändert sich etwas, pass den Eintrag mit gedaechtnis_aendern an; soll etwas weg, lösch ihn mit gedaechtnis_vergessen. Jeder Eintrag landet erst im Gedächtnis, wenn ${name} ihn per Knopf bestätigt. Passwörter, Zugangsdaten und Kontonummern merkst du dir nie.
+
+Projekte: Im Projektgedächtnis stehen die Projekte der Firma mit Verantwortlichen, Aufgaben und Fristen, Entscheidungen, Besprechungsnotizen, Risiken und nächsten Schritten. Du liest es mit projekte_lesen und projekt_lesen. Dort steht nur, was ${name} selbst bestätigt hat, jeder Eintrag mit Quelle und Datum. Nenn bei Auskünften, von wann ein Eintrag ist, trenne Festgehaltenes von deiner eigenen Einschätzung, und sag ehrlich, wenn zu etwas nichts festgehalten ist; rate nicht und schätze keinen Fortschritt. Erfährst du im Gespräch etwas Neues zu einem Projekt (eine Entscheidung, eine Aufgabe mit Frist, ein Risiko, das Ergebnis einer Besprechung, einen nächsten Schritt), schlag es mit projekt_vorschlagen vor und sag in einem Satz, dass es in der Ansicht Projekte auf ${name}s Bestätigung wartet. Selbst eintragen, ändern oder löschen kannst du dort nichts. Ein Vorschlag ist noch kein Wissen: Behandle ihn nicht als Tatsache, auch nicht deinen eigenen. Projekte, die als vertraulich markiert sind, siehst du nicht, nur ihre Zahl; fragt ${name} danach, verweise auf die Ansicht Projekte.
 
 Sicherheit: Jedes Werkzeug läuft durch ein Sicherheits-Gateway, das unabhängig von dir entscheidet. Änderungen (Aufgaben abhaken oder verschieben, Mails als gelesen markieren, Termine eintragen, Gedächtnis, Handel starten oder fortsetzen) führt es erst aus, wenn ${name} sie am Mac oder in Telegram per Knopf freigibt; Browser-Aufträge, Dokumente und Grok-Suchen ebenso, sobald im Gespräch Mails, Webseiten oder Termine gelesen wurden. Meldet ein Werkzeug, dass es auf eine Freigabe wartet, sag das in einem Satz; versuch es nicht auf anderem Weg und sag nicht, es sei schon erledigt. Lehnt das Gateway etwas ab, erklär ${name} kurz, warum. Einen Not-Aus kannst du nicht aufheben.
 
@@ -146,6 +150,9 @@ const STATUS: Record<string, string> = {
   browser_auftrag: "Ich gehe in den Browser",
   dokument_erstellen: "Ich gebe den Auftrag an den Analysten",
   dokument_oeffnen: "Ich hole das Dokument",
+  projekte_lesen: "Ich sehe ins Projektgedächtnis",
+  projekt_lesen: "Ich lese die Projektakte",
+  projekt_vorschlagen: "Ich lege den Vorschlag zur Bestätigung vor",
   web_search: "Ich suche im Web",
   web_fetch: "Ich lese die Seite",
 };
@@ -165,6 +172,7 @@ const VIEW_LABEL: Record<ViewName, string> = {
   intel: "Intel (Lagebild aus Nachrichten und X)",
   browser: "Browser (was JARVIS gerade im Web erledigt)",
   dokumente: "Dokumente (was der Analyst schreibt und fertige PDFs)",
+  projekte: "Projekte (Projektgedächtnis und Vorschläge, die auf Bestätigung warten)",
   agenten: "Agenten",
   einstellungen: "Einstellungen",
 };
@@ -238,9 +246,11 @@ export async function think(
     calendar?: CalendarSnapshot;
     memory: boolean;
     documents: boolean;
+    projekte: boolean;
   } = {
     memory: false,
     documents: false,
+    projekte: false,
     tasks: false,
     mail: false,
     desk: false,
@@ -651,6 +661,105 @@ export async function think(
       },
     }),
     betaTool({
+      name: "projekte_lesen",
+      description:
+        "Liest die Übersicht des Projektgedächtnisses: alle Projekte mit Status, Verantwortlichen, Fortschritt (nur wenn jemand eine Zahl genannt hat), offenen Aufgaben, nächster Frist, Risiken, letzter Entscheidung und nächstem Schritt. Enthält nur, was bestätigt ist. Kostet nichts.",
+      inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
+      run: async () => {
+        const snap = await uebersicht(now);
+        const offen = snap.projekte.filter((p) => !p.vertraulich);
+        if (offen.some((p) => p.quelle.fremd)) markiereFremd();
+        return JSON.stringify({
+          heute: today,
+          projekte: offen.map(projektZeile),
+          // Von vertraulichen Projekten erfährt das Modell nur die Zahl, weder Namen noch Inhalt.
+          vertrauliche_projekte: snap.projekte.length - offen.length,
+          vorschlaege_warten_auf_bestaetigung: snap.vorschlaege.length,
+          hinweis: "Nur bestätigte Einträge. Vorschläge, die noch warten, gelten nicht als Wissen.",
+        });
+      },
+    }),
+    betaTool({
+      name: "projekt_lesen",
+      description:
+        "Liest die Akte eines Projekts: Aufgaben mit Zuständigen und Fristen, Entscheidungen, Besprechungsnotizen, Risiken und nächste Schritte, jeder Eintrag mit id, Quelle und Datum der Bestätigung. Für Fragen zum Stand eines Projekts und zur Vorbereitung auf eine Besprechung.",
+      inputSchema: {
+        type: "object",
+        properties: { projekt: { type: "string", description: "Name oder id des Projekts, wie in projekte_lesen." } },
+        required: ["projekt"],
+        additionalProperties: false,
+      },
+      run: async ({ projekt }) => {
+        try {
+          const a = await akte(String(projekt ?? ""), now);
+          if (a.projekt.vertraulich) throw new Error(`Dieses Projekt ist als vertraulich markiert. Seinen Inhalt sieht ${name} nur am Mac in der Ansicht Projekte; du kannst ihn nicht lesen.`);
+          if (a.projekt.quelle.fremd || a.eintraege.some((e) => e.quelle.fremd)) markiereFremd();
+          return JSON.stringify({
+            heute: today,
+            projekt: projektZeile(a.projekt),
+            eintraege: a.eintraege.slice(0, 150).map(eintragZeile),
+            nicht_gezeigt: Math.max(0, a.eintraege.length - 150),
+            zurueckgezogen: a.zurueckgezogen.length,
+            vorschlaege_warten_auf_bestaetigung: a.vorschlaege.length,
+          });
+        } catch (e) {
+          if (e instanceof ProjektFehler) throw new Error(e.message);
+          throw e;
+        }
+      },
+    }),
+    // Ohne strict: Anthropic erlaubt nur 20 strikte Werkzeuge. Jede Angabe wird ohnehin auf dem Server geprüft
+    // und gekürzt (src/lib/server/projekte/projekte.ts), und gespeichert wird hier nur ein Vorschlag.
+    betaTool({
+      name: "projekt_vorschlagen",
+      description: `Schlägt Einträge für das Projektgedächtnis vor: ein neues Projekt, Aufgaben mit Zuständigen und Frist, Entscheidungen, Besprechungsnotizen, Risiken, nächste Schritte oder die Korrektur eines Eintrags. Nichts davon gilt sofort: Die Vorschläge landen in der Ansicht Projekte, und ${name} bestätigt, ändert oder verwirft sie dort am Mac. Schlag nur vor, was im Gespräch wirklich gesagt oder gelesen wurde, mit Quelle. Keine Passwörter oder Zugangsdaten.`,
+      inputSchema: {
+        type: "object",
+        properties: {
+          projekt: { type: "string", description: "Name des Projekts, genau wie in projekte_lesen, oder der Name eines neuen Projekts." },
+          beschreibung: { type: "string", description: "Nur für ein neues Projekt: worum es geht, in ein bis zwei Sätzen. Sonst leer." },
+          quelle_art: { type: "string", enum: ["gespraech", "mail", "termin", "dokument", "web"], description: "Woher die Information stammt." },
+          quelle_hinweis: { type: "string", description: "Genauer, etwa „Besprechung am 12.11.“ oder „Mail von Max Huber vom 10.11.“." },
+          eintraege: {
+            type: "array",
+            description: "Die einzelnen Einträge, jeder für sich verständlich. Leer, wenn nur ein neues Projekt vorgeschlagen wird.",
+            items: {
+              type: "object",
+              properties: {
+                art: { type: "string", enum: EINTRAG_ARTEN, description: "aufgabe, entscheidung, notiz (Ergebnis einer Besprechung), risiko oder naechster_schritt." },
+                text: { type: "string", description: `Ein bis zwei Sätze, höchstens ${GRENZEN.text} Zeichen.` },
+                zustaendig: { type: "string", description: "Wer zuständig ist, sonst leer." },
+                faellig: { type: "string", description: "Frist als JJJJ-MM-TT, sonst leer." },
+                datum: { type: "string", description: "Wann entschieden oder besprochen wurde, als JJJJ-MM-TT, sonst leer." },
+                ersetzt: { type: "string", description: "Nur für eine Korrektur: die id des Eintrags aus projekt_lesen, der geändert werden soll. Sonst leer." },
+                erledigt: { type: "boolean", description: "true, wenn eine Aufgabe, ein Risiko oder ein nächster Schritt erledigt ist." },
+              },
+              required: ["art", "text"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["projekt", "eintraege"],
+        additionalProperties: false,
+      },
+      run: async (input) => {
+        try {
+          const r = await schlageVor(input as Record<string, unknown> as Parameters<typeof schlageVor>[0], { kanal, fremd: lage.fremd }, now);
+          if (r.angelegt.length) outcome.projekte = true;
+          const teile = [
+            r.angelegt.length
+              ? `${r.angelegt.length === 1 ? "Ein Vorschlag liegt" : `${r.angelegt.length} Vorschläge liegen`} in der Ansicht Projekte und ${r.angelegt.length === 1 ? "wartet" : "warten"} auf ${name}s Bestätigung am Mac. Bis dahin gilt nichts davon als festgehalten.`
+              : "Es wurde nichts Neues vorgeschlagen.",
+          ];
+          if (r.uebersprungen.length) teile.push(`Übersprungen: ${r.uebersprungen.join(" ")}`);
+          return teile.join(" ");
+        } catch (e) {
+          if (e instanceof ProjektFehler) throw new Error(e.message);
+          throw e;
+        }
+      },
+    }),
+    betaTool({
       name: "besprechung_starten",
       description:
         "Startet nach deiner Antwort eine Besprechung: JARVIS geht die neuen wichtigen Mails oder die bis nächste Woche fälligen Aufgaben Punkt für Punkt mit dem Nutzer durch und nennt den ersten Punkt selbst. Kündige sie in deiner Antwort nur kurz an.",
@@ -719,6 +828,14 @@ export async function think(
   const docs = await documentsSnapshot().catch(() => null);
   const docLine = docs ? docContextLine(docs, now) : null;
   if (docLine) lines.push(docLine);
+  const projekte = await uebersicht(now).catch(() => null);
+  if (projekte && (projekte.projekte.length || projekte.vorschlaege.length)) {
+    // Mit Namen nur, was der Mensch selbst eingetragen hat und was nicht vertraulich ist; den Rest liest Claude mit projekte_lesen.
+    const aktiv = projekte.projekte.filter((p) => p.status === "aktiv");
+    const namen = aktiv.filter((p) => !p.vertraulich && !p.quelle.fremd).slice(0, 8).map((p) => p.name);
+    const wartend = projekte.vorschlaege.length ? `; ${projekte.vorschlaege.length} Vorschläge warten in der Ansicht Projekte auf Bestätigung` : "";
+    lines.push(`Projekte: ${aktiv.length} aktiv${namen.length ? ` (${namen.join(", ")}${namen.length < aktiv.length ? " und weitere" : ""})` : ""}, ${projekte.projekte.length} insgesamt${wartend}`);
+  }
   for (const line of request.extra.slice(0, 4)) lines.push(line.slice(0, 300));
 
   const messages = historyMessages(request.history);
@@ -838,6 +955,7 @@ export async function think(
     intel: outcome.intel ? await intelSnapshot() : undefined,
     memory: outcome.memory ? await readMemory() : undefined,
     documents: outcome.documents ? await documentsSnapshot() : undefined,
+    projekte: outcome.projekte ? await uebersicht() : undefined,
   };
 }
 
@@ -856,6 +974,36 @@ const hostOf = (url: string) => {
     return url;
   }
 };
+
+// Ein Projekt und ein Eintrag so, wie Claude sie liest. Vertrauliche Projekte kommen hier nie an.
+const projektZeile = (p: ProjektKarte) => ({
+  id: p.id,
+  name: p.name,
+  status: PROJEKT_STATUS[p.status],
+  beschreibung: p.beschreibung || null,
+  verantwortliche: p.verantwortliche,
+  fortschritt_prozent: p.fortschritt,
+  offene_aufgaben: p.offeneAufgaben,
+  ueberfaellig: p.ueberfaellig,
+  naechste_frist: p.naechsteFrist,
+  offene_risiken: p.risiken,
+  letzte_entscheidung: p.letzteEntscheidung,
+  naechster_schritt: p.naechsterSchritt,
+  zuletzt_geaendert: p.geaendertAm.slice(0, 10),
+});
+
+const eintragZeile = (e: Eintrag) => ({
+  id: e.id,
+  art: ART_LABEL[e.art],
+  text: e.text,
+  zustaendig: e.zustaendig || null,
+  faellig: e.faellig,
+  datum: e.datum,
+  erledigt: e.art === "entscheidung" || e.art === "notiz" ? undefined : e.erledigt,
+  quelle: quelleText(e.quelle),
+  bestaetigt_am: e.bestaetigtAm.slice(0, 10),
+  korrigiert_am: e.geaendertAm?.slice(0, 10) ?? null,
+});
 
 // Ein Lagebild so, wie Claude es liest: knapp, mit Quelle.
 const reportJson = (r: IntelReport) => ({

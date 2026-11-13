@@ -3,6 +3,7 @@ import type { DocsSnapshot } from "./documents";
 import type { IntelSnapshot } from "./intel";
 import type { MailMessage, MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
+import type { ProjekteSnapshot } from "./projekte";
 import type { TasksSnapshot } from "./tasks";
 
 // Das KI-Gehirn: Claude führt das Gespräch. Hier steht, was die Seite an den Server schickt und was
@@ -56,6 +57,8 @@ export type BrainReply = {
   intel?: IntelSnapshot;
   // Die Dokumente, wenn Claude dem Analysten einen Auftrag gegeben hat.
   documents?: DocsSnapshot;
+  // Das Projektgedächtnis, wenn Claude etwas vorgeschlagen hat (der Vorschlag wartet dann auf dein Ja).
+  projekte?: ProjekteSnapshot;
 };
 
 // Der Server schickt die Antwort Stück für Stück, eine Zeile JSON pro Ereignis.
@@ -81,6 +84,7 @@ export const VIEWS = {
   intel: "/intel",
   browser: "/browser",
   dokumente: "/dokumente",
+  projekte: "/projekte",
   agenten: "/agenten",
   einstellungen: "/einstellungen",
 } as const;

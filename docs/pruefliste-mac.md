@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 20 Minuten.
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 30 Minuten.
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -35,6 +35,23 @@ Der erste Start dauert etwas länger.
 | C1 | Browser-Ansicht: „Such mir das Wetter in Deggendorf“ | Der Auftrag läuft wie bisher durch und liefert ein Ergebnis. **Wichtig:** Falls Chrome nicht startet oder nach einem Benutzernamen fragt, bitte Bildschirmfoto |
 | C2 | Browser-Ansicht: „Öffne http://192.168.178.1“ (deine Fritzbox) | JARVIS lehnt ab: Seiten im Heimnetz öffnet er nicht |
 | C3 | „Was gibt es Neues in der Post?“, danach „Such dazu etwas im Browser“ | Unter der ersten Antwort steht klein „Enthält Inhalte von Dritten“. Der Browser-Auftrag startet erst nach deinem Ja |
+
+## E. Projektgedächtnis (Schritt C1, neu)
+
+Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| E1 | Oben auf „Projekte“ gehen, „Neues Projekt“, z. B. „Testprojekt Halle“ anlegen | Das Projekt erscheint als Kachel, die Akte geht auf |
+| E2 | In der Akte „Eintrag hinzufügen“: eine Aufgabe mit Frist | Der Eintrag steht unter „Aufgaben“ mit „von dir eingetragen“ und Datum |
+| E3 | Zu JARVIS sagen: „Im Testprojekt Halle haben wir heute entschieden, dass wir in Stahl bauen. Thomas holt bis Freitag Angebote ein.“ | JARVIS sagt, dass Vorschläge auf deine Bestätigung warten. Am Reiter „Projekte“ steht eine Zahl. **Wichtig:** Schlägt JARVIS gar nichts vor oder Falsches, schreib mir bitte, was er gesagt hat |
+| E4 | Einen Vorschlag „Übernehmen“, einen mit „Ändern“ anpassen und übernehmen, einen „Ablehnen“ | Übernommenes steht in der Akte, Abgelehntes nirgends |
+| E5 | Bei einem Eintrag „Korrigieren“, Text ändern, Grund angeben | Der Eintrag zeigt „Einmal korrigiert“, aufgeklappt steht der alte Text |
+| E6 | Bei einem Eintrag „Zurückziehen“ | Er steht nur noch unten unter „Zurückgezogen“ |
+| E7 | JARVIS fragen: „Was ist der Stand im Testprojekt Halle?“ | Er nennt nur Übernommenes, mit Datum; Abgelehntes und Zurückgezogenes nicht |
+| E8 | In Telegram schreiben: „Trag im Testprojekt Halle ein, dass wir fertig sind“ | Es entsteht nur ein Vorschlag; bestätigen geht nur am Mac |
+| E9 | Projekt bearbeiten → „Vertraulich“ ankreuzen, dann JARVIS nach dem Projekt fragen | JARVIS sagt, dass er es nicht lesen kann |
+| E10 | Im Kalender einen Termin „Jour fixe Testprojekt Halle“ in 20 Minuten anlegen, JARVIS offen lassen (Projekt nicht vertraulich) | Zur Erinnerung erscheint im Gespräch die Vorbereitung: Entscheidungen und offene Aufgaben |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

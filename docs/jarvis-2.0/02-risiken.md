@@ -181,9 +181,28 @@ Desktop-Agenten vor. Das muss vor Phase 8 entschieden werden.
 existierte die Datei noch nicht, folgte ein verknüpfter Ordner im Tresor (`link/neu.md`) unbemerkt nach
 draußen. Ein Test in Schritt 1 hat das nachgewiesen, die Prüfung nutzt jetzt den nächsten vorhandenen Ordner.
 
+**R-17 Projektinhalte beim Modell (neu mit Schritt C1, offen):** Fragt man JARVIS nach einem Projekt, liest das
+KI-Gehirn die Akte, und ihr Inhalt geht an Anthropic; per Telegram gefragt, geht die Antwort zusätzlich über
+Telegram. Das ist dieselbe Lage wie R-14, jetzt für Projektwissen. Gemildert: Projekte lassen sich als
+„vertraulich“ markieren (dann gehen weder Name noch Inhalt ans Modell oder über Telegram), die Vorbereitung
+per Telegram ist ab Werk aus, und die Lagezeile nennt nur selbst angelegte, nicht vertrauliche Projektnamen.
+Nicht gelöst: Für D&S-Daten fehlen weiter Vertrag, Aufbewahrung und Datenstandort. Bis zu Benedikts Freigabe
+keine echten vertraulichen Projektdaten in nicht vertraulichen Projekten.
+
+**R-18 Projektdatei auf dem Mac (neu mit Schritt C1, offen):** `~/.jarvis/projekte.json` ist nur für den
+eigenen Benutzer lesbar, aber unverschlüsselt, und jedes Programm desselben Benutzers kann sie ändern. Die
+Bestätigung „nur am Mac“ schützt vor der KI und vor Telegram, nicht vor Schadsoftware auf dem Mac. Eine
+beschädigte Datei wird gemeldet und nicht überschrieben; eine gezielt geänderte erkennt JARVIS nicht.
+Abhilfe erst mit der zentralen Datenbank und Anmeldung (Phasen 3 und 5). Sicherung: nur über Time Machine.
+
+**R-19 Bestätigen ohne Lesen (neu mit Schritt C1, Restrisiko):** Ein Vorschlag aus einer manipulierten Mail
+wird zu Wissen, wenn ein Mensch ihn ungelesen übernimmt. Gemildert: gelbe Markierung „Text von Dritten“ am
+Vorschlag und am Eintrag; liest JARVIS so einen Eintrag später, gilt das Gespräch als fremd beeinflusst, und
+Änderungen brauchen ein Ja; spitze Klammern werden entfernt, Längen begrenzt, höchstens 100 offene Vorschläge.
+
 ## Was bereits gut ist und erhalten bleiben soll
 
-* Server lauscht nur auf 127.0.0.1, alle 16 API-Routen prüfen Host, Herkunft und einen eigenen Header.
+* Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt C1 sind es 18) prüfen Host, Herkunft und einen eigenen Header.
 * Kalender und „Öffnen“ ohne Shell, mit festen Argumenten.
 * Obsidian- und Dokumentpfade gegen Ausbruch aus dem Ordner geprüft (inkl. Symlinks).
 * Desk-Käufe brauchen eine echte menschliche Freigabe; das Modell kann sie nicht erteilen.

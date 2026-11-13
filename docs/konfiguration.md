@@ -31,6 +31,10 @@ Weitere Zustandsdateien im selben Ordner (kein Konfigurationsinhalt, aber persö
 `gedaechtnis.json`, `telegram.json`, `intel.json`, `dokumente.json`, `spielgeld.json`,
 `spielgeld-trades.jsonl`, `browser-profil/`.
 
+Projektgedächtnis (seit Schritt C1, siehe `docs/jarvis-2.0/07-projektgedaechtnis.md`): `projekte.json`
+(Projekte, bestätigte Einträge mit Verlauf, Vorschläge). Nicht von Hand ändern; ist die Datei beschädigt,
+meldet JARVIS das und überschreibt sie nicht.
+
 Dateien des Security Gateways (seit Schritt 2, siehe `docs/jarvis-2.0/04-security-gateway.md`):
 `sicherheit.json` (Not-Aus, Agentensperren, Strenge für Klasse C; ist sie beschädigt, startet JARVIS mit
 Not-Aus), `freigaben.json` (die letzten 60 Freigaben), `audit.jsonl` (Audit-Log, nur angehängt, mit
