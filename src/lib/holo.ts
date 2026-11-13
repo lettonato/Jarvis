@@ -13,7 +13,7 @@
 export const HOLO_TYPES = ["holo-zoom-in", "holo-zoom-out", "holo-in", "holo-out", "holo-left", "holo-right"] as const;
 
 const ROOM = ["/fokus", "/"];
-const PANELS = ["/aufgaben", "/kalender", "/post", "/browser", "/dokumente", "/projekte", "/trading", "/intel", "/agenten", "/einstellungen"];
+const PANELS = ["/heute", "/aufgaben", "/kalender", "/post", "/browser", "/dokumente", "/projekte", "/trading", "/intel", "/agenten", "/einstellungen"];
 
 const pathOf = (href: string) => href.split(/[?#]/)[0] || "/";
 

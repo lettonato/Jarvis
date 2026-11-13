@@ -165,6 +165,7 @@ const SPOKEN = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric
 const VIEW_LABEL: Record<ViewName, string> = {
   fokus: "Fokus (nur JARVIS)",
   uebersicht: "Übersicht mit allen Modulen",
+  heute: "Heute (Tagesübersicht: was wartet, Termine, Aufgaben, Post, Projekte, Märkte, Agenten)",
   aufgaben: "Aufgaben",
   kalender: "Kalender (Termine der nächsten Wochen)",
   post: "Post",

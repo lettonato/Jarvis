@@ -6,7 +6,8 @@ npm run pruefen     # Lint, Typprüfung und Tests
 ```
 
 * `test/regeln/` prüft feste Regeln ohne Netz: Desk und Rückfrage, Browser-Sperren, Crawler-Adressfilter,
-  API-Schutz, Telegram- und Dokument-Regeln.
+  API-Schutz, Telegram- und Dokument-Regeln, die Tageslage für „Heute“ (`heute.test.ts`: Reihenfolge von
+  „Wartet auf dich“, überfällige Aufgaben, Projekte mit Frist, Termine mit Projektbezug).
 * `test/module/` prüft Module mit echten Dateien im Temp-Ordner und nachgebauten Diensten:
   Obsidian, Gedächtnis, Dokumentablage, KI-Gehirn (nachgebauter Claude in `test/mocks/claude-mock.ts`),
   Spielgeld-Desk und das Security Gateway (`gateway.test.ts`: Deny by Default, Klassen, Freigaben,

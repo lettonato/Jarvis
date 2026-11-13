@@ -33,6 +33,7 @@ function useTabs(): Tab[] {
   return [
     { href: "/fokus", label: "JARVIS", icon: "fokus" },
     { href: "/", label: "Übersicht", icon: "uebersicht" },
+    { href: "/heute", label: "Heute", icon: "heute" },
     { href: "/aufgaben", label: "Aufgaben", icon: "aufgaben", badge: soon.length ? { value: soon.length, alert: overdue > 0 } : undefined },
     { href: "/kalender", label: "Kalender", icon: "kalender", badge: events ? { value: events, alert: false } : undefined },
     { href: "/post", label: "Post", icon: "post", badge: important ? { value: important, alert: true } : undefined },

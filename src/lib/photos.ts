@@ -8,6 +8,8 @@ export type Photo = { src: string; title: string; author: string; license: "CC B
 export const PHOTOS: Record<BiomeId, Photo> = {
   uebersicht: { src: "/welt/uebersicht.webp", title: "Bergsee unter Wolken", author: "the5sheepdev", license: "CC BY-SA 4.0" },
   fokus: { src: "/welt/fokus.webp", title: "Milchstraße über dem See", author: "Kristopher Roller", license: "CC BY-SA 4.0" },
+  // Heute teilt sich das Foto mit der Übersicht.
+  heute: { src: "/welt/uebersicht.webp", title: "Bergsee unter Wolken", author: "the5sheepdev", license: "CC BY-SA 4.0" },
   aufgaben: { src: "/welt/aufgaben.webp", title: "Reisterrassen von Banaue", author: "Jean-Daniel Bancal", license: "CC BY-SA 4.0" },
   kalender: { src: "/welt/kalender.webp", title: "Almwiese mit Heustadel", author: "Luca Reichmann", license: "CC BY 4.0" },
   post: { src: "/welt/post.webp", title: "Gipfel des Kangchendzönga", author: "Pushkar Deshpande", license: "CC BY 4.0" },

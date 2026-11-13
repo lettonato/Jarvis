@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026 (Schritt C1)
+Letzte Aktualisierung: 13. November 2026 (Schritt E1)
 
 ## Aktueller Stand
 
@@ -24,8 +24,9 @@ Routinen und Agenten → Microsoft 365 (zuerst nur mit Testdaten) → Sprache, D
 Grenzen: keine echten Firmendaten, keine Kosten, keine echten Mails/Termine, keine Änderung an echten
 Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 
-Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6) und das Projektgedächtnis (Schritt C1) sind gebaut und in
-der Sandbox geprüft: 294 von 294 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO.
+Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1) und die Tagesübersicht
+„Heute“ (Schritt E1) sind gebaut und in der Sandbox geprüft: 305 von 305 automatischen Tests bestehen,
+0 übersprungen, 0 bekannte Lücken als TODO.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft; echte vertrauliche Projektdaten gehören
 erst nach Benedikts Freigabe hinein (siehe „Offene Fragen“).
@@ -37,7 +38,7 @@ erst nach Benedikts Freigabe hinein (siehe „Offene Fragen“).
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
 | B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk, Obsidian, Gedächtnis; **Offen** für Mail (IMAP), Sprache, 3D-Oberfläche | nachgebautes Postfach; Oberflächentests im Browser; Mac-Prüfliste |
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
-| E Geschäftsführungsdashboard | Offen (Oberfläche mit 12 Ansichten vorhanden, darunter „Projekte“) | Tages-, Projekt-, Unternehmens-, Markt- und Agentenübersicht |
+| E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“ und Projektübersicht (13 Ansichten); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teil F; Unternehmensübersicht (braucht Microsoft 365); Agentenübersicht kommt mit F; Projekte in der 3D-Übersicht (Frage 7) |
 | F Agenten | Offen (Browser, Analyst, Intel, Crawler, Desk vorhanden) | zentrale Steuerung mit Zeitplan, weitere Agenten |
 | G Proaktive Routinen | Offen (Telegram-Briefing, Erinnerungen vorhanden) | Morgenbriefing, Tagesabschluss, einstellbar und abschaltbar |
 | D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
@@ -82,7 +83,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Gesprächsnachbereitung (Aufgaben/Entscheidungen aus Notizen, Vorschlag zur Bestätigung) | JARVIS schlägt im Gespräch Einträge vor; sie gelten erst nach Bestätigung am Mac (auch geändert) | strukturiert, erst nach Bestätigung gespeichert | 6 | Testbereit (im Gespräch); aus Mails und Besprechungsnotizen von selbst Offen |
 | Intelligente Erinnerung vor Folgeterminen | Vorbereitung aus bestätigten Einträgen, wenn der Termin ein Projekt nennt; am Mac im Gespräch, per Telegram nur nach Einschalten | frühere Entscheidungen mit Quelle | 6 | Testbereit |
 | **Einheitliche Oberfläche** | | | | |
-| Kommandozentrale mit Ansichten und 3D-Welt | vorhanden (12 Ansichten) | Geschäftsführungsdashboard | 7 | Testbereit |
+| Kommandozentrale mit Ansichten und 3D-Welt | vorhanden (13 Ansichten) | Geschäftsführungsdashboard | 7 | Testbereit |
 | Tagesübersicht, Projektübersicht, Unternehmensüberblick | Briefing, Aufgaben, Post, Kalender | alle Bereiche aus Phase 7 | 7 | Offen |
 | JARVIS-Chat (Text und Sprache, öffnet Bereiche) | vorhanden, öffnet Ansichten | zentral im Dashboard | 7/8 | Testbereit |
 | Mitarbeiterkapazitäten | fehlt | nur offizielle Zeiterfassung, keine Überwachung | 7 | Offen |
@@ -315,6 +316,34 @@ Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-proj
 R-17 (Projektinhalte gehen beim Lesen an Anthropic; gemildert durch „vertraulich“), R-18 (Datei unverschlüsselt
 und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-risiken.md).
 
+## Bereich E – Geschäftsführungsdashboard
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| E1.1 Tageslage zusammenstellen: was auf dich wartet, Termine, Aufgaben, Post, Projekte. Ohne KI, nur aus Daten, die JARVIS schon hat; nichts verlässt dabei den Mac | Testbereit | `src/lib/heute.ts`, `test/regeln/heute.test.ts` |
+| E1.2 Ansicht „Heute“ mit „Wartet auf dich“ (Not-Aus, Freigaben, Rückfragen des Desks, Intel-Warnung, Vorschläge fürs Projektgedächtnis, überfällige Aufgaben, dringende Projekte, wichtige Post, fertiges Dokument) und Karten für Termine, Aufgaben, Post, Projekte, Märkte und Nachrichten, Agenten | Testbereit | `src/components/views/TodayView.tsx`, `/heute`; im Browser geprüft |
+| E1.3 Bei Terminen, in deren Titel ein Projekt vorkommt: Verweis auf die Akte | Testbereit | wie oben |
+| E1.4 Zuruf: „Tagesübersicht“ oder „mein Tag“ öffnet „Heute“, „Projekte“ öffnet die Projekte | Testbereit | `src/lib/commands.ts` |
+| E2 Projekte in der 3D-Übersicht (eigener Fels) | Offen | Die Übersicht hat zehn feste Plätze; ein elfter würde das Bild verschieben. Vorschlag: Projekte statt des Platzhalters „Telefon“ (Frage 7) |
+| E3 Unternehmensübersicht (Teams, Dateien, Planner) | Blockiert | braucht Microsoft 365 (Bereich D) |
+| E4 Finanz- und Marktübersicht über Spielgeld-Desk und Intel hinaus | Offen | |
+| E5 Agentenübersicht mit Steuerung | Offen | kommt mit F; „Heute“ zeigt bisher nur den Zustand |
+
+### Testergebnisse Schritt E1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **305 Tests: 305 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Tageslage 11) |
+| `npx next build` | erfolgreich; neu `/heute` |
+| Handprüfung im Browser (Chromium, gebauter Server, Testdaten) | „Heute“ zeigt den wartenden Vorschlag und die überfällige Projektaufgabe, alle sechs Karten erscheinen, keine Fehler in der Seite; Bildschirmfoto angesehen |
+| Gegenprobe (Filter „nur aktive Projekte“ entfernt) | 1 Test schlägt fehl; danach wiederhergestellt |
+| Nicht geprüft | echter Mac (Prüfliste Teil F) mit echtem Kalender, echten Erinnerungen und echter Post; schmale Fenster: bei 1280 Pixeln Breite passt die Leiste mit 13 Einträgen nicht mehr ganz und lässt sich seitlich schieben |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Sicherheitsrisiken:**
+keine neuen. Die Tagesübersicht liest nur, schickt nichts an ein Modell und zeigt vertrauliche Projekte nur
+am Mac (wie die Ansicht „Projekte“).
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -323,14 +352,14 @@ und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-ris
 | 4 Claude sicher integrieren | Offen | persönlicher API-Schlüssel; AVV, Aufbewahrung, ZDR klären (R-14) |
 | 5 Microsoft 365 / Entra ID | Blockiert | braucht Phase 2 und einen Test-Tenant bzw. Testpostfach |
 | 6 Projektgedächtnis | Testbereit (Schritt C1, Datei statt Datenbank) | siehe Bereich C |
-| 7 Geschäftsführungsdashboard | Offen | bestehende Oberfläche als Ausgangspunkt |
+| 7 Geschäftsführungsdashboard | Testbereit für „Heute“ und „Projekte“ (Schritt E1), Rest offen | siehe Bereich E |
 | 8 Desktop Agent, Sprache | Blockiert | Windows oder Mac (R-15) |
 | 9 Verkehr, Automatisierungen, Agenten | Offen | Trading bleibt Spielgeld |
 | 10 Qualitätssicherung, Einführung | Offen | |
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis E).
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis F).
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
 4. Vor Phase 8: Läuft der Geschäftsführungs-PC mit Windows oder macOS?
@@ -339,6 +368,8 @@ und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-ris
    Entscheidung: nur Testdaten oder Unkritisches, Heikles als „vertraulich“ markieren.
 6. Soll die Vorbereitung vor Besprechungen auch per Telegram kommen? Steht auf aus; du schaltest es selbst in
    den Einstellungen ein, wenn du es willst.
+7. 3D-Übersicht: Sollen die Projekte dort einen eigenen Felsen bekommen, an der Stelle des Platzhalters
+   „Telefon“? Bis dahin erreichst du „Heute“ und „Projekte“ über die Leiste oben und per Zuruf.
 
 ## Sicherung
 
@@ -351,10 +382,8 @@ und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-ris
 
 ## Nächste Schritte
 
-1. **E Tages- und Projektübersicht im Dashboard:** Projekte in der Übersicht (Kachel, überfällige Aufgaben,
-   wartende Vorschläge), Tagesübersicht aus Terminen, Aufgaben, Post und Projekten.
-2. **G Proaktive Routinen:** Morgenbriefing und Tagesabschluss mit Projekten, Projektüberwachung (C4),
-   einstellbar und abschaltbar.
-3. **F Agentensteuerung:** eine Stelle für Zeitplan, Start von Hand, Kosten- und Sicherheitsgrenzen.
-4. B-Rest: nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
-5. D Microsoft 365 nur gegen nachgebaute Schnittstellen; J Modelladapter und Kostenübersicht.
+1. **G Proaktive Routinen:** Morgenbriefing und Tagesabschluss mit Projekten (aus derselben Tageslage wie
+   „Heute“), Projektüberwachung (C4), einstellbar und abschaltbar.
+2. **F Agentensteuerung:** eine Stelle für Zeitplan, Start von Hand, Kosten- und Sicherheitsgrenzen.
+3. B-Rest: nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
+4. D Microsoft 365 nur gegen nachgebaute Schnittstellen; J Modelladapter und Kostenübersicht.

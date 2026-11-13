@@ -1,4 +1,4 @@
-// Handprüfung: die Ansicht „Projekte“ im echten Browser gegen den gebauten Server (nicht Teil von npm test).
+// Handprüfung: die Ansichten „Heute“ und „Projekte“ im echten Browser gegen den gebauten Server (nicht Teil von npm test).
 // Legt Testdaten in einem eigenen, leeren Einstellungsordner an, startet JARVIS auf einem freien Port und
 // klickt sich durch: Vorschlag übernehmen, Akte öffnen, Eintrag korrigieren, zurückziehen, Schutz der
 // Schnittstelle. Vorher einmal `npx next build`.
@@ -52,6 +52,11 @@ async function main() {
       mkdirSync(bilder, { recursive: true });
       await seite.screenshot({ path: path.join(bilder, `${name}.png`), fullPage: true });
     };
+    // Die Tagesübersicht nennt, was wartet, und führt in die Projekte.
+    await seite.goto(`${BASIS}/heute`);
+    await seite.getByText("4 Vorschläge fürs Projektgedächtnis warten auf deine Bestätigung.").waitFor({ timeout: 30_000 });
+    await seite.getByText("Hallenneubau: Eine Aufgabe ist überfällig").first().waitFor();
+    await bild("0-heute");
     await seite.goto(`${BASIS}/projekte`);
     await seite.getByText("Wartet auf deine Bestätigung (4)").waitFor({ timeout: 30_000 });
     assert.equal(await seite.getByText("Beruht auf Text von Dritten").count(), 2, "Projekt und Aufgabe aus der Mail tragen den Hinweis");

@@ -77,6 +77,7 @@ export type BrainEvent =
 export const VIEWS = {
   fokus: "/fokus",
   uebersicht: "/",
+  heute: "/heute",
   aufgaben: "/aufgaben",
   kalender: "/kalender",
   post: "/post",

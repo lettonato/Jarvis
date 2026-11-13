@@ -53,6 +53,16 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 | E9 | Projekt bearbeiten → „Vertraulich“ ankreuzen, dann JARVIS nach dem Projekt fragen | JARVIS sagt, dass er es nicht lesen kann |
 | E10 | Im Kalender einen Termin „Jour fixe Testprojekt Halle“ in 20 Minuten anlegen, JARVIS offen lassen (Projekt nicht vertraulich) | Zur Erinnerung erscheint im Gespräch die Vorbereitung: Entscheidungen und offene Aufgaben |
 
+## F. Tagesübersicht „Heute“ (Schritt E1, neu)
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| F1 | Oben auf „Heute“ gehen | Begrüßung mit Datum; Karten für Termine, Aufgaben, Post, Projekte, Märkte und Nachrichten, Agenten |
+| F2 | Mit deinem Kalender und deinen Erinnerungen vergleichen | Dieselben Termine von heute und dieselben fälligen Aufgaben. **Wichtig:** Fehlt etwas oder steht etwas Falsches da, schreib mir bitte, was |
+| F3 | Im Testprojekt eine Aufgabe mit Frist von gestern eintragen, zurück zu „Heute“ | Unter „Wartet auf dich“ steht das Projekt mit der überfälligen Aufgabe |
+| F4 | Zu JARVIS sagen: „Tagesübersicht“ | Die Ansicht „Heute“ geht auf |
+| F5 | Auf deinem Bildschirm die Leiste oben ansehen | Alle Einträge passen in eine Zeile. Wenn nicht, schreib mir die Breite deines Fensters |
+
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 
 Das ist der einzige Teil, der echte Zugangsdaten bewegt. **Mach ihn nur, wenn du das möchtest.** Er lässt

@@ -399,6 +399,14 @@ const RULES: Rule[] = [
     run: (ctx, text) => calendarQuery(ctx, text),
   },
   {
+    match: /tagesübersicht|tagesüberblick|\bmein tag\b|heute im überblick/,
+    run: () => ({ reply: "Hier ist dein Tag im Überblick.", navigate: "/heute" }),
+  },
+  {
+    match: /\bprojekt(e|en|übersicht|gedächtnis)?\b/,
+    run: () => ({ reply: "Hier sind die Projekte und was dazu festgehalten ist.", navigate: "/projekte" }),
+  },
+  {
     match: /\b(fokus|nur (dich|jarvis)|zeig dich)\b/,
     run: () => ({ reply: "Ich bin ganz bei dir.", navigate: "/fokus" }),
   },
