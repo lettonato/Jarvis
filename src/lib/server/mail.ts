@@ -148,13 +148,30 @@ function trimBody(text: string): string {
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, 2500);
 }
 
+// Die Mail mit dieser Nummer liegt nicht (mehr) im Posteingang.
+export class MailFehlt extends Error {
+  constructor() {
+    super("Die Mail gibt es nicht mehr.");
+  }
+}
+
+// Nur Absender und Betreff einer Mail, ohne ihren Text zu laden (für Antwortentwürfe).
+export async function readAbsender(config: MailConfig, uid: number): Promise<Pick<MailItem, "from" | "fromAddress" | "subject">> {
+  return withInbox(config, async (c) => {
+    const msg = await c.fetchOne(String(uid), { uid: true, envelope: true }, { uid: true });
+    if (!msg || !msg.envelope) throw new MailFehlt();
+    const { from, fromAddress, subject } = toItem(msg);
+    return { from, fromAddress, subject };
+  });
+}
+
 export async function readMessage(config: MailConfig, uid: number): Promise<MailMessage> {
   return withInbox(config, async (c) => {
     const msg = await c.fetchOne(String(uid), { uid: true, envelope: true, source: { maxLength: 512_000 } }, { uid: true });
-    if (!msg || !msg.source) throw new Error("Die Mail gibt es nicht mehr.");
+    if (!msg || !msg.source) throw new MailFehlt();
     const parsed = await simpleParser(msg.source);
     const item = toItem(msg);
-    return { uid, from: item.from, subject: item.subject, date: item.date, text: trimBody(parsed.text ?? "") };
+    return { uid, from: item.from, fromAddress: item.fromAddress, subject: item.subject, date: item.date, text: trimBody(parsed.text ?? "") };
   });
 }
 

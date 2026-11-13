@@ -33,6 +33,11 @@ npm run pruefen     # Lint, Typprüfung und Tests
   jedes Ding einmal, nichts doppelt, feste Sätze bei Fehlschlägen). Die Regeln dazu stehen ohne Netz in
   `test/regeln/hinweise.test.ts`. Der nachgebaute Telegram-Server kann für die nächste Anfrage einer Methode
   einen Fehler liefern (`tg.fehler.sendMessage = 400`) oder die Verbindung ohne Antwort abreißen lassen (`-1`).
+  `entwuerfe.test.ts` prüft die Antwortentwürfe gegen das nachgebaute Postfach und den nachgebauten Claude:
+  Empfänger und Betreff kommen nur aus dem Postfach, nie vom Modell oder aus dem Text der Mail; es geht kein
+  Befehl an das Postfach, der etwas ändert oder ablegt; was du selbst geändert hast, wird nicht überschrieben;
+  ein Schreibfehler wird gemeldet. Die Regeln für Adresse, Betreff und den Link ins Mailprogramm stehen ohne
+  Netz in `test/regeln/entwuerfe.test.ts`.
 * Nachgebaute Dienste in `test/mocks/`: Claude (`claude-mock.ts`), Telegram (`telegram-mock.ts`), xAI/Grok
   (`xai-mock.ts`), ElevenLabs mit Stimmenliste, Kontostand und einem stillen, echten MP3
   (`elevenlabs-mock.ts`), der Mac für Kalender und Programme (`osascript-mock.mjs`, `open-mock.mjs`), der
@@ -52,7 +57,7 @@ normale Tests.
 
 `test/hand/` enthält Handprüfungen, die ein echtes Chrome brauchen und deshalb nicht bei `npm test` mitlaufen
 (Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung,
-Edelmetalle und Zeitplan). Aufruf steht jeweils oben in der Datei.
+Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“). Aufruf steht jeweils oben in der Datei.
 
 `test/hand/glashaus-schau.ts` ist keine Prüfung, sondern eine Schau: Sie startet JARVIS mit Beispieldaten
 (nachgebautes Postfach, nachgebauter Markt, nachgebaute Tageskurse für Gold und den Silber-Fonds, Kalender, Aufgaben, drei Projekte), damit man alle Räume gefüllt

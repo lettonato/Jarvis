@@ -1,5 +1,6 @@
 import type { CalendarSnapshot } from "./calendar";
 import type { DocsSnapshot } from "./documents";
+import type { EntwuerfeSnapshot } from "./entwuerfe";
 import type { IntelSnapshot } from "./intel";
 import type { MailMessage, MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
@@ -59,6 +60,8 @@ export type BrainReply = {
   documents?: DocsSnapshot;
   // Das Projektgedächtnis, wenn Claude etwas vorgeschlagen hat (der Vorschlag wartet dann auf dein Ja).
   projekte?: ProjekteSnapshot;
+  // Die Antwortentwürfe, wenn Claude einen angelegt hat. Verschickt wird davon nichts.
+  entwuerfe?: EntwuerfeSnapshot;
 };
 
 // Der Server schickt die Antwort Stück für Stück, eine Zeile JSON pro Ereignis.

@@ -156,6 +156,25 @@ höchstens dreimal am Tag, und jedes Ding nur einmal. Geprüft ist das bisher nu
 | L7 | Am Mac das WLAN für zwei Minuten ausschalten, während eine Erinnerung oder ein Hinweis fällig wäre, dann wieder einschalten | Im Zeitplan steht kurz „Telegram war nicht erreichbar“, danach kommt die Nachricht nach, und zwar einmal |
 | L8 | Den Haken „Hinweise am Tag“ wieder herausnehmen, wenn du sie nicht willst | Im Zeitplan steht bei den Hinweisen „Ausgeschaltet.“, und es kommt nichts mehr |
 
+## M. Antwortentwürfe für Mails (Schritt G3, neu)
+
+JARVIS entwirft auf Zuruf eine Antwort auf eine Mail. Er verschickt nichts und legt auch nichts in dein
+Postfach: Der Entwurf liegt nur auf dem Mac im Raum „Post“. Abschicken tust du ihn selbst aus deinem
+Mailprogramm. Geprüft ist das bisher nur gegen ein nachgebautes Postfach und ein nachgebautes KI-Modell.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| M1 | Raum „Post“ öffnen, bei einer wichtigen Mail auf „Antwort entwerfen“ klicken | JARVIS antwortet kurz, und oben im Raum erscheint „Antwortentwürfe“ mit einem Entwurf. Bei „An“ steht der Absender der Mail, bei „Betreff“ steht „Re: …“ |
+| M2 | Den Entwurf lesen | Der Text ist in deinem Namen geschrieben. Wo JARVIS etwas nicht wissen kann (Termin, Preis), steht eine Lücke in eckigen Klammern statt einer erfundenen Angabe |
+| M3 | Sagen: „Schreib die Antwort kürzer und sag für Dienstag zu“ | Der Entwurf wird durch einen neuen ersetzt. Es bleibt bei einem Entwurf je Mail |
+| M4 | Im Feld etwas ändern und auf „Speichern“ klicken | Es steht „Gespeichert.“ und rechts „von dir geändert“. Der Knopf „Speichern“ verschwindet |
+| M5 | Danach noch einmal „Antwort entwerfen“ bei derselben Mail | JARVIS sagt, dass dein geänderter Entwurf bleibt. Dein Text ist unverändert |
+| M6 | Auf „Im Mailprogramm öffnen“ klicken | Dein Mailprogramm öffnet eine neue Mail mit Empfänger, Betreff und Text. Sie ist noch nicht verschickt; das machst du selbst. Umlaute und Absätze stimmen |
+| M7 | Bei einem sehr langen Entwurf (mehr als etwa eine Bildschirmseite) | Unter den Knöpfen steht, dass der Text für den Link zu lang ist. Der Knopf öffnet dann Empfänger und Betreff, den Text holst du mit „Kopieren“ |
+| M8 | Eine Antwort auf einen Newsletter oder eine „no-reply“-Mail entwerfen lassen | Am Entwurf steht der Hinweis, dass diese Adresse vermutlich keine Antworten annimmt |
+| M9 | Auf „Verwerfen“ klicken | Der Entwurf ist weg. Im Postfach selbst hat sich nichts geändert: Die Mail ist weiter ungelesen, im Ordner „Entwürfe“ und im Ordner „Gesendet“ deines Mailprogramms liegt nichts von JARVIS |
+| M10 | In Telegram schreiben: „Entwirf eine Antwort auf die Mail von … “ | JARVIS antwortet, dass der Entwurf am Mac im Raum „Post“ liegt. Dort steht er mit dem Zusatz „vom Handy aus“ |
+
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 
 Das ist der einzige Teil, der echte Zugangsdaten bewegt. **Mach ihn nur, wenn du das möchtest.** Er lässt

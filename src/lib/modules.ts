@@ -50,7 +50,7 @@ export const MODULES: JarvisModule[] = [
     href: "/post",
     side: "links",
     about:
-      "Schaut in deinen Posteingang, trennt wichtige Mails von Newslettern und liest sie dir vor. Aus einer Mail macht er auf Zuruf eine Aufgabe. Antworten entwirft er ab Phase 2 mit dem KI-Gehirn.",
+      "Schaut in deinen Posteingang, trennt wichtige Mails von Newslettern und liest sie dir vor. Aus einer Mail macht er auf Zuruf eine Aufgabe. Mit dem KI-Gehirn entwirft er auf Zuruf eine Antwort; abschicken tust du sie selbst.",
   },
   {
     id: "kalender",

@@ -85,6 +85,7 @@ export const RICHTLINIEN: Record<string, Regel> = {
 
   // ---- Gehirn: Vorbereiten (B) ----
   aufgabe_anlegen: gehirn({ agent: "gehirn", klasse: "B", freigabe: "nie", ziel: "Obsidian JARVIS/Eingang.md", daten: "neue Aufgabe" }),
+  antwort_entwerfen: gehirn({ agent: "gehirn", klasse: "B", freigabe: "nie", ziel: "Antwortentwürfe (lokal auf dem Mac)", daten: "Antworttext, wird nicht verschickt", liefertFremdes: true }),
   notiz_merken: gehirn({ agent: "gehirn", klasse: "B", freigabe: "nie", ziel: "Obsidian JARVIS/Notizen.md", daten: "neue Notiz" }),
   // Nur ein Vorschlag: Er landet im Eingang der Ansicht Projekte und gilt erst, wenn ein Mensch ihn am Mac
   // übernimmt. Die Bestätigung dort ist die Freigabe; die KI hat kein Werkzeug, das Einträge schreibt.

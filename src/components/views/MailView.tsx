@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
+import { Antwortentwuerfe } from "../Antwortentwuerfe";
 import { MailSetup } from "../setup";
 import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
 import { Button, Notice, PageHeader, Panel } from "../ui";
@@ -70,6 +71,7 @@ export function MailView() {
           </ul>
         </Scheibe>
       </Scheiben>
+      <Antwortentwuerfe />
       <Panel>
         <h2 className="mb-2 text-xs font-bold text-see">Wichtig <span className="font-medium text-quiet">{important.length}</span></h2>
         {mail && important.length === 0 && <p className="py-2 text-sm text-quiet">Keine wichtigen Mails. Schön ruhig heute.</p>}
@@ -110,7 +112,7 @@ function Shell({ children, subtitle, actions }: { children: ReactNode; subtitle?
 
 
 function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; active: boolean }) {
-  const { run, discuss, mailText, spotlight, tasks } = useJarvis();
+  const { run, discuss, ask, mailText, spotlight, tasks, settings } = useJarvis();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -179,6 +181,12 @@ function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; acti
                 Besprechen
               </Button>
             )
+          )}
+          {settings?.brain.configured && mail.important && (
+            // Nur die Nummer der Mail geht in die Frage: Absender und Betreff stammen von Dritten.
+            <Button small onClick={() => ask(`Entwirf mir eine Antwort auf diese Mail (uid ${mail.uid}).`)}>
+              Antwort entwerfen
+            </Button>
           )}
           {tasks?.configured && (
             <Button

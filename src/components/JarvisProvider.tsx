@@ -17,6 +17,7 @@ import type { ProjekteSnapshot } from "@/lib/projekte";
 import { enthaeltFremdes } from "@/lib/herkunft";
 import type { Settings } from "@/lib/settings";
 import type { TasksSnapshot } from "@/lib/tasks";
+import { setze } from "@/lib/geteilt";
 import { usePolling } from "@/lib/usePolling";
 import { setHandsFree, useVoice } from "@/lib/useVoice";
 import { takeSentences } from "@/lib/voiceText";
@@ -436,6 +437,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       if (result.memory) setMemoryData({ facts: result.memory });
       if (result.documents) setDocuments(result.documents);
       if (result.projekte) setProjekte(result.projekte);
+      // Die Post-Ansicht zeigt einen neuen Antwortentwurf sofort (sie fragt /api/entwuerfe selbst ab).
+      if (result.entwuerfe) setze("/api/entwuerfe", result.entwuerfe);
       if (result.opened) {
         const opened = result.opened;
         setMailText((prev) => ({ ...prev, ...Object.fromEntries(opened.map((m) => [m.uid, m])) }));
