@@ -1,0 +1,70 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><link rel="stylesheet" href="fonts.css">
+<style>
+:root{--nacht:#070B12;--leinwand:#F3EFE7;--tungsten:#F4B860;--rot:#E5544B;--nebel:#A9B4C0}
+body{background:var(--nacht);color:var(--leinwand);font-family:Manrope,sans-serif;position:relative}
+.bild{position:absolute;left:0;right:0;top:108px;bottom:150px;overflow:hidden}
+.foto{position:absolute;inset:-4%;background:url(../../public/welt/uebersicht.webp) center 46%/cover;filter:contrast(1.12) saturate(.92) brightness(.92)}
+.grade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,11,18,.35) 0%,rgba(7,11,18,0) 28%,rgba(7,11,18,.25) 55%,rgba(7,11,18,.93) 100%),radial-gradient(120% 90% at 60% 40%,rgba(0,0,0,0) 55%,rgba(0,0,0,.55) 100%);}
+.tönung{position:absolute;inset:0;background:linear-gradient(120deg,rgba(18,60,84,.28),rgba(244,184,96,.10));mix-blend-mode:soft-light}
+.flare{position:absolute;left:38%;top:26.5%;width:980px;height:3px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,rgba(190,225,255,.75) 45%,#fff 50%,rgba(190,225,255,.75) 55%,transparent);filter:blur(1.2px);opacity:.8}
+.flare::after{content:"";position:absolute;left:50%;top:50%;width:260px;height:120px;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(255,244,220,.5),transparent);filter:blur(6px)}
+.balken{position:absolute;left:0;right:0;background:#000;z-index:5}
+.oben{top:0;height:108px;display:flex;align-items:center;padding:0 72px;gap:64px}
+.unten{bottom:0;height:150px;display:flex;align-items:center;justify-content:center;padding:0 72px}
+.marke{font-family:"Instrument Serif",serif;font-size:40px;letter-spacing:.01em}
+.szenen{display:flex;gap:46px;font-size:19px;font-weight:500;color:var(--nebel);margin-left:auto;margin-right:auto}
+.szenen b{color:var(--leinwand);font-weight:600;padding-bottom:9px;border-bottom:2px solid var(--tungsten)}
+.rand{font-size:17px;color:var(--nebel);display:flex;gap:26px;align-items:center}
+.rand .uhr{color:var(--leinwand);font-variant-numeric:tabular-nums;font-size:22px;font-weight:500}
+.untertitel{font-size:33px;font-weight:500;line-height:1.3;text-align:center;max-width:1250px;text-shadow:0 2px 12px #000}
+.mik{position:absolute;left:72px;display:flex;align-items:center;gap:14px;font-size:17px;color:var(--nebel)}
+.mik i{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--tungsten);display:grid;place-items:center}
+.mik i::before{content:"";width:10px;height:18px;border-radius:6px;background:var(--tungsten)}
+.stopp{position:absolute;right:72px;font-size:17px;color:var(--nebel)}
+.inhalt{position:absolute;left:72px;right:72px;bottom:54px;z-index:3}
+h1{font-family:"Instrument Serif",serif;font-weight:400;font-size:176px;line-height:.9;letter-spacing:-.015em}
+.unterzeile{font-size:25px;color:#DDE3EA;margin-top:14px;font-weight:400}
+.spalten{display:grid;grid-template-columns:1.1fr 1.5fr 1fr .9fr;gap:56px;margin-top:52px}
+.sp h2{font-size:17px;font-weight:600;color:var(--nebel);padding-bottom:12px;border-bottom:1px solid rgba(243,239,231,.28);margin-bottom:14px}
+.sp.ja h2{color:var(--tungsten);border-color:var(--tungsten)}
+.z{display:flex;gap:16px;font-size:22px;line-height:1.5;font-weight:500}
+.z span:first-child{font-variant-numeric:tabular-nums;color:var(--nebel);min-width:68px}.ja .z span:first-child{min-width:22px;color:var(--tungsten)}
+.z.jetzt{color:var(--tungsten)} .z.jetzt span:first-child{color:var(--tungsten)}
+.z small{white-space:nowrap;font-size:17px;color:var(--nebel);margin-left:auto;font-weight:400}
+.plus{color:#8FD9A8}.minus{color:var(--rot)}
+.gross{font-family:"Instrument Serif",serif;font-size:60px;line-height:1}
+.karte{position:absolute;inset:0;z-index:4;display:none;place-items:center;text-align:center;background:#000}
+.karte h3{font-family:"Instrument Serif",serif;font-weight:400;font-size:210px;line-height:1}
+.karte p{font-size:26px;color:var(--nebel);margin-top:18px}
+/* Übergang */
+.f2 .foto{transform:scale(1.32) translateY(2%);filter:contrast(1.12) saturate(.92) brightness(.8) blur(9px)}
+.f2 .inhalt{opacity:.28;transform:translateY(40px);filter:blur(3px)} .f2 .flare{opacity:1;width:1500px}
+.f2 .oben{height:190px}.f2 .unten{height:240px}.f2 .bild{top:190px;bottom:240px}
+.f3 .karte{display:grid}.f3 .bild{top:0;bottom:0}.f3 .oben,.f3 .unten{height:0;padding:0;overflow:hidden}
+.f4 .foto{background-image:url(../../public/welt/trading.webp);background-position:center 60%;transform:scale(1.06);filter:contrast(1.1) brightness(1.02)}
+.f4 .flare{left:70%;top:38%;background:linear-gradient(90deg,transparent,rgba(255,190,120,.8) 45%,#fff 50%,rgba(255,190,120,.8) 55%,transparent)}
+.f4 .leck{position:absolute;inset:0;background:radial-gradient(60% 90% at 100% 40%,rgba(255,170,90,.55),transparent 70%);mix-blend-mode:screen}
+.heute,.markt{display:none}.f1 .heute,.f2 .heute{display:block}.f4 .markt{display:block}
+</style>
+<body class="f1"><script>document.body.className="f"+(new URLSearchParams(location.search).get("f")||1)</script>
+<div class="bild"><div class="foto"></div><div class="tönung"></div><div class="grade"></div><div class="flare"></div><div class="leck"></div>
+ <div class="inhalt heute"><h1>Heute</h1><p class="unterzeile">Freitag, 13. November. 11 Grad und teils bewölkt in Deggendorf.</p>
+  <div class="spalten">
+   <div class="sp ja"><h2>Wartet auf dein Ja</h2><div class="z"><span>2</span>Freigaben<small>Termin und Mail</small></div><div class="z"><span>1</span>Aufgabe überfällig<small>seit gestern</small></div></div>
+   <div class="sp"><h2>Termine</h2><div class="z"><span>09:00</span>Jour fixe Bauleitung<small>vorbei</small></div><div class="z jetzt"><span>14:00</span>Besprechung Hallenneubau<small style="color:inherit">in 2 Std. 20</small></div><div class="z"><span>16:30</span>Steuerberater</div></div>
+   <div class="sp"><h2>Projekte</h2><div class="z">Hallenneubau<small>Frist in 3 Tagen</small></div><div class="z">KI-Dashboard<small>läuft</small></div></div>
+   <div class="sp"><h2>Märkte</h2><div class="z">Gold<small class="plus">+0,8 %</small></div><div class="z">Bitcoin<small class="minus">−1,2 %</small></div><div class="z">Spielgeld-Desk<small class="plus">+2,4 %</small></div></div>
+  </div></div>
+ <div class="inhalt markt"><h1>Märkte</h1><p class="unterzeile">Gold zieht an, Bitcoin gibt nach. Der Spielgeld-Desk hält drei Positionen.</p>
+  <div class="spalten" style="grid-template-columns:repeat(4,1fr)">
+   <div class="sp"><h2>Gold</h2><div class="gross">2.412 $</div><div class="z plus" style="margin-top:8px">+0,8 % heute</div></div>
+   <div class="sp"><h2>Silber</h2><div class="gross">29,40 $</div><div class="z plus" style="margin-top:8px">+0,3 % heute</div></div>
+   <div class="sp"><h2>Bitcoin</h2><div class="gross">92.450 €</div><div class="z minus" style="margin-top:8px">−1,2 % heute</div></div>
+   <div class="sp ja"><h2>Spielgeld-Desk</h2><div class="gross">+2,4 %</div><div class="z" style="margin-top:8px">diese Woche, 3 Positionen</div></div>
+  </div></div>
+ <div class="grain"></div>
+ <div class="karte"><div><h3>Märkte</h3><p>Gold, Silber, Bitcoin und dein Spielgeld-Desk</p></div></div>
+</div>
+<div class="balken oben"><div class="marke">Jarvis</div><div class="szenen"><script>const s=["Heute","Projekte","Firma","Märkte","Agenten","Gespräch"],akt=document.body.className==="f4"?"Märkte":"Heute";document.write(s.map(x=>x===akt?`<b>${x}</b>`:`<span>${x}</span>`).join(""))</script></div><div class="rand"><span>Beispieldaten</span><span class="uhr">11:40</span></div></div>
+<div class="balken unten"><div class="mik"><i></i>Hört zu</div><p class="untertitel"><script>document.write(document.body.className==="f4"?"„Gold steht bei 2.412 Dollar. Soll ich dir die Lage vorlesen?“":"„Guten Morgen, Benedikt. Um 14 Uhr ist die Besprechung zum Hallenneubau, und zwei Dinge warten auf dein Ja.“")</script></p><div class="stopp">„Stopp“ unterbricht</div></div>
+</body></html>

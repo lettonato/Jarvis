@@ -1,0 +1,89 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><link rel="stylesheet" href="fonts.css">
+<style>
+:root{--tiefsee:#071A2B;--daemmerung:#27456B;--glut:#FF7A3D;--gold:#FFD27A;--wolke:#F5F7FA}
+body{background:var(--tiefsee);color:var(--wolke);font-family:Outfit,sans-serif;position:relative}
+svg.defs{position:absolute;width:0;height:0}
+.welt{position:absolute;inset:0;background-size:cover}
+.f1 .welt{background-image:url(../../public/welt/intel.webp);background-position:center 62%}
+.f2 .welt{background-image:url(../../public/welt/intel.webp);background-position:center 62%;transform:scale(1.25) translateX(-9%);filter:url(#wisch)}
+.f3 .welt{background-image:url(../../public/welt/intel.webp);background-position:center 30%;transform:scale(1.5) translate(-14%,14%)}
+.f4 .welt{background-image:url(../../public/welt/einstellungen.webp);background-position:center 55%}
+.ton{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,26,43,.30) 0%,rgba(7,26,43,0) 22%,rgba(7,26,43,0) 55%,rgba(7,26,43,.72) 78%,rgba(7,26,43,.94) 100%)}
+.f4 .ton{background:linear-gradient(180deg,rgba(7,26,43,.55) 0%,rgba(7,26,43,.15) 40%,rgba(7,26,43,.55) 70%,rgba(7,26,43,.95) 100%)}
+svg.himmel{position:absolute;inset:0;width:1920px;height:1080px;overflow:visible}
+.kopf{position:absolute;left:72px;right:72px;top:44px;display:flex;justify-content:space-between;align-items:baseline;font-size:20px;font-weight:400;color:rgba(245,247,250,.82)}
+.kopf b{font-weight:500;font-size:26px;letter-spacing:.34em;color:var(--wolke)}
+.kopf span b{letter-spacing:0;font-size:24px;font-weight:400;margin-left:22px;font-variant-numeric:tabular-nums}
+.gruss{position:absolute;left:0;right:0;top:404px;text-align:center}
+.gruss h1{font-weight:200;font-size:92px;line-height:1.02;letter-spacing:-.02em;text-shadow:0 2px 40px rgba(7,26,43,.35)}
+.gruss p{font-weight:300;font-size:27px;margin-top:18px;color:rgba(245,247,250,.92);text-shadow:0 1px 20px rgba(7,26,43,.6)}
+.spalten{position:absolute;left:150px;right:150px;top:774px;display:grid;grid-template-columns:repeat(3,1fr);gap:110px}
+.sp h2{font-weight:400;font-size:19px;color:var(--gold);margin-bottom:12px}
+.z{display:flex;font-size:24px;font-weight:300;line-height:1.62}
+.z small{margin-left:auto;font-size:20px;color:rgba(245,247,250,.7);white-space:nowrap}
+.plus{color:#9FE3B4!important}.minus{color:#FF9C8A!important}
+.orte{position:absolute;left:0;right:0;bottom:0;height:86px;display:flex;justify-content:center;gap:92px;align-items:flex-start;font-size:19px;font-weight:400;color:rgba(245,247,250,.55);border-top:1px solid rgba(245,247,250,.16)}
+.orte span,.orte b{position:relative;padding-top:26px}
+.orte span::before,.orte b::before{content:"";position:absolute;left:50%;top:0;width:1px;height:12px;background:rgba(245,247,250,.4)}
+.orte b{color:var(--wolke);font-weight:500}.orte b::before{width:2px;height:18px;background:var(--gold);box-shadow:0 0 14px var(--gold)}
+.f2 .gruss,.f2 .spalten{opacity:.0}.f2 svg.himmel{filter:url(#wisch);transform:translateX(-420px);opacity:.75}.f2 .orte{filter:url(#wisch);transform:translateX(-160px)}
+.markt{display:none}.f3 .markt{display:block}.f3 .gruss,.f3 .heute{display:none}.f1 .abend,.f2 .abend,.f3 .abend{display:none}.f4 .morgen{display:none}
+.titel{position:absolute;left:150px;top:150px}
+.titel h1{font-weight:200;font-size:112px;letter-spacing:-.02em;line-height:1}
+.titel p{font-weight:300;font-size:30px;margin-top:16px;color:rgba(245,247,250,.92)}
+.wert{font-weight:200;font-size:60px;line-height:1.1}
+</style>
+<body class="f1"><script>document.body.className="f"+(new URLSearchParams(location.search).get("f")||1)</script>
+<svg class="defs"><filter id="wisch" x="-5%" width="110%"><feGaussianBlur stdDeviation="34 0"/></filter></svg>
+<div class="welt"></div><div class="ton"></div>
+<svg class="himmel" viewBox="0 0 1920 1080"><defs>
+ <radialGradient id="glut"><stop offset="0" stop-color="#fff"/><stop offset=".18" stop-color="#FFE7B0"/><stop offset=".45" stop-color="#FFB060" stop-opacity=".55"/><stop offset="1" stop-color="#FF7A3D" stop-opacity="0"/></radialGradient>
+ <linearGradient id="grat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B2238"/><stop offset="1" stop-color="#071A2B"/></linearGradient>
+ <filter id="leuchten" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="6"/></filter></defs><g id="zeichnung"></g></svg>
+<div class="kopf"><b>JARVIS</b><span>Beispieldaten<b id="uhr"></b></span></div>
+<div class="gruss morgen"><h1>Guten Morgen, Benedikt.</h1><p>Drei Termine heute, der wichtigste um 14 Uhr. Zwei Dinge warten auf dein Ja.</p></div>
+<div class="gruss abend"><h1>Guten Abend, Benedikt.</h1><p>Alle Termine sind geschafft. Morgen früh um 08:30 geht es zur Baustelle.</p></div>
+<div class="spalten heute">
+ <div class="sp"><h2>Wartet auf dein Ja</h2><div class="z">Termin mit dem Steuerberater<small>bestätigen</small></div><div class="z">Antwort an die Bauleitung<small>senden</small></div><div class="z">Eine Aufgabe<small class="minus">seit gestern überfällig</small></div></div>
+ <div class="sp"><h2>Projekte</h2><div class="z">Hallenneubau<small>Frist in 3 Tagen</small></div><div class="z">KI-Dashboard<small>läuft</small></div><div class="z">Lagerumbau<small>geplant</small></div></div>
+ <div class="sp"><h2>Märkte</h2><div class="z">Gold<small class="plus">+0,8 %</small></div><div class="z">Bitcoin<small class="minus">−1,2 %</small></div><div class="z">Spielgeld-Desk<small class="plus">+2,4 %</small></div></div>
+</div>
+<div class="markt"><div class="titel"><h1>Märkte</h1><p>Der Bergkamm ist der Goldpreis der letzten 30 Tage.</p></div>
+ <div class="spalten" style="top:820px;grid-template-columns:repeat(4,1fr);gap:70px">
+  <div class="sp"><h2>Gold</h2><div class="wert">2.412 $</div><div class="z plus">+0,8 % heute</div></div>
+  <div class="sp"><h2>Silber</h2><div class="wert">29,40 $</div><div class="z plus">+0,3 % heute</div></div>
+  <div class="sp"><h2>Bitcoin</h2><div class="wert">92.450 €</div><div class="z minus">−1,2 % heute</div></div>
+  <div class="sp"><h2>Spielgeld-Desk</h2><div class="wert">+2,4 %</div><div class="z">diese Woche, 3 Positionen</div></div></div></div>
+<div class="orte"></div>
+<script>
+const f=document.body.className, g=document.getElementById("zeichnung");
+const orte=["Heute","Projekte","Firma","Märkte","Agenten","Gespräch"], akt=f==="f3"?"Märkte":f==="f2"?"":"Heute";
+document.querySelector(".orte").innerHTML=orte.map(x=>x===akt?`<b>${x}</b>`:`<span>${x}</span>`).join("");
+const jetzt=f==="f4"?18.83:7.67; document.getElementById("uhr").textContent=f==="f4"?"18:50":f==="f3"?"07:41":"07:40";
+const X0=170,X1=1750,Y0=610,H=478, pt=h=>{const t=(h-6)/14;return [X0+(X1-X0)*t, Y0-H*Math.sin(Math.PI*t)]};
+const pfad=(a,b)=>{let d="";for(let h=a;h<=b+1e-6;h+=.1){const [x,y]=pt(h);d+=(d?"L":"M")+x.toFixed(1)+" "+y.toFixed(1)}return d};
+if(f==="f1"||f==="f2"||f==="f4"){
+ let s=`<path d="${pfad(jetzt,20)}" fill="none" stroke="rgba(245,247,250,.42)" stroke-width="1.5" stroke-dasharray="2 9" stroke-linecap="round"/>`;
+ s+=`<path d="${pfad(6,jetzt)}" fill="none" stroke="#FFD27A" stroke-width="2.5" stroke-linecap="round"/>`;
+ const termine=[[9,"09:00","Jour fixe Bauleitung","r"],[14,"14:00","Besprechung Hallenneubau","m"],[16.5,"16:30","Steuerberater","l"]];
+ for(const [h,zeit,name,seite] of termine){const [x,y]=pt(h),vorbei=h<jetzt;
+  s+=`<circle cx="${x}" cy="${y}" r="7" fill="${vorbei?"#FFD27A":"#071A2B"}" stroke="${vorbei?"#FFD27A":"#F5F7FA"}" stroke-width="2"/>`;
+  const tx=seite==="l"?x+22:seite==="r"?x+22:x, anker=seite==="m"?"middle":"start", ty=seite==="m"?y-44:y-10;
+  s+=`<text x="${tx}" y="${ty}" text-anchor="${anker}" font-size="24" font-weight="500" fill="#F5F7FA">${zeit}</text><text x="${tx}" y="${ty+27}" text-anchor="${anker}" font-size="20" font-weight="300" fill="rgba(245,247,250,.85)" ${seite==="m"?'dy="-54"':""}>${name}</text>`;}
+ const [ox,oy]=pt(jetzt);
+ s+=`<circle cx="${ox}" cy="${oy}" r="150" fill="url(#glut)"/><circle cx="${ox}" cy="${oy}" r="17" fill="#fff"/>`;
+ s+=`<text x="${ox}" y="${oy-62}" text-anchor="middle" font-size="20" font-weight="400" fill="#FFF1CF">Jetzt, Jarvis hört zu</text>`;
+ s+=`<text x="${X0}" y="${Y0+34}" text-anchor="middle" font-size="18" fill="rgba(245,247,250,.6)">06:00</text><text x="${X1}" y="${Y0+34}" text-anchor="middle" font-size="18" fill="rgba(245,247,250,.6)">20:00</text>`;
+ g.innerHTML=s;
+}
+if(f==="f3"){
+ let r=7, zufall=()=>(r=(r*16807)%2147483647)/2147483647, y=700, punkte=[];
+ for(let i=0;i<=60;i++){y+=(zufall()-.56)*46; y=Math.max(520,Math.min(760,y)); punkte.push([i*32,y])}
+ const d=punkte.map(([x,y],i)=>(i?"L":"M")+x+" "+y.toFixed(1)).join(""), [lx,ly]=punkte[punkte.length-1];
+ g.innerHTML=`<path d="${d}L1920 1080L0 1080Z" fill="url(#grat)"/><path d="${d}" fill="none" stroke="#FFB060" stroke-width="7" filter="url(#leuchten)" opacity=".8"/><path d="${d}" fill="none" stroke="#FFE7B0" stroke-width="2.2" stroke-linejoin="round"/>
+ <circle cx="${lx-32*4}" cy="${punkte[56][1]}" r="90" fill="url(#glut)"/><circle cx="${lx-32*4}" cy="${punkte[56][1]}" r="9" fill="#fff"/>
+ <text x="${lx-32*4-24}" y="${punkte[56][1]-34}" text-anchor="end" font-size="24" font-weight="400" fill="#F5F7FA">Gold heute: 2.412 $</text>
+ <text x="64" y="${punkte[0][1]-28}" font-size="19" fill="rgba(245,247,250,.75)">vor 30 Tagen: 2.268 $</text>`;
+}
+</script>
+</body></html>

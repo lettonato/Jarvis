@@ -499,9 +499,12 @@ einschaltet; das ist seine Entscheidung.
 Benedikts Wünsche vom 13. November 2026 gehen vor:
 
 1. **H1 Stimme: gebaut, Testbereit** (siehe Bereich H). Offen ist nur die Prüfung mit Benedikts Schlüssel am Mac.
-2. **E-Design (als Nächstes):** Benedikt will das Design „komplett anders, Richtung 4K, richtige
-   Kino-Übergänge“. Erst Ideen und zwei bis drei Entwürfe als Bilder, er wählt die Richtung, danach Umbau.
-   Dafür den Skill `frontend-design` einsetzen (Benedikts Vorgabe vom 13.11.: passende Skills von selbst nutzen).
+2. **E-Design: Entwürfe vorgelegt, Wahl steht aus.** Benedikt will das Design „komplett anders, Richtung 4K,
+   richtige Kino-Übergänge“. Am 13.11. hat er drei Richtungen als 4K-Bilder mit je vier Übergangsbildern
+   bekommen (Mappe als PDF): A „Premiere“, B „Glashaus“, C „Horizont“. Die Quellen liegen in
+   `docs/design-entwuerfe/`. Empfohlen ist A, mit dem Sonnenbogen aus C als Tagesansicht. **Status: Blockiert**
+   bis zu seiner Wahl; der Umbau beginnt danach mit dem Skill `frontend-design`. Es ist noch nichts an der
+   Oberfläche geändert.
 
 Danach wie geplant:
 
