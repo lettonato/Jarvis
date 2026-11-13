@@ -1,0 +1,66 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><link rel="stylesheet" href="fonts.css">
+<style>
+:root{--stein:#F1F2EE;--tinte:#17252B;--see:#1E6F7A;--sonne:#FFB23E;--rot:#CF4127}
+body{background:#cfd8dc;color:var(--tinte);font-family:Bricolage,sans-serif;position:relative}
+svg.defs{position:absolute;width:0;height:0}
+.welt{position:absolute;inset:0;background-size:cover;background-position:center 38%}
+.dunst{position:absolute;inset:0;background:radial-gradient(75% 85% at 12% 14%,rgba(255,255,255,.86),rgba(255,255,255,.5) 45%,rgba(255,255,255,0) 72%)}
+.kopf{position:absolute;left:112px;top:82px;width:1000px}
+.kopf .tag{font-size:25px;font-weight:500;color:#2F4047}
+.kopf h1{font-weight:800;font-stretch:75%;font-size:292px;line-height:.84;letter-spacing:-.03em;margin:8px 0 0 -8px}
+.kopf h2{font-weight:600;font-size:50px;line-height:1.05;letter-spacing:-.015em;margin-top:14px}
+.kopf p{font-size:24px;line-height:1.45;color:#22343A;margin-top:16px;max-width:640px;font-weight:400}
+.probe{position:absolute;right:44px;top:30px;font-size:17px;font-weight:500;color:#1F2F35}
+.lauf{position:absolute;left:0;right:0;top:712px;height:66px;background:linear-gradient(180deg,#22343B,#131F24);display:flex;align-items:center;padding:0 44px 0 112px;gap:44px;font-size:21px;font-weight:500;color:#A9BBC0;box-shadow:0 14px 30px -10px rgba(10,20,24,.55);z-index:5}
+.lauf::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:rgba(255,255,255,.28)}
+.lauf .marke{font-weight:800;font-stretch:75%;font-size:28px;color:#fff;letter-spacing:.02em;margin-right:10px}
+.lauf b{color:#fff;font-weight:700;position:relative}.lauf b::after{content:"";position:absolute;left:0;right:0;bottom:-21px;height:4px;background:var(--sonne)}
+.lauf .feld{margin-left:auto;display:flex;align-items:center;gap:14px;height:46px;padding:0 24px 0 16px;border-radius:23px;background:rgba(255,255,255,.12);color:#E4ECEE;font-size:19px}
+.lauf .feld i{width:13px;height:13px;border-radius:50%;background:var(--sonne);box-shadow:0 0 0 6px rgba(255,178,62,.25)}
+.glas{position:absolute;left:0;right:0;top:778px;height:262px;display:grid;grid-template-columns:repeat(4,1fr);z-index:4}
+.feldg{position:relative;padding:28px 34px 0 46px;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,.5));backdrop-filter:blur(16px) saturate(1.15);border-right:10px solid #1A282E}
+.feldg:first-child{padding-left:112px}.feldg:last-child{border-right:0}
+.feldg::after{content:"";position:absolute;left:-30%;top:0;width:60%;height:100%;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.35) 50%,transparent 60%);pointer-events:none}
+.feldg h3{font-size:19px;font-weight:700;margin-bottom:10px;color:#0F1D22}
+.z{display:flex;gap:12px;font-size:22px;line-height:1.3;font-weight:500;padding:6px 0;color:#11202A}
+.z span:first-child{font-variant-numeric:tabular-nums;min-width:66px;color:#2E424A}
+.z small{margin-left:auto;font-size:19px;font-weight:700;white-space:nowrap}
+.z i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--sonne);margin:10px 4px 0 0;box-shadow:0 0 0 1px rgba(0,0,0,.15)}.z i.r{background:var(--rot)}
+.jetzt{color:#0B4D57;font-weight:700}.plus{color:#0F6B3E}.minus{color:var(--rot)}
+.boden{position:absolute;left:0;right:0;top:1040px;bottom:0;background:linear-gradient(180deg,#B9BFBC,#E9EBE7);z-index:4}
+.gross{position:absolute;left:112px;top:150px;font-weight:800;font-stretch:75%;font-size:340px;letter-spacing:-.03em;line-height:1;opacity:0}
+/* Schwenk */
+.f2 .welt{transform:scale(1.2) translateX(-7%);filter:url(#wisch)}
+.f2 .kopf{filter:url(#wisch);opacity:.35;transform:translateX(-260px)}.f2 .dunst{opacity:.5}
+.f2 .feldg>*{filter:url(#wisch);opacity:.4}.f2 .probe,.f3 .probe{display:none}
+.f3 .welt{transform:scale(1.08) translateX(2.5%);filter:url(#wisch2)}
+.f3 .kopf{display:none}.f3 .gross{opacity:.92}.f3 .feldg>*{opacity:0}
+</style>
+<body class="f1"><script>document.body.className="f"+(new URLSearchParams(location.search).get("f")||1)</script>
+<svg class="defs"><filter id="wisch" x="-5%" width="110%"><feGaussianBlur stdDeviation="30 0"/></filter><filter id="wisch2" x="-5%" width="110%"><feGaussianBlur stdDeviation="9 0"/></filter></svg>
+<div class="welt"></div><div class="dunst"></div>
+<div class="kopf"></div><div class="gross">Projekte</div>
+<div class="probe">Beispieldaten, 11:40 Uhr</div>
+<div class="lauf"></div><div class="glas"></div><div class="boden"></div>
+<script>
+const f=document.body.className, neu=f==="f3"||f==="f4";
+const bild=neu?"browser":"aufgaben";
+document.querySelector(".welt").style.backgroundImage=`url(../../public/welt/${bild}.webp)`;
+if(neu) document.querySelector(".welt").style.backgroundPosition="center 46%";
+const akt=f==="f1"?"Heute":f==="f4"?"Projekte":"";
+document.querySelector(".lauf").innerHTML=`<span class="marke">JARVIS</span>`+["Heute","Projekte","Firma","Märkte","Agenten"].map(x=>x===akt?`<b>${x}</b>`:`<span>${x}</span>`).join("")+`<div class="feld"><i></i>Sag „Jarvis“ oder schreib hier</div>`;
+const heute={kopf:`<div class="tag">Freitag, 13. November. Als Nächstes:</div><h1>14:00</h1><h2>Besprechung Hallenneubau</h2><p>Die Unterlagen vom Statiker und das Angebot für den Stahlbau liegen bereit. Drei Punkte sind noch offen.</p>`,
+ glas:[["Wartet auf dein Ja",`<div class="z"><i></i>Termin Steuerberater bestätigen</div><div class="z"><i></i>Antwort an die Bauleitung</div><div class="z"><i class="r"></i>Aufgabe seit gestern überfällig</div>`],
+  ["Termine heute",`<div class="z"><span>09:00</span>Jour fixe Bauleitung</div><div class="z jetzt"><span>14:00</span>Hallenneubau</div><div class="z"><span>16:30</span>Steuerberater</div>`],
+  ["Projekte",`<div class="z">Hallenneubau<small>3 Tage</small></div><div class="z">KI-Dashboard<small>läuft</small></div><div class="z">Lagerumbau<small>geplant</small></div>`],
+  ["Märkte",`<div class="z">Gold<small class="plus">+0,8 %</small></div><div class="z">Bitcoin<small class="minus">−1,2 %</small></div><div class="z">Spielgeld-Desk<small class="plus">+2,4 %</small></div>`]]};
+const projekte={kopf:`<div class="tag">Projekte. Am dringendsten:</div><h1 style="font-size:196px;line-height:.9;margin-left:-5px">Hallenneubau</h1><h2>Frist in 3 Tagen</h2><p>Der Bauantrag ist eingereicht. Das Angebot für den Stahlbau fehlt noch, die Statik ist in Prüfung.</p>`,
+ glas:[["Nächste Schritte",`<div class="z"><i class="r"></i>Angebot Stahlbau nachfassen</div><div class="z"><i></i>Statik freigeben</div><div class="z"><i></i>Besprechung heute 14:00</div>`],
+  ["Alle Projekte",`<div class="z jetzt">Hallenneubau<small>3 Tage</small></div><div class="z">KI-Dashboard<small>läuft</small></div><div class="z">Lagerumbau<small>geplant</small></div>`],
+  ["Was Jarvis dazu weiß",`<div class="z">12 Notizen</div><div class="z">7 Dateien</div><div class="z">4 Entscheidungen</div>`],
+  ["Zuletzt",`<div class="z">Statiker hat geantwortet</div><div class="z">Plan Stand C abgelegt</div>`]]};
+const s=neu?projekte:heute;
+document.querySelector(".kopf").innerHTML=s.kopf;
+document.querySelector(".glas").innerHTML=s.glas.map(([t,h])=>`<div class="feldg"><h3>${t}</h3>${h}</div>`).join("");
+</script>
+</body></html>
