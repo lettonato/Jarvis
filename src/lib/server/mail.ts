@@ -14,23 +14,35 @@ let cache: { key: string; at: number; data: MailSnapshot } | null = null;
 
 const BULK_SENDER = /(^|[.+_-])(no-?reply|do-?not-?reply|newsletter|news|marketing|mailer-daemon|notifications?|benachrichtigung|info-?mail)([.+_-]|@)/i;
 
-function client(config: MailConfig) {
-  return new ImapFlow({
+// Nur auf diesem Mac selbst (etwa eine lokale Mail-Brücke) darf die Verbindung offen bleiben: Dort gibt es
+// kein Netz, auf dem jemand mitlesen könnte.
+const AUF_DIESEM_MAC = /^(127\.0\.0\.1|localhost|::1)$/i;
+
+// Das Passwort geht nie unverschlüsselt über das Netz: Port 993 ist von Anfang an verschlüsselt, auf jedem
+// anderen Port muss der Server STARTTLS anbieten. Tut er das nicht, bricht JARVIS vor der Anmeldung ab,
+// statt wie die Bibliothek von sich aus im Klartext weiterzumachen.
+export function imapOptionen(config: MailConfig) {
+  const secure = config.port === 993;
+  return {
     host: config.host,
     port: config.port,
-    secure: config.port === 993,
+    secure,
+    ...(!secure && !AUF_DIESEM_MAC.test(config.host.trim()) ? { doSTARTTLS: true as const } : {}),
     auth: { user: config.user, pass: config.password },
-    logger: false,
+    logger: false as const,
     connectionTimeout: 15_000,
     greetingTimeout: 10_000,
     socketTimeout: 30_000,
     disableAutoIdle: true,
-  });
+  };
 }
+
+const client = (config: MailConfig) => new ImapFlow(imapOptionen(config));
 
 // Fehlermeldungen von IMAP in Sätze, mit denen man etwas anfangen kann.
 export function explainMailError(e: unknown): string {
-  const err = e as { authenticationFailed?: boolean; code?: string; message?: string; responseText?: string };
+  const err = e as { authenticationFailed?: boolean; tlsFailed?: boolean; code?: string; message?: string; responseText?: string };
+  if (err?.tlsFailed) return "Die Verschlüsselung zum Mail-Server kam nicht zustande. JARVIS schickt dein Passwort nie unverschlüsselt und hat sich deshalb nicht angemeldet. Prüfe Server und Port (üblich ist 993).";
   if (err?.authenticationFailed) return "Anmeldung abgelehnt. Prüfe Adresse und Passwort (bei der Telekom das E-Mail-Passwort, bei Gmail und iCloud das App-Passwort).";
   if (err?.code === "ENOTFOUND") return "Den Mail-Server gibt es unter diesem Namen nicht. Prüfe den IMAP-Server.";
   if (err?.code === "ECONNREFUSED" || err?.code === "ETIMEDOUT" || err?.code === "CONNECT_TIMEOUT" || err?.code === "GREETING_TIMEOUT")

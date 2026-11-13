@@ -27,8 +27,9 @@ Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
-Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 376 von 376 automatischen Tests
-bestehen, 0 übersprungen, 0 bekannte Lücken als TODO. Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
+Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 427 von 427 automatischen Tests
+bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
@@ -40,7 +41,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | Bereich (Auftrag vom 13.11.) | Stand | Was fehlt bis „Abgeschlossen“ |
 |---|---|---|
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
-| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk, Obsidian, Gedächtnis; **Offen** für Mail (IMAP), Sprache, 3D-Oberfläche | nachgebautes Postfach; Oberflächentests im Browser; Mac-Prüfliste |
+| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und 3D-Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; zehn Befunde aus der Durchsicht vom 13.11. prüfen (siehe Schritt B2) |
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht und Agentenübersicht (13 Ansichten); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teil F; Unternehmensübersicht (braucht Microsoft 365); Projekte in der 3D-Übersicht (Frage 7) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der fünf vorhandenen Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre); **Offen** für weitere Agenten und einen gemeinsamen Zeitplan | Mac-Prüfliste Teil H; Marktagent, Edelmetallagent, Newsletter und weitere; Kostenzählung für Gespräch und Browser (J) |
@@ -171,8 +172,9 @@ nachgebautem Claude (10), Spielgeld-Desk (7).
 5. Ein Dokument erstellen lassen und das PDF öffnen.
 6. Telegram: Briefing oder eine Frage beantworten lassen.
 
-**Noch nicht automatisiert getestet:** Kaufpfad des Desks mit nachgebautem Markt, Intel/Grok, Analyst
-(Dokumente) und Telegram mit nachgebauten Servern, IMAP-Postfach. Kommen schrittweise dazu.
+**Noch nicht automatisiert getestet (Stand Schritt 1):** Kaufpfad des Desks mit nachgebautem Markt, Intel/Grok,
+Analyst (Dokumente) und Telegram mit nachgebauten Servern, IMAP-Postfach. Nachgeholt in den Schritten B1
+(Telegram, Intel, Kalender, Dokumente) und B2 (Postfach, Kaufpfad des Desks).
 
 ## Phase 2 – Zentrale Sicherheitsarchitektur
 
@@ -272,9 +274,9 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 | Dokumente/Analyst (Abgabe, Nachbessern, kein Skript im Dokument) | ja, nachgebauter Claude | Testbereit | `dokumente.test.ts` (9); PDF nur per Handprüfung mit Chromium |
 | Browser-Agent | Regeln ja; Ablauf per Handprüfung mit Chromium | Testbereit | `browser-sperren.test.ts`, `netzschleuse.test.ts`, `test/hand/` |
 | Webcrawler | Filter ja | Testbereit | `crawler-filter.test.ts` |
-| Trading-Desk (Spielgeld) | Regeln und Engine ja, Kaufpfad mit nachgebautem Markt nein | Testbereit / Offen | Kaufpfad-Test fehlt noch |
+| Trading-Desk (Spielgeld) | ja: Regeln, Engine und der ganze Kaufpfad gegen einen nachgebauten Markt | Testbereit | `desk-kauf.test.ts` (28), `test/mocks/markt-mock.ts`; nur Spielgeld, keine Börsenanbindung; echte Marktdienste nie von hier aus abgefragt |
 | Obsidian, Gedächtnis, Dokumentablage | ja, echte Dateien im Testordner | Testbereit | `dateien.test.ts` |
-| E-Mail (IMAP) | **nein** | Offen | braucht ein nachgebautes Postfach |
+| E-Mail (IMAP) | ja, nachgebautes Postfach | Testbereit | `post.test.ts` (23), `test/mocks/imap-mock.ts`; echtes Postfach nur über die Mac-Prüfliste |
 | Sprache (Weckwort, Vorlesen), 3D-Oberfläche | **nein** | Offen | nur im Browser prüfbar |
 
 ### Testergebnisse Schritt B1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
@@ -285,6 +287,34 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 | `npm test` | **264 Tests: 264 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Telegram 16, Intel 11, Kalender 11, Dokumente 9) |
 | Gegenprobe Telegram (Prüfung des Absenders bei Knöpfen entfernt; Zähler der Fehlversuche entfernt) | 2 bzw. 5 Tests schlagen fehl; danach wiederhergestellt |
 | Dabei gefundene Fehler | keine im Verhalten. Ergänzt: `stopTelegram()` zum sauberen Anhalten, Wetteradresse über `OPEN_METEO_URL` umlenkbar (Tests fragen keinen echten Dienst), nachgebauter Claude antwortet auch ohne Streaming |
+
+### Schritt B2: Post und Kaufpfad des Desks (13. November 2026)
+
+Gebaut wurden nur Tests und zwei nachgebaute Dienste, dazu eine Korrektur in der Post:
+
+* **Nachgebautes Postfach** (`test/mocks/imap-mock.ts`): ein IMAP-Server auf diesem Rechner mit sieben
+  Beispiel-Mails (wichtig, Newsletter, automatische Antwort, eine Mail mit eingeschleuster Anweisung, alt,
+  gelesen, markiert). Er versteht genau die Befehle, die JARVIS schickt, und schreibt jeden mit.
+* **Nachgebauter Markt** (`test/mocks/markt-mock.ts`): DexScreener, GeckoTerminal, CoinGecko und RugCheck auf
+  einem Server. Kurse, Liquidität und der Blockchain-Bericht lassen sich mitten im Test ändern.
+* **Geschlossene Lücke (R-21):** Stand in den Einstellungen ein anderer Port als 993 und bot der Server keine
+  Verschlüsselung an, meldete sich JARVIS trotzdem an, das Passwort ging dann unverschlüsselt über das Netz.
+  Jetzt verlangt JARVIS auf jedem anderen Port STARTTLS und meldet sich sonst nicht an (Ausnahme: ein Server
+  auf diesem Mac). Die Meldung sagt das in einem Satz. Mit Port 993 (Voreinstellung) ändert sich nichts.
+
+### Testergebnisse Schritt B2 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **427 Tests: 427 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Post 23, Kaufpfad des Desks 28) |
+| Post (`post.test.ts`) | Liste: 14 Tage, höchstens 40, Reihenfolge, Zähler, Massenpost und automatische Antworten erkannt, Umlaute; Öffnen: Signatur und Zitat entfernt, Länge begrenzt; Lesen markiert nie als gelesen; „als gelesen“ trifft genau eine Mail; falsches Passwort und nicht erreichbarer Server geben verständliche Meldungen ohne das Passwort; kein Login ohne Verschlüsselung; der ganze Weg über das Gehirn: Mailtext gilt als fremd, „als gelesen markieren“ wartet auf das Ja am Mac, ein Nein ändert nichts |
+| Kaufpfad (`desk-kauf.test.ts`) | Kauf mit 2 bis 5 % des Kontos samt Gebühren und Slippage; kein Doppelkauf; Stop-Loss und 12 Stunden Sperre; Hälfte bei +100 %; Nachlauf-Stop vor und nach dem Teilverkauf; Platz machen nach 12 Stunden ohne +20 %; Liquiditätsabzug; verschwundenes Handelspaar; spät auftauchendes Rug-Zeichen; harte Filter und Blockchain-Prüfung vor dem Chief; der Chief kann gemessene Grenzen nicht überstimmen; unbrauchbare Chief-Antwort; RugCheck fällt aus; Kurs läuft davon; Rückfrage ab der Grenze (einmal fragen, Ja, Nein, verfallen, Kurs gestiegen); höchstens acht Positionen; Pause; Tageslimit; Not-Aus |
+| Gegenproben (Regel verbogen, Tests müssen fehlschlagen) | Post: 5 von 5 fallen auf (Zeitraum, Obergrenze, automatische Antworten, Zwischenspeicher nach „gelesen“, Verschlüsselungspflicht). Desk: 17 von 17 fallen auf, zwei davon (Nachlauf-Stop vor dem Teilverkauf, Verfall der Rückfrage) erst nach geschärften Tests (Stop-Loss, Positionszahl, Tageslimit, Sperre, Teilverkauf, beide Nachlauf-Stops, Liquiditätsabzug, Einsatzhöhe, Hinterherlaufen, Prüfungen je Runde, verschwundenes Paar, Wache, Rückfrage, Verfall kurz und lang, 12-Stunden-Regel). Danach wiederhergestellt |
+| Dabei gefundene Fehler | einer: Passwort ohne Verschlüsselung (R-21, behoben, siehe oben). Im Desk kein Fehler im Verhalten |
+| Code-Review (Skill `code-review`, Stufe mittel) | An den Dateien dieses Schritts kein Befund. Die Durchsicht lief über den ganzen Zweig und meldet **zehn Befunde an früheren Schritten**; sie sind **noch nicht geprüft und nicht behoben**: Name vertraulicher Projekte in einer Fehlermeldung an das Modell (`projekte.ts`); `projekte_lesen` setzt „fremd“ nicht für Einträge von Dritten (`brain.ts`); Projektsuche trifft kurze Namen zu leicht (`projekte.ts`); umbenannter Projektvorschlag verwaist Einträge; Tonfreigabe nach blockierter Wolkenstimme (`useVoice.ts`); Schlüsselbund wird bei jedem Lesen neu gefragt (`config.ts`); gleichzeitiges Speichern der Einstellungen stößt zusammen (`config.ts`); Klartextprüfung nach dem Umzug meldet Fehlalarm (`zugangsdaten.ts`); Regel „Projekt“ fängt kurze Eingaben ab (`commands.ts`); „Heute“ fragt alle 10 Sekunden die ganze Sicherheitslage ab (`TodayView.tsx`). Nächster Schritt: einzeln nachstellen und beheben |
+| Sicherheitsprüfung (von Hand; `security-review` braucht `origin/HEAD`) | Die Änderung an der Post verschärft nur; beide Nachbauten hören nur auf 127.0.0.1; Adresse und Passwort im Nachbau sind erfunden; kein Test fragt einen echten Dienst |
+| Nicht geprüft | ein echtes Postfach (ob der echte Anbieter sich wie der Nachbau verhält, zeigt die Mac-Prüfliste); STARTTLS selbst (der Nachbau bietet es nicht an, geprüft ist nur, dass JARVIS sich ohne nicht anmeldet); echte Marktdienste; Rohstoffe im Kaufpfad (eigene Tests in `test/regeln/`) |
 
 ## Bereich C – Gehirn und Projektgedächtnis
 
@@ -499,17 +529,15 @@ einschaltet; das ist seine Entscheidung.
 Benedikts Wünsche vom 13. November 2026 gehen vor:
 
 1. **H1 Stimme: gebaut, Testbereit** (siehe Bereich H). Offen ist nur die Prüfung mit Benedikts Schlüssel am Mac.
-2. **E-Design: Richtung B „Glashaus“ gefällt, Endwahl steht aus.** Benedikt will das Design „komplett anders,
-   Richtung 4K, richtige Kino-Übergänge“. Am 13.11. bekam er drei Richtungen (A „Premiere“, B „Glashaus“,
-   C „Horizont“) und wählte B. Auf seinen Wunsch folgten drei weitere Ideen in dieser Richtung („Terrasse“,
-   „Lichtspiel“, „Farbglas“); ist nichts Besseres dabei, wird B gebaut. Quellen in `docs/design-entwuerfe/`.
-   Empfohlen: „Glashaus“ als Grundlage, dazu das wandernde Tageslicht aus „Lichtspiel“. **Status: Blockiert**
-   bis zu seiner Wahl; der Umbau beginnt danach mit dem Skill `frontend-design`. An der Oberfläche ist noch
-   nichts geändert.
+2. **E-Design: Benedikt hat am 13.11. „Glashaus“ gewählt** („wir bleiben bei der Ursprungsversion“), also
+   Entwurf B wie gezeigt, ohne Zutaten aus den anderen Entwürfen. Vorlage: `docs/design-entwuerfe/b.html`.
+   **Status: Offen**, der Umbau beginnt mit dem Skill `frontend-design`; alle Funktionen bleiben. An der
+   Oberfläche ist noch nichts geändert.
+3. **Befunde aus der Durchsicht vom 13.11.** (zehn, siehe Testergebnisse Schritt B2): einzeln nachstellen,
+   mit Test belegen, beheben. Die beiden zum Projektgedächtnis (vertraulicher Name, „fremd“) zuerst.
 
 Danach wie geplant:
 
-3. **B-Rest:** nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
 4. **J Kostenübersicht und Modelladapter:** Kosten je Agent zählen (auch Gespräch und Browser), eine Stelle
    für die Modellwahl.
 5. **F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung).

@@ -208,6 +208,14 @@ ohnehin nicht beim Namen; gespeichert wird bei JARVIS nur die Zeichenzahl des Ta
 fehlen Vertrag, Aufbewahrung und Datenstandort bei ElevenLabs; was der Dienst mit den Texten macht, hängt von
 Benedikts Tarif dort ab. Für vertrauliche Firmeninhalte die Stimme ausgeschaltet lassen.
 
+**R-21 Mail-Passwort ohne Verschlüsselung (gefunden und behoben in Schritt B2, 13. November 2026):** Stand in
+den Mail-Einstellungen ein anderer Port als 993 und bot der Server kein STARTTLS an, meldete sich JARVIS
+trotzdem an; Passwort und Mails gingen dann unverschlüsselt über das Netz, ohne Hinweis. Mit der Voreinstellung
+(Port 993) trat das nicht auf. Behoben: Auf jedem anderen Port verlangt JARVIS STARTTLS und bricht sonst vor
+der Anmeldung ab, mit einer verständlichen Meldung. Einzige Ausnahme ist ein Mail-Server auf diesem Mac
+(127.0.0.1, localhost). Belegt durch `test/module/post.test.ts` (kein LOGIN ohne Verschlüsselung). Nicht
+geprüft: STARTTLS gegen einen echten Anbieter.
+
 ## Was bereits gut ist und erhalten bleiben soll
 
 * Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt H1 sind es 20) prüfen Host, Herkunft und einen eigenen Header.
