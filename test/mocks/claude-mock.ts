@@ -11,6 +11,9 @@ export type Zug = { text: string } | { werkzeug: string; eingabe: Record<string,
 export type ClaudeMock = {
   url: string;
   drehbuch: (zuege: Zug[]) => void;
+  // Eine feste Antwort auf jede Anfrage an ein Modell, solange das Drehbuch leer ist. Für die Schau: Der Chief
+  // des Desks fragt mit einem eigenen Modell und bekommt so eine Bewertung, das Gespräch bleibt beim Üblichen.
+  immer: (modell: string, zug: Zug) => void;
   anfragen: Record<string, unknown>[];
   stop: () => Promise<void>;
 };
@@ -24,6 +27,7 @@ const body = (req: IncomingMessage) =>
 
 export async function starteClaudeMock(): Promise<ClaudeMock> {
   let zuege: Zug[] = [];
+  const fest = new Map<string, Zug>();
   const anfragen: Record<string, unknown>[] = [];
   let n = 0;
   const server: Server = createServer(async (req, res) => {
@@ -38,7 +42,7 @@ export async function starteClaudeMock(): Promise<ClaudeMock> {
     }
     const anfrage = JSON.parse(raw) as Record<string, unknown>;
     anfragen.push(anfrage);
-    const zug = zuege.shift() ?? { text: "Erledigt." };
+    const zug = zuege.shift() ?? fest.get(String(anfrage.model)) ?? { text: "Erledigt." };
     const id = `msg_${++n}`;
     // Wie bei Anthropic steht in der Antwort das Modell, das geantwortet hat: hier immer das angefragte.
     const model = typeof anfrage.model === "string" ? anfrage.model : "claude-opus-5-5";
@@ -84,6 +88,7 @@ export async function starteClaudeMock(): Promise<ClaudeMock> {
       zuege = [...z];
       anfragen.length = 0;
     },
+    immer: (modell, zug) => void fest.set(modell, zug),
     anfragen,
     stop: () => new Promise((resolve) => server.close(() => resolve())),
   };

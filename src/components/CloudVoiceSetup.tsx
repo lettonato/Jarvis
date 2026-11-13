@@ -136,7 +136,7 @@ export function CloudVoiceSetup() {
             aria-label="ElevenLabs-Schlüssel"
             className={inputClass}
           />
-          <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+          <Button type="submit" tone="primary" fest disabled={busy || !key.trim()}>
             {busy ? "Prüfe …" : "Prüfen und speichern"}
           </Button>
         </div>

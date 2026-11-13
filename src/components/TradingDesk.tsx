@@ -50,6 +50,11 @@ function useDeskAction() {
   return { act, busy, note };
 }
 
+// Das Aussehen der Flächen im Raum, wie im übrigen Glashaus: keine weißen Kästen mit Rahmen, sondern ruhige
+// Platten mit einer Linie oben. Abschnitte tragen die kräftige Tafellinie, kleine Kacheln eine leichte.
+const PLATTE = "border-t-[3px] border-schiefer bg-wand/60";
+const KACHEL = "border-t-2 border-schiefer/30 bg-wand/60";
+
 export function TradingDesk() {
   const { market: snap, desk } = useJarvis();
   const [now, setNow] = useState<Date | null>(null);
@@ -83,15 +88,14 @@ export function TradingDesk() {
       </section>
       {desk && desk.positions.length > 0 && <Positions desk={desk} controls={controls} now={now} />}
       {desk && <Commodities desk={desk} controls={controls} />}
-      <section className="grid flex-1 gap-3 lg:grid-cols-3">
+      {/* Die Scan-Tabelle hat elf Spalten und bekommt die ganze Breite: So steht die Prüfung, die letzte Spalte, ohne Schieben da. */}
+      <ScannerTable snap={snap} verdicts={desk?.verdicts ?? {}} />
+      <section className="grid flex-1 items-start gap-3 lg:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-3 lg:col-span-2">
-          <ScannerTable snap={snap} verdicts={desk?.verdicts ?? {}} />
           <Trades trades={desk?.trades ?? []} />
-        </div>
-        <div className="flex min-w-0 flex-col gap-3">
-          <ThresholdsPanel />
           <DeskLog log={desk?.log ?? []} />
         </div>
+        <ThresholdsPanel />
       </section>
       <Footer desk={desk} controls={controls} />
     </main>
@@ -145,7 +149,7 @@ function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnap
   const metrics: Partial<Record<Agent["id"], Metric>> = {
     chief: {
       value: desk?.lastPick ? `$${desk.lastPick}` : "–",
-      detail: desk?.chief === "claude" ? "letzte Wahl · Claude bewertet" : "letzte Wahl · Faustregeln",
+      detail: desk?.chief === "claude" ? "letzte Wahl, Claude bewertet" : "letzte Wahl nach Faustregeln",
     },
     scan: {
       value: snap ? String(snap.scan.scanned) : "…",
@@ -154,8 +158,8 @@ function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnap
     },
     vet: { value: snap ? `${passed}/${candidates.length}` : "…", detail: "bestehen die harten Filter", progress: candidates.length ? passed / candidates.length : 0 },
     social: desk?.x.enabled
-      ? { value: stats ? formatCount(stats.postsRead) : "–", detail: `X-Beiträge gelesen · Grok heute ${formatUsd(desk.x.spentTodayUsd)} von ${formatUsd(desk.x.budgetUsd)}` }
-      : { value: stats ? formatCount(stats.pagesRead) : "–", detail: "Seiten gelesen · X ohne xAI-Schlüssel aus" },
+      ? { value: stats ? formatCount(stats.postsRead) : "–", detail: `X-Beiträge gelesen, Grok heute ${formatUsd(desk.x.spentTodayUsd)} von ${formatUsd(desk.x.budgetUsd)}` }
+      : { value: stats ? formatCount(stats.pagesRead) : "–", detail: "Seiten gelesen, X ist ohne xAI-Schlüssel aus" },
     size: { value: lastBuy ? formatUsd(lastBuy.usd) : "–", detail: `Ticket, ${SAFETY.minTradeShare * 100} bis ${SAFETY.maxTradeShare * 100} % des Kontos je nach Überzeugung` },
     fills: {
       value: lastFill ? `${lastFill.side === "kauf" ? "rein" : "raus"} ${assetLabel(lastFill)}` : "–",
@@ -165,7 +169,7 @@ function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnap
     crawler: {
       value: stats ? `${stats.rugsStopped}` : "–",
       detail: stats
-        ? `Rugs gestoppt · ${formatCount(stats.pagesRead)} Seiten · ${formatCount(stats.postsRead)} Beiträge · ${formatCount(stats.killed)} aussortiert`
+        ? `Rugs gestoppt, ${formatCount(stats.pagesRead)} Seiten, ${formatCount(stats.postsRead)} Beiträge, ${formatCount(stats.killed)} aussortiert`
         : "Rugs gestoppt",
     },
   };
@@ -180,7 +184,7 @@ function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnap
 
 function AgentTile({ agent, metric, state }: { agent: Agent; metric?: Metric; state: { label: string; live: boolean } }) {
   return (
-    <article className="flex min-w-0 flex-col gap-1 rounded-md border border-line bg-panel p-3">
+    <article className={`flex min-w-0 flex-col gap-1 p-3 ${KACHEL}`}>
       <div className="flex flex-wrap items-center justify-between gap-1">
         <div className="flex items-center gap-2">
           <span
@@ -215,11 +219,11 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
   const started = desk && desk.status !== "aus";
   const day = desk ? Math.min(desk.testDay, SAFETY.testDays) : 0;
   return (
-    <section className="flex min-w-0 flex-col gap-3 rounded-md border border-line bg-panel p-3 lg:col-span-2">
+    <section className={`flex min-w-0 flex-col gap-3 p-3 lg:col-span-2 ${PLATTE}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs text-quiet">
-            Spielgeld-Konto{started ? ` · Tag ${day} von ${SAFETY.testDays}` : ""}
+            Spielgeld-Konto{started ? `, Tag ${day} von ${SAFETY.testDays}` : ""}
           </p>
           <p className="text-3xl font-bold">{formatUsd(desk?.equity ?? SAFETY.startCapitalUsd)}</p>
           {started && desk ? (
@@ -227,7 +231,7 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
               <span className={desk.pnlUsd >= 0 ? "text-up" : "text-down"}>
                 {formatSignedUsd(desk.pnlUsd)} ({formatPct(desk.pnlPct)})
               </span>
-              <span className="text-quiet"> seit dem Start · heute {formatPct(desk.dayPnlPct)} · bar {formatUsd(desk.cash)}</span>
+              <span className="text-quiet"> seit dem Start, heute {formatPct(desk.dayPnlPct)}, bar {formatUsd(desk.cash)}</span>
             </p>
           ) : (
             <p className="text-sm text-quiet">Erfundenes Geld, echte Kurse, echte Kosten. Kein echter Handel.</p>
@@ -235,17 +239,17 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
         </div>
         <div className="flex flex-wrap gap-2">
           {desk?.status === "aus" && (
-            <button type="button" disabled={busy} onClick={() => act("start")} className="rounded bg-up/90 px-3 py-1.5 text-sm font-bold text-white hover:bg-up disabled:opacity-50">
+            <button type="button" disabled={busy} onClick={() => act("start")} className="rounded-full bg-up px-4 py-1.5 text-sm font-bold text-white hover:bg-up/90 disabled:opacity-50">
               Spielgeld-Handel starten
             </button>
           )}
           {(desk?.status === "laeuft" || desk?.status === "tageslimit") && (
-            <button type="button" disabled={busy} onClick={() => act("pause")} className="rounded border border-line px-3 py-1.5 text-sm font-bold hover:bg-panel-2 disabled:opacity-50">
+            <button type="button" disabled={busy} onClick={() => act("pause")} className="rounded-full border border-schiefer/30 px-4 py-1.5 text-sm font-bold hover:bg-panel-2 disabled:opacity-50">
               Pause
             </button>
           )}
           {(desk?.status === "pausiert" || desk?.status === "notaus") && (
-            <button type="button" disabled={busy} onClick={() => act("weiter")} className="rounded bg-up/90 px-3 py-1.5 text-sm font-bold text-white hover:bg-up disabled:opacity-50">
+            <button type="button" disabled={busy} onClick={() => act("weiter")} className="rounded-full bg-up px-4 py-1.5 text-sm font-bold text-white hover:bg-up/90 disabled:opacity-50">
               Weitermachen
             </button>
           )}
@@ -254,7 +258,7 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
               type="button"
               disabled={busy}
               onClick={() => window.confirm("Den Spielgeld-Handel zurücksetzen und mit 10.000 $ neu anfangen? Die Testzeit beginnt dann von vorn.") && act("zuruecksetzen")}
-              className="rounded border border-line px-3 py-1.5 text-sm text-quiet hover:bg-panel-2 disabled:opacity-50"
+              className="rounded-full border border-schiefer/30 px-4 py-1.5 text-sm text-quiet hover:bg-panel-2 disabled:opacity-50"
             >
               Zurücksetzen
             </button>
@@ -289,19 +293,19 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
       {desk && <ApprovalRule desk={desk} />}
       <BalanceChart points={desk?.equityHistory ?? []} start={desk?.startCapital ?? SAFETY.startCapitalUsd} />
       {desk?.status === "aus" && (
-        <ul className="grid gap-1 text-xs text-quiet sm:grid-cols-2">
+        <ul className="grid list-disc gap-x-6 gap-y-1 pl-4 text-xs text-quiet marker:text-schiefer/40 sm:grid-cols-2">
           <li>
-            · {SAFETY.minTradeShare * 100} bis {SAFETY.maxTradeShare * 100} % des Kontos je Coin, höchstens {SAFETY.maxOpenPositions} Coins gleichzeitig
+            {SAFETY.minTradeShare * 100} bis {SAFETY.maxTradeShare * 100} % des Kontos je Coin, höchstens {SAFETY.maxOpenPositions} Coins gleichzeitig
           </li>
-          <li>· Stop-Loss −{SAFETY.stopLoss * 100} %, nachziehend −{SAFETY.trailingStop * 100} % vom Höchststand</li>
+          <li>Stop-Loss −{SAFETY.stopLoss * 100} %, nachziehend −{SAFETY.trailingStop * 100} % vom Höchststand</li>
           <li>
-            · bei +{SAFETY.halfAt * 100} % die Hälfte verkaufen, der Rest läuft mit −{SAFETY.runnerTrail * 100} % Nachlauf weiter; nach {SAFETY.staleHours} Std ohne +
+            bei +{SAFETY.halfAt * 100} % die Hälfte verkaufen, der Rest läuft mit −{SAFETY.runnerTrail * 100} % Nachlauf weiter; nach {SAFETY.staleHours} Std ohne +
             {SAFETY.staleGain * 100} % raus
           </li>
-          <li>· höchstens −{SAFETY.dailyLossLimit * 100} % am Tag, dann Pause bis morgen</li>
-          <li>· Gold, Silber, Öl: je {COMMODITY_RULES.tradeShare * 100} % des Kontos, wenn der Trend nach oben zeigt</li>
-          <li>· Kosten wie echt: {COSTS.dexFee * 100} % Gebühr, Slippage, Netzwerkgebühr</li>
-          <li>· läuft, solange JARVIS auf dem Mac offen ist</li>
+          <li>höchstens −{SAFETY.dailyLossLimit * 100} % am Tag, dann Pause bis morgen</li>
+          <li>Gold, Silber, Öl: je {COMMODITY_RULES.tradeShare * 100} % des Kontos, wenn der Trend nach oben zeigt</li>
+          <li>Kosten wie echt: {COSTS.dexFee * 100} % Gebühr, Slippage, Netzwerkgebühr</li>
+          <li>läuft, solange JARVIS auf dem Mac offen ist</li>
         </ul>
       )}
     </section>
@@ -386,7 +390,7 @@ function BalanceChart({ points, start }: { points: { at: string; equity: number 
 function MajorCard({ quote }: { quote: MajorQuote }) {
   const up = quote.change24h >= 0;
   return (
-    <article className="rounded-md border border-line bg-panel p-3">
+    <article className={`p-3 ${KACHEL}`}>
       <div className="flex items-center justify-between text-xs text-quiet">
         <span>{quote.name}</span>
         <span className="font-bold text-schiefer">{quote.symbol}</span>
@@ -399,14 +403,14 @@ function MajorCard({ quote }: { quote: MajorQuote }) {
 
 function Positions({ desk, controls, now }: { desk: DeskSnapshot; controls: Controls; now: Date | null }) {
   return (
-    <section className="rounded-md border border-line bg-panel">
+    <section className={PLATTE}>
       <div className="flex items-center justify-between border-b border-line px-3 py-2">
         <h2 className="text-sm font-bold text-see">Offene Positionen <span className="font-medium text-quiet">{desk.positions.length}</span></h2>
         <button
           type="button"
           disabled={controls.busy}
           onClick={() => window.confirm("Alle offenen Positionen zum aktuellen Kurs verkaufen?") && controls.act("alle_verkaufen")}
-          className="rounded border border-line px-2 py-1 text-xs hover:bg-panel-2 disabled:opacity-50"
+          className="rounded-full border border-schiefer/30 px-3 py-1 text-xs hover:bg-panel-2 disabled:opacity-50"
         >
           Alles verkaufen
         </button>
@@ -449,7 +453,7 @@ function Positions({ desk, controls, now }: { desk: DeskSnapshot; controls: Cont
                     {p.why}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <button type="button" disabled={controls.busy} onClick={() => controls.act("verkaufen", p.address)} className="rounded border border-line px-2 py-0.5 hover:bg-panel-2 disabled:opacity-50">
+                    <button type="button" disabled={controls.busy} onClick={() => controls.act("verkaufen", p.address)} className="rounded-full border border-schiefer/30 px-3 py-0.5 hover:bg-panel-2 disabled:opacity-50">
                       Verkaufen
                     </button>
                   </td>
@@ -473,18 +477,18 @@ const TREND: Record<NonNullable<CommodityQuote["signal"]>["trend"], { label: str
 function Commodities({ desk, controls }: { desk: DeskSnapshot; controls: Controls }) {
   const c = desk.commodities;
   return (
-    <section className="rounded-md border border-line bg-panel">
+    <section className={PLATTE}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
         <h2 className="text-sm font-bold text-see">Rohstoffe: Gold, Silber, Öl</h2>
         <span className="text-xs text-quiet">{c.enabled ? `folgt dem Trend, je ${COMMODITY_RULES.tradeShare * 100} % des Kontos` : "aus"}</span>
       </div>
       {!c.enabled ? (
         <p className="px-3 py-3 text-xs text-quiet">
-          Mit einem kostenlosen Schlüssel von Twelve Data handelt der Desk auch Gold, Silber und Öl. Eintragen unter{" "}
+          Mit einem kostenlosen Schlüssel von Twelve Data handelt der Desk auch Gold, Silber und Öl. Den Schlüssel trägst du in den{" "}
           <RaumLink href="/einstellungen#rohstoffe" className="text-see hover:underline">
-            Einstellungen → Rohstoffe
-          </RaumLink>
-          .
+            Einstellungen unter Rohstoffe
+          </RaumLink>{" "}
+          ein.
         </p>
       ) : (
         <div className="grid gap-2 p-3 sm:grid-cols-3">
@@ -519,7 +523,8 @@ function CommodityCard({
   const value = position ? position.qty * position.lastPrice : 0;
   const change = position ? (value / position.costUsd - 1) * 100 : 0;
   return (
-    <article className="flex min-w-0 flex-col gap-1 rounded border border-line bg-panel-2/40 p-3">
+    // Die Karte liegt schon auf einer Platte: nur die Linie, kein zweiter Grund darüber.
+    <article className="flex min-w-0 flex-col gap-1 border-t-2 border-schiefer/30 p-3">
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="font-bold text-schiefer">{name}</span>
         {quote && !quote.open ? (
@@ -543,7 +548,7 @@ function CommodityCard({
             type="button"
             disabled={controls.busy}
             onClick={() => controls.act("verkaufen", position.id)}
-            className="rounded border border-line px-2 py-0.5 hover:bg-panel-2 disabled:opacity-50"
+            className="rounded-full border border-schiefer/30 px-3 py-0.5 hover:bg-panel-2 disabled:opacity-50"
           >
             Verkaufen
           </button>
@@ -558,26 +563,26 @@ function CommodityCard({
 function ScannerTable({ snap, verdicts }: { snap: MarketSnapshot | null; verdicts: Record<string, CoinVerdict> }) {
   const rows = snap?.scan.candidates ?? [];
   return (
-    <section className="flex min-w-0 flex-col rounded-md border border-line bg-panel">
+    <section className={`flex min-w-0 flex-col ${PLATTE}`}>
       <div className="flex items-center justify-between border-b border-line px-3 py-2">
         <h2 className="text-sm font-bold text-see">Scan: Solana-Memecoins</h2>
         <span className="text-xs text-quiet">{snap ? `${snap.scan.scanned} gescannt` : "lädt …"}</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] whitespace-nowrap text-left text-xs">
+        <table className="w-full min-w-[900px] whitespace-nowrap text-left text-xs">
           <thead className="text-xs text-quiet">
             <tr className="border-b border-line">
               <th className="px-3 py-2">Coin</th>
-              <th className="px-3 py-2 text-right">Preis</th>
-              <th className="px-3 py-2 text-right" title="Schwung: Kaufdruck, Volumen und Kurs der letzten Minuten, 0 bis 100">Schwung</th>
-              <th className="px-3 py-2 text-right">5 Min</th>
-              <th className="px-3 py-2 text-right">24 Std</th>
-              <th className="px-3 py-2 text-right">Liquidität</th>
-              <th className="px-3 py-2 text-right">Volumen 24 Std</th>
-              <th className="px-3 py-2 text-right">MCap</th>
-              <th className="px-3 py-2 text-right">Trades</th>
-              <th className="px-3 py-2 text-right">Alter</th>
-              <th className="px-3 py-2">Prüfung</th>
+              <th className="px-2 py-2 text-right">Preis</th>
+              <th className="px-2 py-2 text-right" title="Schwung: Kaufdruck, Volumen und Kurs der letzten Minuten, 0 bis 100">Schwung</th>
+              <th className="px-2 py-2 text-right">5 Min</th>
+              <th className="px-2 py-2 text-right">24 Std</th>
+              <th className="px-2 py-2 text-right">Liquidität</th>
+              <th className="px-2 py-2 text-right" title="Handelsvolumen der letzten 24 Stunden">Volumen</th>
+              <th className="px-2 py-2 text-right">MCap</th>
+              <th className="px-2 py-2 text-right">Trades</th>
+              <th className="px-2 py-2 text-right">Alter</th>
+              <th className="min-w-[180px] py-2 pl-2 pr-3">Prüfung</th>
             </tr>
           </thead>
           <tbody>
@@ -620,28 +625,33 @@ function CandidateRow({ c, verdict }: { c: Candidate; verdict?: CoinVerdict }) {
         </a>
         <span className="ml-2 text-quiet">{c.name}</span>
       </td>
-      <td className="px-3 py-2 text-right">{formatPriceUsd(c.priceUsd)}</td>
-      <td className="px-3 py-2 text-right">
+      <td className="px-2 py-2 text-right">{formatPriceUsd(c.priceUsd)}</td>
+      <td className="px-2 py-2 text-right">
         <HeatBar heat={c.heat} />
       </td>
-      <td className={`px-3 py-2 text-right ${c.change5m >= 0 ? "text-up" : "text-down"}`}>{formatPct(c.change5m)}</td>
-      <td className={`px-3 py-2 text-right ${c.change24h >= 0 ? "text-up" : "text-down"}`}>{formatPct(c.change24h)}</td>
-      <td className="px-3 py-2 text-right">{formatCompactUsd(c.liquidityUsd)}</td>
-      <td className="px-3 py-2 text-right">{formatCompactUsd(c.volumeH24)}</td>
-      <td className="px-3 py-2 text-right">{formatCompactUsd(c.mcapUsd)}</td>
-      <td className="px-3 py-2 text-right">{formatCount(c.tradesH24)}</td>
-      <td className="px-3 py-2 text-right">{formatAge(c.ageMinutes)}</td>
-      <td className="px-3 py-2">
+      <td className={`px-2 py-2 text-right ${c.change5m >= 0 ? "text-up" : "text-down"}`}>{formatPct(c.change5m)}</td>
+      <td className={`px-2 py-2 text-right ${c.change24h >= 0 ? "text-up" : "text-down"}`}>{formatPct(c.change24h)}</td>
+      <td className="px-2 py-2 text-right">{formatCompactUsd(c.liquidityUsd)}</td>
+      <td className="px-2 py-2 text-right">{formatCompactUsd(c.volumeH24)}</td>
+      <td className="px-2 py-2 text-right">{formatCompactUsd(c.mcapUsd)}</td>
+      <td className="px-2 py-2 text-right">{formatCount(c.tradesH24)}</td>
+      <td className="px-2 py-2 text-right">{formatAge(c.ageMinutes)}</td>
+      {/* Die Prüfung nimmt den Platz, der übrig ist, und bricht ihren Text um, statt die Tabelle breiter zu machen:
+          So steht der Grund da, auch ohne Maus. */}
+      <td className="w-full whitespace-normal py-2 pl-2 pr-3 leading-relaxed">
         {!c.passed ? (
-          <span className="rounded bg-down/15 px-1.5 py-0.5 text-down">raus: {failed?.label}</span>
+          <span className="rounded bg-down/15 px-1.5 py-0.5 text-down" title={failed?.label}>
+            raus: {failed?.label}
+          </span>
         ) : verdict ? (
-          <span title={verdict.text}>
+          // Höchstens drei Zeilen, damit eine lange Begründung die Tabelle nicht zerreißt; der ganze Text steht im Hinweis.
+          <span className="line-clamp-3" title={verdict.text}>
             <span className={`rounded px-1.5 py-0.5 ${VERDICT[verdict.stage].tone}`}>{VERDICT[verdict.stage].label}</span>
-            <span className="ml-2 inline-block max-w-[240px] truncate align-bottom text-quiet">{verdict.text}</span>
+            <span className="ml-2 text-quiet">{verdict.text}</span>
           </span>
         ) : (
           <span className="rounded bg-up/15 px-1.5 py-0.5 font-bold text-up" title="Hat die harten Filter bestanden, der Crawler prüft ihn als Nächstes">
-            BESTANDEN
+            bestanden
           </span>
         )}
       </td>
@@ -665,7 +675,7 @@ function HeatBar({ heat }: { heat: number }) {
 function Trades({ trades }: { trades: Trade[] }) {
   if (trades.length === 0) return null;
   return (
-    <section className="rounded-md border border-line bg-panel">
+    <section className={PLATTE}>
       <div className="border-b border-line px-3 py-2">
         <h2 className="text-sm font-bold text-see">Trades mit Begründung</h2>
       </div>
@@ -689,9 +699,9 @@ function Trades({ trades }: { trades: Trade[] }) {
 function ThresholdsPanel() {
   const keys = Object.keys(HARD_FILTERS) as FilterKey[];
   return (
-    <section className="rounded-md border border-line bg-panel p-3 text-xs">
+    <section className={`min-w-0 p-3 text-xs ${PLATTE}`}>
       <h2 className="mb-2 font-bold text-schiefer">thresholds.py</h2>
-      <p className="mb-2 text-xs text-quiet">Hart · reine Rechnung, kostet nichts</p>
+      <p className="mb-2 text-xs text-quiet">Hart: reine Rechnung, kostet nichts</p>
       <ul className="space-y-1">
         {keys.map((key) => (
           <li key={key} className="flex justify-between gap-2">
@@ -700,7 +710,7 @@ function ThresholdsPanel() {
           </li>
         ))}
       </ul>
-      <p className="mb-2 mt-3 text-xs text-quiet">Weich · der Chief schätzt, die Grenze entscheidet</p>
+      <p className="mb-2 mt-3 text-xs text-quiet">Weich: der Chief schätzt, die Grenze entscheidet</p>
       <ul className="space-y-1">
         {SOFT_KEYS.map((key) => (
           <li key={key} className="flex justify-between gap-2" title={SOFT_FILTERS[key].label}>
@@ -711,7 +721,7 @@ function ThresholdsPanel() {
           </li>
         ))}
       </ul>
-      <p className="mb-1 mt-3 text-xs text-quiet">filter.py · die Reihenfolge ist der Trick</p>
+      <p className="mb-1 mt-3 text-xs text-quiet">filter.py: die Reihenfolge ist der Trick</p>
       <ol className="flex flex-wrap gap-1">
         {FILTER_STAGES.map((stage) => (
           <li key={stage.id} title={`${stage.agent}: ${stage.label}`} className="rounded border border-rot/50 px-1.5 py-0.5 text-xs text-down">
@@ -727,7 +737,7 @@ const TONE: Record<NonNullable<LogEntry["tone"]>, string> = { kill: "text-down",
 
 function DeskLog({ log }: { log: LogEntry[] }) {
   return (
-    <section className="flex min-h-48 flex-1 flex-col rounded-md border border-line bg-panel p-3 text-xs">
+    <section className={`flex min-h-48 flex-col p-3 text-xs ${PLATTE}`}>
       <h2 className="mb-2 font-bold text-schiefer">Protokoll</h2>
       <ol className="max-h-[420px] flex-1 space-y-1 overflow-y-auto">
         {log.map((e, i) => (
@@ -748,15 +758,15 @@ function Footer({ desk, controls }: { desk: DeskSnapshot | null; controls: Contr
   return (
     <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-xs text-quiet">
       <span>
-        Daten: CoinGecko, DexScreener, GeckoTerminal, RugCheck, Grok und Twelve Data · Risk wacht alle 10 Sekunden, neue Coins alle 30 Sekunden, die Spinne zeigt jeden
-        Schritt sofort
+        Daten: CoinGecko, DexScreener, GeckoTerminal, RugCheck, Grok und Twelve Data. Risk wacht alle 10 Sekunden, neue Coins alle 30 Sekunden, die Spinne zeigt jeden
+        Schritt sofort.
       </span>
       <button
         type="button"
         disabled={!armed || controls.busy}
         onClick={() => controls.act("notaus")}
         title={armed ? "Stoppt sofort alle Agenten. Auch per Sprache: „Stopp alles“." : "Der Not-Aus greift, sobald der Spielgeld-Handel läuft."}
-        className="rounded border border-down px-3 py-1 font-bold text-down hover:bg-down/15 disabled:cursor-not-allowed disabled:border-down/40 disabled:text-down/50"
+        className="rounded-full border border-down px-4 py-1 font-bold text-down hover:bg-down/15 disabled:cursor-not-allowed disabled:border-down/40 disabled:text-down/50"
       >
         Not-Aus
       </button>

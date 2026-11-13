@@ -46,16 +46,24 @@ export const brainKey = (config: JarvisConfig): string | undefined => config.cla
 
 const client = (apiKey: string) => new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
 
+// Macht aus einer Meldung einen Satz: ohne Leerraum am Ende und mit Satzzeichen. Die Erklärung steht in
+// Protokollen und Antworten vor weiteren Sätzen.
+function alsSatz(text: string): string {
+  const t = text.trim();
+  if (!t) return "Unbekannter Fehler.";
+  return /[.!?…]$/.test(t) ? t : `${t}.`;
+}
+
 export function explainBrainError(e: unknown): string {
   if (e instanceof Anthropic.AuthenticationError) return "Der Claude-Schlüssel wird nicht angenommen. Trag in den Einstellungen einen neuen ein.";
   if (e instanceof Anthropic.PermissionDeniedError) return "Dieser Claude-Schlüssel darf das Modell nicht nutzen. Sieh bitte in der Anthropic-Konsole nach.";
   if (e instanceof Anthropic.RateLimitError) return "Claude ist gerade ausgelastet oder dein Limit ist erreicht. Versuch es gleich noch einmal.";
-  if (e instanceof Anthropic.BadRequestError) return `Anthropic hat die Anfrage abgelehnt: ${e.message}`;
+  if (e instanceof Anthropic.BadRequestError) return alsSatz(`Anthropic hat die Anfrage abgelehnt: ${e.message}`);
   if (e instanceof Anthropic.InternalServerError) return "Bei Anthropic klemmt gerade etwas. Versuch es gleich noch einmal.";
   if (e instanceof Anthropic.APIConnectionTimeoutError) return "Claude hat zu lange gebraucht. Frag mich bitte noch einmal.";
   if (e instanceof Anthropic.APIConnectionError) return "Ich erreiche Claude gerade nicht. Ist der Mac mit dem Internet verbunden?";
-  if (e instanceof Anthropic.APIError) return `Claude meldet einen Fehler: ${e.message}`;
-  return e instanceof Error ? e.message : String(e);
+  if (e instanceof Anthropic.APIError) return alsSatz(`Claude meldet einen Fehler: ${e.message}`);
+  return alsSatz(e instanceof Error ? e.message : String(e));
 }
 
 // Prüft einen Schlüssel, bevor er gespeichert wird. Das kostet nichts, es wird nichts generiert.

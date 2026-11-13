@@ -5,6 +5,7 @@
 import { spawn } from "node:child_process";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { MODELLE } from "../../src/lib/modelle";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
 import { starteClaudeMock } from "../mocks/claude-mock";
 import { beispielPost, MOCK_POST_ADRESSE, MOCK_POST_PASSWORT, starteImapMock } from "../mocks/imap-mock";
@@ -47,7 +48,25 @@ async function main() {
   );
 
   const [claude, post, markt] = await Promise.all([starteClaudeMock(), starteImapMock(beispielPost(jetzt.getTime())), starteMarktMock()]);
-  markt.coins.push(guterCoin("GOODDOG"), guterCoin("WELLE", { aenderung: { m5: 2, h1: 9, h6: 14, h24: 22 } }));
+  const hund = guterCoin("GOODDOG");
+  const welle = guterCoin("WELLE", { aenderung: { m5: 2, h1: 9, h6: 14, h24: 22 } });
+  markt.coins.push(hund, welle);
+  // Startet jemand in der Schau den Spielgeld-Handel, bewertet der nachgebaute Chief die beiden Coins: einen Kauf
+  // und eine Absage mit langer Begründung. So zeigt der Raum Trading auch Positionen, Trades und Urteile.
+  claude.immer(MODELLE.chief.id, {
+    text: JSON.stringify({
+      coins: [
+        { address: hund.address, momentum_already_spent: 0.2, account_is_the_project: 0.9, recycled_account: 0.1, begruendung: "Frisches Geld, und die Konten gehören erkennbar zum Projekt." },
+        {
+          address: welle.address,
+          momentum_already_spent: 0.9,
+          account_is_the_project: 0.8,
+          recycled_account: 0.1,
+          begruendung: "Der Anstieg der letzten Stunden ist schon gelaufen. Wer jetzt kauft, kauft die Spitze; die Konten passen zum Projekt, aber frisches Geld kommt kaum noch nach.",
+        },
+      ],
+    }),
+  });
   Object.assign(process.env, {
     ANTHROPIC_BASE_URL: claude.url,
     DEXSCREENER_URL: markt.url,

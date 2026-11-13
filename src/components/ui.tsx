@@ -63,6 +63,8 @@ type ButtonProps = {
   type?: "button" | "submit";
   title?: string;
   small?: boolean;
+  // Neben einem Eingabefeld: Der Knopf bleibt einzeilig und wird nicht zusammengedrückt.
+  fest?: boolean;
 };
 
 const KNOPF = {
@@ -71,14 +73,14 @@ const KNOPF = {
   danger: "border-down/50 text-down hover:bg-down/10",
 };
 
-export function Button({ children, onClick, icon, tone = "ghost", disabled, type = "button", title, small }: ButtonProps) {
+export function Button({ children, onClick, icon, tone = "ghost", disabled, type = "button", title, small, fest }: ButtonProps) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`inline-flex items-center gap-1.5 rounded-full border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${small ? "px-3 py-1 text-xs" : "px-4 py-2 text-sm"} ${KNOPF[tone]}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-full border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${small ? "px-3 py-1 text-xs" : "px-4 py-2 text-sm"} ${fest ? "shrink-0 whitespace-nowrap" : ""} ${KNOPF[tone]}`}
     >
       {icon && <Icon name={icon} className={small ? "h-3.5 w-3.5" : "h-4 w-4"} />}
       {children}

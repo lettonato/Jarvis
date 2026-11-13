@@ -114,6 +114,8 @@ Das Aussehen ist bisher nur in der Sandbox mit Beispieldaten geprüft, in Chrome
 | J2 | Dasselbe in Safari, falls du Safari nutzt | Entweder dieselbe Fahrt oder ein einfacher Wechsel ohne Fahrt. Beides ist in Ordnung; bitte schreib mir, was du siehst |
 | J3 | Jeden Raum einmal ansehen (unter „Mehr“ stehen die übrigen) | Überall dunkle Schrift auf heller Wand, nichts abgeschnitten, nichts übereinander, jede Schrift gut lesbar |
 | J4 | In einem langen Raum (Einstellungen, Trading) nach unten rollen | Nur die Wand rollt, Fenster und Leiste bleiben stehen; ganz unten ist nichts von der Leiste verdeckt |
+| J4a | Einstellungen: oben in der Zeile unter der Überschrift auf „Sicherheit“ klicken, dann auf „Datenschutz“ | Die Wand rollt zum Abschnitt. Der Knopf „Prüfen und speichern“ steht in einer Zeile neben dem Eingabefeld |
+| J4b | Trading ansehen, bei laufendem Spielgeld-Handel | Keine weißen Kästen mehr. Die Tabelle „Scan“ zeigt alle Spalten bis „Prüfung“ ohne seitliches Schieben; dort steht bei jedem Coin kurz der Grund |
 | J5 | Das Browserfenster schmal ziehen (etwa halbe Bildschirmbreite) | Das Fenster rückt nach oben, der Inhalt steht darunter, die Leiste zeigt „Räume“ als Auswahl |
 | J6 | In der Leiste rechts etwas an JARVIS schreiben oder „Jarvis“ sagen | Über der Leiste erscheint seine Antwort; ein Klick darauf klappt das ganze Gespräch auf |
 | J7 | Einstellungen → Aussehen | Eine Liste: zu jedem Raum das Foto mit dem Namen des Fotografen |

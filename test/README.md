@@ -45,6 +45,8 @@ normale Tests.
 `test/hand/glashaus-schau.ts` ist keine Prüfung, sondern eine Schau: Sie startet JARVIS mit Beispieldaten
 (nachgebautes Postfach, nachgebauter Markt, Kalender, Aufgaben, drei Projekte), damit man alle Räume gefüllt
 ansehen und fotografieren kann. Vorher `npx next build`, dann `npx tsx test/hand/glashaus-schau.ts 3210 start`.
+Startet man dort den Spielgeld-Handel, bewertet der nachgebaute Chief die zwei Beispiel-Coins (ein Kauf, eine
+Absage), damit der Raum Trading Position, Trade und Urteile zeigt.
 
 Neue Werkzeuge: Der Test „jedes Werkzeug steht in der Tabelle“ liest alle `betaTool({ name })` aus
 `brain.ts` und `browser.ts`. Ein Werkzeug ohne Zeile in `src/lib/server/gateway/richtlinien.ts` lässt ihn

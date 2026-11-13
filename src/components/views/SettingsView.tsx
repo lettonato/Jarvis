@@ -20,8 +20,131 @@ import { VOICE_KEY } from "@/lib/useVoice";
 
 // Einstellungen: wie JARVIS dich nennt, welcher Obsidian-Tresor und welches Postfach, welche Stimme.
 
+// Ein Abschnitt der Einstellungen. Sprungleiste und Abschnitte kommen aus derselben Liste: So zeigt jeder Eintrag
+// der Leiste auf einen Abschnitt, den es gibt. Die ids stehen auch in Links aus anderen Räumen
+// (etwa /einstellungen#rohstoffe) und bleiben deshalb, wie sie sind.
+type Abschnitt = { id: string; kurz: string; title: string; text?: string; zeigen?: boolean; inhalt: ReactNode };
+
+function abschnitteVon(settings: Settings): Abschnitt[] {
+  const alle: Abschnitt[] = [
+    {
+      id: "du",
+      kurz: "Du",
+      title: "Du",
+      inhalt: <NameForm />,
+    },
+    {
+      id: "gehirn",
+      kurz: "KI-Gehirn",
+      title: "KI-Gehirn (Claude)",
+      text: "Mit dem KI-Gehirn redest du mit JARVIS wie mit Claude: Er beantwortet jede Frage, sieht bei Aktuellem im Web nach und versteht freie Sätze wie „Was muss ich bis Freitag noch erledigen?“, „Fass mir die Mail von Anna zusammen“ oder „Schieb den Zahnarzt auf nächsten Dienstag“. Kurze Befehle wie Briefing oder Weiter erledigt er weiter sofort selbst.",
+      inhalt: <BrainSetup />,
+    },
+    {
+      id: "gedaechtnis",
+      kurz: "Gedächtnis",
+      title: "Was JARVIS über dich weiß",
+      text: "Erzählst du JARVIS etwas, das länger gilt (Vorlieben, Namen, Umstände), merkt er es sich hier und weiß es im nächsten Gespräch noch. Du kannst auch sagen „Merk dir, dass …“ oder „Vergiss, dass …“. Das Gedächtnis liegt nur auf diesem Mac.",
+      zeigen: settings.brain.configured,
+      inhalt: <MemorySetup />,
+    },
+    {
+      id: "handy",
+      kurz: "Handy",
+      title: "Handy (Telegram)",
+      text: "Über Telegram hast du JARVIS auch unterwegs dabei: Er schickt dir morgens das Briefing, erinnert dich an Termine, meldet Warnungen und Trades, und du kannst ihm schreiben wie in der App. Dafür legst du dir bei Telegram einen eigenen Bot an. JARVIS antwortet nur deinem Handy, und dein Mac bleibt von außen unerreichbar.",
+      inhalt: <TelegramSetup />,
+    },
+    {
+      id: "rueckfrage",
+      kurz: "Rückfrage",
+      title: "Rückfrage vor Käufen",
+      text: `Ab dieser Grenze kauft der Trading-Desk nicht selbst. JARVIS fragt dich per Telegram mit Ja/Nein-Knöpfen und oben in JARVIS, und kauft erst nach deinem Ja. Ohne Antwort verfällt die Frage nach ${APPROVAL.timeoutMinutes} Minuten, dann wird nicht gekauft.`,
+      inhalt: <ApprovalSetup />,
+    },
+    {
+      id: "crawler",
+      kurz: "Grok",
+      title: "Grok: Crawler auf X und Intel",
+      text: "Wie im GrokBot-Video liest der Crawler vor jedem Kauf, was auf X über den Coin geschrieben wird, und prüft das X-Konto des Projekts. Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben. Mit demselben Schlüssel liest Intel die Nachrichten und X für dein Briefing; Themen und Budget dafür stellst du in der Intel-Ansicht ein.",
+      inhalt: <CrawlerSetup />,
+    },
+    {
+      id: "rohstoffe",
+      kurz: "Rohstoffe",
+      title: "Rohstoffe: Gold, Silber, Öl",
+      text: "Neben den Memecoins handelt der Spielgeld-Desk auch Gold, Silber und Öl. Dort folgt er dem Trend: Er kauft, wenn der Kurs seit Stunden nach oben zieht, und steigt mit einem Nachlauf-Stop aus, sobald es kippt. Die Kurse kommen von Twelve Data; der kostenlose Plan reicht.",
+      inhalt: <CommoditySetup />,
+    },
+    {
+      id: "obsidian",
+      kurz: "Obsidian",
+      title: "Obsidian",
+      text: "Aus diesem Tresor liest JARVIS deine Aufgaben. Neue Aufgaben landen in JARVIS/Eingang.md, Notizen in JARVIS/Notizen.md.",
+      inhalt: <VaultSetup />,
+    },
+    {
+      id: "kalender",
+      kurz: "Kalender",
+      title: "Kalender",
+      text: "JARVIS liest die Kalender-App auf deinem Mac und trägt neue Termine auf Zuruf ein. Ändern oder löschen kann er nichts. Einen Schlüssel braucht es nicht, nur einmal die Freigabe von macOS.",
+      inhalt: <CalendarSetup />,
+    },
+    {
+      id: "email",
+      kurz: "E-Mail",
+      title: "E-Mail",
+      text: "JARVIS liest deinen Posteingang über IMAP. Er löscht nichts und verschickt nichts; markieren als gelesen geht nur auf deinen Zuruf.",
+      inhalt: <MailSetup />,
+    },
+    {
+      id: "sprache",
+      kurz: "Sprache",
+      title: "Sprache",
+      text: "Sag „Jarvis“ und dann, was du brauchst, zum Beispiel „Jarvis, wie läuft der Handel?“. Nach seiner Antwort hört er noch ein paar Sekunden zu, da reicht die nächste Frage ohne „Jarvis“. Unterbrechen kannst du ihn jederzeit: Sag einfach „Stopp“, drück Escape oder sprich ihn mit „Jarvis“ neu an.",
+      inhalt: <HandsFreeSetup />,
+    },
+    {
+      id: "aussehen",
+      kurz: "Aussehen",
+      title: "Aussehen",
+      text: "Jeder Raum hat ein eigenes Fenster mit eigener Aussicht. Beim Wechsel fährt die Kamera seitlich in den nächsten Raum. Alle Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu.",
+      inhalt: <Aussicht />,
+    },
+    {
+      id: "stimme",
+      kurz: "Stimme",
+      title: "Stimme",
+      text: "So klingt JARVIS, wenn er dir antwortet. Die Stimme des Macs kostet nichts und bleibt auf dem Mac.",
+      inhalt: (
+        <>
+          <VoicePicker />
+          <div className="mt-4 border-t border-schiefer/10 pt-4">
+            <CloudVoiceSetup />
+          </div>
+        </>
+      ),
+    },
+    {
+      id: "sicherheit",
+      kurz: "Sicherheit",
+      title: "Sicherheit",
+      text: "Jedes Werkzeug, das eine KI benutzt, läuft durch das Security Gateway: Es prüft nach festen Regeln, fragt dich vor Änderungen und schreibt alles ins Audit-Log.",
+      inhalt: <SicherheitsZentrale />,
+    },
+    {
+      id: "datenschutz",
+      kurz: "Datenschutz",
+      title: "Datenschutz",
+      inhalt: <Datenschutz configFile={settings.configFile} />,
+    },
+  ];
+  return alle.filter((a) => a.zeigen !== false);
+}
+
 export function SettingsView() {
   const { settings } = useJarvis();
+  const abschnitte = settings ? abschnitteVon(settings) : [];
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
       <PageHeader icon="einstellungen" title="Einstellungen" subtitle="Alles bleibt auf deinem Mac." />
@@ -29,129 +152,57 @@ export function SettingsView() {
         <p className="text-sm text-quiet">Lade Einstellungen …</p>
       ) : (
         <>
-          <Section title="Du">
-            <NameForm />
-          </Section>
-          <Section
-            id="gehirn"
-            title="KI-Gehirn (Claude)"
-            text="Mit dem KI-Gehirn redest du mit JARVIS wie mit Claude: Er beantwortet jede Frage, sieht bei Aktuellem im Web nach und versteht freie Sätze wie „Was muss ich bis Freitag noch erledigen?“, „Fass mir die Mail von Anna zusammen“ oder „Schieb den Zahnarzt auf nächsten Dienstag“. Kurze Befehle wie Briefing oder Weiter erledigt er weiter sofort selbst."
-          >
-            <BrainSetup />
-          </Section>
-          {settings.brain.configured && (
-            <Section
-              id="gedaechtnis"
-              title="Was JARVIS über dich weiß"
-              text="Erzählst du JARVIS etwas, das länger gilt (Vorlieben, Namen, Umstände), merkt er es sich hier und weiß es im nächsten Gespräch noch. Du kannst auch sagen „Merk dir, dass …“ oder „Vergiss, dass …“. Das Gedächtnis liegt nur auf diesem Mac."
-            >
-              <MemorySetup />
+          <nav aria-label="Abschnitte der Einstellungen" className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+            {abschnitte.map((a) => (
+              <a key={a.id} href={`#${a.id}`} className="font-medium text-see underline-offset-4 hover:underline focus-visible:underline">
+                {a.kurz}
+              </a>
+            ))}
+          </nav>
+          {abschnitte.map((a) => (
+            <Section key={a.id} id={a.id} title={a.title} text={a.text}>
+              {a.inhalt}
             </Section>
-          )}
-          <Section
-            id="handy"
-            title="Handy (Telegram)"
-            text="Über Telegram hast du JARVIS auch unterwegs dabei: Er schickt dir morgens das Briefing, erinnert dich an Termine, meldet Warnungen und Trades, und du kannst ihm schreiben wie in der App. Dafür legst du dir bei Telegram einen eigenen Bot an. JARVIS antwortet nur deinem Handy, und dein Mac bleibt von außen unerreichbar."
-          >
-            <TelegramSetup />
-          </Section>
-          <Section
-            id="rueckfrage"
-            title="Rückfrage vor Käufen"
-            text={`Ab dieser Grenze kauft der Trading-Desk nicht selbst. JARVIS fragt dich per Telegram mit Ja/Nein-Knöpfen und oben in JARVIS, und kauft erst nach deinem Ja. Ohne Antwort verfällt die Frage nach ${APPROVAL.timeoutMinutes} Minuten, dann wird nicht gekauft.`}
-          >
-            <ApprovalSetup />
-          </Section>
-          <Section
-            id="crawler"
-            title="Grok: Crawler auf X und Intel"
-            text="Wie im GrokBot-Video liest der Crawler vor jedem Kauf, was auf X über den Coin geschrieben wird, und prüft das X-Konto des Projekts. Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben. Mit demselben Schlüssel liest Intel die Nachrichten und X für dein Briefing; Themen und Budget dafür stellst du in der Intel-Ansicht ein."
-          >
-            <CrawlerSetup />
-          </Section>
-          <Section
-            id="rohstoffe"
-            title="Rohstoffe: Gold, Silber, Öl"
-            text="Neben den Memecoins handelt der Spielgeld-Desk auch Gold, Silber und Öl. Dort folgt er dem Trend: Er kauft, wenn der Kurs seit Stunden nach oben zieht, und steigt mit einem Nachlauf-Stop aus, sobald es kippt. Die Kurse kommen von Twelve Data; der kostenlose Plan reicht."
-          >
-            <CommoditySetup />
-          </Section>
-          <Section title="Obsidian" text="Aus diesem Tresor liest JARVIS deine Aufgaben. Neue Aufgaben landen in JARVIS/Eingang.md, Notizen in JARVIS/Notizen.md.">
-            <VaultSetup />
-          </Section>
-          <Section
-            id="kalender"
-            title="Kalender"
-            text="JARVIS liest die Kalender-App auf deinem Mac und trägt neue Termine auf Zuruf ein. Ändern oder löschen kann er nichts. Einen Schlüssel braucht es nicht, nur einmal die Freigabe von macOS."
-          >
-            <CalendarSetup />
-          </Section>
-          <Section title="E-Mail" text="JARVIS liest deinen Posteingang über IMAP. Er löscht nichts und verschickt nichts; markieren als gelesen geht nur auf deinen Zuruf.">
-            <MailSetup />
-          </Section>
-          <Section
-            id="sprache"
-            title="Sprache"
-            text="Sag „Jarvis“ und dann, was du brauchst, zum Beispiel „Jarvis, wie läuft der Handel?“. Nach seiner Antwort hört er noch ein paar Sekunden zu, da reicht die nächste Frage ohne „Jarvis“. Unterbrechen kannst du ihn jederzeit: Sag einfach „Stopp“, drück Escape oder sprich ihn mit „Jarvis“ neu an."
-          >
-            <HandsFreeSetup />
-          </Section>
-          <Section
-            id="aussehen"
-            title="Aussehen"
-            text="Jeder Raum hat ein eigenes Fenster mit eigener Aussicht. Beim Wechsel fährt die Kamera seitlich in den nächsten Raum. Alle Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu."
-          >
-            <Aussicht />
-          </Section>
-          <Section id="stimme" title="Stimme" text="So klingt JARVIS, wenn er dir antwortet. Die Stimme des Macs kostet nichts und bleibt auf dem Mac.">
-            <VoicePicker />
-            <div className="mt-4 border-t border-schiefer/10 pt-4">
-              <CloudVoiceSetup />
-            </div>
-          </Section>
-          <Section
-            id="sicherheit"
-            title="Sicherheit"
-            text="Jedes Werkzeug, das eine KI benutzt, läuft durch das Security Gateway: Es prüft nach festen Regeln, fragt dich vor Änderungen und schreibt alles ins Audit-Log."
-          >
-            <SicherheitsZentrale />
-          </Section>
-          <Section title="Datenschutz">
-            <ul className="space-y-1.5 text-sm text-schiefer/85">
-              <li>
-                Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
-                ihn zur Erkennung an Google, Safari an Apple. Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
-              </li>
-              <li>
-                Mit eingeschalteter ElevenLabs-Stimme geht jeder Satz, den JARVIS laut vorliest, zum Vertonen an ElevenLabs, auch wenn er aus Mails, Terminen oder
-                Aufgaben stammt. Ausgeschaltet oder ohne Schlüssel spricht der Mac, und nichts davon verlässt ihn.
-              </li>
-              <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, und für Intel deine Themen. Sonst nichts von dir.</li>
-              <li>
-                Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben,
-                Mails), verschlüsselt an Anthropic. Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche; Links aus deinen Mails ruft er nicht auf. Claude kann
-                keine Mails schreiben oder löschen; Änderungen an Aufgaben, Terminen, Mails und Gedächtnis führt JARVIS erst nach deinem Ja per Knopf aus.
-              </li>
-              <li>
-                Mit Telegram holt JARVIS die Nachrichten an deinen Bot selbst bei Telegram ab; dafür muss niemand an deinen Mac heran. Was ihr schreibt, läuft über die
-                Server von Telegram und ist dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem einen gekoppelten Chat und kann auch von dort keine Mails
-                schreiben oder löschen.
-              </li>
-              <li>
-                Der Browser-Agent bedient ein eigenes Chrome-Profil, getrennt von deinem normalen Chrome. Er kauft, bestellt, sendet und meldet sich nirgends an, tippt keine
-                Passwörter oder Zahlungsdaten und öffnet keine Seiten in deinem Heimnetz. Den letzten Klick machst immer du.
-              </li>
-              <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
-              <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
-              <li>
-                Deine Einstellungen liegen in <code className="text-stein">{settings.configFile}</code>, lesbar nur für deinen Benutzer. Schlüssel und Mail-Passwort
-                stehen dort im Klartext, bis du sie unter Sicherheit in den macOS-Schlüsselbund umziehst.
-              </li>
-            </ul>
-          </Section>
+          ))}
         </>
       )}
     </main>
+  );
+}
+
+function Datenschutz({ configFile }: { configFile: string }) {
+  return (
+    <ul className="space-y-1.5 text-sm text-schiefer/85">
+      <li>
+        Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
+        ihn zur Erkennung an Google, Safari an Apple. Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
+      </li>
+      <li>
+        Mit eingeschalteter ElevenLabs-Stimme geht jeder Satz, den JARVIS laut vorliest, zum Vertonen an ElevenLabs, auch wenn er aus Mails, Terminen oder
+        Aufgaben stammt. Ausgeschaltet oder ohne Schlüssel spricht der Mac, und nichts davon verlässt ihn.
+      </li>
+      <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, und für Intel deine Themen. Sonst nichts von dir.</li>
+      <li>
+        Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben,
+        Mails), verschlüsselt an Anthropic. Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche; Links aus deinen Mails ruft er nicht auf. Claude kann
+        keine Mails schreiben oder löschen; Änderungen an Aufgaben, Terminen, Mails und Gedächtnis führt JARVIS erst nach deinem Ja per Knopf aus.
+      </li>
+      <li>
+        Mit Telegram holt JARVIS die Nachrichten an deinen Bot selbst bei Telegram ab; dafür muss niemand an deinen Mac heran. Was ihr schreibt, läuft über die
+        Server von Telegram und ist dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem einen gekoppelten Chat und kann auch von dort keine Mails
+        schreiben oder löschen.
+      </li>
+      <li>
+        Der Browser-Agent bedient ein eigenes Chrome-Profil, getrennt von deinem normalen Chrome. Er kauft, bestellt, sendet und meldet sich nirgends an, tippt keine
+        Passwörter oder Zahlungsdaten und öffnet keine Seiten in deinem Heimnetz. Den letzten Klick machst immer du.
+      </li>
+      <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
+      <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
+      <li>
+        Deine Einstellungen liegen in <code className="text-stein">{configFile}</code>, lesbar nur für deinen Benutzer. Schlüssel und Mail-Passwort
+        stehen dort im Klartext, bis du sie unter Sicherheit in den macOS-Schlüsselbund umziehst.
+      </li>
+    </ul>
   );
 }
 
@@ -247,7 +298,7 @@ function BrainSetup() {
           aria-label="Claude-Schlüssel"
           className={inputClass}
         />
-        <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+        <Button type="submit" tone="primary" fest disabled={busy || !key.trim()}>
           {busy ? "Prüfe …" : "Prüfen und speichern"}
         </Button>
       </div>
@@ -401,7 +452,7 @@ function CrawlerSetup() {
             aria-label="xAI-Schlüssel"
             className={inputClass}
           />
-          <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+          <Button type="submit" tone="primary" fest disabled={busy || !key.trim()}>
             {busy ? "Prüfe …" : "Prüfen und speichern"}
           </Button>
         </div>
@@ -483,7 +534,7 @@ function CommoditySetup() {
             aria-label="Twelve-Data-Schlüssel"
             className={inputClass}
           />
-          <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+          <Button type="submit" tone="primary" fest disabled={busy || !key.trim()}>
             {busy ? "Prüfe …" : "Prüfen und speichern"}
           </Button>
         </div>

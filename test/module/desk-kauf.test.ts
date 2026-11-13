@@ -293,12 +293,20 @@ describe("Desk: was nicht gekauft wird", () => {
   });
 
   test("antwortet der Chief unbrauchbar, wird in dieser Runde nichts gekauft", async () => {
-    const c = guterCoin("STUMM");
-    await neuerDesk([c]);
-    claude.drehbuch([{ text: "Dazu kann ich nichts sagen." }]);
-    const s = await runde();
-    assert.equal(s.positions.length, 0);
-    assert.ok(s.log.some((l) => l.agent === "Chief" && /Ich kaufe in dieser Runde nichts/.test(l.text)));
+    // Kein JSON, JSON ohne die erwartete Form, eine leere Antwort: Jedes Mal wird nichts gekauft.
+    for (const antwort of ["Dazu kann ich nichts sagen.", "null", '{"coins":{}}', '{"coins":[null]}', ""]) {
+      const c = guterCoin("STUMM");
+      await neuerDesk([c]);
+      claude.drehbuch([{ text: antwort }]);
+      const s = await runde();
+      assert.equal(s.positions.length, 0, antwort);
+      // Im Protokoll steht ein lesbarer Satz und keine Fehlermeldung des Programms („Unexpected token …“).
+      assert.deepEqual(
+        s.log.filter((l) => l.agent === "Chief" && /kaufe/.test(l.text)).map((l) => l.text),
+        ["Claude antwortet nicht: Claudes Bewertung war nicht lesbar. Ich kaufe in dieser Runde nichts."],
+        `Antwort „${antwort}“`,
+      );
+    }
   });
 
   test("ohne KI-Gehirn und ohne lesbare Projektseite reichen die Faustregeln nicht für einen Kauf", async () => {

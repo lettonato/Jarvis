@@ -127,3 +127,12 @@ describe("Gehirn: Schutz gegen ein manipuliertes Modell", () => {
     assert.match(ergebnis.content, /wartet auf die Freigabe durch einen Menschen/);
   });
 });
+
+describe("Gehirn: Fehler als lesbarer Satz", () => {
+  test("jede Erklärung endet als Satz, auch wenn die Meldung kein Satzzeichen oder Leerraum am Ende hat", () => {
+    assert.equal(brain.explainBrainError(new Error("Claudes Bewertung war nicht lesbar")), "Claudes Bewertung war nicht lesbar.");
+    assert.equal(brain.explainBrainError(new Error("Schon ein Satz.\n ")), "Schon ein Satz.");
+    assert.equal(brain.explainBrainError(new Error("Geht das?")), "Geht das?");
+    assert.equal(brain.explainBrainError("  "), "Unbekannter Fehler.");
+  });
+});

@@ -28,12 +28,14 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 500 von 500 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 501 von 501 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
 mit Fensterfront, die Kamera fährt von Raum zu Raum. Alle Funktionen sind geblieben; die frühere 3D-Landschaft
-wird nicht mehr gezeigt, ihr Code liegt noch im Repo (Frage 7).
+wird nicht mehr gezeigt, ihr Code liegt noch im Repo (Frage 7). Seit Schritt E3 sind auch die dichten Räume
+Trading und Einstellungen ruhig: keine weißen Kästen mehr, die Scan-Tabelle zeigt alle Spalten, die
+Einstellungen haben oben eine Sprungleiste.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
 dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
@@ -529,10 +531,55 @@ nachgestellt sind:
 Die ersten beiden betreffen Sicherheit und sind in Schritt B4 behoben (R-25, R-24).
 
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** In den dichten Räumen (Trading, Einstellungen)
-stehen noch weiße Kästen aus der alten Oberfläche auf der Wand; das ist lesbar, aber noch nicht so ruhig wie
-„Heute“. Der Raum „Firma“ aus dem Entwurf fehlt, er braucht Microsoft 365 (E3). **Sicherheitsrisiken:** keine
+standen noch weiße Kästen aus der alten Oberfläche auf der Wand (erledigt in Schritt E3). Der Raum „Firma“ aus dem Entwurf fehlt, er braucht Microsoft 365 (E3). **Sicherheitsrisiken:** keine
 neuen. Der Umbau ändert nur die Darstellung; Schnittstellen, Gateway, Freigaben und Not-Aus sind unverändert
 und weiter in jedem Raum oben sichtbar.
+
+### Schritt E3: Feinschliff der Räume Trading und Einstellungen (13. November 2026)
+
+Der offene Punkt aus Schritt E2. **Status: Testbereit** (Sandbox, Beispieldaten). Geändert ist nur die
+Darstellung, dazu ein Satz im Protokoll des Desks; keine Schnittstelle, keine Regel des Handels, kein Speicherort.
+
+| Was | Vorher | Jetzt |
+|---|---|---|
+| Trading: Kacheln, Konto, Kurse, Tabellen, Protokoll | weiße Kästen mit Rahmen aus der alten Oberfläche | dieselbe Platte wie in den anderen Räumen: dunkle Linie oben, Wandton, kein Kasten (`PLATTE`, `KACHEL` in `TradingDesk.tsx`) |
+| Trading: Scan-Tabelle | stand neben den Grenzwerten; von elf Spalten waren sechs zu sehen, die Prüfung nur durch Schieben | ganze Breite, alle elf Spalten ohne Schieben; die Begründung der Prüfung bricht um (höchstens drei Zeilen, der ganze Text im Hinweis) |
+| Trading: Reihenfolge darunter | Scan und Trades links, Grenzwerte und Protokoll rechts | Trades und Protokoll links, Grenzwerte rechts |
+| Trading: Texte | Angaben mit Mittelpunkten aneinandergehängt, „BESTANDEN“ in Großbuchstaben, Link „Einstellungen → Rohstoffe“ | Sätze mit Komma und Doppelpunkt, „bestanden“, Link „Einstellungen unter Rohstoffe“; die Regeln des Kontos als echte Liste |
+| Trading: Knöpfe | eckig | rund wie überall im Glashaus |
+| Protokoll des Desks, wenn Claudes Bewertung nicht zu gebrauchen ist | „Claude antwortet nicht: Unexpected token 'D', … is not valid JSON Ich kaufe in dieser Runde nichts“ | „Claude antwortet nicht: Claudes Bewertung war nicht lesbar. Ich kaufe in dieser Runde nichts.“ Gilt auch für JSON in falscher Form und für eine leere Antwort. Gekauft wird in allen Fällen weiterhin nichts |
+| Fehlererklärungen des Gehirns (`explainBrainError`) | manche ohne Satzzeichen am Ende | enden immer als Satz; das wirkt auch in Telegram und in den Meldungen der Oberfläche |
+| Einstellungen | fünfzehn Abschnitte untereinander, gut 6.000 Pixel lang, ohne Übersicht | oben eine Sprungleiste mit allen Abschnitten; Leiste und Abschnitte kommen aus derselben Liste (`abschnitteVon`), alle fünfzehn haben eine Adresse (`#du` … `#datenschutz`) |
+| Einstellungen: Knopf „Prüfen und speichern“ | brach neben dem Eingabefeld in zwei Zeilen um | einzeilig (`fest` am Knopf, nur an den fünf Stellen neben einem Schlüsselfeld) |
+| Schau mit Beispieldaten (`test/hand/glashaus-schau.ts`) | der nachgebaute Chief antwortete unbrauchbar, der Raum Trading blieb leer | der nachgebaute Chief bewertet die zwei Beispiel-Coins: ein Kauf, eine Absage mit langer Begründung. So zeigt die Schau Position, Trade und Urteile (Spielgeld gegen den nachgebauten Markt) |
+
+### Testergebnisse Schritt E3 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **501 Tests: 501 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Fehler als lesbarer Satz 1; der Test zur unbrauchbaren Antwort des Chiefs prüft jetzt fünf Arten von Antwort und den genauen Satz im Protokoll) |
+| Rot vor Grün | der Satz im Protokoll schlug vor der Korrektur fehl (einmal mit „Unexpected token“, einmal mit „Cannot read properties of null“); ohne die Satz-Korrektur im Gehirn schlägt deren Test fehl |
+| `npx next build` | erfolgreich |
+| Sprungleiste im Browser (Chromium, gebauter Server, Beispieldaten) | alle 15 Einträge haben ein Ziel; nach dem Klick steht der Abschnitt oben an der Wand (der letzte so weit oben, wie die Seite reicht) |
+| Trading im Browser, ruhend und mit laufendem Spielgeld-Handel (ein Kauf, eine Absage) | Scan-Tabelle 943 von 943 Pixeln, auch mit langer Begründung; bei 820 Pixeln Fensterbreite rollt nur die Tabelle seitlich, nicht die Seite; keine Fehler in der Seite |
+| Alle zwölf Räume bei 390 und 1440 Pixeln Breite | kein Knopf und kein Link ragt aus der Seite, nichts lässt sich seitlich schieben |
+| Handprüfungen `agenten-rauch`, `projekte-rauch`, `stimme-rauch` | alle Schritte in Ordnung |
+| Durchsicht mit dem Skill `code-review` (Stufe mittel) | zehn Befunde zu diesem Schritt, alle eingearbeitet (siehe unten) |
+| **Nicht geprüft** | echter Mac und Safari; echte Kurse und echte Antworten von Claude; die Karten für Gold, Silber und Öl (in der Schau ist kein Twelve-Data-Schlüssel eingetragen, die Karten waren nicht zu sehen); viele Coins und viele Positionen zugleich; die Einstellungen ohne Claude-Schlüssel (dann fehlt der Abschnitt „Gedächtnis“ samt Eintrag in der Leiste, das folgt aus derselben Liste, wurde aber nicht angesehen) |
+
+**Befunde der Durchsicht und was daraus wurde:** (1) Gültiges JSON in falscher Form (`null`, `{"coins":{}}`)
+lief am neuen Schutz vorbei: jetzt geprüft und getestet. (2, 3) Das Satzzeichen wurde an einer Stelle mit einem
+Muster geflickt: jetzt an der Quelle (`alsSatz` in `brain.ts`), auch für Leerraum am Ende. (4) Die Ursache des
+Lesefehlers ging verloren: sie hängt jetzt als `cause` am Fehler. (5) „Einzeilig“ galt für alle Knöpfe der
+Oberfläche: jetzt nur noch auf Wunsch (`fest`). (6) Die Begründung in der Tabelle war nur per Maus lesbar:
+jetzt bricht sie um. (7) Die Grenzwerte konnten ihre Spalte aufdrücken: `min-w-0`. (8) Sprungleiste und
+Abschnitte waren zwei Listen: jetzt eine. (9) Doppelter Grund unter den Rohstoff-Karten, überflüssige
+Schablonen: bereinigt. (10) Tests für die neuen Fälle: ergänzt.
+
+**Sicherheitsdurchsicht von Hand:** keine neue Schnittstelle, kein neuer Speicherort, keine fremde Adresse,
+kein eingebettetes HTML. Der Kaufpfad ist unverändert: Eine unbrauchbare Bewertung führt wie bisher zu keinem
+Kauf (Test). Die Ursache am Fehler enthält bei falscher Form nur die Länge der Antwort, nicht ihren Text.
+**Offene Probleme:** die Punkte unter „Nicht geprüft“. **Sicherheitsrisiken:** keine neuen.
 
 ## Bereich F – Agenten
 
@@ -756,14 +803,14 @@ Benedikts Wünsche vom 13. November 2026 gehen vor:
 2. **E-Design: Benedikt hat am 13.11. „Glashaus“ gewählt** („wir bleiben bei der Ursprungsversion“), also
    Entwurf B wie gezeigt, ohne Zutaten aus den anderen Entwürfen. Vorlage: `docs/design-entwuerfe/b.html`.
    **Status: Testbereit** (Schritt E2 in Bereich E): alle zwölf Räume sind umgestellt, alle Funktionen
-   geblieben. Offen ist Benedikts Blick am Mac (Prüfliste Teil J) und der Feinschliff der dichten Räume
-   Trading und Einstellungen.
+   geblieben. Der Feinschliff der dichten Räume Trading und Einstellungen ist in Schritt E3 erledigt. Offen
+   ist Benedikts Blick am Mac (Prüfliste Teil J).
 3. **Befunde aus den Durchsichten vom 13.11.**: alle behoben, in den Schritten B3, B4, B5 und B6.
 
 Danach wie geplant:
 
 4. **J Kostenübersicht und Modelladapter: gebaut, Testbereit** (Schritt J1 in Bereich J). Offen: Vergleich mit
    der echten Abrechnung am Mac (Prüfliste H8), anderer Anbieter austauschbar, Wiederherstellungstests.
-5. **Als Nächstes: Feinschliff im Glashaus** (Trading und Einstellungen ruhiger), dann **F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung).
+5. **Als Nächstes: F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung). Neue bezahlte Datenquellen nur mit Benedikts Freigabe.
 6. G2/G3: Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
 7. D Microsoft 365 nur gegen nachgebaute Schnittstellen.

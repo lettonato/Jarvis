@@ -127,7 +127,7 @@ function TokenForm({ busy, onSave }: { busy: boolean; onSave: (token: string) =>
           aria-label="Bot-Schlüssel von Telegram"
           className={`${inputClass} font-mono`}
         />
-        <Button type="submit" tone="primary" disabled={busy || !token.trim()}>
+        <Button type="submit" tone="primary" fest disabled={busy || !token.trim()}>
           {busy ? "Prüfe …" : "Prüfen und speichern"}
         </Button>
       </div>

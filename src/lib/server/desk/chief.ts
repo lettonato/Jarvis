@@ -174,6 +174,21 @@ function describe({ candidate: c, crawl, x }: ChiefInput) {
   };
 }
 
+// Liest die Liste der bewerteten Coins aus Claudes Antwort. Ist sie kein JSON oder hat sie nicht die erwartete
+// Form, wirft es einen lesbaren Satz: Er landet im Protokoll des Desks, und die Meldung des Programms
+// („Unexpected token …“) hilft dort niemandem. Die ursprüngliche Ursache hängt zur Fehlersuche am Fehler.
+function leseCoins(text: string): ClaudeCoin[] {
+  let ursache: unknown = `Antwort hat nicht die erwartete Form (${text.length} Zeichen)`;
+  try {
+    const roh = JSON.parse(text) as { coins?: unknown } | null;
+    const coins = roh && typeof roh === "object" ? roh.coins : null;
+    if (Array.isArray(coins) && coins.every((c) => c && typeof c === "object")) return coins as ClaudeCoin[];
+  } catch (e) {
+    ursache = e;
+  }
+  throw new Error("Claudes Bewertung war nicht lesbar", { cause: ursache });
+}
+
 // Bewertet bis zu ein paar Coins in einer einzigen Anfrage. Wirft bei Fehlern; der Desk kauft dann nichts.
 export async function judgeWithClaude(apiKey: string, inputs: ChiefInput[]): Promise<Verdict[]> {
   const client = new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
@@ -189,8 +204,7 @@ export async function judgeWithClaude(apiKey: string, inputs: ChiefInput[]): Pro
   if (res.stop_reason === "refusal") throw new Error("Claude hat die Bewertung abgelehnt");
   if (res.stop_reason === "max_tokens") throw new Error("Claudes Bewertung war unvollständig");
   const text = res.content.find((b) => b.type === "text")?.text ?? "";
-  const parsed = JSON.parse(text) as { coins?: ClaudeCoin[] };
-  const byAddress = new Map((parsed.coins ?? []).map((c) => [c.address, c]));
+  const byAddress = new Map(leseCoins(text).map((c) => [c.address, c]));
   return inputs.map((input) => {
     const c = byAddress.get(input.candidate.address);
     // Fehlt ein Coin in der Antwort, gilt er als nicht bewertet und fällt durch.

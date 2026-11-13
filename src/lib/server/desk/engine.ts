@@ -784,7 +784,7 @@ async function hunt(state: State, now: Date) {
       verdicts = await judgeWithClaude(key!, survivors);
     } catch (e) {
       for (const s of survivors) trace(s.candidate, "chief", "warn", "Claude antwortet nicht, in dieser Runde kein Kauf");
-      log(state, "Chief", `Claude antwortet nicht: ${explainBrainError(e)} Ich kaufe in dieser Runde nichts`, "warn");
+      log(state, "Chief", `Claude antwortet nicht: ${explainBrainError(e)} Ich kaufe in dieser Runde nichts.`, "warn");
       return;
     }
   } else {
