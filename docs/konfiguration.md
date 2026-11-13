@@ -25,6 +25,7 @@ Umgebungsvariablen.
 | `calendar.target` | Kalender für neue Termine | nein |
 | `intel.topics`, `budgetUsd`, `auto` | Themen und Budget für Intel | nein |
 | `approval.limitUsd` | Ab welchem Betrag der Desk vor Käufen fragt (`null` = nie) | nein |
+| `geheimnisse` | `datei` (Standard) oder `schluesselbund`; nur über Einstellungen → Sicherheit ändern | nein |
 
 Weitere Zustandsdateien im selben Ordner (kein Konfigurationsinhalt, aber persönliche Daten):
 `gedaechtnis.json`, `telegram.json`, `intel.json`, `dokumente.json`, `spielgeld.json`,
@@ -35,8 +36,12 @@ Dateien des Security Gateways (seit Schritt 2, siehe `docs/jarvis-2.0/04-securit
 Not-Aus), `freigaben.json` (die letzten 60 Freigaben), `audit.jsonl` (Audit-Log, nur angehängt, mit
 Prüfkette). Nicht von Hand ändern: Eine geänderte Zeile im Audit-Log meldet die Prüfung als Manipulation.
 
-**Bekannte Schwäche (R-07):** Geheimnisse stehen im Klartext in dieser Datei. Ziel laut Plan: macOS-
-Schlüsselbund bzw. Azure Key Vault mit Managed Identity, getrennte Schlüssel für Test und Produktion.
+**Zugangsdaten (R-07):** Ohne Umzug stehen die fünf Geheimnisse im Klartext in dieser Datei. Seit Schritt
+2.3 lassen sie sich unter Einstellungen → Sicherheit in den macOS-Schlüsselbund umziehen (Dienst „JARVIS“,
+je Geheimnis ein Eintrag). Dann steht hier `"geheimnisse": "schluesselbund"` und statt jedes Werts
+`"@schluesselbund"`. Diese Marken nicht von Hand ändern; zurück geht es über „Zurück in die Datei“.
+Beschreibung: [`docs/jarvis-2.0/05-zugangsdaten.md`](jarvis-2.0/05-zugangsdaten.md). Ziel laut Plan bleibt
+Azure Key Vault mit Managed Identity und getrennten Schlüsseln für Test und Produktion.
 
 ## 2. Umgebungsvariablen
 
@@ -73,6 +78,7 @@ Alle optional. Ohne sie gilt der Wert in der Spalte „Standard“.
 | `JARVIS_CHROME` | installiertes Google Chrome | Chrome-Programm für Browser-Agent und PDF |
 | `JARVIS_OSASCRIPT` | `/usr/bin/osascript` | macOS-Automation (Tests: nachgebauter Mac) |
 | `JARVIS_OPEN` | `/usr/bin/open` | Programme/Dateien öffnen (Tests: Ersatz) |
+| `JARVIS_SECURITY_BIN` | `/usr/bin/security` | macOS-Schlüsselbund (Tests: `test/mocks/security-mock.mjs`) |
 | `JARVIS_WEATHER_PLACE`, `JARVIS_WEATHER_LAT`, `JARVIS_WEATHER_LON` | Deggendorf, 48.84 / 12.96 | Wetter und Ort für die Websuche |
 
 ### Takt und Testhilfen

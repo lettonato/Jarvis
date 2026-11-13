@@ -21,7 +21,7 @@ eine Cloud-Bereitstellung dazukommen.
 | R-04 | Browser-Agent prüft Adressen nur nach Namen, nicht nach aufgelöster IP | Hoch | bestätigt, **behoben in Schritt 2** (DNS-Prüfung je Anfrage); Rest: Rebinding innerhalb von Chrome |
 | R-05 | Crawler-SSRF-Schutz hat Lücken (Azure-Endpunkt, IPv6-Formen, DNS-Rebinding) | Hoch (in Azure) | bestätigt, **behoben in Schritt 2** (gemeinsamer Netzschutz, feste geprüfte IP) |
 | R-06 | Kein zentraler Not-Aus; Desk-Not-Aus kann das Modell selbst aufheben | Hoch | aus dem Code, **behoben in Schritt 2** (zentraler Not-Aus, lösen nur am Mac) |
-| R-07 | Geheimnisse im Klartext in `~/.jarvis/config.json`, ein Schlüssel für alles | Hoch | aus dem Code |
+| R-07 | Geheimnisse im Klartext in `~/.jarvis/config.json`, ein Schlüssel für alles | Hoch | aus dem Code, **eingedämmt in Schritt 2.3** (Umzug in den macOS-Schlüsselbund per Knopf am Mac, Sandbox geprüft, Mac offen); Key Vault und Trennung Test/Prod in Phase 3 |
 | R-08 | Kein Audit-Log, keine Alarmierung, Protokolle änderbar | Hoch | aus dem Code, **lokal behoben in Schritt 2** (Audit-Log mit Prüfkette, Alarm); unveränderliche Ablage in Phase 3 |
 | R-09 | Telegram-Kanal hat volle Werkzeugrechte, nur über Chat-ID abgesichert | Mittel | aus dem Code, **eingedämmt in Schritt 2** (Gateway gilt auch für Telegram, Not-Aus dort nicht lösbar) |
 | R-10 | Keine automatischen Tests im Repo, keine CI | Hoch | bestätigt, **behoben in Schritt 1** (Tests, CI, gitleaks) |
@@ -149,6 +149,8 @@ und freie Browser-Adressen gesperrt oder brauchen Bestätigung), Freigaben auße
 **R-07 Geheimnisse:** Mail-Passwort, Claude-, xAI-, Twelve-Data-Schlüssel und Telegram-Token stehen im
 Klartext in einer Datei (0600). Kein Unterschied zwischen Test und Produktion, keine Rotation. Für den Mac
 wäre der macOS-Schlüsselbund der nächste Schritt, für Azure Key Vault mit Managed Identity.
+*Stand 13.11.2026:* Schlüsselbund gebaut (Schritt 2.3, [Beschreibung](05-zugangsdaten.md)); wirksam erst
+nach dem Umzug auf dem Mac. Alte Klartext-Kopien in Backups bleiben, bis die Schlüssel erneuert sind.
 
 **R-09 Telegram:** Wer Benedikts Telegram-Konto oder das Handy entsperrt in die Hand bekommt, kann JARVIS
 alles sagen, was das Gehirn kann (Mails lesen, Browser, Dokumente). Telegram ist für Firmendaten von D&S

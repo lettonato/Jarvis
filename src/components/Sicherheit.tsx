@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { HoloLink } from "./HoloLink";
 import { Button, inputClass, Notice } from "./ui";
 import { postJson } from "@/lib/api";
-import { AGENTEN, KLASSE_LABEL, KLASSE_TEXT, NOTAUS_BESTAETIGUNG, type AgentName, type Freigabe, type Klasse, type SicherheitsLage } from "@/lib/sicherheit";
+import { AGENTEN, KLASSE_LABEL, KLASSE_TEXT, NOTAUS_BESTAETIGUNG, type AgentName, type Freigabe, type Klasse, type SicherheitsLage, type ZugangsdatenStatus } from "@/lib/sicherheit";
 import { usePolling } from "@/lib/usePolling";
 import { useNow } from "@/lib/useNow";
 
@@ -130,7 +130,7 @@ export function SicherheitsZentrale() {
   const [bestaetigung, setBestaetigung] = useState("");
   const [alleAudit, setAlleAudit] = useState(false);
   if (!lage) return <p className="text-sm text-quiet">Lade …</p>;
-  const { zustand, freigaben, audit, pruefung } = lage;
+  const { zustand, freigaben, audit, pruefung, zugangsdaten } = lage;
   const offen = freigaben.filter((f) => f.zustand === "offen");
   const erledigt = freigaben.filter((f) => f.zustand !== "offen").slice(0, 8);
 
@@ -238,6 +238,8 @@ export function SicherheitsZentrale() {
         )}
       </div>
 
+      <Zugangsdaten z={zugangsdaten} send={send} busy={busy} />
+
       <div className="space-y-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">Audit-Log</h3>
@@ -268,6 +270,63 @@ export function SicherheitsZentrale() {
           und Mailtexte.
         </p>
       </div>
+    </div>
+  );
+}
+
+const ORT: Record<NonNullable<ZugangsdatenStatus["eintraege"][number]["ort"]>, string> = {
+  datei: "Klartext in der Datei",
+  schluesselbund: "Schlüsselbund",
+  umgebung: "Umgebungsvariable",
+};
+
+// Wo Schlüssel und Passwörter liegen, und der Umzug in den macOS-Schlüsselbund (nur auf Knopfdruck).
+function Zugangsdaten({ z, send, busy }: { z: ZugangsdatenStatus; send: (b: object) => Promise<boolean>; busy: boolean }) {
+  const [sicher, setSicher] = useState(false);
+  const imSchluesselbund = z.modus === "schluesselbund";
+  const klartext = z.eintraege.some((e) => e.ort === "datei");
+  return (
+    <div className="space-y-2">
+      <h3 className="text-xs font-bold uppercase tracking-widest text-sky-200">Zugangsdaten</h3>
+      <ul className="space-y-0.5 text-xs">
+        {z.eintraege.map((e) => (
+          <li key={e.name} className="flex flex-wrap gap-x-2">
+            <span className={`inline-block h-2 w-2 translate-y-1 rounded-full ${e.ort === "datei" ? "bg-amber-400" : e.ort ? "bg-up" : "bg-line"}`} aria-hidden />
+            <b className="text-sky-100">{e.label}</b>
+            <span className="text-quiet">{e.ort ? ORT[e.ort] : "nicht eingerichtet"}</span>
+            {e.fehler && <span className="text-red-200">{e.fehler}</span>}
+          </li>
+        ))}
+      </ul>
+      {!imSchluesselbund ? (
+        z.verfuegbar ? (
+          <div className="space-y-2">
+            <p className="text-xs text-quiet">
+              {klartext ? "Schlüssel und Passwörter stehen im Klartext in " : "Neue Schlüssel und Passwörter landen sonst im Klartext in "}
+              <code className="text-sky-200">{z.datei}</code>. Im macOS-Schlüsselbund sind sie verschlüsselt und nur mit deinem Mac-Login lesbar. JARVIS prüft jeden Wert nach dem
+              Speichern; geht etwas schief, bleibt alles, wie es war.
+            </p>
+            <label className="flex items-start gap-2 text-xs">
+              <input type="checkbox" checked={sicher} onChange={(e) => setSicher(e.target.checked)} className="mt-0.5" />
+              Ich möchte die Zugangsdaten jetzt in den Schlüsselbund umziehen. macOS fragt dabei eventuell nach meinem Passwort.
+            </label>
+            <Button disabled={busy || !sicher} onClick={() => send({ aktion: "zugangsdaten_schluesselbund" }).then((ok) => ok && setSicher(false))}>
+              In den Schlüsselbund umziehen
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-quiet">Der macOS-Schlüsselbund ist auf diesem Rechner nicht verfügbar; die Zugangsdaten bleiben in {z.datei}.</p>
+        )
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="min-w-0 flex-1 text-xs text-quiet">
+            Die Datei enthält nur noch Verweise. Im Programm „Schlüsselbundverwaltung“ stehen die Einträge unter „JARVIS“.
+          </p>
+          <Button small disabled={busy} onClick={() => send({ aktion: "zugangsdaten_datei" })}>
+            Zurück in die Datei
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

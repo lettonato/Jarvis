@@ -4,8 +4,11 @@ import { leseAudit, pruefeAudit } from "@/lib/server/gateway/audit";
 import { entscheideFreigabe, FreigabeFehler, leseFreigaben } from "@/lib/server/gateway/freigaben";
 import { entsperreAgent, leseZustand, notausAn, notausAus, setzeCStrenge, SicherheitsFehler, sperreAgent } from "@/lib/server/gateway/zustand";
 import { guard, readBody } from "@/lib/server/guard";
+import { SchluesselbundFehler } from "@/lib/server/schluesselbund";
+import { inSchluesselbund, ZugangsdatenFehler, zugangsdatenStatus, zurueckInDatei } from "@/lib/server/zugangsdaten";
 
-// Die Sicherheitszentrale am Mac: Not-Aus, Sperren der Agenten, Freigaben und das Audit-Log.
+// Die Sicherheitszentrale am Mac: Not-Aus, Sperren der Agenten, Freigaben, Audit-Log und wo die
+// Zugangsdaten liegen.
 // Nur von diesem Mac aus (guard). Das ist der einzige Weg, den Not-Aus zu lösen oder einen Agenten zu
 // entsperren; die KI hat dafür kein Werkzeug, und Telegram kann den Not-Aus nur einschalten.
 
@@ -15,11 +18,13 @@ type Body =
   | { aktion: "agent_sperren"; agent: string; grund?: string }
   | { aktion: "agent_entsperren"; agent: string }
   | { aktion: "freigabe"; id: string; ja: boolean }
-  | { aktion: "c_strenge"; strenge: string };
+  | { aktion: "c_strenge"; strenge: string }
+  | { aktion: "zugangsdaten_schluesselbund" }
+  | { aktion: "zugangsdaten_datei" };
 
 async function lage(): Promise<SicherheitsLage> {
-  const [zustand, freigaben, audit, pruefung] = await Promise.all([leseZustand(), leseFreigaben(), leseAudit(60), pruefeAudit()]);
-  return { zustand, freigaben: freigaben.slice(0, 30), audit, pruefung };
+  const [zustand, freigaben, audit, pruefung, zugangsdaten] = await Promise.all([leseZustand(), leseFreigaben(), leseAudit(60), pruefeAudit(), zugangsdatenStatus()]);
+  return { zustand, freigaben: freigaben.slice(0, 30), audit, pruefung, zugangsdaten };
 }
 
 export async function GET(request: Request) {
@@ -63,12 +68,18 @@ export async function POST(request: Request) {
         await setzeCStrenge(body.strenge, "mac");
         message = "Gespeichert.";
         break;
+      case "zugangsdaten_schluesselbund":
+        message = await inSchluesselbund("mac");
+        break;
+      case "zugangsdaten_datei":
+        message = await zurueckInDatei("mac");
+        break;
       default:
         return Response.json({ error: "Ungültige Anfrage." }, { status: 400 });
     }
     return Response.json({ ...(await lage()), message });
   } catch (e) {
-    if (e instanceof SicherheitsFehler || e instanceof FreigabeFehler) return Response.json({ error: e.message }, { status: 409 });
+    if (e instanceof SicherheitsFehler || e instanceof FreigabeFehler || e instanceof ZugangsdatenFehler || e instanceof SchluesselbundFehler) return Response.json({ error: e.message }, { status: 409 });
     throw e;
   }
 }

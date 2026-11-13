@@ -91,11 +91,20 @@ export type AuditEintrag = {
 
 export type AuditPruefung = { ok: boolean; eintraege: number; fehler: string | null };
 
+// Wo die Zugangsdaten liegen (Schritt 2.3, R-07). Werte kommen hier nie vor.
+export type ZugangsdatenStatus = {
+  modus: "datei" | "schluesselbund";
+  verfuegbar: boolean;
+  datei: string;
+  eintraege: { name: string; label: string; ort: "datei" | "schluesselbund" | "umgebung" | null; lesbar: boolean; fehler: string | null }[];
+};
+
 export type SicherheitsLage = {
   zustand: SicherheitsZustand;
   freigaben: Freigabe[];
   audit: AuditEintrag[];
   pruefung: AuditPruefung;
+  zugangsdaten: ZugangsdatenStatus;
 };
 
 // Telegram-Knöpfe unter einer Freigabe. Eigenes Präfix, damit sie nie mit den Kauf-Rückfragen (rf:) verwechselt werden.

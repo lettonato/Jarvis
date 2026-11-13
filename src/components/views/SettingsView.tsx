@@ -136,7 +136,8 @@ export function SettingsView() {
               <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
               <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
               <li>
-                Deine Einstellungen samt Mail-Passwort liegen in <code className="text-sky-200">{settings.configFile}</code>, lesbar nur für deinen Benutzer.
+                Deine Einstellungen liegen in <code className="text-sky-200">{settings.configFile}</code>, lesbar nur für deinen Benutzer. Schlüssel und Mail-Passwort
+                stehen dort im Klartext, bis du sie unter Sicherheit in den macOS-Schlüsselbund umziehst.
               </li>
             </ul>
           </Section>

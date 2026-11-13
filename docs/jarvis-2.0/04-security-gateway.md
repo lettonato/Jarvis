@@ -120,7 +120,7 @@ Identität des Nutzers in den Aufruf.
 | Websuche und Webseiten laufen bei Anthropic; JARVIS kann sie nur protokollieren, nicht einzeln sperren | Niedrig | `web_fetch` öffnet keine Links aus Mails (seit Schritt 1) |
 | Der Gesprächsverlauf gilt nicht als fremd; eine frühere Zusammenfassung einer Mail könnte im nächsten Satz nachwirken | Niedrig bis Mittel | Klasse C fragt standardmäßig immer; später Herkunft je Gesprächszeile |
 | Freigaben über Telegram: wer den Telegram-Account übernimmt, kann Ja drücken (aber keinen Not-Aus lösen) | Mittel | Firmendaten nicht über Telegram (Phase 5/7), Entra ID mit MFA |
-| Zugangsdaten im Klartext in `~/.jarvis/config.json` (R-07) | Hoch | Schlüsselbund jetzt, Key Vault in Phase 3 |
+| Zugangsdaten im Klartext in `~/.jarvis/config.json` (R-07) | Hoch | Schlüsselbund gebaut in [Schritt 2.3](05-zugangsdaten.md) (Umzug am Mac offen), Key Vault in Phase 3 |
 | Keine Anmeldung, nur ein Nutzer und localhost | Mittel | Entra ID (Phase 5) |
 | Interne Desk-Agenten (Chief) sind keine Werkzeugaufrufe; sie werden über Not-Aus/Sperre angehalten, nicht einzeln geprüft | Niedrig (Spielgeld) | bleibt so, Echtgeld ist ausgeschlossen |
 

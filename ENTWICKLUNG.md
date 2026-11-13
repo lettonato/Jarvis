@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 8. November 2026
+Letzte Aktualisierung: 13. November 2026
 
 ## Aktueller Stand
 
@@ -23,6 +23,11 @@ und in der Sandbox geprüft: Security Gateway mit Klassen A–D und Deny by Defa
 Freigaben durch einen Menschen, Audit-Log mit Prüfkette, gemeinsamer Netzschutz. Alle 13 bekannten
 Sicherheitslücken aus Schritt 1 sind behoben und als normale Tests grün (179 von 179). Beschreibung:
 [Schritt 2](docs/jarvis-2.0/04-security-gateway.md). Offen: Prüfung auf dem Mac (Prüfliste unten).
+
+Schritt 2.3 (Zugangsdaten in den macOS-Schlüsselbund, R-07) ist gebaut und in der Sandbox mit einem
+nachgebauten Schlüsselbund geprüft (188 von 188 Tests). Umgezogen wird erst auf dem Mac per Knopf.
+Beschreibung: [Schritt 2.3](docs/jarvis-2.0/05-zugangsdaten.md). Hochladen nach GitHub steht aus, weil
+der GitHub-Zugang seit 13. November gesperrt ist; der Stand liegt gesichert in den Projektdateien.
 
 ---
 
@@ -38,7 +43,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Security Gateway (alle Werkzeuge, Klassen A–D, Deny by Default) | alle 32 Werkzeuge von Gehirn (24), Browser (7) und Analyst (1) laufen durch `gateway/`, Websuche und Webseiten werden protokolliert, Herkunftsmarkierung, Freigaben per Knopf | jede Aktion geprüft, protokolliert, freigegeben | 2 | Testbereit (Sandbox geprüft, Mac offen) |
 | Zentraler Not-Aus und Agentensperre | ein Schalter für Gespräch, Browser, Analyst, Intel, Desk; lösen nur am Mac mit „FREIGEBEN“ | ein Schalter für alles, nur Mensch löst | 2 | Testbereit (Sandbox geprüft, Mac offen) |
 | Audit-Log und Alarmierung | `audit.jsonl` mit SHA-256-Kette, Schwärzung, Alarm per Telegram/Mac | manipulationssicher, Azure Monitor | 2/3 | Testbereit (lokal); unveränderliche Ablage Offen (Phase 3) |
-| Geheimnisverwaltung | Klartext `~/.jarvis/config.json` | Key Vault, Managed Identity, getrennt Test/Prod | 2/3 | Offen |
+| Geheimnisverwaltung | wahlweise Klartext `~/.jarvis/config.json` oder macOS-Schlüsselbund (Umzug per Knopf am Mac) | Key Vault, Managed Identity, getrennt Test/Prod | 2/3 | Schlüsselbund Testbereit (Sandbox geprüft, Mac offen); Key Vault Offen (Phase 3) |
 | Anmeldung | keine, nur localhost | Entra ID mit MFA, eigene Identität je Nutzer | 5 | Offen |
 | Betrieb in Azure | lokaler Next-Server | Container Apps, Test- und Prod-Umgebung, IaC | 3 | Blockiert (Azure-Abo/IT klären) |
 | Modelladapter | Anthropic fest in 4 Dateien | Claude primär, andere Modelle austauschbar | 4 | Offen |
@@ -142,7 +147,7 @@ nachgebautem Claude (10), Spielgeld-Desk (7).
 | 2.1 Security Gateway, Deny by Default | Testbereit | `src/lib/server/gateway/`; Tests „Deny by Default und Richtlinientabelle“ (7), Gegenprobe ohne Gateway schlägt fehl |
 | 2.2 Sicherheitsklassen A–D | Testbereit | Richtlinientabelle mit 34 Einträgen (32 eigene Werkzeuge, Websuche, Webseiten); Tests „Klassen A bis D“ (5) |
 | 2.2 Freigaben außerhalb des Modells | Testbereit | Mac-Leiste und Telegram-Knöpfe, genau einmal, Verfall 15 Min.; Tests (7); Telegram-Knöpfe auf dem Handy noch nicht geprüft |
-| 2.3 Zugangsdaten schützen | Offen | R-07, Vorschlag für den nächsten Schritt |
+| 2.3 Zugangsdaten schützen | Testbereit | R-07 eingedämmt: Umzug in den macOS-Schlüsselbund per Knopf am Mac, [Beschreibung](docs/jarvis-2.0/05-zugangsdaten.md); Tests „Zugangsdaten“ (9) gegen nachgebautes `security`; echtes macOS noch nicht geprüft |
 | 2.4 Schutz vor manipulierten Inhalten | Testbereit | Herkunftsmarkierung, R-03/R-04/R-05 behoben, R-02 durch Freigabepflicht nach fremden Inhalten eingedämmt; Tests „Herkunft“ (3) und Netzschutz (alle früheren TODO-Tests) |
 | 2.5 Zentraler Not-Aus, Agentensperre | Testbereit | R-06 behoben; Tests „zentraler Not-Aus“ (7), „Agentensperren“ (2) |
 | 2.5 Audit-Log, Alarmierung, Manipulationsschutz | Testbereit | R-08 lokal behoben (Kette, Schwärzung, Alarm); Tests „Audit-Log“ (4); unveränderliche Ablage erst mit Azure |
@@ -177,6 +182,31 @@ Sicherheitszentrale ruft `notausAus`/`entsperreAgent`/`entscheideFreigabe` auf, 
    `/notaus` in Telegram wirkt genauso. Lösen nur mit „FREIGEBEN“ am Mac.
 4. Audit-Log in den Einstellungen zeigt die Schritte, „Prüfkette intakt“.
 
+### Testergebnisse Schritt 2.3 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint` | 0 Befunde |
+| `npm run typecheck` | 0 Fehler |
+| `npm test` | **188 Tests: 188 bestanden, 0 fehlgeschlagen, 0 TODO** (neu: 9 in `test/module/zugangsdaten.test.ts`) |
+| `next build` | erfolgreich |
+| Rauchtest `next start` mit `/api/sicherheit` | Lage enthält den Zugangsdaten-Status (alle fünf Einträge, Modus „datei“); Umzug auf Linux mit 409 „Der macOS-Schlüsselbund ist hier nicht verfügbar.“ abgelehnt; ohne `x-jarvis` 403 |
+| Echtes macOS-`security` | **nicht geprüft** (gibt es in der Sandbox nicht), siehe Prüfliste |
+| CI auf GitHub | **nicht gelaufen**, Hochladen seit 13. November gesperrt |
+
+**Prüfliste Schritt 2.3 für Benedikt auf dem Mac** (bleibt „Testbereit“ bis zur Bestätigung). Vorher am
+besten eine Kopie von `~/.jarvis/config.json` an einem sicheren Ort ablegen:
+
+1. Einstellungen → Sicherheit → Zugangsdaten: Alle eingerichteten Schlüssel stehen auf „Datei“.
+2. Häkchen setzen, „In den Schlüsselbund umziehen“: Meldung „… Einträge liegen jetzt im Schlüsselbund“.
+   Falls macOS nach dem Anmeldepasswort fragt, notieren, wann.
+3. Schlüsselbundverwaltung öffnen, nach „JARVIS“ suchen: je Schlüssel ein Eintrag.
+4. `~/.jarvis/config.json` ansehen: statt der Schlüssel steht `@schluesselbund`.
+5. JARVIS neu starten: Gespräch, Mail, Telegram und Kurse funktionieren wie vorher.
+6. Optional: „Zurück in die Datei“, dann wieder umziehen.
+7. Empfehlung: danach Claude-, xAI-, Twelve-Data- und Telegram-Schlüssel sowie das Mail-App-Passwort neu
+   ausstellen, weil alte Kopien der Datei in Backups liegen können. Das entscheidest du.
+
 **Verbleibende Risiken nach Schritt 2:** siehe [Schritt 2, Abschnitt „Verbleibende Risiken“](docs/jarvis-2.0/04-security-gateway.md#verbleibende-risiken).
 
 ## Phase 3 bis 10
@@ -194,7 +224,7 @@ Sicherheitszentrale ruft `notausAus`/`entsperreAgent`/`entscheideFreigabe` auf, 
 
 ## Offene Fragen an Benedikt
 
-1. Prüfliste Schritt 2 auf dem Mac, dann Freigabe für den nächsten Schritt (Vorschlag: 2.3 Zugangsdaten
-   aus der Klartextdatei in den macOS-Schlüsselbund).
-2. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
-3. Vor Phase 8: Läuft der Geschäftsführungs-PC mit Windows oder macOS?
+1. Prüflisten Schritt 2 und 2.3 auf dem Mac, dann Freigabe für den nächsten Schritt.
+2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
+3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
+4. Vor Phase 8: Läuft der Geschäftsführungs-PC mit Windows oder macOS?
