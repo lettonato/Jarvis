@@ -7,9 +7,18 @@ import { readFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import { after, before, describe, test } from "node:test";
-import { pruefeZiel, starteSchleuse, type Schleuse, type SchleusenSperre } from "../../src/lib/server/netzschleuse";
+import { pruefeZiele, starteSchleuse, type Schleuse, type SchleusenSperre } from "../../src/lib/server/netzschleuse";
 
 const OEFFENTLICH = "93.184.216.34";
+// Öffentliche Adressen, hinter denen im Test nichts antwortet (die Verbindung wird sofort abgewiesen).
+// Sonderfälle für den Test: eine Adresse, die nie antwortet, eine, die erst nach 300 ms verbindet, und eine,
+// die verbindet, aber dann schweigt.
+const LOCH = "93.184.216.60";
+const LANGSAM = "93.184.216.61";
+const STUMM = "93.184.216.62";
+let stumm: net.Server;
+let stummPort = 0;
+const TOT = ["93.184.216.40", "93.184.216.41", "93.184.216.42", "93.184.216.43", "93.184.216.44", "93.184.216.45"];
 let ziel: http.Server;
 let zielPort = 0;
 let schleuse: Schleuse;
@@ -25,6 +34,14 @@ const lookup = async (host: string) => {
   if (host === "gemischt.example") return [{ address: OEFFENTLICH, family: 4 }, { address: "10.0.0.5", family: 4 }];
   if (host === "metadaten.example") return [{ address: "169.254.169.254", family: 4 }];
   if (host === "v6.example") return [{ address: "::ffff:127.0.0.1", family: 6 }];
+  // Ein Name mit zwei Adressen, die erste ist gerade nicht erreichbar.
+  if (host === "zwei.example") return [{ address: TOT[0], family: 4 }, { address: OEFFENTLICH, family: 4 }];
+  if (host === "tot.example") return [{ address: TOT[0], family: 4 }, { address: TOT[1], family: 4 }];
+  if (host === "viele.example") return TOT.map((address) => ({ address, family: 4 }));
+  if (host === "langsam.example") return [{ address: LOCH, family: 4 }, { address: LANGSAM, family: 4 }];
+  if (host === "stumm.example") return [{ address: STUMM, family: 4 }];
+  // Viele IPv6-Adressen vor den IPv4-Adressen, wie es der Mac bei großen Anbietern liefert.
+  if (host === "dual.example") return [...["2606:2800:220:1::1", "2606:2800:220:1::2", "2606:2800:220:1::3", "2606:2800:220:1::4", "2606:2800:220:1::5"].map((address) => ({ address, family: 6 })), { address: OEFFENTLICH, family: 4 }, { address: TOT[0], family: 4 }];
   // Erst öffentlich, bei jeder weiteren Frage intern: der Trick beim DNS-Rebinding.
   if (host === "wechsel.example") return [{ address: wechsel++ === 0 ? OEFFENTLICH : "127.0.0.1", family: 4 }];
   throw new Error("ENOTFOUND");
@@ -66,13 +83,26 @@ before(async () => {
   ziel = http.createServer((req, res) => res.end(JSON.stringify({ pfad: req.url, host: req.headers.host, proxyKopf: Object.keys(req.headers).filter((k) => k.startsWith("proxy-")) })));
   await new Promise<void>((r) => ziel.listen(0, "127.0.0.1", () => r()));
   zielPort = (ziel.address() as net.AddressInfo).port;
+  stumm = net.createServer(() => {});
+  await new Promise<void>((r) => stumm.listen(0, "127.0.0.1", () => r()));
+  stummPort = (stumm.address() as net.AddressInfo).port;
   schleuse = await starteSchleuse({
     lookup,
+    // Kurze Wartezeiten, damit die Tests nicht Sekunden warten: 600 ms insgesamt, höchstens 100 ms je Versuch.
+    zeiten: { verbinden: 600, versuch: 100 },
     gesperrt: (s) => sperren.push(s),
     // Statt ins Internet geht jede erlaubte Verbindung an den Testserver; gemerkt wird, wohin sie hätte gehen sollen.
     verbinde: (port, adresse) => {
       verbunden.push({ port, adresse });
-      return net.connect(zielPort, "127.0.0.1");
+      if (adresse === LOCH) return new net.Socket();
+      if (adresse === LANGSAM) {
+        const s = new net.Socket();
+        setTimeout(() => !s.destroyed && s.connect(zielPort, "127.0.0.1"), 300);
+        return s;
+      }
+      if (adresse === STUMM) return net.connect(stummPort, "127.0.0.1");
+      // Port 1 auf diesem Rechner nimmt nichts an: So sieht eine Adresse aus, die gerade nicht antwortet.
+      return net.connect(TOT.includes(adresse) ? 1 : zielPort, "127.0.0.1");
     },
   });
 });
@@ -80,6 +110,7 @@ before(async () => {
 after(async () => {
   await schleuse.stop();
   await new Promise((r) => ziel.close(r));
+  await new Promise((r) => stumm.close(r));
 });
 
 describe("Netzschleuse: Zugang", () => {
@@ -202,13 +233,92 @@ describe("Netzschleuse: verbindet genau zur geprüften Adresse", () => {
   });
 });
 
+describe("Netzschleuse: weicht auf die nächste geprüfte Adresse aus", () => {
+  test("Tunnel: antwortet die erste Adresse nicht, nimmt die Schleuse die zweite, ohne neu aufzulösen", async () => {
+    auflösungen.length = 0;
+    verbunden.length = 0;
+    const t = await tunnel("zwei.example:443");
+    assert.equal(t.status, 200);
+    assert.deepEqual(verbunden, [{ port: 443, adresse: TOT[0] }, { port: 443, adresse: OEFFENTLICH }]);
+    assert.equal(auflösungen.filter((h) => h === "zwei.example").length, 1, "beide Adressen stammen aus derselben geprüften Auflösung");
+    t.socket.destroy();
+  });
+
+  test("Abruf: dasselbe für unverschlüsselte Seiten, und die Seite kommt an", async () => {
+    verbunden.length = 0;
+    const r = await hole("http://zwei.example/seite");
+    assert.equal(r.status, 200);
+    assert.equal((JSON.parse(r.body) as { pfad: string }).pfad, "/seite");
+    assert.deepEqual(verbunden, [{ port: 80, adresse: TOT[0] }, { port: 80, adresse: OEFFENTLICH }]);
+  });
+
+  test("antwortet keine Adresse, gibt es einen Fehler und keine Sperrmeldung", async () => {
+    verbunden.length = 0;
+    const vorher = sperren.length;
+    const t = await tunnel("tot.example:443");
+    assert.equal(t.status, 502);
+    t.socket.destroy();
+    assert.equal((await hole("http://tot.example/")).status, 502);
+    assert.deepEqual(verbunden.map((v) => v.adresse), [TOT[0], TOT[1], TOT[0], TOT[1]]);
+    assert.equal(sperren.length, vorher, "nicht erreichbar ist kein Sicherheitsereignis");
+  });
+
+  test("höchstens vier Adressen werden versucht", async () => {
+    verbunden.length = 0;
+    const t = await tunnel("viele.example:443");
+    assert.equal(t.status, 502);
+    t.socket.destroy();
+    assert.deepEqual(verbunden.map((v) => v.adresse), TOT.slice(0, 4));
+  });
+
+  test("pruefeZiele gibt nur geprüfte Adressen zurück; schon eine interne sperrt den ganzen Namen", async () => {
+    assert.deepEqual(await pruefeZiele("zwei.example", 443, { lookup }), [TOT[0], OEFFENTLICH]);
+    assert.deepEqual(await pruefeZiele("viele.example", 443, { lookup }), TOT.slice(0, 4));
+    assert.deepEqual(await pruefeZiele(OEFFENTLICH, 443, { lookup }), [OEFFENTLICH]);
+    await assert.rejects(pruefeZiele("gemischt.example", 443, { lookup }), /Heimnetz/);
+  });
+
+  test("bei vielen IPv6-Adressen bleiben IPv4-Adressen unter den vier Versuchen (abwechselnd, in der Reihenfolge der Auflösung)", async () => {
+    assert.deepEqual(await pruefeZiele("dual.example", 443, { lookup }), ["2606:2800:220:1::1", OEFFENTLICH, "2606:2800:220:1::2", TOT[0]]);
+  });
+
+  test("die Schleuse merkt sich je Ziel kurz, welche Adresse geantwortet hat, und nimmt sie beim nächsten Mal zuerst", async () => {
+    verbunden.length = 0;
+    const t = await tunnel("zwei.example:443");
+    assert.equal(t.status, 200);
+    t.socket.destroy();
+    assert.deepEqual(verbunden, [{ port: 443, adresse: OEFFENTLICH }], "kein zweites Warten auf die Adresse, die nicht antwortet");
+    // Gemerkt wird nur die Reihenfolge: Zeigt der Name inzwischen nach innen, bleibt er gesperrt.
+    wechsel = 0;
+    (await tunnel("wechsel.example:443")).socket.destroy();
+    const innen = await tunnel("wechsel.example:443");
+    assert.equal(innen.status, 403);
+    innen.socket.destroy();
+  });
+
+  test("die letzte Adresse bekommt die restliche Wartezeit: Ein langsamer Server wird noch erreicht", async () => {
+    verbunden.length = 0;
+    const t = await tunnel("langsam.example:443");
+    assert.equal(t.status, 200, "die erste Adresse schweigt 100 ms lang, die zweite verbindet nach 300 ms");
+    assert.deepEqual(verbunden.map((v) => v.adresse), [LOCH, LANGSAM]);
+    t.socket.destroy();
+  });
+
+  test("verbindet ein Server, antwortet dann aber nicht, endet der Abruf nach der Wartezeit mit einem Fehler", async () => {
+    const start = Date.now();
+    const r = await hole("http://stumm.example/");
+    assert.equal(r.status, 502);
+    assert.ok(Date.now() - start < 3_000, "hängt nicht, bis Chrome aufgibt");
+  });
+});
+
 describe("Netzschleuse: Regeln", () => {
-  test("pruefeZiel: erlaubte lokale Testziele nur mit genauem Host und Port", async () => {
-    assert.equal(await pruefeZiel("127.0.0.1", 4050, { lookup, erlaubt: ["127.0.0.1:4050"] }), "127.0.0.1");
-    await assert.rejects(pruefeZiel("127.0.0.1", 4051, { lookup, erlaubt: ["127.0.0.1:4050"] }));
-    await assert.rejects(pruefeZiel("127.0.0.1", 4050, { lookup }));
-    await assert.rejects(pruefeZiel("gut.example", 0, { lookup }));
-    await assert.rejects(pruefeZiel("gut.example", 70000, { lookup }));
+  test("pruefeZiele: erlaubte lokale Testziele nur mit genauem Host und Port", async () => {
+    assert.deepEqual(await pruefeZiele("127.0.0.1", 4050, { lookup, erlaubt: ["127.0.0.1:4050"] }), ["127.0.0.1"]);
+    await assert.rejects(pruefeZiele("127.0.0.1", 4051, { lookup, erlaubt: ["127.0.0.1:4050"] }));
+    await assert.rejects(pruefeZiele("127.0.0.1", 4050, { lookup }));
+    await assert.rejects(pruefeZiele("gut.example", 0, { lookup }));
+    await assert.rejects(pruefeZiele("gut.example", 70000, { lookup }));
   });
 
   test("der Browser-Agent startet Chrome nur über die Schleuse und ohne eigene Namensauflösung", () => {

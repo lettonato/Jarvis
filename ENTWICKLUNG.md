@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 482 von 482 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 500 von 500 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -382,9 +382,33 @@ sich nur im Browser zeigt; dort lief die Handprüfung der Stimme.
 | Handprüfungen `projekte-rauch`, `stimme-rauch`, `agenten-rauch` | alle Schritte in Ordnung |
 | Nicht geprüft | echter macOS-Schlüsselbund; die Tonblockade im Browser; ob 20 Sekunden Pause am Mac angenehm sind (nach dem Entsperren des Schlüsselbunds dauert es bis zu 20 Sekunden, bis die Dienste wieder als eingerichtet gelten) |
 
-**Noch offen aus den Durchsichten (beide ohne Sicherheitsbezug):** Die Netzschleuse verbindet nur zur ersten
-Adresse eines Servers und weicht nicht auf die nächste aus (`netzschleuse.ts`); „Heute“ und die Hinweisleiste
-fragen beide alle 10 Sekunden `/api/sicherheit` ab (doppelt, aber billig).
+**Die beiden letzten Punkte aus den Durchsichten** (Netzschleuse ohne Ausweichadresse, doppelte Abfrage der
+Sicherheitslage) sind in Schritt B6 erledigt.
+
+### Schritt B6: Netzschleuse weicht aus, eine Abfrage statt mehrerer (13. November 2026)
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| B6.1 Hat ein Server mehrere Adressen und die erste antwortet nicht, nimmt die Netzschleuse die nächste. Alle Adressen stammen aus derselben einen Auflösung und sind alle geprüft; eine einzige interne Adresse sperrt weiter den ganzen Namen | Testbereit | `src/lib/server/netzschleuse.ts` (`pruefeZiele`, `verbindeNacheinander`), `test/module/netzschleuse.test.ts` (9 neue Tests) |
+| B6.2 Höchstens vier Adressen, IPv6 und IPv4 abwechselnd; zusammen höchstens 15 Sekunden (jede außer der letzten höchstens 5, die letzte bekommt den Rest); die Schleuse merkt sich je Ziel 60 Sekunden, welche Adresse geantwortet hat, und nimmt sie zuerst | Testbereit | wie oben. Gemerkt wird nur die Reihenfolge: Verbunden wird nie zu einer Adresse, die nicht in der jetzigen Auflösung steht und jetzt geprüft ist |
+| B6.3 Unverschlüsselter Abruf: Verbindet ein Server und antwortet dann nicht, endet der Abruf nach 15 Sekunden Funkstille | Testbereit | Test mit einem stummen Server |
+| B6.4 Fragen mehrere Stellen der Oberfläche dieselbe Schnittstelle ab, läuft nur eine Abfrage im kürzesten Takt, und alle sehen denselben Stand. Die Sicherheitslage (Hinweisleiste, „Heute“, Einstellungen) wird damit einmal statt zwei- bis dreimal abgefragt, und ein Klick in der Leiste gilt in „Heute“ sofort | Testbereit | `src/lib/geteilt.ts`, `src/lib/usePolling.ts`, `test/regeln/geteilt.test.ts` (9); im Browser gezählt |
+| B6.5 Eine Antwort, die schon unterwegs war, überschreibt keinen neueren Stand mehr (eine eben erledigte Freigabe tauchte sonst für Sekunden wieder auf) | Testbereit | `geteilt.test.ts` |
+
+### Testergebnisse Schritt B6 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **500 Tests: 500 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** |
+| Tests zuerst | Die Tests zum Ausweichen liefen vor dem Bau rot (5 von 5). Die Tests zu den Befunden der Durchsicht ebenfalls (3 rot bei den geteilten Abfragen; die zur Schleuse hingen, weil es die Wartezeiten noch nicht gab). Gegenprobe: Lädt jede Stelle selbst, schlägt der Test „eine Abfrage“ fehl |
+| `npx next build` | erfolgreich |
+| Alle zwölf Räume im gebauten Server (Chromium, Beispieldaten) | laden ohne Seiten- und Konsolenfehler; „Heute“ und „Trading“ angesehen |
+| Abfragen von `/api/sicherheit` gezählt (12,5 Sekunden) | „Heute“: 4, „Einstellungen“: 4, also eine Abfrage alle 4 Sekunden. Vorher nicht gemessen; nach dem alten Code wären es rechnerisch 6 und 7 |
+| Not-Aus ein und wieder gelöst, in „Heute“ | steht in Hinweisleiste und „Wartet auf dich“ und verschwindet an beiden Stellen |
+| Handprüfungen mit echtem Chrome: `schleuse-rauch`, `browser-rauch`, `agenten-rauch`, `projekte-rauch` | erlaubte Seite kommt an, kein interner Zugriff (0 Treffer), Audit-Kette in Ordnung; alle Schritte in Ordnung |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | neun Befunde, alle eingearbeitet: vier Versuche konnten nur IPv6 treffen; kein Zeitlimit mehr beim unverschlüsselten Abruf; veraltete Antwort überschrieb neuen Stand; 5 Sekunden je Adresse waren für langsame Server zu kurz; kein Gedächtnis für tote Adressen; doppelte erste Abfrage nach schnellem Ab- und Anmelden; zwei Bauarten der Abfrage nebeneinander; ungenutzte Funktion; doppelte Aufräumer |
+| Sicherheitsprüfung (von Hand) | Die Regeln der Schleuse sind unverändert: eine Auflösung je Verbindung, jede Adresse geprüft, schon eine interne sperrt; das Ausweichen und das Merken wählen nur unter geprüften Adressen der jetzigen Auflösung (Test mit DNS-Rebinding nach einer gemerkten Adresse: 403). Die geteilte Abfrage ändert nichts daran, wer etwas darf: Entschieden wird weiter auf dem Server |
+| Nicht geprüft | ein echtes Netz mit toter IPv6-Strecke (nur nachgestellt); Safari; ob 15 Sekunden Funkstille für sehr langsame unverschlüsselte Seiten am Mac reichen |
 
 ## Bereich C – Gehirn und Projektgedächtnis
 
@@ -734,14 +758,12 @@ Benedikts Wünsche vom 13. November 2026 gehen vor:
    **Status: Testbereit** (Schritt E2 in Bereich E): alle zwölf Räume sind umgestellt, alle Funktionen
    geblieben. Offen ist Benedikts Blick am Mac (Prüfliste Teil J) und der Feinschliff der dichten Räume
    Trading und Einstellungen.
-3. **Befunde aus den Durchsichten vom 13.11.**: behoben in den Schritten B3, B4 und B5. Offen sind nur noch
-   zwei ohne Sicherheitsbezug (Netzschleuse ohne Ausweichadresse, doppelte Abfrage in „Heute“), siehe Schritt B5.
+3. **Befunde aus den Durchsichten vom 13.11.**: alle behoben, in den Schritten B3, B4, B5 und B6.
 
 Danach wie geplant:
 
 4. **J Kostenübersicht und Modelladapter: gebaut, Testbereit** (Schritt J1 in Bereich J). Offen: Vergleich mit
    der echten Abrechnung am Mac (Prüfliste H8), anderer Anbieter austauschbar, Wiederherstellungstests.
-5. **Als Nächstes: der Rest aus den Durchsichten** (Netzschleuse ohne Ausweichadresse, doppelte Abfrage in
-   „Heute“) und der Feinschliff im Glashaus (Trading und Einstellungen ruhiger), dann **F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung).
+5. **Als Nächstes: Feinschliff im Glashaus** (Trading und Einstellungen ruhiger), dann **F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung).
 6. G2/G3: Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
 7. D Microsoft 365 nur gegen nachgebaute Schnittstellen.

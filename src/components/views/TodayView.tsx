@@ -55,6 +55,7 @@ function Liste({ titel, href, zahl, children }: { titel: string; href: string; z
 export function TodayView() {
   const { name, calendar, tasks, mail, projekte, desk, intel, documents, market, weather } = useJarvis();
   const now = useNow();
+  // Dieselbe Abfrage wie die Hinweisleiste: kein zweiter Abruf, und ein Klick dort gilt hier sofort.
   const { data: sicherheit } = usePolling<SicherheitsLage>("/api/sicherheit", 10_000);
   const { data: agenten } = usePolling<AgentenSnapshot>("/api/agenten", 15_000);
   if (!now) return <main className="text-quiet">Lade den Tag …</main>;
