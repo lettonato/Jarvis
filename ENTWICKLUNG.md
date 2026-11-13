@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 581 von 581 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 621 von 621 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -430,7 +430,7 @@ Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-proj
 | C1.8 Vertrauliche Projekte: nichts davon an das KI-Gehirn oder über Telegram | Testbereit | Test „geht nicht an Anthropic“ |
 | C2 Persönliches Gedächtnis in dieselbe Speicherschicht (Bestätigung gibt es dort schon über das Gateway) | Offen | |
 | C3 Mails und Besprechungsnotizen von selbst Projekten zuordnen und Vorschläge machen | Offen | braucht die Freigabe, Mailinhalte dafür auszuwerten |
-| C4 Projektüberwachung (Überfälliges und nahe Fristen von selbst melden) | Testbereit im Morgenbriefing, im Tagesabschluss und in „Heute“ | Schritt G1; offen: Meldung im Lauf des Tages, offene Risiken |
+| C4 Projektüberwachung (Überfälliges und nahe Fristen von selbst melden) | Testbereit im Morgenbriefing, im Tagesabschluss, in „Heute“ und als Hinweis am Tag | Schritte G1 und G2; offen: offene Risiken |
 | C5 PostgreSQL-Umsetzung der Speicherschnittstelle | Blockiert | braucht eine Datenbank (Azure, Phase 3) |
 
 ### Testergebnisse Schritt C1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
@@ -656,8 +656,8 @@ keine neuen. Die Steuerung kann nichts, was die Ansichten dahinter nicht schon k
   nach einer halben Stunde wieder, bis zwei Stunden nach der Uhrzeit. Ein verpasster Tag wird nicht nachgeholt.
 * Ein Lauf verbraucht bei Twelve Data zwei Abrufe (einen je Kursreihe, so steht es in deren Hilfe), mit Fonds
   drei. Das sind bei zwei Läufen am Tag höchstens sechs von 800.
-* Morgenbriefing und Tagesabschluss verschickt weiter Telegram mit seinem eigenen Minutentakt; der Zeitplan
-  zeigt sie nur an. Der Umzug auf den gemeinsamen Taktgeber ist ein eigener Schritt (mit G2).
+* Morgenbriefing und Tagesabschluss verschickte in diesem Schritt noch Telegram mit seinem eigenen Minutentakt;
+  seit Schritt G2 laufen auch sie über den gemeinsamen Taktgeber.
 
 ### Testergebnisse Schritt F2 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -690,10 +690,13 @@ KI-Gehirn). Über Telegram stehen Projektnamen und -inhalte nur, wenn der Schalt
 |---|---|---|
 | G1.1 Morgenbriefing mit Projekten: am Mac als Satz, über Telegram als Absatz (ohne Schalter nur Zahlen) | Testbereit | `projekteAbsatz`, `projektSatz`; `test/regeln/routinen.test.ts` |
 | G1.2 Tagesabschluss: was erledigt ist, was heute offen blieb, Termine und Aufgaben von morgen, Projekte, was noch auf ein Ja wartet | Testbereit | `tagesabschluss`, `abschlussNachricht`, `abschlussSatz` |
-| G1.3 Tagesabschluss per Telegram zur eingestellten Uhrzeit, einmal am Tag; **Voreinstellung: aus**. Auf Zuruf jederzeit: `/abschluss` oder „Feierabend“ in Telegram, „Tagesabschluss“ am Mac | Testbereit | `telegramMinute`, Einstellungen → Handy |
+| G1.3 Tagesabschluss per Telegram zur eingestellten Uhrzeit, einmal am Tag; **Voreinstellung: aus**. Auf Zuruf jederzeit: `/abschluss` oder „Feierabend“ in Telegram, „Tagesabschluss“ am Mac | Testbereit | `sendeTagesmeldung` über den gemeinsamen Zeitplan, Einstellungen → Handy |
 | G1.4 Projektüberwachung: Überfälliges und Fristen bis drei Tage voraus erscheinen von selbst im Briefing, im Abschluss und unter „Wartet auf dich“ | Testbereit | wie oben |
 | G1.5 Abschaltbar: Briefing, Tagesabschluss, Erinnerungen, Projektnamen, Warnungen und Trades je mit eigenem Schalter | Testbereit | im Browser geprüft (`test/hand/routinen-rauch.ts`) |
-| G2 Meldung im Lauf des Tages, sobald etwas überfällig wird oder eine Rückmeldung fehlt | Offen | braucht eine Regel gegen zu viele Meldungen |
+| G2.1 Hinweise am Tag per Telegram: in einem Projekt ist etwas überfällig geworden, jemand anderes ist mit seiner Aufgabe im Verzug („Hier fehlt eine Rückmeldung“), am Nachmittag ist noch etwas von heute offen. **Voreinstellung: aus** | Testbereit | Schritt G2; `src/lib/hinweise.ts`, `src/lib/server/hinweise.ts` |
+| G2.2 Regel gegen zu viele Meldungen: nur 9 bis 18 Uhr, höchstens drei am Tag, mindestens eine Stunde Abstand, jedes Ding einmal, alles Gleichzeitige in einer Nachricht; was das Briefing schon sagt, kommt nicht noch einmal | Testbereit | `test/regeln/hinweise.test.ts` |
+| G2.3 Morgenbriefing, Erinnerungen vor Terminen und Tagesabschluss laufen über den gemeinsamen Taktgeber; ein Fehlschlag steht mit festem Satz im Zeitplan; war Telegram nicht erreichbar, kommt die Nachricht nach, aber nie doppelt | Testbereit | `test/module/hinweise.test.ts` |
+| G2.4 Hinweis am Mac selbst (ohne Handy), etwa als Mitteilung von macOS | Offen | am Mac steht Überfälliges wie bisher unter „Heute“ |
 | G3 Mail-Unterstützung: Antwortentwürfe vorbereiten | Offen | Entwürfe ja, Senden nur mit Freigabe |
 | G4 Marktüberwachung über Intel und Desk hinaus | Offen | kommt mit den Agenten (F) |
 
@@ -712,6 +715,67 @@ KI-Gehirn). Über Telegram stehen Projektnamen und -inhalte nur, wenn der Schalt
 schon gekoppelt ist, sieht `/abschluss` erst nach erneutem Koppeln im Telegram-Menü; getippt geht es sofort.
 **Sicherheitsrisiken:** keine neuen. Titel von Terminen und Texte von Aufgaben standen schon bisher im
 Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Schalter.
+
+### Schritt G2: Hinweise am Tag, und alles per Telegram über den gemeinsamen Zeitplan (13. November 2026)
+
+**Was sich geändert hat**
+
+* **Ein Taktgeber für alles:** Morgenbriefing, Erinnerungen vor Terminen und Tagesabschluss hatte bisher
+  Telegram mit einer eigenen Minutenuhr verschickt. Jetzt sind es Aufgaben des gemeinsamen Zeitplans
+  (`src/lib/server/zeitplan-aufgaben.ts`), wie Intel und die Edelmetalle. Damit gelten für sie dieselben
+  Regeln: keine Überlappung, Fristen, und ein Fehlschlag steht mit einem festen Satz im Zeitplan (nie mit dem
+  Text, den Telegram schickt). Nachrichten an dich sind kein Agent: Sie kommen auch, wenn der Not-Aus steht
+  (der Tagesabschluss nennt ihn ja gerade).
+* **Nichts geht verloren, nichts kommt doppelt** (`sendeVonSelbst` in `src/lib/server/telegram.ts`): Vor jeder
+  Nachricht, die von selbst hinausgeht, sieht JARVIS kurz nach, ob Telegram erreichbar ist. Wenn nicht (der Mac
+  ist gerade aufgewacht, das WLAN fehlt noch), ist sicher nichts hinausgegangen; nichts wird als erledigt
+  gemerkt, und der Zeitplan versucht es später wieder (Briefing und Tagesabschluss nach fünf Minuten,
+  Hinweise nach einer Viertelstunde, Erinnerungen in der nächsten Minute). Erst danach wird die Sache als
+  erledigt gemerkt und gesendet. Scheitert es ab da, bleibt es bei erledigt, weil ein Teil schon angekommen
+  sein kann. Bisher fiel das Briefing an so einem Morgen stillschweigend aus.
+* **Hinweise am Tag** (`src/lib/hinweise.ts`, ohne KI): drei Anlässe. „Überfällig“: Eine Aufgabe von dir in
+  einem laufenden Projekt ist über der Frist und stand noch in keinem Briefing. „Hier fehlt eine Rückmeldung“:
+  Für die überfällige Aufgabe ist jemand anderes zuständig (das Feld „zuständig“ nennt nicht dich). „Heute noch
+  offen“: einmal am Tag ab 15 Uhr, was heute fällig ist, aus Projekten und aus dem Obsidian-Tresor.
+* **Die Obergrenze:** nur zwischen 9 und 18 Uhr, höchstens drei Hinweise am Tag, mindestens eine Stunde
+  dazwischen, jedes Ding nur einmal, und alles, was gleichzeitig ansteht, kommt in einer Nachricht (je Gruppe
+  höchstens fünf Zeilen). Was Morgenbriefing oder Tagesabschluss schon als überfällig nennen, gilt als gemeldet.
+  Steht gerade eines von beiden an, wartet der Hinweis, bis es draußen ist.
+* **Datenschutz wie bei G1:** Vertrauliche Projekte werden nie beim Namen genannt, nur gezählt. Ohne den
+  Schalter „Projekte beim Namen“ stehen über Telegram nur Zahlen. Der Stand in `~/.jarvis/hinweise.json`
+  enthält nur Schlüssel aus Nummern und Daten sowie Sendezeiten, keinen Text.
+* **Oberfläche:** Einstellungen → Handy hat den neuen Haken „Hinweise am Tag“ (aus, bis du ihn setzt). Der
+  Zeitplan im Raum Agenten zeigt jetzt sechs Zeilen; alle führt der Taktgeber selbst aus.
+
+**Entwurfsentscheidungen (im Rahmen des Dauerauftrags selbst getroffen)**
+
+* Voreinstellung aus, wie beim Tagesabschluss: Nach einem Update soll nicht ungefragt eine neue Art von
+  Nachricht aufs Handy kommen.
+* „Rückmeldung fehlt“ heißt hier genau: Eine bestätigte Projektaufgabe mit Frist ist überfällig, und zuständig
+  ist jemand anderes. Ob derjenige wirklich nicht geantwortet hat, weiß JARVIS nicht; Mails wertet er dafür
+  nicht aus (das wäre C3 und braucht deine Freigabe).
+* Schaltet man die Hinweise zum ersten Mal ein, kommt alles bisher Überfällige einmal gesammelt.
+* Nach 60 Tagen vergisst JARVIS, dass er etwas gemeldet hat; ist es dann immer noch überfällig, erinnert er
+  noch einmal.
+* Der Tresor wird für „Heute noch offen“ höchstens alle zehn Minuten durchsucht.
+
+### Testergebnisse Schritt G2 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **621 Tests: 621 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 40: Regeln der Hinweise 14, alles per Telegram über den Taktgeber gegen den nachgebauten Telegram-Server 28; dafür zwei frühere Tests ersetzt, die prüften, dass der Zeitplan Briefing und Tagesabschluss nur anzeigt). Die früheren Tests für Briefing, Tagesabschluss und Erinnerungen laufen unverändert weiter, jetzt über den Taktgeber |
+| `npx next build` | erfolgreich |
+| Handprüfungen im Browser (Chromium, gebauter Server) | `routinen-rauch.ts` erweitert: „Hinweise am Tag“ ist aus, Anhaken speichert, der Zeitplan zeigt danach die Regel sowie Briefing und Erinnerungen mit ihrem Takt. `agenten-rauch.ts` (sechs Zeilen im Zeitplan) und `metalle-rauch.ts` laufen durch |
+| Gegenproben (29 absichtlich eingebaute Fehler, Tests müssen fehlschlagen) | 29 erkannt (unter anderem: nur tagsüber, höchstens drei am Tag, eine Stunde Abstand, jedes Ding nur einmal, heute erst am Nachmittag, Vertrauliches nie beim Namen, ohne Schalter nur Zahlen, aus bis zum Einschalten, erst Erreichbarkeit prüfen und dann merken, merken vor dem Senden, fester Satz statt Telegram-Text, Hinweis wartet auf das Briefing, Erinnerung nur einmal). Einer blieb im ersten Lauf unbemerkt (zwei Läufe überschreiben sich den Stand); dafür gibt es jetzt einen eigenen Test, danach erkannt |
+| Code-Review | zehn Punkte, alle eingearbeitet: Das Briefing merkte auch fehlende Rückmeldungen als gesagt (der Hinweis wäre nie gekommen); Briefing und Hinweis konnten in derselben Minute dasselbe melden; zwei gleichzeitige Läufe konnten sich den Stand überschreiben; ein abgelehnter Schlüssel stand als „nicht erreichbar“ da; der Tresor wurde am Nachmittag jede Minute durchsucht; eine abgerissene Verbindung stand als „nicht angenommen“ da; je Erinnerung ein eigener Erreichbarkeits-Blick; doppelte Wartezeit-Regel; Grenzen als fester Text statt aus der Regel; hängender Lauf hätte ein zweites Briefing auslösen können |
+| Gegen den echten Dienst geprüft | **nein.** Alles lief gegen den nachgebauten Telegram-Server; an das echte Telegram ging nichts |
+| Nicht geprüft | echtes Handy und echter Mac (Prüfliste Teil L); ob die Uhrzeiten über Stunden halten (im Test mit gestellter Uhr); echtes Aufwachen aus dem Ruhezustand |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. Bekannte Grenzen: Reißt
+die Verbindung mitten im Senden ab, weiß niemand, ob die Nachricht ankam; JARVIS schickt sie dann nicht noch
+einmal und schreibt das in den Zeitplan. Die Hinweise kommen nur aufs Handy, nicht als Mitteilung am Mac (G2.4).
+**Sicherheitsrisiken:** keine neuen. Es geht nichts an ein KI-Modell, und über Telegram geht nichts, was nicht
+schon Briefing und Tagesabschluss nach denselben Regeln schicken.
 
 ## Bereich H – Sprache und Desktop
 
@@ -833,7 +897,7 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis I). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis L). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
@@ -854,6 +918,9 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
 11. Twelve Data: Im kostenlosen Plan gibt es Silber nur über den Fonds SLV, nicht je Feinunze (dafür bräuchte
     es den bezahlten Plan „Grow“). Der Edelmetall-Agent zeigt deshalb den Fonds und schreibt das dazu. Ein
     bezahlter Plan wäre deine Entscheidung; nötig ist er nicht. Prüfliste Teil K am Mac durchgehen.
+12. Hinweise am Tag: Sie sind aus. Wenn du sie willst, setz den Haken unter Einstellungen → Handy und geh
+    Prüfliste Teil L durch. Passen dir die Grenzen (9 bis 18 Uhr, höchstens drei am Tag, „Heute noch offen“ ab
+    15 Uhr)? Sie stehen an einer Stelle und lassen sich leicht ändern.
 10. Kosten: nach ein paar Tagen die Zahlen in „Agenten“ mit der Abrechnung bei Anthropic vergleichen
     (Prüfliste H8). Möchtest du ein gemeinsames Tagesbudget für alle Agenten, bei dem JARVIS warnt oder anhält?
     Bisher hat jeder Agent nur seine eigene Grenze.
@@ -885,6 +952,7 @@ Danach wie geplant:
    der echten Abrechnung am Mac (Prüfliste H8), anderer Anbieter austauschbar, Wiederherstellungstests.
 5. **F2/F3.1: gebaut, Testbereit** (Schritt F2 in Bereich F): gemeinsamer Zeitplan, Edelmetall-Agent. Weitere
    Agenten (F3.2) nur mit freigegebenen Datenquellen.
-6. **Als Nächstes: G2/G3:** Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
-   Dabei Morgenbriefing und Tagesabschluss auf den gemeinsamen Taktgeber umziehen.
+6. **G2: gebaut, Testbereit** (Schritt G2 in Bereich G): Hinweise am Tag mit Obergrenze; Morgenbriefing,
+   Erinnerungen und Tagesabschluss laufen über den gemeinsamen Taktgeber.
+   **Als Nächstes: G3:** Antwortentwürfe für Mails (ohne Senden).
 7. D Microsoft 365 nur gegen nachgebaute Schnittstellen.

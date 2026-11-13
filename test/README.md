@@ -27,7 +27,12 @@ npm run pruefen     # Lint, Typprüfung und Tests
   Antwort mittendrin ab. `zeitplan.test.ts` prüft den Taktgeber mit erfundenen Aufgaben (Not-Aus, Sperre,
   Überlappung, Fristen, Neustart mitten im Lauf), `metalle.test.ts` den Edelmetall-Agenten gegen ein
   nachgebautes Twelve Data und als Werkzeug des KI-Gehirns, `zeitplan-aufgaben.test.ts` Intel und die
-  Edelmetalle über den gemeinsamen Taktgeber.
+  Edelmetalle über den gemeinsamen Taktgeber. `hinweise.test.ts` prüft alles, was per Telegram von selbst
+  kommt, über denselben Taktgeber gegen den nachgebauten Telegram-Server: Morgenbriefing, Erinnerungen vor
+  Terminen, Tagesabschluss und die Hinweise am Tag (aus bis zum Einschalten, nur tagsüber, höchstens drei,
+  jedes Ding einmal, nichts doppelt, feste Sätze bei Fehlschlägen). Die Regeln dazu stehen ohne Netz in
+  `test/regeln/hinweise.test.ts`. Der nachgebaute Telegram-Server kann für die nächste Anfrage einer Methode
+  einen Fehler liefern (`tg.fehler.sendMessage = 400`) oder die Verbindung ohne Antwort abreißen lassen (`-1`).
 * Nachgebaute Dienste in `test/mocks/`: Claude (`claude-mock.ts`), Telegram (`telegram-mock.ts`), xAI/Grok
   (`xai-mock.ts`), ElevenLabs mit Stimmenliste, Kontostand und einem stillen, echten MP3
   (`elevenlabs-mock.ts`), der Mac für Kalender und Programme (`osascript-mock.mjs`, `open-mock.mjs`), der

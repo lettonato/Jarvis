@@ -28,7 +28,7 @@ let audit: typeof import("../../src/lib/server/gateway/audit");
 let brain: typeof import("../../src/lib/server/brain");
 let regeln: typeof import("../../src/lib/server/gateway/richtlinien");
 let config: typeof import("../../src/lib/server/config");
-let telegram: typeof import("../../src/lib/server/telegram");
+let zeitplan: typeof import("../../src/lib/server/zeitplan-aufgaben");
 let kalender: typeof import("../../src/lib/server/calendar");
 
 const DATEI = path.join(ordner, "projekte.json");
@@ -94,7 +94,7 @@ before(async () => {
   brain = await import("../../src/lib/server/brain");
   regeln = await import("../../src/lib/server/gateway/richtlinien");
   config = await import("../../src/lib/server/config");
-  telegram = await import("../../src/lib/server/telegram");
+  zeitplan = await import("../../src/lib/server/zeitplan-aufgaben");
   kalender = await import("../../src/lib/server/calendar");
 });
 
@@ -572,7 +572,7 @@ describe("Projektgedächtnis: Vorbereitung vor einer Besprechung", () => {
 
     await config.writeConfig({ ...cfg(), telegram: basis });
     await kalender.readCalendar({ force: true });
-    await telegram.telegramMinute(nun);
+    await zeitplan.zeitplanJetzt(nun);
     const ohne = tg.texteAn(ICH);
     assert.equal(ohne.filter((t) => t.startsWith("⏰")).length, 2, "die Erinnerungen selbst kommen");
     assert.ok(!ohne.some((t) => t.includes("Stahlbau")), "ohne Einschalten keine Projektinhalte über Telegram");
@@ -582,7 +582,7 @@ describe("Projektgedächtnis: Vorbereitung vor einer Besprechung", () => {
     // Derselbe Termin eine Minute später, als wäre noch nicht erinnert worden: neuer Startzeitpunkt, neuer Schlüssel.
     writeFileSync(STORE, JSON.stringify({ zugriff: "ok", kalender: [{ name: "Privat", writable: true }], standard: "Privat", events: [{ ...termin("a", "Jour fixe Hallenneubau"), start: start + 60_000 }, { ...termin("b", "Abstimmung Adler"), start: start + 60_000 }] }));
     await kalender.readCalendar({ force: true });
-    await telegram.telegramMinute(new Date(nun.getTime() + 6 * 60_000));
+    await zeitplan.zeitplanJetzt(new Date(nun.getTime() + 6 * 60_000));
     const mit = tg.texteAn(ICH);
     assert.ok(mit.some((t) => t.startsWith("Projekt Hallenneubau") && t.includes("Stahlbau statt Holz")), mit.join(" | "));
     assert.ok(!mit.some((t) => t.includes("Millionen")), "Vertrauliches geht nie über Telegram");
@@ -607,14 +607,14 @@ describe("Projektgedächtnis: Briefing und Tagesabschluss per Telegram", () => {
     await fuelle();
     tg.leeren();
     await config.writeConfig({ ...cfg(), telegram: { ...basis, briefing: "07:30" } });
-    await telegram.telegramMinute(am(13, 7, 31));
+    await zeitplan.zeitplanJetzt(am(13, 7, 31));
     const [zahlen] = tg.texteAn(ICH);
     assert.match(zahlen, /Projekte: 2 brauchen dich, alle dringend\. Einzelheiten am Mac unter „Heute“\./);
     for (const wort of ["Hallenneubau", "Statik", "Adler", "Kaufpreis"]) assert.ok(!zahlen.includes(wort), `„${wort}“ ging ohne Schalter über Telegram`);
 
     tg.leeren();
     await config.writeConfig({ ...cfg(), telegram: { ...basis, briefing: "07:30", projekte: true } });
-    await telegram.telegramMinute(am(14, 7, 31));
+    await zeitplan.zeitplanJetzt(am(14, 7, 31));
     const [namen] = tg.texteAn(ICH);
     assert.match(namen, /• Hallenneubau: Eine Aufgabe ist überfällig: Statik prüfen, seit 4 Tagen überfällig/);
     assert.match(namen, /• ein vertrauliches Projekt: Einzelheiten nur am Mac/);
@@ -625,19 +625,19 @@ describe("Projektgedächtnis: Briefing und Tagesabschluss per Telegram", () => {
     await fuelle();
     tg.leeren();
     await config.writeConfig({ ...cfg(), telegram: { ...basis, briefing: null } });
-    await telegram.telegramMinute(am(13, 18, 1));
+    await zeitplan.zeitplanJetzt(am(13, 18, 1));
     assert.equal(tg.texteAn(ICH).length, 0, "Voreinstellung: kein Tagesabschluss");
 
     await config.writeConfig({ ...cfg(), telegram: { ...basis, briefing: null, abschluss: "18:00" } });
-    await telegram.telegramMinute(am(13, 17, 59));
+    await zeitplan.zeitplanJetzt(am(13, 17, 59));
     assert.equal(tg.texteAn(ICH).length, 0, "vor der Zeit nichts");
-    await telegram.telegramMinute(am(13, 18, 1));
+    await zeitplan.zeitplanJetzt(am(13, 18, 1));
     const texte = tg.texteAn(ICH);
     assert.equal(texte.length, 1);
     assert.match(texte[0], /^Feierabend, Benedikt\. Dein Tag in Kürze:/);
     assert.match(texte[0], /Projekte: 2 haben Überfälliges oder eine Frist von heute\. Einzelheiten am Mac unter „Heute“\./);
     for (const wort of ["Hallenneubau", "Statik", "Adler", "Kaufpreis"]) assert.ok(!texte[0].includes(wort), `„${wort}“ ging ohne Schalter über Telegram`);
-    await telegram.telegramMinute(am(13, 18, 2));
+    await zeitplan.zeitplanJetzt(am(13, 18, 2));
     assert.equal(tg.texteAn(ICH).length, 1, "kein zweiter Tagesabschluss am selben Tag");
   });
 });

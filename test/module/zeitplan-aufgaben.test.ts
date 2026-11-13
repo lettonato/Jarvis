@@ -1,10 +1,10 @@
 // Die Aufgaben des gemeinsamen Zeitplans (src/lib/server/zeitplan-aufgaben.ts) gegen die echten Module, mit
 // nachgebautem xAI und Twelve Data. Geprüft wird: Intel und der Edelmetall-Agent laufen über einen einzigen
 // Taktgeber, ein Termin läuft genau einmal, ein Fehlschlag steht mit festem Satz im Zeitplan, Sperre und
-// Not-Aus gelten, und Morgenbriefing und Tagesabschluss zeigt der Zeitplan nur an.
+// Not-Aus gelten. Was per Telegram von selbst kommt, prüft test/module/hinweise.test.ts.
 
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { after, before, beforeEach, describe, test } from "node:test";
 import { sichereUmgebung } from "../helfer/umgebung";
@@ -68,15 +68,18 @@ beforeEach(async () => {
 });
 
 describe("Zeitplan: was angemeldet ist", () => {
-  test("Intel, Edelmetalle, Morgenbriefing und Tagesabschluss stehen in einer Liste", async () => {
+  test("die Agenten und alles, was per Telegram von selbst kommt, stehen in einer Liste", async () => {
     const u = await aufgaben.zeitplanSnapshot(um(6));
     assert.deepEqual(u.eintraege.map((e) => [e.id, e.agent]), [
       ["intel", "intel"],
       ["metalle", "metalle"],
       ["briefing", null],
+      ["erinnerungen", null],
+      ["hinweise", null],
       ["abschluss", null],
     ]);
-    assert.deepEqual(aufgaben.aufgaben().filter((a) => a.lauf).map((a) => a.id), ["intel", "metalle"], "nur diese beiden führt der Zeitplan selbst aus");
+    assert.ok(aufgaben.aufgaben().every((a) => a.lauf && a.faellig), "alles führt der gemeinsame Taktgeber selbst aus");
+    assert.ok(u.eintraege.every((e) => e.selbst));
   });
 
   test("was fehlt, steht als Hinweis da und hat keinen nächsten Lauf", async () => {
@@ -85,6 +88,8 @@ describe("Zeitplan: was angemeldet ist", () => {
     assert.deepEqual(u.eintraege.map((e) => [e.hinweis, e.naechsterLauf]), [
       ["Es fehlt der xAI-Schlüssel.", null],
       ["Es fehlt der Twelve-Data-Schlüssel.", null],
+      ["Telegram ist nicht verbunden.", null],
+      ["Telegram ist nicht verbunden.", null],
       ["Telegram ist nicht verbunden.", null],
       ["Telegram ist nicht verbunden.", null],
     ]);
@@ -178,28 +183,5 @@ describe("Zeitplan: Intel läuft über denselben Taktgeber", () => {
     await zustand.sperreAgent("intel", "Test", "mac");
     await aufgaben.zeitplanJetzt(um(7, 30, 30));
     assert.deepEqual([xai.anfragen.length, twelve.anfragen.length], [0, 1]);
-  });
-});
-
-describe("Zeitplan: Meldungen per Telegram stehen nur zur Anzeige da", () => {
-  test("das Morgenbriefing zeigt seine Uhrzeit, der Tagesabschluss ist aus, und der Zeitplan verschickt nichts", async () => {
-    await config.writeConfig({ name: "Benedikt", telegram: { token: "123456:nur-fuer-den-test", bot: "jarvis_test_bot", chatId: 42 } });
-    const u = await aufgaben.zeitplanSnapshot(um(6));
-    const briefing = u.eintraege.find((e) => e.id === "briefing")!;
-    assert.deepEqual([briefing.takt, briefing.naechsterLauf, briefing.hinweis, briefing.ergebnis], ["täglich um 07:30 Uhr, per Telegram", um(7, 30).toISOString(), null, null]);
-    const abschluss = u.eintraege.find((e) => e.id === "abschluss")!;
-    assert.deepEqual([abschluss.takt, abschluss.naechsterLauf, abschluss.hinweis], ["ausgeschaltet", null, "Ausgeschaltet."]);
-
-    await aufgaben.zeitplanJetzt(um(7, 30));
-    await plan.zeitplanGeschrieben();
-    const datei = path.join(ordner, "zeitplan.json");
-    const laeufe = existsSync(datei) ? (JSON.parse(readFileSync(datei, "utf8")) as { laeufe: Record<string, unknown> }).laeufe : {};
-    assert.deepEqual([laeufe.briefing, laeufe.abschluss], [undefined, undefined]);
-  });
-
-  test("mit eingeschaltetem Tagesabschluss steht seine Uhrzeit im Zeitplan", async () => {
-    await config.writeConfig({ name: "Benedikt", telegram: { token: "123456:nur-fuer-den-test", bot: "jarvis_test_bot", chatId: 42, abschluss: "18:00" } });
-    const e = await eintrag("abschluss", um(12));
-    assert.deepEqual([e.takt, e.naechsterLauf, e.hinweis], ["täglich um 18:00 Uhr, per Telegram", um(18).toISOString(), null]);
   });
 });

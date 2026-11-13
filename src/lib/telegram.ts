@@ -32,9 +32,10 @@ export type TelegramStatus = {
 // gehört, und die Namen im Briefing und im Tagesabschluss. Aus, bis du es einschaltest: Damit gehen Projektinhalte
 // über Telegram, also über einen Dienst außer Haus. Ohne den Schalter nennt JARVIS dort nur Zahlen.
 // abschluss: Uhrzeit für den Tagesabschluss am Abend oder null. Aus, bis du eine Uhrzeit einstellst.
-export type TelegramPrefs = { trades: boolean; warnings: boolean; reminders: boolean; projekte: boolean; briefing: string | null; abschluss: string | null };
+// hinweise: Hinweise am Tag (src/lib/hinweise.ts). Aus, bis du sie einschaltest.
+export type TelegramPrefs = { trades: boolean; warnings: boolean; reminders: boolean; projekte: boolean; briefing: string | null; abschluss: string | null; hinweise: boolean };
 
-export const TELEGRAM_DEFAULTS: TelegramPrefs = { trades: true, warnings: true, reminders: true, projekte: false, briefing: "07:30", abschluss: null };
+export const TELEGRAM_DEFAULTS: TelegramPrefs = { trades: true, warnings: true, reminders: true, projekte: false, briefing: "07:30", abschluss: null, hinweise: false };
 // Die Uhrzeit, die die Einstellungen beim Einschalten des Tagesabschlusses vorschlagen.
 export const ABSCHLUSS_VORSCHLAG = "18:00";
 

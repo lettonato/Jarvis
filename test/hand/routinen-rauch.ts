@@ -20,7 +20,7 @@ async function main() {
   const tg = await starteTelegramMock();
   const config = await import("../../src/lib/server/config");
   await config.writeConfig({ name: "Benedikt", telegram: { token: TOKEN, bot: "jarvis_test_bot", chatId: 111, chatName: "Benedikt" } });
-  const gespeichert = () => (JSON.parse(readFileSync(path.join(ordner, "config.json"), "utf8")) as { telegram: { abschluss?: string | null; projekte?: boolean } }).telegram;
+  const gespeichert = () => (JSON.parse(readFileSync(path.join(ordner, "config.json"), "utf8")) as { telegram: { abschluss?: string | null; projekte?: boolean; hinweise?: boolean } }).telegram;
 
   const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT), TELEGRAM_API_URL: tg.url, JARVIS_TELEGRAM_POLL_S: "1" }, stdio: "ignore", detached: true });
   const stop = () => {
@@ -75,9 +75,24 @@ async function main() {
     assert.equal(falsch.status, 400);
     assert.equal(gespeichert().abschluss, null);
 
+    // Hinweise am Tag: aus, bis man sie einschaltet. Danach steht die Regel im gemeinsamen Zeitplan.
+    const hinweise = seite.getByLabel(/Hinweise am Tag/);
+    assert.equal(await hinweise.isChecked(), false, "Voreinstellung: keine Hinweise am Tag");
+    await hinweise.click();
+    await warte(() => gespeichert().hinweise === true, "Hinweise am Tag gespeichert");
+    await seite.locator("input:checked").and(hinweise).waitFor();
+    await bild("2-einstellungen-hinweise");
+    await seite.goto(`${BASIS}/agenten#zeitplan`);
+    const zeile = seite.locator("#zeitplan li[data-aufgabe=hinweise]");
+    await zeile.waitFor({ timeout: 30_000 });
+    assert.match(await zeile.innerText(), /zwischen 9 und 18 Uhr, höchstens 3 am Tag, per Telegram/);
+    assert.match(await seite.locator("#zeitplan li[data-aufgabe=briefing]").innerText(), /täglich um 07:30 Uhr, per Telegram/);
+    assert.match(await seite.locator("#zeitplan li[data-aufgabe=erinnerungen]").innerText(), /15 Minuten vor jedem Termin, per Telegram/);
+    await bild("3-zeitplan");
+
     assert.deepEqual(fehler, [], "keine Fehler in der Seite");
     await browser.close();
-    console.log("Einstellungen Tagesabschluss: alle Schritte in Ordnung.");
+    console.log("Einstellungen Tagesabschluss und Hinweise: alle Schritte in Ordnung.");
   } finally {
     stop();
     // Der Server hält noch eine wartende Anfrage offen; darauf wartet die Prüfung nicht.

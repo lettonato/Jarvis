@@ -1,6 +1,7 @@
 "use client";
 
 import { Abschnitt, Panel } from "./ui";
+import { HINWEIS_REGELN } from "@/lib/hinweise";
 import { usePolling } from "@/lib/usePolling";
 import { useNow } from "@/lib/useNow";
 import type { ZeitplanEintrag, ZeitplanSnapshot } from "@/lib/zeitplan";
@@ -39,8 +40,8 @@ export function Zeitplan() {
     <Panel id="zeitplan">
       <Abschnitt>Zeitplan</Abschnitt>
       <p className="mt-1 max-w-[46rem] text-sm text-quiet">
-        Was JARVIS von selbst tut. Intel und die Edelmetalle startet ein gemeinsamer Taktgeber, der jede Minute nachsieht, was dran ist. Steht der Not-Aus oder ist der Agent gesperrt, läuft nichts, und
-        zwei Läufe derselben Aufgabe überschneiden sich nie. Morgenbriefing und Tagesabschluss verschickt Telegram selbst; sie stehen hier, damit du alles an einer Stelle siehst.
+        Was JARVIS von selbst tut. Ein gemeinsamer Taktgeber sieht jede Minute nach, was dran ist: Intel, die Edelmetalle und alles, was per Telegram von selbst kommt. Steht der Not-Aus oder ist ein Agent
+        gesperrt, läuft dieser Agent nicht; Nachrichten an dich kommen weiter. Zwei Läufe derselben Aufgabe überschneiden sich nie.
       </p>
       {!data ? (
         <p className="mt-3 text-sm text-quiet">Lade den Zeitplan …</p>
@@ -58,15 +59,16 @@ export function Zeitplan() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-quiet">Als Nächstes</p>
-                <p className={e.naechsterLauf ? "text-schiefer" : "text-ocker"}>{e.naechsterLauf ? wann(e.naechsterLauf, now) : (e.hinweis ?? "Gerade steht nichts an.")}</p>
+                <p className={e.naechsterLauf ? "text-schiefer" : e.hinweis ? "text-ocker" : "text-quiet"}>{e.naechsterLauf ? wann(e.naechsterLauf, now) : (e.hinweis ?? "Sobald etwas ansteht.")}</p>
               </div>
             </li>
           ))}
         </ul>
       )}
       <p className="mt-3 max-w-[46rem] text-xs text-quiet">
-        Hier stehen die Läufe nach Plan; einen Start von Hand siehst du oben in der Steuerung. War der Mac zur Uhrzeit aus, holt JARVIS einen Lauf bis zu zwei Stunden später nach, danach nicht mehr. Scheitert ein Lauf, kommt der nächste Versuch frühestens eine halbe Stunde später. Morgenbriefing und Tagesabschluss stellst du unter Einstellungen bei Telegram ein, die
-        Uhrzeiten für Gold und Silber im Raum Intel.
+        Hier stehen die Läufe nach Plan; einen Start von Hand siehst du oben in der Steuerung. War der Mac zur Uhrzeit aus, holt JARVIS einen Lauf für Gold und Silber bis zu zwei Stunden später nach, Briefing und
+        Tagesabschluss bis zu drei Stunden, danach nicht mehr. Hinweise am Tag kommen nur zwischen {HINWEIS_REGELN.vonStunde} und {HINWEIS_REGELN.bisStunde} Uhr und höchstens {HINWEIS_REGELN.hoechstensJeTag} am Tag. Was aufs Handy kommt, stellst du unter Einstellungen beim Handy ein, die Uhrzeiten für
+        Gold und Silber im Raum Intel.
       </p>
     </Panel>
   );

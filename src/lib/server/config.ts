@@ -38,6 +38,8 @@ export type TelegramConfig = {
   briefing?: string | null;
   // Uhrzeit (HH:MM) für den Tagesabschluss oder null. Fehlt der Wert, kommt keiner.
   abschluss?: string | null;
+  // Hinweise am Tag (überfällig geworden, Rückmeldung fehlt, heute noch offen). Fehlt der Wert, kommen keine.
+  hinweise?: boolean;
 };
 
 // Der Edelmetall-Agent: ob er nach Zeitplan liest und zu welchen Uhrzeiten (HH:MM). Fehlt etwas, gilt der

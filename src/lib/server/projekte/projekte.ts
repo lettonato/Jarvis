@@ -24,6 +24,7 @@ import {
   type VorschlagAnzeige,
   type VorschlagInhalt,
 } from "../../projekte";
+import type { FaelligeAufgabe } from "../../hinweise";
 import type { Wer } from "../../sicherheit";
 import { protokolliere } from "../gateway/audit";
 import { speicher } from "./speicher";
@@ -87,6 +88,19 @@ export async function uebersicht(jetzt = new Date()): Promise<ProjekteSnapshot> 
     vorschlaege: mitBisher(vorschlaege, eintraege),
     ablage: s.ort,
   };
+}
+
+// Offene Aufgaben aus laufenden Projekten, die heute oder früher fällig sind: die Grundlage für die Hinweise am
+// Tag (src/lib/hinweise.ts). Nur bestätigte, nicht zurückgezogene Einträge; die ältesten Fristen zuerst.
+export async function faelligeAufgaben(jetzt = new Date()): Promise<FaelligeAufgabe[]> {
+  const s = speicher();
+  const [projekte, eintraege] = await Promise.all([s.projekte(), s.eintraege()]);
+  const heute = isoDate(jetzt);
+  const aktiv = new Map(projekte.filter((p) => p.status === "aktiv").map((p) => [p.id, p]));
+  return eintraege
+    .filter((e) => !e.zurueckgezogen && e.art === "aufgabe" && !e.erledigt && e.faellig !== null && e.faellig <= heute && aktiv.has(e.projektId))
+    .map((e) => ({ id: e.id, projekt: aktiv.get(e.projektId)!.name, vertraulich: aktiv.get(e.projektId)!.vertraulich, text: e.text, zustaendig: e.zustaendig, faellig: e.faellig! }))
+    .sort((a, b) => a.faellig.localeCompare(b.faellig) || a.projekt.localeCompare(b.projekt, "de") || a.id.localeCompare(b.id));
 }
 
 export async function akte(gesucht: string, jetzt = new Date()): Promise<ProjektAkte> {

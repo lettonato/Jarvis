@@ -70,7 +70,7 @@ type Action =
   | { action: "removeXai" }
   | { action: "telegram"; token: string }
   | { action: "telegramCode" }
-  | { action: "telegramPrefs"; trades?: boolean; warnings?: boolean; reminders?: boolean; projekte?: boolean; briefing?: string | null; abschluss?: string | null }
+  | { action: "telegramPrefs"; trades?: boolean; warnings?: boolean; reminders?: boolean; projekte?: boolean; hinweise?: boolean; briefing?: string | null; abschluss?: string | null }
   | { action: "telegramTest" }
   | { action: "telegramUnpair" }
   | { action: "removeTelegram" }
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
   } else if (body.action === "telegramPrefs") {
     if (!config.telegram) return Response.json({ error: "Bitte zuerst den Bot-Schlüssel eintragen." }, { status: 400 });
     const next = { ...config.telegram };
-    for (const key of ["trades", "warnings", "reminders", "projekte"] as const) if (typeof body[key] === "boolean") next[key] = body[key];
+    for (const key of ["trades", "warnings", "reminders", "projekte", "hinweise"] as const) if (typeof body[key] === "boolean") next[key] = body[key];
     if (body.briefing !== undefined) {
       if (body.briefing !== null && !isClock(String(body.briefing))) return Response.json({ error: "Bitte eine Uhrzeit wie 07:30 eintragen." }, { status: 400 });
       next.briefing = body.briefing;

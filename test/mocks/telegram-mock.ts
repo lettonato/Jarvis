@@ -14,8 +14,10 @@ export type TelegramMock = {
   texteAn: (chatId: number) => string[];
   nachricht: (chatId: number, text: string, extra?: { type?: string; vorSekunden?: number; name?: string }) => void;
   knopf: (vonId: number, chatId: number, messageId: number, data: string) => void;
-  // Fehler für die nächste Anfrage einer Methode, z. B. { sendMessage: 403 }.
+  // Fehler für die nächste Anfrage einer Methode, z. B. { sendMessage: 403 }. -1: Die Verbindung reißt ohne Antwort ab.
   fehler: Record<string, number>;
+  // Lässt die nächste Anfrage einer Methode so viele Millisekunden warten, z. B. { getMe: 300 }.
+  warte: Record<string, number>;
   leeren: () => void;
   stop: () => Promise<void>;
 };
@@ -31,6 +33,7 @@ export async function starteTelegramMock(bot = "jarvis_test_bot"): Promise<Teleg
   const gesendet: Gesendet[] = [];
   const wartend: Record<string, unknown>[] = [];
   const fehler: Record<string, number> = {};
+  const warte: Record<string, number> = {};
   let updateId = 100;
   let messageId = 500;
 
@@ -47,10 +50,16 @@ export async function starteTelegramMock(bot = "jarvis_test_bot"): Promise<Teleg
       body = { formular: true, laenge: roh.length, chat_id: Number(/name="chat_id"\r\n\r\n(\d+)/.exec(roh)?.[1]), caption: /name="caption"\r\n\r\n([^\r]*)/.exec(roh)?.[1] };
     }
     const antworte = (result: unknown) => res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true, result }));
+    if (warte[methode]) {
+      const ms = warte[methode];
+      delete warte[methode];
+      await new Promise((r) => setTimeout(r, ms));
+    }
     if (fehler[methode]) {
       const code = fehler[methode];
       delete fehler[methode];
       gesendet.push({ methode: `${methode}:fehler`, token, body });
+      if (code === -1) return void req.socket.destroy();
       return void res.writeHead(code, { "content-type": "application/json" }).end(JSON.stringify({ ok: false, error_code: code, description: "Testfehler" }));
     }
     if (methode === "getUpdates") {
@@ -81,6 +90,7 @@ export async function starteTelegramMock(bot = "jarvis_test_bot"): Promise<Teleg
       }),
     knopf: (vonId, chatId, mid, data) => void wartend.push({ update_id: ++updateId, callback_query: { id: `cb${updateId}`, from: { id: vonId }, message: { message_id: mid, chat: { id: chatId, type: "private" } }, data } }),
     fehler,
+    warte,
     leeren: () => {
       gesendet.length = 0;
     },

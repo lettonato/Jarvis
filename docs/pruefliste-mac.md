@@ -133,11 +133,28 @@ Rohstoffe). Er nutzt kein KI-Modell und kostet nichts außer zwei bis drei Abruf
 | K2 | Den Goldkurs mit einer Seite deiner Wahl vergleichen (zum Beispiel gold.de, in Dollar je Unze) | Der Kurs liegt nah beieinander (Tageskurs, kein Sekundenkurs) |
 | K3 | Den Abschnitt lesen | Fakten und „Einordnung nach festen Regeln“ stehen getrennt. Nirgends steht eine Vorhersage oder Kaufempfehlung; der Satz „keine Prognose und keine Anlageberatung“ steht da |
 | K4 | Bei „Uhrzeiten“ `25:00` eintragen und speichern, danach zwei eigene Uhrzeiten | Die falsche Uhrzeit wird abgelehnt, die richtigen werden gespeichert, und „Nächstes Lagebild“ nennt die nächste davon |
-| K5 | Raum „Agenten“: Abschnitt „Zeitplan“ unter der Steuerung ansehen | Vier Zeilen: Intel, Edelmetalle, Morgenbriefing, Tagesabschluss, jede mit Takt und nächstem Termin oder dem Grund, warum keiner ansteht |
+| K5 | Raum „Agenten“: Abschnitt „Zeitplan“ unter der Steuerung ansehen | Sechs Zeilen: Intel, Edelmetalle, Morgenbriefing, Erinnerung vor Terminen, Hinweise am Tag, Tagesabschluss, jede mit Takt und nächstem Termin oder dem Grund, warum keiner ansteht |
 | K6 | JARVIS über eine der Uhrzeiten hinweg laufen lassen (zum Beispiel über 17:30), danach in „Agenten“ nachsehen | Im Zeitplan steht bei Edelmetalle unter „Zuletzt nach Plan“ die Uhrzeit, im Raum Intel ein neues „Gelesen heute …“ |
 | K7 | In „Agenten“ bei Edelmetalle „Sperren“, dann im Raum Intel „Jetzt lesen“ | Es wird nicht gelesen, die Meldung nennt die Sperre. Im Zeitplan steht „Der Agent ist gesperrt.“ Danach „Entsperren“ |
 | K8 | Zu JARVIS sagen: „Wie steht Gold?“ | Er nennt den Kurs mit dem Datum und, wenn du fragst, den Trend nach der Regel. Er gibt keine Prognose und keine Empfehlung |
 | K9 | In „Agenten“ bei Edelmetalle auf „öffnen“ klicken | Der Raum Intel geht auf und steht gleich beim Abschnitt „Gold und Silber“ |
+
+## L. Hinweise am Tag und alles per Telegram über den Zeitplan (Schritt G2, neu)
+
+Morgenbriefing, Erinnerungen vor Terminen und Tagesabschluss startet jetzt derselbe Taktgeber wie die Agenten.
+Neu sind die „Hinweise am Tag“. Sie sind aus, bis du sie einschaltest, kommen nur zwischen 9 und 18 Uhr,
+höchstens dreimal am Tag, und jedes Ding nur einmal. Geprüft ist das bisher nur gegen ein nachgebautes Telegram.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| L1 | Einstellungen → Handy ansehen | Der Haken „Hinweise am Tag“ ist nicht gesetzt. Alles andere steht wie vorher |
+| L2 | Am nächsten Morgen abwarten | Das Morgenbriefing kommt wie gewohnt zur eingestellten Uhrzeit, einmal. Im Raum „Agenten“ steht es im Zeitplan unter „Zuletzt nach Plan“ |
+| L3 | Einen Termin in 20 Minuten in den Kalender eintragen und warten | Eine Viertelstunde vorher kommt die Erinnerung aufs Handy, einmal. Im Zeitplan steht sie bei „Erinnerung vor Terminen“ |
+| L4 | Zwischen 9 und 18 Uhr: „Hinweise am Tag“ anhaken. Im Testprojekt eine Aufgabe mit Frist von gestern eintragen, als zuständig einen anderen Namen (zum Beispiel „Thomas“) | Innerhalb von ein bis zwei Minuten kommt „Kurzer Hinweis“ aufs Handy. Ohne den Haken „Projekte beim Namen“ steht darin nur eine Zahl, mit dem Haken „Hier fehlt eine Rückmeldung“ mit Projekt, Aufgabe und „zuständig: Thomas“ |
+| L5 | Gleich danach noch eine überfällige Aufgabe eintragen | In der nächsten Stunde kommt nichts. Frühestens eine Stunde nach dem ersten Hinweis kommt der zweite |
+| L6 | Eine eigene Aufgabe in Obsidian mit Fälligkeit heute offen lassen und bis nach 15 Uhr warten | Einmal am Nachmittag kommt „Heute noch offen“ mit dieser Aufgabe |
+| L7 | Am Mac das WLAN für zwei Minuten ausschalten, während eine Erinnerung oder ein Hinweis fällig wäre, dann wieder einschalten | Im Zeitplan steht kurz „Telegram war nicht erreichbar“, danach kommt die Nachricht nach, und zwar einmal |
+| L8 | Den Haken „Hinweise am Tag“ wieder herausnehmen, wenn du sie nicht willst | Im Zeitplan steht bei den Hinweisen „Ausgeschaltet.“, und es kommt nichts mehr |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

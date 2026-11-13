@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useJarvis } from "./JarvisProvider";
 import { Button, inputClass, Notice } from "./ui";
 import { getJson, postJson } from "@/lib/api";
+import { HINWEIS_REGELN } from "@/lib/hinweise";
 import type { Settings } from "@/lib/settings";
 import { ABSCHLUSS_VORSCHLAG, findToken, pairLink, tokenProblem, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
 
@@ -227,8 +228,17 @@ function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean;
       <label className={row}>
         <input type="checkbox" className={box} checked={prefs.projekte} onChange={(e) => onChange({ projekte: e.target.checked })} />
         <span>
-          Projekte beim Namen: Vorbereitung vor Terminen, die zu einem Projekt gehören, und Projektnamen im Briefing und im Tagesabschluss
+          Projekte beim Namen: Vorbereitung vor Terminen, die zu einem Projekt gehören, und Projektnamen im Briefing, in den Hinweisen am Tag und im Tagesabschluss
           <span className="block text-xs text-quiet">Aus, bis du es willst: Namen, Entscheidungen und offene Punkte gehen dann über Telegram. Ohne den Haken nennt JARVIS dort nur Zahlen. Vertrauliche Projekte nie.</span>
+        </span>
+      </label>
+      <label className={row}>
+        <input type="checkbox" className={box} checked={prefs.hinweise} onChange={(e) => onChange({ hinweise: e.target.checked })} />
+        <span>
+          Hinweise am Tag: wenn in einem Projekt etwas überfällig wird, eine Rückmeldung fehlt oder am Nachmittag noch etwas von heute offen ist
+          <span className="block text-xs text-quiet">
+            Aus, bis du es willst. Nur zwischen {HINWEIS_REGELN.vonStunde} und {HINWEIS_REGELN.bisStunde} Uhr, höchstens {HINWEIS_REGELN.hoechstensJeTag} am Tag, jedes Ding nur einmal. Projektnamen stehen darin nur mit dem Haken darüber, sonst nur Zahlen.
+          </span>
         </span>
       </label>
       <div className={`${row} flex-wrap`}>

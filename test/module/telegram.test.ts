@@ -15,6 +15,7 @@ const vault = testOrdner("telegram-tresor");
 let tg: TelegramMock;
 let claude: ClaudeMock;
 let telegram: typeof import("../../src/lib/server/telegram");
+let zeitplan: typeof import("../../src/lib/server/zeitplan-aufgaben");
 let config: typeof import("../../src/lib/server/config");
 let memory: typeof import("../../src/lib/server/memory");
 let zustand: typeof import("../../src/lib/server/gateway/zustand");
@@ -43,6 +44,7 @@ before(async () => {
   Object.assign(process.env, { TELEGRAM_API_URL: tg.url, ANTHROPIC_BASE_URL: claude.url, JARVIS_TELEGRAM_POLL_S: "1" });
   config = await import("../../src/lib/server/config");
   telegram = await import("../../src/lib/server/telegram");
+  zeitplan = await import("../../src/lib/server/zeitplan-aufgaben");
   memory = await import("../../src/lib/server/memory");
   zustand = await import("../../src/lib/server/gateway/zustand");
   notify = await import("../../src/lib/server/notify");
@@ -215,12 +217,12 @@ describe("Telegram: Meldungen von selbst", () => {
     frueh.setHours(7, 31, 0, 0);
     const davor = new Date(frueh);
     davor.setHours(6, 0, 0, 0);
-    await telegram.telegramMinute(davor);
+    await zeitplan.zeitplanJetzt(davor);
     assert.equal(tg.texteAn(ICH).length, 0, "vor der Zeit nichts");
-    await telegram.telegramMinute(frueh);
+    await zeitplan.zeitplanJetzt(frueh);
     assert.equal(tg.texteAn(ICH).length, 1);
     assert.match(tg.texteAn(ICH)[0], /Benedikt/);
-    await telegram.telegramMinute(new Date(frueh.getTime() + 60_000));
+    await zeitplan.zeitplanJetzt(new Date(frueh.getTime() + 60_000));
     assert.equal(tg.texteAn(ICH).length, 1, "kein zweites Briefing am selben Tag");
   });
 
