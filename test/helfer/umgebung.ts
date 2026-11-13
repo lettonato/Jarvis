@@ -26,6 +26,7 @@ export function sichereUmgebung(name: string): string {
     GECKOTERMINAL_URL: tot,
     RUGCHECK_URL: tot,
     TWELVEDATA_URL: tot,
+    OPEN_METEO_URL: tot,
   });
   // Echte Schlüssel aus der Umgebung des Entwicklers dürfen in Tests nie benutzt werden.
   for (const key of ["ANTHROPIC_API_KEY", "XAI_API_KEY", "TWELVEDATA_API_KEY"]) delete process.env[key];

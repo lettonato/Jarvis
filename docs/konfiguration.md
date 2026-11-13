@@ -66,6 +66,7 @@ Alle optional. Ohne sie gilt der Wert in der Spalte „Standard“.
 | `COINGECKO_URL` | `https://api.coingecko.com` |
 | `GECKOTERMINAL_URL` | `https://api.geckoterminal.com` |
 | `RUGCHECK_URL` | `https://api.rugcheck.xyz` |
+| `OPEN_METEO_URL` | `https://api.open-meteo.com` |
 | `TWELVEDATA_URL` | `https://api.twelvedata.com` |
 | `JARVIS_SEARCH_URL` | DuckDuckGo-HTML-Suche (Browser-Agent) |
 

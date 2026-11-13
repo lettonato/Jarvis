@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026 (Schritt 2.6)
+Letzte Aktualisierung: 13. November 2026 (Schritt B1)
 
 ## Aktueller Stand
 
@@ -24,7 +24,7 @@ Routinen und Agenten → Microsoft 365 (zuerst nur mit Testdaten) → Sprache, D
 Grenzen: keine echten Firmendaten, keine Kosten, keine echten Mails/Termine, keine Änderung an echten
 Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 
-Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6) ist gebaut und in der Sandbox geprüft: 217 von 217
+Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6) ist gebaut und in der Sandbox geprüft: 264 von 264
 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO. Offen ist die Prüfung auf dem Mac
 ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf „Testbereit“.
 
@@ -32,8 +32,8 @@ automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO. Offe
 
 | Bereich (Auftrag vom 13.11.) | Stand | Was fehlt bis „Abgeschlossen“ |
 |---|---|---|
-| A Sicherheitsarchitektur | **Testbereit** (217 Tests, Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
-| B Bestehende Funktionen stabilisieren | **In Arbeit** | automatische Tests für Telegram, Intel, Dokumente, Mail, Kalender mit nachgebauten Diensten |
+| A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
+| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk, Obsidian, Gedächtnis; **Offen** für Mail (IMAP), Sprache, 3D-Oberfläche | nachgebautes Postfach; Oberflächentests im Browser; Mac-Prüfliste |
 | C Gehirn und Projektgedächtnis | Offen | Projektakten, Bestätigungs- und Korrekturprozess, Speicher auf PostgreSQL vorbereitet |
 | E Geschäftsführungsdashboard | Offen (Oberfläche mit 11 Ansichten vorhanden) | Tages-, Projekt-, Unternehmens-, Markt- und Agentenübersicht |
 | F Agenten | Offen (Browser, Analyst, Intel, Crawler, Desk vorhanden) | zentrale Steuerung mit Zeitplan, weitere Agenten |
@@ -253,6 +253,31 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 
 **Verbleibende Risiken nach Schritt 2:** siehe [Schritt 2, Abschnitt „Verbleibende Risiken“](docs/jarvis-2.0/04-security-gateway.md#verbleibende-risiken).
 
+## Bereich B – Bestehende Funktionen stabilisieren
+
+| Funktion | Automatisch geprüft | Zustand | Hinweis |
+|---|---|---|---|
+| JARVIS-Chat (Gehirn, Werkzeuge) | ja, nachgebauter Claude | Testbereit | `gehirn.test.ts`, `gateway.test.ts` |
+| Telegram (Koppeln, nur ein Chat, Knöpfe, Not-Aus, Briefing) | ja, nachgebauter Telegram-Server | Testbereit | `telegram.test.ts` (16), echtes Handy offen |
+| Intel/Grok (Kostenbremse, Warnung, Bereinigung) | ja, nachgebauter xAI-Server | Testbereit | `intel.test.ts` (11) |
+| Kalender (lesen, eintragen nach Ja, Programme öffnen) | ja, nachgebauter Mac | Testbereit | `kalender.test.ts` (11), echter Apple-Kalender offen |
+| Dokumente/Analyst (Abgabe, Nachbessern, kein Skript im Dokument) | ja, nachgebauter Claude | Testbereit | `dokumente.test.ts` (9); PDF nur per Handprüfung mit Chromium |
+| Browser-Agent | Regeln ja; Ablauf per Handprüfung mit Chromium | Testbereit | `browser-sperren.test.ts`, `netzschleuse.test.ts`, `test/hand/` |
+| Webcrawler | Filter ja | Testbereit | `crawler-filter.test.ts` |
+| Trading-Desk (Spielgeld) | Regeln und Engine ja, Kaufpfad mit nachgebautem Markt nein | Testbereit / Offen | Kaufpfad-Test fehlt noch |
+| Obsidian, Gedächtnis, Dokumentablage | ja, echte Dateien im Testordner | Testbereit | `dateien.test.ts` |
+| E-Mail (IMAP) | **nein** | Offen | braucht ein nachgebautes Postfach |
+| Sprache (Weckwort, Vorlesen), 3D-Oberfläche | **nein** | Offen | nur im Browser prüfbar |
+
+### Testergebnisse Schritt B1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **264 Tests: 264 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Telegram 16, Intel 11, Kalender 11, Dokumente 9) |
+| Gegenprobe Telegram (Prüfung des Absenders bei Knöpfen entfernt; Zähler der Fehlversuche entfernt) | 2 bzw. 5 Tests schlagen fehl; danach wiederhergestellt |
+| Dabei gefundene Fehler | keine im Verhalten. Ergänzt: `stopTelegram()` zum sauberen Anhalten, Wetteradresse über `OPEN_METEO_URL` umlenkbar (Tests fragen keinen echten Dienst), nachgebauter Claude antwortet auch ohne Streaming |
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -277,15 +302,14 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 
 | Was | Wo | Stand |
 |---|---|---|
-| Arbeitszweig als Git-Bündel | Projektdateien `jarvis/sicherung/jarvis-2026-11-13.bundle` | wird nach jedem Arbeitspaket erneuert; Wiederherstellung am 13.11. geprüft (gleicher Commit, gleicher Dateibaum) |
+| Arbeitszweig als Git-Bündel | Projektdateien `jarvis/sicherung/jarvis-aktuell.bundle` | wird nach jedem Arbeitspaket mit `scripts/sichern.sh` erneuert und dabei geprüft (klonen, gleicher Commit); Verlauf in `sicherungen.txt` |
 | Alle Zweige (alle PRs) | Projektdateien `jarvis/sicherung/jarvis-alle-zweige-2026-11-13.bundle` | Stand 13.11. |
 | ZIP zum Entpacken auf dem Mac | Projektdateien `jarvis/sicherung/Jarvis-aktuell.zip` | wie der Arbeitszweig, ohne `node_modules` |
 | GitHub | `lettonato/jarvis`, PR #18 | Stand `093129f` vom 8.11.; alles danach nur lokal |
 
 ## Nächste Schritte
 
-1. **B Stabilisieren:** nachgebaute Dienste für Telegram, Grok/Intel, Analyst und Markt ins Repo holen und
-   die bisher nur von Hand geprüften Funktionen automatisch testen.
-2. **C Projektgedächtnis:** Speicherschicht (heute Datei, später PostgreSQL), Projektakten, Vorschläge mit
+1. **C Projektgedächtnis:** Speicherschicht (heute Datei, später PostgreSQL), Projektakten, Vorschläge mit
    Bestätigung und Korrektur, Werkzeuge für das Gehirn, Ansicht „Projekte“.
-3. Danach E (Tages- und Projektübersicht), G (Morgenbriefing, Tagesabschluss), F (Agentensteuerung).
+2. Danach E (Tages- und Projektübersicht), G (Morgenbriefing, Tagesabschluss), F (Agentensteuerung).
+3. B-Rest: nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.

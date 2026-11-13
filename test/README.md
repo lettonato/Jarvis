@@ -11,6 +11,9 @@ npm run pruefen     # Lint, Typprüfung und Tests
   Obsidian, Gedächtnis, Dokumentablage, KI-Gehirn (nachgebauter Claude in `test/mocks/claude-mock.ts`),
   Spielgeld-Desk und das Security Gateway (`gateway.test.ts`: Deny by Default, Klassen, Freigaben,
   Not-Aus, Agentensperren, Audit-Log, ein manipuliertes Modell).
+* Nachgebaute Dienste in `test/mocks/`: Claude (`claude-mock.ts`), Telegram (`telegram-mock.ts`), xAI/Grok
+  (`xai-mock.ts`), der Mac für Kalender und Programme (`osascript-mock.mjs`, `open-mock.mjs`) und der
+  macOS-Schlüsselbund (`security-mock.mjs`).
 * `test/helfer/umgebung.ts` sorgt dafür, dass kein Test echte Einstellungen, echte Schlüssel oder echte
   Dienste berührt.
 

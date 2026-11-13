@@ -79,6 +79,8 @@ type Shared = {
   abort: AbortController | null;
   wake: (() => void) | null;
   timer: ReturnType<typeof setInterval> | null;
+  // Meldet die Zuhörerschaft für Meldungen wieder ab (beim Anhalten).
+  unlisten?: (() => void) | null;
   pair: { code: string; until: number; tries: Map<number, number> } | null;
   error: string | null;
   // Gespräche mit Claude laufen nacheinander, damit die Antworten in der richtigen Reihenfolge kommen.
@@ -637,7 +639,18 @@ async function poll() {
 export function startTelegram() {
   if (shared.running) return;
   shared.running = true;
-  onNotice((n) => void deliver(n));
+  shared.unlisten = onNotice((n) => void deliver(n));
   shared.timer = setInterval(() => void telegramMinute().catch((e) => console.error("Telegram:", e)), MINUTE);
   void poll();
+}
+
+// Hält das Abholen und die Minutenuhr an (sauberes Beenden und Tests). Der Stand bleibt gespeichert.
+export function stopTelegram() {
+  if (!shared.running) return;
+  shared.running = false;
+  shared.unlisten?.();
+  shared.unlisten = null;
+  if (shared.timer) clearInterval(shared.timer);
+  shared.timer = null;
+  wakeTelegram();
 }
