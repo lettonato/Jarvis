@@ -77,6 +77,12 @@ describe("Analyst: vom Auftrag zum Dokument", () => {
     const e = (await audit.leseAudit(10)).find((x) => x.was === "dokument_abgeben");
     assert.equal(e?.agent, "analyst");
     assert.equal(e?.ergebnis, "ausgefuehrt");
+    // Die eine Antwort des nachgebauten Claude (10 Token Eingabe, 5 Ausgabe) kostet nach Listenpreis von Opus 5.5
+    // 0,00014 Dollar. Das steht beim Dokument und im Kostenbuch beim Analysten.
+    assert.ok(Math.abs(job.costUsd - 0.00014) < 1e-9, `Kosten des Dokuments: ${job.costUsd}`);
+    const { kostenUebersicht } = await import("../../src/lib/server/kosten");
+    const posten = (await kostenUebersicht()).heute.analyst?.claude;
+    assert.ok(posten && posten.anfragen === 1 && Math.abs(posten.usd - 0.00014) < 1e-9, "im Kostenbuch gebucht");
   });
 
   test("der Auftrag steht als Daten im Auftrag, die Regeln im Systemprompt", () => {

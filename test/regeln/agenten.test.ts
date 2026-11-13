@@ -8,6 +8,7 @@ import { agentenLage, agentenSatz, type AgentenDaten, type AgentLage } from "../
 import type { BrowserStatus } from "../../src/lib/browser";
 import type { DocJob, DocsSnapshot } from "../../src/lib/documents";
 import type { IntelSnapshot } from "../../src/lib/intel";
+import type { KostenPosten, KostenUebersicht } from "../../src/lib/kosten";
 import type { DeskSnapshot } from "../../src/lib/paper";
 import type { SicherheitsZustand } from "../../src/lib/sicherheit";
 
@@ -55,7 +56,10 @@ const dokumente = (jobs: DocJob[], running: DocJob | null = null): DocsSnapshot 
 const browser = (extra: Partial<BrowserStatus> = {}): BrowserStatus => ({ ready: true, open: false, visible: false, live: false, url: null, title: null, task: null, shotAt: null, error: null, ...extra });
 const desk = (status: DeskSnapshot["status"], extra: Partial<DeskSnapshot> = {}): DeskSnapshot =>
   ({ status, statusReason: null, testDay: 3, pnlUsd: 120, lastTickAt: "2026-11-13T08:59:50.000Z", x: { enabled: true, spentTodayUsd: 0.2, budgetUsd: 1 }, ...extra }) as DeskSnapshot;
-const daten = (extra: Partial<AgentenDaten> = {}): AgentenDaten => ({ gehirnBereit: true, sicherheit: frei, intel: intel(), documents: dokumente([job()]), browser: browser(), desk: desk("laeuft"), spuren: {}, ...extra });
+const posten = (usd: number, anfragen: number): KostenPosten => ({ usd, anfragen, eingabe: 0, ausgabe: 0, suchen: 0 });
+// Das Kostenbuch von heute: drei Fragen im Gespräch, ein Schritt im Browser, zwei Bewertungen des Chiefs.
+const buch = (heute: KostenUebersicht["heute"] = { gehirn: { claude: posten(0.06, 3) }, browser: { claude: posten(0.12, 1) }, desk: { claude: posten(0.002, 2) } }): KostenUebersicht => ({ heute, heuteUsd: 0, monatUsd: 0, seit: "2026-11-13" });
+const daten = (extra: Partial<AgentenDaten> = {}): AgentenDaten => ({ gehirnBereit: true, sicherheit: frei, intel: intel(), documents: dokumente([job()]), browser: browser(), desk: desk("laeuft"), spuren: {}, kosten: buch(), ...extra });
 const von = (liste: AgentLage[], name: AgentLage["name"]) => liste.find((a) => a.name === name)!;
 
 describe("Agentensteuerung: Zustand und Läufe", () => {
@@ -141,6 +145,58 @@ describe("Agentensteuerung: Zustand und Läufe", () => {
     const liste = agentenLage(daten({ intel: null, desk: null, browser: null, documents: null }), JETZT);
     assert.equal(liste.length, 5);
     assert.ok(liste.every((a) => a.zustand === "bereit" && !a.aktionen.includes("starten")));
+  });
+});
+
+describe("Agentensteuerung: Kosten je Agent", () => {
+  test("Gespräch und Browser zeigen, was sie heute bei Claude verbraucht haben, mit Modell und Zahl der Anfragen", () => {
+    const liste = agentenLage(daten(), JETZT);
+    assert.deepEqual(von(liste, "gehirn").kosten, { heuteUsd: 0.06, budgetUsd: null, was: "Claude Opus 5.5, 3 Anfragen heute" });
+    assert.deepEqual(von(liste, "browser").kosten, { heuteUsd: 0.12, budgetUsd: null, was: "Claude Opus 5.5, eine Anfrage heute" });
+  });
+
+  test("ohne Buchung stehen null Dollar da, nicht „nicht gezählt“; ohne Schlüssel kostet der Agent nichts", () => {
+    const leer = agentenLage(daten({ kosten: buch({}) }), JETZT);
+    assert.deepEqual(von(leer, "gehirn").kosten, { heuteUsd: 0, budgetUsd: null, was: "Claude Opus 5.5, heute noch keine Anfrage" });
+    const ohne = agentenLage(daten({ gehirnBereit: false, browser: browser({ ready: false }) }), JETZT);
+    assert.equal(von(ohne, "gehirn").kosten, null);
+    assert.equal(von(ohne, "browser").kosten, null);
+  });
+
+  test("Desk: Grok mit Tagesbudget und Claude als Chief stehen einzeln da, die Summe hat kein Budget", () => {
+    const k = von(agentenLage(daten(), JETZT), "desk").kosten!;
+    assert.ok(Math.abs(k.heuteUsd - 0.202) < 1e-9);
+    assert.equal(k.budgetUsd, null, "das Budget gilt nur für Grok");
+    assert.deepEqual(k.posten, [
+      { was: "Grok liest X vor Käufen", usd: 0.2, budgetUsd: 1 },
+      { was: "Claude Haiku 5.5 bewertet die Coins, 2 Anfragen heute", usd: 0.002, budgetUsd: null },
+    ]);
+  });
+
+  test("Desk mit nur einem Dienst zeigt nur diesen; ohne beide kostet er nichts", () => {
+    const nurGrok = von(agentenLage(daten({ gehirnBereit: false, kosten: buch({}) }), JETZT), "desk").kosten;
+    assert.deepEqual(nurGrok, { heuteUsd: 0.2, budgetUsd: 1, was: "Grok liest X vor Käufen" });
+    const ohneX = desk("laeuft", { x: { enabled: false, spentTodayUsd: 0, budgetUsd: 1 } } as Partial<DeskSnapshot>);
+    const nurClaude = von(agentenLage(daten({ desk: ohneX }), JETZT), "desk").kosten;
+    assert.deepEqual(nurClaude, { heuteUsd: 0.002, budgetUsd: null, was: "Claude Haiku 5.5 bewertet die Coins, 2 Anfragen heute" });
+    assert.equal(von(agentenLage(daten({ desk: ohneX, gehirnBereit: false, kosten: buch({}) }), JETZT), "desk").kosten, null);
+  });
+
+  test("Desk: ist er nicht gestartet und hat heute nichts bewertet, steht keine Claude-Zeile da; Gebuchtes bleibt sichtbar, auch ohne Schlüssel", () => {
+    const ohneX = (status: DeskSnapshot["status"]) => desk(status, { x: { enabled: false, spentTodayUsd: 0, budgetUsd: 1 } } as Partial<DeskSnapshot>);
+    assert.equal(von(agentenLage(daten({ desk: ohneX("aus"), kosten: buch({}) }), JETZT), "desk").kosten, null, "aus und nichts gebucht: kostet nichts");
+    assert.equal(von(agentenLage(daten({ desk: ohneX("aus") }), JETZT), "desk").kosten?.heuteUsd, 0.002, "aus, aber heute schon bewertet");
+    assert.equal(von(agentenLage(daten({ desk: ohneX("laeuft"), gehirnBereit: false }), JETZT), "desk").kosten?.heuteUsd, 0.002, "Schlüssel entfernt, das Gebuchte bleibt");
+    assert.equal(von(agentenLage(daten({ desk: ohneX("laeuft"), kosten: buch({}) }), JETZT), "desk").kosten?.heuteUsd, 0, "läuft mit Claude: null Dollar statt keiner Zahl");
+  });
+
+  test("lässt sich das Kostenbuch nicht lesen, steht bei Gespräch und Browser keine Zahl statt einer falschen; Intel und Analyst zählen weiter selbst", () => {
+    const liste = agentenLage(daten({ kosten: null }), JETZT);
+    assert.equal(von(liste, "gehirn").kosten, null);
+    assert.equal(von(liste, "browser").kosten, null);
+    assert.equal(von(liste, "intel").kosten?.heuteUsd, 0.4);
+    assert.equal(von(liste, "analyst").kosten?.heuteUsd, 2.5);
+    assert.deepEqual(von(liste, "desk").kosten, { heuteUsd: 0.2, budgetUsd: 1, was: "Grok liest X vor Käufen" });
   });
 });
 

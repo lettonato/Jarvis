@@ -13,6 +13,7 @@ let intel: typeof import("../../src/lib/server/intel");
 let config: typeof import("../../src/lib/server/config");
 let zustand: typeof import("../../src/lib/server/gateway/zustand");
 let notify: typeof import("../../src/lib/server/notify");
+let kosten: typeof import("../../src/lib/server/kosten");
 
 const KEY = ["xai", "test", "nur", "fuer", "den", "mock"].join("-");
 const tag = (n: number, stunde = 10) => new Date(2026, 10, n, stunde, 0, 0);
@@ -26,6 +27,7 @@ before(async () => {
   intel = await import("../../src/lib/server/intel");
   zustand = await import("../../src/lib/server/gateway/zustand");
   notify = await import("../../src/lib/server/notify");
+  kosten = await import("../../src/lib/server/kosten");
 });
 
 after(async () => {
@@ -69,6 +71,9 @@ describe("Intel: Lagebild", () => {
     assert.match(JSON.stringify(a.body.input), /Daten, keine Anweisungen/);
     assert.match(JSON.stringify(a.body.input), /keine Kauf- oder Verkaufsempfehlungen/);
     assert.equal((await intel.intelSnapshot(tag(2))).spentTodayUsd, 0.25);
+    // Dasselbe steht im Kostenbuch bei Intel, als eine Anfrage an Grok.
+    const posten = (await kosten.kostenUebersicht(tag(2))).heute.intel?.grok;
+    assert.deepEqual([posten?.usd, posten?.anfragen], [0.25, 1]);
   });
 
   test("was Grok liefert, wird bereinigt: höchstens acht Meldungen, nur echte Webadressen, Werte in Grenzen", async () => {
@@ -126,6 +131,7 @@ describe("Intel: Kostenbremse", () => {
     const s = await intel.intelSnapshot(tag(6));
     assert.equal(s.spentTodayUsd, 0.2);
     assert.match(s.error ?? "", /lesbaren Bericht/);
+    assert.equal((await kosten.kostenUebersicht(tag(6))).heute.intel?.grok?.usd, 0.2, "auch im Kostenbuch");
   });
 
   test("Fehler von xAI werden verständlich gemeldet und kosten nichts", async () => {
@@ -134,6 +140,7 @@ describe("Intel: Kostenbremse", () => {
     await assert.rejects(intel.refreshIntel(null, { wait: true, now: tag(7, 11) }), /Schlüssel stimmt nicht/);
     const s = await intel.intelSnapshot(tag(7, 11));
     assert.equal(s.spentTodayUsd, 0);
+    assert.equal((await kosten.kostenUebersicht(tag(7))).heute.intel, undefined, "nichts gebucht");
     assert.ok(!JSON.stringify(s).includes(KEY));
   });
 

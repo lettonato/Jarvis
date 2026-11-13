@@ -5,6 +5,7 @@ import { RaumLink } from "./RaumLink";
 import { Button, Notice, Panel } from "./ui";
 import { ZUSTAND_LABEL, type AgentAktion, type AgentLage, type AgentenSnapshot, type AgentZustand } from "@/lib/agenten";
 import { postJson } from "@/lib/api";
+import { fromIso } from "@/lib/dates";
 import { TYPICAL_INTEL_COST_USD } from "@/lib/intel";
 import { usePolling } from "@/lib/usePolling";
 import { useNow } from "@/lib/useNow";
@@ -15,7 +16,10 @@ import { useNow } from "@/lib/useNow";
 
 const ZEIT = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
 const TAG = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long" });
+const MONAT = new Intl.DateTimeFormat("de-DE", { month: "long" });
 const dollar = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+// Für Ausgaben: Ein Betrag unter einem halben Cent soll nicht wie „nichts“ aussehen.
+const ausgabe = (n: number) => (n > 0 && n < 0.005 ? "unter 0,01 $" : dollar(n));
 
 // „vor 5 Min.“, „heute 07:31“, „12. November, 18:02“.
 function wann(iso: string | null, jetzt: Date | null): string {
@@ -92,6 +96,20 @@ export function AgentControl() {
           {note && <Notice tone={note.tone}>{note.text}</Notice>}
         </div>
       )}
+      {data && (
+        <p data-kosten className="mb-3 text-sm text-schiefer">
+          Heute zusammen <span className="font-bold">{ausgabe(data.kosten.heuteUsd)}</span>
+          {data.kosten.monatUsd !== null && (
+            <>
+              , im {MONAT.format(new Date(data.stand))} bisher <span className="font-bold">{ausgabe(data.kosten.monatUsd)}</span>
+            </>
+          )}
+          .{" "}
+          <span className="text-xs text-quiet">
+            Geschätzt nach Listenpreis{data.kosten.seit ? `, gezählt seit ${TAG.format(fromIso(data.kosten.seit))}` : ""}. Die Rechnung stellen Anthropic und xAI.
+          </span>
+        </p>
+      )}
       {!data ? (
         <p className="text-sm text-quiet">Die Agenten melden sich …</p>
       ) : (
@@ -121,8 +139,20 @@ export function AgentControl() {
                   <div>
                     <dt className="text-quiet">Kosten heute</dt>
                     <dd className="text-schiefer" title={a.kosten?.was}>
-                      {a.kosten ? `${dollar(a.kosten.heuteUsd)}${a.kosten.budgetUsd !== null ? ` von ${dollar(a.kosten.budgetUsd)}` : ""}` : "noch nicht gezählt"}
+                      {a.kosten ? `${ausgabe(a.kosten.heuteUsd)}${a.kosten.budgetUsd !== null ? ` von ${dollar(a.kosten.budgetUsd)}` : ""}` : data.kosten.monatUsd === null ? "nicht lesbar" : "nichts"}
                     </dd>
+                    {a.kosten && (
+                      <dd className="text-quiet">
+                        {a.kosten.posten
+                          ? a.kosten.posten.map((p) => (
+                              <span key={p.was} className="block">
+                                {ausgabe(p.usd)}
+                                {p.budgetUsd !== null ? ` von ${dollar(p.budgetUsd)}` : ""}: {p.was}
+                              </span>
+                            ))
+                          : a.kosten.was}
+                      </dd>
+                    )}
                   </div>
                   <div>
                     <dt className="text-quiet">Ansicht</dt>

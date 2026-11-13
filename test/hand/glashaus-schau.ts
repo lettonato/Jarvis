@@ -73,6 +73,14 @@ async function main() {
   await p.legeProjektAn({ name: "Lagerumbau", status: "pausiert" }, "mac");
   await p.schlageVor({ projekt: "Hallenneubau", quelle_art: "mail", quelle_hinweis: "Mail vom Architekten", eintraege: [{ art: "aufgabe", text: "Brandschutzgutachten beauftragen", faellig: iso(tag(9)) }] }, { kanal: "mac", fremd: true });
 
+  // Ein paar Buchungen im Kostenbuch, damit die Agentensteuerung Beträge zeigt (erfundener Verbrauch, kein echter).
+  const k = await import("../../src/lib/server/kosten");
+  for (let i = 0; i < 6; i++) await k.bucheClaude("gehirn", "gespraech", { model: "claude-opus-5-5", usage: { input_tokens: 4_200, output_tokens: 380, server_tool_use: { web_search_requests: i % 3 === 0 ? 1 : 0 } } }, jetzt);
+  for (let i = 0; i < 9; i++) await k.bucheClaude("browser", "browser", { model: "claude-opus-5-5", usage: { input_tokens: 6_500, output_tokens: 240 } }, jetzt);
+  for (let i = 0; i < 4; i++) await k.bucheClaude("desk", "chief", { model: "claude-haiku-5-5", usage: { input_tokens: 5_000, output_tokens: 600 } }, jetzt);
+  if (jetzt.getDate() > 2) await k.bucheBetrag("analyst", "claude", 1.8, tag(-2));
+  await k.kostenGeschrieben();
+
   const server = spawn("npx", ["next", MODUS, "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT) }, stdio: "inherit" });
   console.log(`Einstellungen: ${ordner}\nJARVIS mit Beispieldaten: http://127.0.0.1:${PORT}`);
   const ende = () => {

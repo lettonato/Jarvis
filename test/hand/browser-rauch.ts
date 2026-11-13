@@ -62,6 +62,8 @@ const listen = (h: http.RequestListener, port = 0) =>
         netzSperrenImAudit: log.filter((e) => e.art === "netz").map((e) => ({ grund: e.grund, daten: e.daten })),
         auditKette: (await audit.pruefeAudit()).ok,
         anfragen: claude.anfragen.length,
+        // Jede Anfrage an Claude steht im Kostenbuch beim Browser-Agenten (je 10 Token Eingabe und 5 Ausgabe).
+        kostenbuch: (await (await import("../../src/lib/server/kosten")).kostenUebersicht()).heute.browser?.claude ?? null,
         werkzeugErgebnisse: letzte.map((e) => e.content.slice(0, 200)),
         audit: log.map((e) => `${e.art} ${e.was} ${e.ergebnis} ${e.grund ?? ""}`),
       },

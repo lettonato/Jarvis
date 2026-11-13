@@ -9,6 +9,8 @@ import { CONFIG_DIR, type JarvisConfig } from "./config";
 import { adresseProblem } from "./netz";
 import { starteSchleuse, type Schleuse } from "./netzschleuse";
 import { protokolliere } from "./gateway/audit";
+import { bucheClaude } from "./kosten";
+import { MODELLE } from "../modelle";
 
 // Der Browser-Agent. JARVIS startet ein eigenes Chrome mit eigenem Profil (Anmeldungen bleiben darin
 // gespeichert, getrennt von deinem normalen Chrome) und lässt Claude es bedienen. Chrome läuft dabei ohne
@@ -18,7 +20,7 @@ import { protokolliere } from "./gateway/audit";
 // keine für Mails, Kalender oder Handel. Bevor geklickt oder getippt wird, prüft der Code die festen Regeln
 // aus src/lib/browser.ts; im Zweifel wird nicht geklickt.
 
-const MODEL = "claude-opus-5-5";
+const MODEL = MODELLE.browser.id;
 const PROFILE_DIR = path.join(CONFIG_DIR, "browser-profil");
 // Nur für Tests: einzelne lokale Seiten (Host mit Port) erlauben, einen bestimmten Chrome und eine eigene Suchseite nehmen.
 const ALLOW_LOCAL = (process.env.JARVIS_BROWSER_LOCAL ?? "").split(",").map((h) => h.trim()).filter(Boolean);
@@ -819,7 +821,11 @@ async function runTask(config: JarvisConfig, apiKey: string, auftrag: string, op
       { signal: abort.signal },
     );
     let final: Anthropic.Beta.BetaMessage | null = null;
-    for await (const message of runner) final = message;
+    for await (const message of runner) {
+      final = message;
+      // Jeder Schritt ist eine eigene Anfrage an Claude und kommt ins Kostenbuch.
+      await bucheClaude("browser", "browser", message);
+    }
 
     const text = (final?.content ?? [])
       .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")

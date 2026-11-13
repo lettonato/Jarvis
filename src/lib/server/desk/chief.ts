@@ -4,14 +4,16 @@ import { liquidityFit, type SoftScores } from "../../paper";
 import { SOFT_FILTERS, SOFT_KEYS, softPasses, type SoftKey } from "../../thresholds";
 import type { CrawlReport } from "./crawler";
 import type { XReport } from "./grok";
+import { MODELLE } from "../../modelle";
+import { bucheClaude } from "../kosten";
 
 // Der Chief nimmt nie selbst eine Position. Er bekommt nur Coins, die Vet und der Crawler
 // durchgelassen haben, und schätzt die weichen Filter aus dem Video ein. Was sich ausrechnen lässt
 // (Liquidität, Konzentration, Anteil des Entwicklers), rechnet der Code; Claude liest die Webseite,
 // die Konten und den Kursverlauf und schätzt den Rest. Gekauft wird nur, was alle Grenzen einhält.
 
-// Haiku ist schnell und kostet pro Bewertung nur Bruchteile eines Cents.
-export const CHIEF_MODEL = "claude-haiku-5-5";
+// Haiku ist schnell und kostet pro Bewertung nur Bruchteile eines Cents. Die Wahl steht in src/lib/modelle.ts.
+export const CHIEF_MODEL = MODELLE.chief.id;
 
 // x ist der Bericht von Grok über X, wenn ein xAI-Schlüssel eingetragen ist.
 export type ChiefInput = { candidate: Candidate; crawl: CrawlReport; ticket: number; x?: XReport | null };
@@ -182,6 +184,8 @@ export async function judgeWithClaude(apiKey: string, inputs: ChiefInput[]): Pro
     output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
     messages: [{ role: "user", content: `<coins>\n${JSON.stringify(inputs.map(describe), null, 1)}\n</coins>` }],
   });
+  // Die Bewertung zählt zu den Kosten des Spielgeld-Desks, auch wenn sie danach nicht zu gebrauchen ist.
+  await bucheClaude("desk", "chief", res);
   if (res.stop_reason === "refusal") throw new Error("Claude hat die Bewertung abgelehnt");
   if (res.stop_reason === "max_tokens") throw new Error("Claudes Bewertung war unvollständig");
   const text = res.content.find((b) => b.type === "text")?.text ?? "";

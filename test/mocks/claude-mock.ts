@@ -5,7 +5,8 @@
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-export type Zug = { text: string } | { werkzeug: string; eingabe: Record<string, unknown> };
+// abbruch: Die Antwort beginnt (die Eingabe ist damit gezählt) und die Verbindung reißt mittendrin ab.
+export type Zug = { text: string } | { werkzeug: string; eingabe: Record<string, unknown> } | { abbruch: true };
 
 export type ClaudeMock = {
   url: string;
@@ -39,11 +40,19 @@ export async function starteClaudeMock(): Promise<ClaudeMock> {
     anfragen.push(anfrage);
     const zug = zuege.shift() ?? { text: "Erledigt." };
     const id = `msg_${++n}`;
+    // Wie bei Anthropic steht in der Antwort das Modell, das geantwortet hat: hier immer das angefragte.
+    const model = typeof anfrage.model === "string" ? anfrage.model : "claude-opus-5-5";
+    if ("abbruch" in zug) {
+      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
+      res.write(`event: message_start\ndata: ${JSON.stringify({ type: "message_start", message: { id, type: "message", role: "assistant", model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } } })}\n\n`);
+      setTimeout(() => res.destroy(), 50);
+      return;
+    }
     // Ohne Streaming (Browser-Agent, Chief) kommt die ganze Antwort als ein JSON.
     if (anfrage.stream !== true) {
       const content = "text" in zug ? [{ type: "text", text: zug.text }] : [{ type: "tool_use", id: `toolu_${n}`, name: zug.werkzeug, input: zug.eingabe }];
       res.writeHead(200, { "content-type": "application/json" }).end(
-        JSON.stringify({ id, type: "message", role: "assistant", model: "claude-opus-5-5", content, stop_reason: "text" in zug ? "end_turn" : "tool_use", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5 } }),
+        JSON.stringify({ id, type: "message", role: "assistant", model, content, stop_reason: "text" in zug ? "end_turn" : "tool_use", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5 } }),
       );
       return;
     }
@@ -51,7 +60,7 @@ export async function starteClaudeMock(): Promise<ClaudeMock> {
     const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     send("message_start", {
       type: "message_start",
-      message: { id, type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } },
+      message: { id, type: "message", role: "assistant", model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } },
     });
     if ("text" in zug) {
       send("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } });

@@ -25,6 +25,8 @@ import { ART_LABEL, EINTRAG_ARTEN, GRENZEN, quelleText, STATUS_LABEL as PROJEKT_
 import { akte, ProjektFehler, schlageVor, uebersicht } from "./projekte/projekte";
 import { ZUSTAND_LABEL } from "../agenten";
 import { agentenSnapshot } from "./agenten";
+import { bucheClaude } from "./kosten";
+import { MODELLE } from "../modelle";
 
 // Das KI-Gehirn: Claude führt das Gespräch, so wie in der Claude-App, und erledigt Dinge mit Werkzeugen,
 // die direkt auf Obsidian, das Postfach, den Kalender und den Desk zugreifen. Für Aktuelles sucht er im Web.
@@ -32,7 +34,8 @@ import { agentenSnapshot } from "./agenten";
 // Zu Anthropic gehen der Satz, die letzten Gesprächszeilen, das Gedächtnis und das, was Claude über die
 // Werkzeuge nachliest.
 
-export const MODEL = "claude-opus-5-5";
+// Welches Modell das Gespräch führt, steht an einer Stelle: src/lib/modelle.ts.
+const MODEL = MODELLE.gespraech.id;
 
 // Lehnt Claude eine Anfrage aus Sicherheitsgründen ab, beantwortet sie Anthropic mit dem dafür
 // empfohlenen Modell, statt einfach abzubrechen.
@@ -668,7 +671,7 @@ export async function think(
     betaTool({
       name: "agenten_lesen",
       description:
-        "Liest die Agentensteuerung: für Gespräch, Browser-Agent, Analyst, Intel und Spielgeld-Desk den Zustand (läuft, bereit, wartet, pausiert, gesperrt, angehalten, nicht eingerichtet, Fehler), wann er zuletzt gelaufen ist, den nächsten geplanten Lauf und die Kosten von heute. Für Fragen wie „Was machen die Agenten?“ oder „Läuft Intel?“. Kostet nichts. Starten, sperren oder entsperren kannst du damit nichts.",
+        "Liest die Agentensteuerung: für Gespräch, Browser-Agent, Analyst, Intel und Spielgeld-Desk den Zustand (läuft, bereit, wartet, pausiert, gesperrt, angehalten, nicht eingerichtet, Fehler), wann er zuletzt gelaufen ist, den nächsten geplanten Lauf und die Kosten von heute, dazu die Kosten aller Agenten heute und im laufenden Monat (geschätzt nach Listenpreis). Für Fragen wie „Was machen die Agenten?“, „Läuft Intel?“ oder „Was hat JARVIS heute gekostet?“. Kostet nichts. Starten, sperren oder entsperren kannst du damit nichts.",
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       run: async () => {
         const snap = await agentenSnapshot(now);
@@ -683,10 +686,16 @@ export async function think(
             naechster_lauf: a.naechsterLauf,
             meldet_fehler: Boolean(a.fehler),
             kosten_heute_usd: a.kosten ? Math.round(a.kosten.heuteUsd * 100) / 100 : null,
+            // Das Budget für die Summe. Nutzt ein Agent mehrere Dienste, hat jeder sein eigenes unter kosten_einzeln.
             tagesbudget_usd: a.kosten?.budgetUsd ?? null,
+            kosten_einzeln: (a.kosten?.posten ?? (a.kosten ? [{ was: a.kosten.was, usd: a.kosten.heuteUsd, budgetUsd: a.kosten.budgetUsd }] : [])).map((p) => ({ dienst: p.was, usd: Math.round(p.usd * 100) / 100, tagesbudget_usd: p.budgetUsd })),
             feste_grenzen: a.grenzen,
           })),
-          hinweis: `Einzelheiten und die Knöpfe stehen in der Ansicht Agenten. Sperren, Entsperren und den Not-Aus lösen kann nur ${name} am Mac.`,
+          // Geschätzt nach Listenpreis aus dem Kostenbuch; die Rechnung stellen Anthropic und xAI.
+          kosten_heute_zusammen_usd: Math.round(snap.kosten.heuteUsd * 100) / 100,
+          kosten_laufender_monat_usd: snap.kosten.monatUsd === null ? null : Math.round(snap.kosten.monatUsd * 100) / 100,
+          kosten_gezaehlt_seit: snap.kosten.seit,
+          hinweis: `Die Kosten sind nach Listenpreis geschätzt. Einzelheiten und die Knöpfe stehen in der Ansicht Agenten. Sperren, Entsperren und den Not-Aus lösen kann nur ${name} am Mac.`,
         });
       },
     }),
@@ -952,7 +961,14 @@ export async function think(
       if (event.content_block.type !== "text" && event.content_block.type !== "thinking") fresh = true;
       if (event.content_block.type === "server_tool_use") emit({ type: "status", text: STATUS[event.content_block.name] ?? "Moment" });
     });
-    const message = await stream.finalMessage();
+    const message = await stream.finalMessage().catch(async (e) => {
+      // Abgebrochen oder Verbindung weg: Anthropic berechnet trotzdem, was bis dahin lief. Gebucht wird der
+      // Zwischenstand; sicher bekannt ist dabei nur die Eingabe.
+      await bucheClaude("gehirn", "gespraech", stream.currentMessage);
+      throw e;
+    });
+    // Jede Antwort von Claude kostet Geld und kommt ins Kostenbuch, auch wenn danach noch ein Werkzeug läuft.
+    await bucheClaude("gehirn", "gespraech", message);
     for (const block of message.content) {
       if (block.type !== "text") continue;
       for (const c of block.citations ?? []) {

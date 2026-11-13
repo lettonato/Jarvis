@@ -46,6 +46,7 @@ import { CONFIG_DIR, grokKey, readConfig, twelveKey, xBudget } from "../config";
 import { agentSperre } from "../gateway/zustand";
 import { intelWarning } from "../intel";
 import { notify } from "../notify";
+import { bucheBetrag } from "../kosten";
 import { writeVaultFile } from "../obsidian";
 import { judgeByRules, judgeWithClaude, type ChiefInput, type Verdict } from "./chief";
 import { commodityNote, commodityQuotes, freshCommodity, refreshCommodities } from "./commodities";
@@ -849,6 +850,7 @@ async function readXFor(state: State, apiKey: string, c: Candidate, now: Date): 
     const x = await readX(apiKey, c, now);
     state.day.xSpentUsd += x.costUsd;
     state.stats.xCostUsd += x.costUsd;
+    void bucheBetrag("desk", "grok", x.costUsd, now);
     state.stats.xReads++;
     state.stats.postsRead += Math.max(0, x.posts);
     log(state, "Crawler", xLine(c, x));
@@ -857,6 +859,7 @@ async function readXFor(state: State, apiKey: string, c: Candidate, now: Date): 
     const cost = e instanceof GrokError ? e.costUsd : 0;
     state.day.xSpentUsd += cost;
     state.stats.xCostUsd += cost;
+    void bucheBetrag("desk", "grok", cost, now);
     const why = e instanceof Error ? e.message : String(e);
     trace(c, "x", "warn", `X nicht gelesen: ${why}. Also kein Kauf`);
     state.verdicts[c.address] = { at: now.toISOString(), stage: "nicht_geprueft", text: `X nicht gelesen: ${why}` };

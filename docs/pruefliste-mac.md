@@ -83,6 +83,8 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 | H4 | Läuft der Spielgeld-Desk: „Pausieren“, dann „Fortsetzen“ | Der Zustand wechselt auf „pausiert“ und zurück, auch auf dem Trading-Desk |
 | H5 | Zu JARVIS sagen: „Was machen die Agenten gerade?“ | Er nennt, wer läuft, wer bereit ist und ob einer einen Fehler meldet |
 | H6 | Nur wenn du magst (kostet etwa 40 Cent bei xAI): bei Intel „Jetzt starten“ | Intel steht auf „läuft“, danach steht ein neuer letzter Lauf da |
+| H7 | JARVIS eine Frage stellen, die Claude beantwortet (zum Beispiel „Was steht heute an?“), dann „Agenten“ öffnen | Beim Gespräch steht unter „Kosten heute“ ein Betrag (meist ein bis drei Cent je Frage) und darunter „Claude Opus 5.5“ mit der Zahl der Anfragen. Oben steht „Heute zusammen“ und der laufende Monat |
+| H8 | Nach ein paar Tagen: in der Konsole von Anthropic (platform.claude.com, Abrechnung) die Kosten des Monats ansehen und mit „im … bisher“ in „Agenten“ vergleichen | Die Zahlen liegen nah beieinander. JARVIS schätzt nach Listenpreis und zählt abgebrochene Antworten nur teilweise, deshalb darf er etwas darunter liegen. Bitte beide Zahlen notieren |
 
 ## I. Stimme mit ElevenLabs und Unterbrechen (Schritt H1, neu)
 

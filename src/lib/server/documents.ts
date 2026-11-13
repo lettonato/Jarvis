@@ -12,6 +12,8 @@ import { durchGateway, GatewaySperre } from "./gateway/gateway";
 import { agentSperre } from "./gateway/zustand";
 import { notify } from "./notify";
 import { htmlToPdf, PdfError } from "./pdf";
+import { bucheClaude } from "./kosten";
+import { MODELLE } from "../modelle";
 
 // Der Analyst: Er bekommt ein Thema und deine Wünsche, recherchiert mit Claude im Web (Suchen und Seiten
 // lesen laufen bei Anthropic) und gibt am Ende ein Dokument über das Werkzeug dokument_abgeben ab. JARVIS
@@ -19,8 +21,9 @@ import { htmlToPdf, PdfError } from "./pdf";
 // Mac und schickt es aufs Handy. Es läuft immer nur ein Dokument zur Zeit, im Hintergrund.
 // Der Stand (welche Dokumente, wie weit) liegt in ~/.jarvis/dokumente.json.
 
-const MODEL = "claude-opus-5-5";
-const MODEL_NAME = "Claude Opus 5.5";
+// Welches Modell der Analyst nimmt, steht an einer Stelle: src/lib/modelle.ts.
+const MODEL = MODELLE.analyst.id;
+const MODEL_NAME = MODELLE.analyst.name;
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 const SUBMIT = "dokument_abgeben";
 const FILE = path.join(CONFIG_DIR, "dokumente.json");
@@ -31,9 +34,6 @@ const KEEP_JOBS = 40;
 const KEEP_STEPS = 80;
 // So oft geht es höchstens hin und her (Pausen bei langen Suchen und Nachbesserungen mitgezählt).
 const MAX_TURNS = 14;
-
-// Listenpreise von Claude Opus 5.5 in Dollar je Million Token, eine Websuche kostet einen Cent.
-const PRICE = { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5, search: 0.01 };
 
 export class DocError extends Error {}
 
@@ -346,12 +346,6 @@ const SUBMIT_TOOL = {
   },
 } satisfies Anthropic.Beta.BetaTool;
 
-export function costOf(u: Anthropic.Beta.BetaUsage | undefined): number {
-  if (!u) return 0;
-  const tokens = u.input_tokens * PRICE.input + u.output_tokens * PRICE.output + (u.cache_read_input_tokens ?? 0) * PRICE.cacheRead + (u.cache_creation_input_tokens ?? 0) * PRICE.cacheWrite;
-  return tokens / 1e6 + (u.server_tool_use?.web_search_requests ?? 0) * PRICE.search;
-}
-
 // Hängt einen Satz an die letzte Nachricht von JARVIS an (nur, wenn die letzte Nachricht von JARVIS ist).
 function appendNote(messages: Anthropic.Beta.BetaMessageParam[], note: string) {
   const last = messages.at(-1);
@@ -420,8 +414,13 @@ async function research(job: DocJob, apiKey: string, signal: AbortSignal): Promi
         step(job, `Liest: ${typeof input.url === "string" ? hostLabel(input.url) : "eine Seite"}`);
       }
     });
-    const message = await stream.finalMessage();
-    job.costUsd += costOf(message.usage);
+    const message = await stream.finalMessage().catch(async (e) => {
+      // Abgebrochen oder Zeit abgelaufen: Was bis dahin lief, berechnet Anthropic trotzdem. Sicher bekannt ist die Eingabe.
+      job.costUsd += await bucheClaude("analyst", "analyst", stream.currentMessage);
+      throw e;
+    });
+    // Die Preise stehen in src/lib/modelle.ts; gebucht wird beim Analysten, und das Dokument merkt sich seine Summe.
+    job.costUsd += await bucheClaude("analyst", "analyst", message);
     if (message.stop_reason === "refusal") throw new DocError("Zu diesem Thema schreibt Claude kein Dokument.");
     if (message.stop_reason === "max_tokens") throw new DocError("Das Dokument ist zu lang geworden. Versuch es mit einem engeren Thema.");
     messages.push({ role: "assistant", content: message.content });

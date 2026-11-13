@@ -27,8 +27,8 @@ Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
-Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 454 von 454 automatischen Tests
-bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
+gebaut und in der Sandbox geprüft: 482 von 482 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -47,12 +47,12 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; zwei kleine Befunde aus den Durchsichten (siehe Schritt B5) |
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
-| F Agenten | **Testbereit** für die zentrale Steuerung der fünf vorhandenen Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre); **Offen** für weitere Agenten und einen gemeinsamen Zeitplan | Mac-Prüfliste Teil H; Marktagent, Edelmetallagent, Newsletter und weitere; Kostenzählung für Gespräch und Browser (J) |
+| F Agenten | **Testbereit** für die zentrale Steuerung der fünf vorhandenen Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre); **Offen** für weitere Agenten und einen gemeinsamen Zeitplan | Mac-Prüfliste Teil H; Marktagent, Edelmetallagent, Newsletter und weitere |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss und Projektüberwachung im Briefing (einstellbar, abschaltbar); **Offen** für Mail-Entwürfe, Marktüberwachung über Intel hinaus | Mac-Prüfliste Teil G; Meldung im Lauf des Tages, wenn etwas überfällig wird; Mail-Unterstützung |
 | D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
 | H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
 | I Azure | **Blockiert** (Entscheidung und Kostenfreigabe) | Vorbereitung: Speicher- und Modellschicht austauschbar, Anleitung |
-| J Qualität | läuft mit | Modelladapter, Kostenübersicht, Wiederherstellungstests |
+| J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Offen** für austauschbare Anbieter und Wiederherstellungstests | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
 
 ## Wiederaufnahmepunkt
 
@@ -84,7 +84,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Geheimnisverwaltung | wahlweise Klartext `~/.jarvis/config.json` oder macOS-Schlüsselbund (Umzug per Knopf am Mac) | Key Vault, Managed Identity, getrennt Test/Prod | 2/3 | Schlüsselbund Testbereit (Sandbox geprüft, Mac offen); Key Vault Offen (Phase 3) |
 | Anmeldung | keine, nur localhost | Entra ID mit MFA, eigene Identität je Nutzer | 5 | Offen |
 | Betrieb in Azure | lokaler Next-Server | Container Apps, Test- und Prod-Umgebung, IaC | 3 | Blockiert (Azure-Abo/IT klären) |
-| Modelladapter | Anthropic fest in 4 Dateien | Claude primär, andere Modelle austauschbar | 4 | Offen |
+| Modelladapter | Modell und Preise je Rolle an einer Stelle (`src/lib/modelle.ts`); die Aufrufe selbst sind weiter Anthropic-Aufrufe in 4 Dateien | Claude primär, andere Modelle austauschbar | 4 | Modellwahl an einer Stelle Testbereit (Schritt J1); anderer Anbieter Offen |
 | **Zentrales Gedächtnis** | | | | |
 | Persönliches Gedächtnis | `gedaechtnis.json`, jeder Eintrag erst nach Ja per Knopf | Teil des Projektgedächtnisses, mit Bestätigung | 2/6 | Testbereit (Bestätigung), Umbau Offen |
 | Projektakten (Verantwortliche, Termine, Aufgaben, Entscheidungen, Risiken, Quellen) | `projekte.json` hinter einer Speicherschnittstelle; jeder Eintrag mit Quelle, Zeitstempel und Korrekturverlauf; Ansicht „Projekte“ | PostgreSQL mit Quelle und Zeitstempel | 6 | Testbereit (Datei, Testdaten); PostgreSQL Offen (Phase 3) |
@@ -522,7 +522,7 @@ und weiter in jedem Raum oben sichtbar.
 | F1.6 Ein Start von Intel von Hand steht im Audit-Log | Testbereit (nur gelesen, kein eigener Test) | `src/app/api/intel/route.ts` |
 | F2 Gemeinsamer Zeitplan für Agenten (heute hat nur Intel einen) | Offen | |
 | F3 Weitere Agenten: Markt, Edelmetalle, Newsletter, Unternehmen und Technologie, Investoren, Compliance; mit Quellen, Zeitstempeln, Trennung von Fakt und Prognose | Offen | neue bezahlte Datenquellen brauchen Benedikts Freigabe |
-| F4 Kosten je Agent auch für Gespräch und Browser zählen | Offen | kommt mit J (Kostenübersicht) |
+| F4 Kosten je Agent auch für Gespräch und Browser zählen | Testbereit | Schritt J1 in Bereich J |
 
 ### Testergebnisse Schritt F1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -614,6 +614,70 @@ informiert; von der Cloud aus wird nichts mehr erzeugt. **Sicherheitsrisiken:** 
 an ElevenLabs). Laufende Kosten entstehen erst, wenn Benedikt einen bezahlten Tarif wählt und die Stimme
 einschaltet; das ist seine Entscheidung.
 
+## Bereich J – Qualität
+
+### Schritt J1: Kostenbuch und Modellwahl an einer Stelle (13. November 2026)
+
+Bisher zählten nur Intel, der Analyst und das X-Lesen des Desks ihre Kosten, jeder für sich. Beim Gespräch und
+beim Browser-Agenten stand „noch nicht gezählt“, und die Bewertungen des Chiefs fehlten ganz. Das Modell und die
+Preise standen in vier Dateien.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J1.1 Eine Stelle für Modellwahl und Preise: Rolle (Gespräch, Browser, Analyst, Chief) → Modell; Listenpreise je Modell; Rechnung aus dem Verbrauch, den Anthropic mit jeder Antwort meldet | Testbereit | `src/lib/modelle.ts`, `test/regeln/modelle.test.ts` (11). Die Wahl ist unverändert: Opus 5.5, für den Chief Haiku 5.5 |
+| J1.2 Kostenbuch `~/.jarvis/kosten.json`: je Tag und Agent Betrag, Anfragen, Token, Websuchen, getrennt nach Claude und Grok; nur Zahlen, kein Text, kein Schlüssel | Testbereit | `src/lib/server/kosten.ts`, `test/module/kosten.test.ts` (11) |
+| J1.3 Alle fünf Agenten buchen: Gespräch und Browser je Anfrage, Analyst je Anfrage (seine Summe je Dokument bleibt), Chief des Desks, Intel und das X-Lesen des Desks mit dem Betrag, den Grok meldet | Testbereit | Tests gegen den nachgebauten Claude und xAI; Browser mit echtem Chrome in `test/hand/browser-rauch.ts`. **Nicht automatisch geprüft:** die Buchung beim X-Lesen des Desks (zwei Zeilen wie bei Intel) |
+| J1.4 Ansicht „Agenten“: „Kosten heute“ bei jedem Agenten, beim Desk Grok und Claude einzeln; oben „Heute zusammen“ und der laufende Monat, mit dem Hinweis „geschätzt nach Listenpreis“ | Testbereit | `src/components/AgentControl.tsx`; im gebauten Server mit Beispieldaten angesehen (Gespräch, Browser, Desk mit zwei Diensten) |
+| J1.5 JARVIS kann die Kosten nennen („Was hat JARVIS heute gekostet?“): `agenten_lesen` liefert Summe heute, Monat und die Dienste einzeln, weiter nur Zahlen und feste Bezeichnungen | Testbereit | `test/module/agenten.test.ts` (erweitert) |
+| J1.6 Anderer Anbieter als Anthropic austauschbar | Offen | die vier Aufrufstellen nutzen weiter das Anthropic-SDK direkt; ein Wechsel des Modells innerhalb von Claude braucht jetzt eine Zeile |
+| J1.7 Wiederherstellungstests (Sicherung zurückspielen und prüfen) | Offen | `scripts/sichern.sh` prüft bisher nur, dass sich das Bündel klonen lässt |
+
+**So wird gerechnet (Stand der Preise: 13. November 2026, abgelesen aus der Preisliste von Anthropic):**
+Opus 5.5 kostet 4 Dollar je Million Token Eingabe und 20 je Million Ausgabe, gelesener Zwischenspeicher 0,20,
+geschriebener 5 (fünf Minuten) oder 8 (eine Stunde). Haiku 5.5 kostet 0,10 und 0,50, bei Anfragen mit mehr als
+100.000 Token Prompt 0,50 und 2,50. Eine Websuche kostet einen Cent. Antwortet nach einer Ablehnung ein
+Ausweichmodell, zählt jeder Versuch zum Preis seines Modells. Grok rechnet seine Kosten selbst aus; das Buch
+übernimmt den Betrag.
+
+**Grenzen, die du kennen solltest:**
+
+* Die Zahlen sind eine **Schätzung nach Listenpreis**, keine Rechnung. Maßgeblich bleibt die Abrechnung bei
+  Anthropic und xAI. Ändern sich dort die Preise, muss die Tabelle in `src/lib/modelle.ts` nachgezogen werden.
+* Bricht eine Antwort mittendrin ab (du unterbrichst, die Verbindung reißt), bucht JARVIS beim Gespräch und beim
+  Analysten, was zu Beginn der Antwort gemeldet war: die Eingabe sicher, die Ausgabe zu niedrig. Beim Browser
+  und beim Chief (Antwort in einem Stück) ist bei einem Abbruch nichts bekannt und nichts gebucht. Das Buch
+  zählt in diesen Fällen etwas zu wenig.
+* Ein abgelehnter Versuch ohne Ausgabe wird nicht mitgezählt. Anthropic berechnet ihn in wenigen Kategorien
+  doch; auch das wäre etwas zu wenig.
+* Das Buch zählt ab dem ersten Tag, an dem etwas gebucht wurde („gezählt seit“). Frühere Ausgaben stehen
+  nicht darin. Am ersten Tag kann „Heute zusammen“ etwas enthalten, das Intel oder der Desk schon vorher
+  ausgegeben haben; der Monat ist deshalb nie kleiner als der Tag.
+* Beim Analysten steht weiter, was die **heute gestarteten** Dokumente gekostet haben. Läuft ein Dokument über
+  Mitternacht, weicht das leicht vom Buch ab.
+* Das Buch bremst nichts. Die Obergrenzen setzen weiter die Agenten selbst durch (Tagesbudget bei Intel und
+  beim X-Lesen, höchstens 10 Dollar je Dokument). Ein gemeinsames Tagesbudget für alle Agenten gibt es nicht.
+* Lässt sich die Datei nicht lesen, zeigt die Ansicht „nicht lesbar“ statt einer falschen Zahl, die Agenten
+  arbeiten weiter, und die Datei bleibt unangetastet. Ist ihr Inhalt kaputt, wird sie beiseitegelegt
+  (`kosten.json.defekt-…`) und das Buch beginnt neu.
+
+### Testergebnisse Schritt J1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **482 Tests: 482 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Modelle und Preise 11, Kostenbuch 11, Kosten in der Agentenlage 6; erweitert: Intel, Dokumente, Werkzeug `agenten_lesen`) |
+| Tests zuerst | Die neuen Tests liefen vor dem Bau rot (Modul fehlte) und nach der Durchsicht noch einmal rot (7 Tests), bevor die Korrekturen kamen. Gegenprobe: gegen die alte `agenten.ts` schlagen 4 der neuen Regeltests fehl |
+| `npx next build` | erfolgreich |
+| Handprüfung `agenten-rauch` (Chromium, gebauter Server) | alle Schritte in Ordnung |
+| Handprüfung `browser-rauch` (echtes Chrome, nachgebauter Claude) | drei Anfragen an Claude, drei Buchungen beim Browser-Agenten (0,00042 Dollar bei je 10 und 5 Token); die Netzsperren wie bisher |
+| Ansicht „Agenten“ mit Beispieldaten (1920 × 1080) | Gespräch 0,17 $ bei 6 Anfragen, Browser 0,28 $ bei 9, nachgerechnet von Hand; „Heute zusammen 0,45 $, im November bisher 2,25 $“; Desk mit Grok und Claude einzeln |
+| Preise | gegen die Preisliste von Anthropic vom 13. November geprüft (Opus 5.5, Haiku 5.5 mit beiden Stufen, Opus 5, Opus 4.8, Sonnet 5.5, Websuche) |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde, alle eingearbeitet: Monatssumme sprang, wenn die Auskunft eines Agenten ausfiel; jeder Lesefehler galt als kaputte Datei und legte ein heiles Buch beiseite; „nicht lesbar“ war nie erreichbar; das Grok-Budget des Desks fehlte im Werkzeug; abgebrochene Antworten wurden nicht gebucht; der Desk zeigte Claude-Kosten, obwohl er aus war; „claude-opus-5-2“ wäre als „claude-opus-5“ gerechnet worden; jede Buchung schrieb die ganze Datei; doppelte Hilfsfunktion und Namen |
+| Sicherheitsprüfung (von Hand) | Im Buch stehen nur Zahlen und feste Schlüsselwörter (Test liest die Datei und prüft jede Zeichenkette); Datei nur für den Benutzer lesbar; beim Laden zählt nur, was ein bekannter Agent, ein bekannter Dienst und eine Zahl ist; das Werkzeug gibt weiter keinen Text aus dem Netz an das Modell; kein Agent hängt vom Buch ab (Fehler beim Buchen werden gemeldet, nicht geworfen); Budgets unverändert |
+| Nicht geprüft | **die echte Abrechnung**: Ob die Schätzung zur Rechnung von Anthropic passt, zeigt erst der Vergleich am Mac (Prüfliste H8). Kein echter Claude- oder Grok-Aufruf von hier, keine Kosten. Safari. Die Buchung beim X-Lesen des Desks |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** siehe „Grenzen“ oben. **Sicherheitsrisiken:**
+keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -647,6 +711,9 @@ einschaltet; das ist seine Entscheidung.
    Projekte hat sich damit erledigt). Ihr Code liegt noch im Repo. Soll er endgültig entfernt werden, oder
    möchtest du sie irgendwo behalten? Bis zu deiner Ansage bleibt er unangetastet.
 9. Glashaus am Mac ansehen (Prüfliste Teil J) und sagen, was noch stört.
+10. Kosten: nach ein paar Tagen die Zahlen in „Agenten“ mit der Abrechnung bei Anthropic vergleichen
+    (Prüfliste H8). Möchtest du ein gemeinsames Tagesbudget für alle Agenten, bei dem JARVIS warnt oder anhält?
+    Bisher hat jeder Agent nur seine eigene Grenze.
 
 ## Sicherung
 
@@ -672,8 +739,9 @@ Benedikts Wünsche vom 13. November 2026 gehen vor:
 
 Danach wie geplant:
 
-4. **J Kostenübersicht und Modelladapter:** Kosten je Agent zählen (auch Gespräch und Browser), eine Stelle
-   für die Modellwahl.
-5. **F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung).
+4. **J Kostenübersicht und Modelladapter: gebaut, Testbereit** (Schritt J1 in Bereich J). Offen: Vergleich mit
+   der echten Abrechnung am Mac (Prüfliste H8), anderer Anbieter austauschbar, Wiederherstellungstests.
+5. **Als Nächstes: der Rest aus den Durchsichten** (Netzschleuse ohne Ausweichadresse, doppelte Abfrage in
+   „Heute“) und der Feinschliff im Glashaus (Trading und Einstellungen ruhiger), dann **F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung).
 6. G2/G3: Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
 7. D Microsoft 365 nur gegen nachgebaute Schnittstellen.

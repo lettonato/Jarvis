@@ -17,6 +17,7 @@ import { CONFIG_DIR, grokKey, readConfig, writeConfig, type JarvisConfig } from 
 import { askGrok, GrokError } from "./desk/grok";
 import { agentSperre } from "./gateway/zustand";
 import { notify } from "./notify";
+import { bucheBetrag } from "./kosten";
 
 // Intel: Grok liest Nachrichten im Web und Beiträge auf X und schreibt ein kurzes Lagebild. Morgens ab
 // 6 Uhr und acht Stunden später noch einmal von selbst (bis 22 Uhr), sonst auf Zuruf, immer innerhalb des
@@ -81,6 +82,8 @@ const spentToday = (state: State, now: Date) => (state.day.date === isoDate(now)
 function addCost(state: State, usd: number, now: Date) {
   if (state.day.date !== isoDate(now)) state.day = { date: isoDate(now), spentUsd: 0 };
   state.day.spentUsd += usd;
+  // Das Tagesbudget bleibt hier; das Kostenbuch zählt nur mit, für die Übersicht aller Agenten.
+  void bucheBetrag("intel", "grok", usd, now);
 }
 
 // Die neueste Warnung aus Lagebild oder Suche, solange sie gilt.

@@ -3,6 +3,8 @@ import { isoDate } from "./dates";
 import { DOC_LIMITS, PHASE_LABEL, type DocsSnapshot } from "./documents";
 import { formatSignedUsd } from "./format";
 import { AUTO_HOURS, TYPICAL_INTEL_COST_USD, type IntelSnapshot } from "./intel";
+import type { KostenPosten, KostenUebersicht } from "./kosten";
+import { MODELLE } from "./modelle";
 import { SAFETY, type DeskSnapshot } from "./paper";
 import { AGENTEN, type AgentName, type SicherheitsZustand } from "./sicherheit";
 
@@ -44,8 +46,9 @@ export type AgentLage = {
   // Das Ergebnis des letzten Laufs in einem Satz.
   ergebnis: string | null;
   fehler: string | null;
-  // Was er heute bei einem bezahlten Dienst verbraucht hat. null: Dafür gibt es noch keine Zählung.
-  kosten: { heuteUsd: number; budgetUsd: number | null; was: string } | null;
+  // Was er heute bei bezahlten Diensten verbraucht hat, nach Listenpreis. null: Er ist nicht eingerichtet und kostet nichts.
+  // Nutzt er mehrere Dienste, stehen sie einzeln unter posten, und heuteUsd ist die Summe.
+  kosten: { heuteUsd: number; budgetUsd: number | null; was: string; posten?: { was: string; usd: number; budgetUsd: number | null }[] } | null;
   // Feste Grenzen, die im Programm stehen und nicht vom KI-Modell abhängen.
   grenzen: string[];
   aktionen: AgentAktion[];
@@ -62,9 +65,12 @@ export type AgentenDaten = {
   browser: BrowserStatus | null;
   desk: DeskSnapshot | null;
   spuren: Partial<Record<AgentName, AgentSpur>>;
+  // Das Kostenbuch. null: Es ließ sich nicht lesen; dann zeigt die Übersicht dort keine Zahl statt einer falschen.
+  kosten: KostenUebersicht | null;
 };
 
-export type AgentenSnapshot = { agenten: AgentLage[]; notaus: boolean; stand: string };
+// kosten: heute zusammen (die Summe der Agenten), der laufende Monat laut Kostenbuch und seit wann es zählt.
+export type AgentenSnapshot = { agenten: AgentLage[]; notaus: boolean; stand: string; kosten: { heuteUsd: number; monatUsd: number | null; seit: string | null } };
 
 const HREF: Record<AgentName, string> = { gehirn: "/fokus", browser: "/browser", analyst: "/dokumente", intel: "/intel", desk: "/trading" };
 
@@ -72,6 +78,15 @@ const kurz = (text: string, max = 140) => (text.length > max ? `${text.slice(0, 
 const dollar = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
 
 type Roh = Omit<AgentLage, "name" | "label" | "aufgabe" | "href" | "aktionen"> & { aktionen: AgentAktion[] };
+
+const anfragen = (p: KostenPosten | undefined) => (!p || p.anfragen === 0 ? "heute noch keine Anfrage" : p.anfragen === 1 ? "eine Anfrage heute" : `${p.anfragen.toLocaleString("de-DE")} Anfragen heute`);
+
+// Was ein Agent heute bei Claude verbraucht hat, laut Kostenbuch.
+function claudeKosten(d: AgentenDaten, agent: AgentName, modell: string): AgentLage["kosten"] {
+  if (!d.kosten) return null;
+  const p = d.kosten.heute[agent]?.claude;
+  return { heuteUsd: p?.usd ?? 0, budgetUsd: null, was: `${modell}, ${anfragen(p)}` };
+}
 
 function gehirn(d: AgentenDaten): Roh {
   const spur = d.spuren.gehirn ?? null;
@@ -83,7 +98,7 @@ function gehirn(d: AgentenDaten): Roh {
     naechsterLauf: null,
     ergebnis: null,
     fehler: null,
-    kosten: null,
+    kosten: d.gehirnBereit ? claudeKosten(d, "gehirn", MODELLE.gespraech.name) : null,
     grenzen: ["Jedes Werkzeug läuft durch das Security Gateway", "Änderungen an Daten nur nach deinem Ja", "Den Not-Aus kann es nicht lösen"],
     aktionen: [],
   };
@@ -102,7 +117,7 @@ function browser(d: AgentenDaten): Roh {
     naechsterLauf: null,
     ergebnis: task && !laeuft && task.state !== "fehler" && task.result ? kurz(task.result) : null,
     fehler: fehler ? kurz(fehler) : null,
-    kosten: null,
+    kosten: b?.ready ? claudeKosten(d, "browser", MODELLE.browser.name) : null,
     grenzen: ["Kauft nichts, sendet nichts ab, meldet sich nirgends an", "Kommt nur über die prüfende Netzschleuse ins Netz", "Keine Seiten im Heimnetz"],
     aktionen: [],
   };
@@ -157,6 +172,22 @@ function intel(d: AgentenDaten): Roh {
   };
 }
 
+// Der Desk bezahlt bis zu zwei Dienste: Grok liest X vor Käufen (mit Tagesbudget), und Claude bewertet als Chief
+// die Coins. Das Budget gilt nur für Grok; deshalb steht es beim Posten und nicht bei der Summe.
+function deskKosten(d: AgentenDaten): AgentLage["kosten"] {
+  const s = d.desk;
+  const posten: NonNullable<NonNullable<AgentLage["kosten"]>["posten"]> = [];
+  if (s?.x.enabled) posten.push({ was: "Grok liest X vor Käufen", usd: s.x.spentTodayUsd, budgetUsd: s.x.budgetUsd });
+  const chief = d.kosten?.heute.desk?.claude;
+  // Claude steht da, wenn der Desk heute schon bewertet hat oder gestartet ist und einen Schlüssel hat.
+  // Was gebucht ist, bleibt sichtbar, auch wenn der Schlüssel danach entfernt wurde.
+  const mitClaude = Boolean(chief && chief.usd > 0) || Boolean(d.kosten && d.gehirnBereit && s && s.status !== "aus");
+  if (mitClaude) posten.push({ was: `${MODELLE.chief.name} bewertet die Coins, ${anfragen(chief)}`, usd: chief?.usd ?? 0, budgetUsd: null });
+  if (posten.length === 0) return null;
+  if (posten.length === 1) return { heuteUsd: posten[0].usd, budgetUsd: posten[0].budgetUsd, was: posten[0].was };
+  return { heuteUsd: posten.reduce((summe, p) => summe + p.usd, 0), budgetUsd: null, was: "Grok und Claude", posten };
+}
+
 function desk(d: AgentenDaten): Roh {
   const s = d.desk;
   const stand = s && s.status !== "aus" ? `${formatSignedUsd(s.pnlUsd)} Spielgeld, Tag ${Math.min(s.testDay, SAFETY.testDays)} von ${SAFETY.testDays}` : null;
@@ -179,7 +210,7 @@ function desk(d: AgentenDaten): Roh {
     naechsterLauf: null,
     ergebnis: stand,
     fehler: null,
-    kosten: s?.x.enabled ? { heuteUsd: s.x.spentTodayUsd, budgetUsd: s.x.budgetUsd, was: "Grok liest X vor Käufen" } : null,
+    kosten: deskKosten(d),
     grenzen: ["Nur Spielgeld, kein Echtgeld und keine Börsenanbindung", `Stop-Loss ${Math.round(SAFETY.stopLoss * 100)} % unter dem Einstieg`, `Höchstens ${Math.round(SAFETY.dailyLossLimit * 100)} % Verlust am Tag`, `Höchstens ${SAFETY.maxOpenPositions} Positionen`],
     aktionen: s?.status === "laeuft" ? ["pausieren"] : s?.status === "pausiert" ? ["fortsetzen"] : [],
   };

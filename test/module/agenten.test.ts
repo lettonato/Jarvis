@@ -103,6 +103,10 @@ describe("Agentensteuerung: Werkzeug für das KI-Gehirn", () => {
     const ergebnis = JSON.parse(werkzeugErgebnisse(claude.anfragen[1]).at(-1)!.content) as { not_aus: boolean; agenten: { agent: string; zustand: string; meldet_fehler: boolean; kosten_heute_usd: number | null; tagesbudget_usd: number | null; zuletzt_gelaufen: string | null }[] };
     assert.equal(ergebnis.not_aus, false);
     assert.equal(ergebnis.agenten.length, 5);
+    const zahlen = ergebnis as unknown as { kosten_heute_zusammen_usd: number; kosten_laufender_monat_usd: number | null; agenten: { kosten_einzeln: { dienst: string; usd: number; tagesbudget_usd: number | null }[] }[] };
+    assert.equal(typeof zahlen.kosten_heute_zusammen_usd, "number");
+    assert.equal(typeof zahlen.kosten_laufender_monat_usd, "number");
+    assert.ok(zahlen.agenten.every((a) => Array.isArray(a.kosten_einzeln)), "jeder Agent nennt seine Dienste einzeln");
     const intel = ergebnis.agenten.find((a) => a.agent === "Intel")!;
     assert.deepEqual([intel.zustand, intel.meldet_fehler, intel.tagesbudget_usd], ["Fehler", true, 1]);
     assert.ok(intel.zuletzt_gelaufen);

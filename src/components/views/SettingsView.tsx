@@ -13,6 +13,7 @@ import type { MemoryFact } from "@/lib/brain";
 import { COMMODITY_RULES } from "@/lib/commodities";
 import { SAFETY } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
+import { MODELLE } from "@/lib/modelle";
 import { PHOTOS } from "@/lib/photos";
 import { RAEUME } from "@/lib/raeume";
 import { VOICE_KEY } from "@/lib/useVoice";
@@ -251,7 +252,7 @@ function BrainSetup() {
         </Button>
       </div>
       <p className="text-xs text-quiet">
-        JARVIS nutzt Claude Opus 5.5. Eine Frage kostet meist ein bis drei Cent, je nachdem, wie viel er dafür nachlesen muss; sucht er im Web, kommt etwa ein Cent
+        JARVIS nutzt {MODELLE.gespraech.name}. Eine Frage kostet meist ein bis drei Cent, je nachdem, wie viel er dafür nachlesen muss; sucht er im Web, kommt etwa ein Cent
         pro Suche dazu. Der Schlüssel bleibt in deiner Einstellungsdatei auf diesem Mac.
       </p>
       {brain?.hint && (
