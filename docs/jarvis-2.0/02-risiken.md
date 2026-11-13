@@ -202,7 +202,7 @@ Vorschlag und am Eintrag; liest JARVIS so einen Eintrag später, gilt das Gespr�
 
 ## Was bereits gut ist und erhalten bleiben soll
 
-* Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt C1 sind es 18) prüfen Host, Herkunft und einen eigenen Header.
+* Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt F1 sind es 19) prüfen Host, Herkunft und einen eigenen Header.
 * Kalender und „Öffnen“ ohne Shell, mit festen Argumenten.
 * Obsidian- und Dokumentpfade gegen Ausbruch aus dem Ordner geprüft (inkl. Symlinks).
 * Desk-Käufe brauchen eine echte menschliche Freigabe; das Modell kann sie nicht erteilen.

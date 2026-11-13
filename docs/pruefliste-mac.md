@@ -73,6 +73,17 @@ Bitte nur mit einem erfundenen oder unkritischen Projekt ausprobieren.
 | G4 | Einstellungen → Handy: „Tagesabschluss jeden Abend um“ anhaken und eine Uhrzeit in zwei Minuten einstellen | Zur Uhrzeit kommt die Nachricht von selbst, danach an dem Tag nicht noch einmal. Den Haken kannst du wieder herausnehmen |
 | G5 | Einstellungen → Handy: „Projekte beim Namen“ anhaken, dann in Telegram `/briefing` | Jetzt steht das Testprojekt mit Namen im Briefing. Ein als „Vertraulich“ markiertes Projekt steht nie mit Namen da |
 
+## H. Agentensteuerung (Schritt F1, neu)
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| H1 | Oben auf „Agenten“ gehen | Ganz oben steht „Steuerung“ mit fünf Agenten: Gespräch, Browser-Agent, Analyst, Intel, Spielgeld-Desk, jeder mit Zustand, „Zuletzt“ und „Kosten heute“ |
+| H2 | Bei Intel mit den Angaben in der Intel-Ansicht vergleichen | Derselbe letzte Lauf und dieselben Kosten von heute |
+| H3 | Beim Analysten „Sperren“ drücken, dann JARVIS um ein Dokument bitten | Der Analyst steht auf „gesperrt“, JARVIS sagt, dass er gesperrt ist. Danach „Entsperren“ |
+| H4 | Läuft der Spielgeld-Desk: „Pausieren“, dann „Fortsetzen“ | Der Zustand wechselt auf „pausiert“ und zurück, auch auf dem Trading-Desk |
+| H5 | Zu JARVIS sagen: „Was machen die Agenten gerade?“ | Er nennt, wer läuft, wer bereit ist und ob einer einen Fehler meldet |
+| H6 | Nur wenn du magst (kostet etwa 40 Cent bei xAI): bei Intel „Jetzt starten“ | Intel steht auf „läuft“, danach steht ein neuer letzter Lauf da |
+
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 
 Das ist der einzige Teil, der echte Zugangsdaten bewegt. **Mach ihn nur, wenn du das möchtest.** Er lässt

@@ -71,6 +71,7 @@ export const RICHTLINIEN: Record<string, Regel> = {
   handel_status: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Spielgeld-Desk", daten: "Kontostand, Positionen" }),
   nachrichten_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Intel", daten: "Lagebild", liefertFremdes: true }),
   dokument_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Dokumente/JARVIS", daten: "eigene PDFs" }),
+  agenten_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Agentensteuerung", daten: "Zustand, Zeiten und Kosten der Agenten" }),
   projekte_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Projektgedächtnis", daten: "Projektübersicht (nur Bestätigtes)" }),
   projekt_lesen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Projektgedächtnis", daten: "Projektakte (nur Bestätigtes)" }),
   ansicht_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Bildschirm", daten: "keine", kanaele: MAC }),

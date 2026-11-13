@@ -7,11 +7,11 @@ import { useJarvis } from "../JarvisProvider";
 import { PageHeader, Panel } from "../ui";
 import { clock } from "@/lib/calendar";
 import { spokenDue } from "@/lib/dates";
-import { formatEur, formatPct, formatSignedUsd } from "@/lib/format";
+import { ZUSTAND_LABEL, type AgentenSnapshot } from "@/lib/agenten";
+import { formatEur, formatPct } from "@/lib/format";
 import { tageslage, type Hinweis } from "@/lib/heute";
 import { MOOD_LABEL } from "@/lib/intel";
-import { SAFETY, STATUS_LABEL } from "@/lib/paper";
-import { AGENTEN, type SicherheitsLage } from "@/lib/sicherheit";
+import type { SicherheitsLage } from "@/lib/sicherheit";
 import { dateOf } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
 import { usePolling } from "@/lib/usePolling";
@@ -51,15 +51,15 @@ function Karte({ titel, href, children, zahl }: { titel: string; href: string; c
 const leer = "text-sm text-quiet";
 
 export function TodayView() {
-  const { name, calendar, tasks, mail, projekte, desk, intel, documents, market, weather, settings } = useJarvis();
+  const { name, calendar, tasks, mail, projekte, desk, intel, documents, market, weather } = useJarvis();
   const now = useNow();
   const { data: sicherheit } = usePolling<SicherheitsLage>("/api/sicherheit", 10_000);
+  const { data: agenten } = usePolling<AgentenSnapshot>("/api/agenten", 15_000);
   if (!now) return <main className="p-6 text-sm text-quiet">Lade den Tag …</main>;
 
   const heute = tageslage({ calendar, tasks, mail, projekte, desk, intel, documents, freigabenOffen: sicherheit?.freigaben.filter((f) => f.zustand === "offen").length ?? 0, notaus: sicherheit?.zustand.notaus.an ?? false }, now);
   const stunde = now.getHours();
   const gruss = stunde < 11 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend";
-  const gesperrt = AGENTEN.filter((a) => sicherheit?.zustand.sperren[a.name]);
   const majors = market?.majors.quotes ?? [];
 
   return (
@@ -201,27 +201,21 @@ export function TodayView() {
         </Karte>
 
         <Karte titel="Agenten" href="/agenten">
-          <ul className="flex flex-col gap-1.5 text-sm">
-            <li className="flex justify-between gap-2">
-              <span className="text-sky-50">KI-Gehirn</span>
-              <span className="text-quiet">{settings ? (settings.brain.configured ? "bereit" : "kein Schlüssel") : "…"}</span>
-            </li>
-            <li className="flex justify-between gap-2">
-              <span className="text-sky-50">Analyst</span>
-              <span className={documents?.running ? "text-sky-200" : "text-quiet"}>{documents?.running ? `schreibt: ${documents.running.thema}` : "frei"}</span>
-            </li>
-            <li className="flex justify-between gap-2">
-              <span className="text-sky-50">Intel</span>
-              <span className={intel?.running ? "text-sky-200" : "text-quiet"}>{intel?.running ? "liest gerade" : intel?.configured ? "wartet auf den nächsten Lauf" : "nicht eingerichtet"}</span>
-            </li>
-            <li className="flex justify-between gap-2">
-              <span className="text-sky-50">Spielgeld-Desk</span>
-              <span className="text-quiet">
-                {desk ? (desk.status === "aus" ? "nicht gestartet" : `${STATUS_LABEL[desk.status]} · ${formatSignedUsd(desk.pnlUsd)} · Tag ${Math.min(desk.testDay, SAFETY.testDays)}/${SAFETY.testDays}`) : "…"}
-              </span>
-            </li>
-          </ul>
-          {gesperrt.length > 0 && <p className="mt-2 text-xs text-amber-200/90">Gesperrt: {gesperrt.map((a) => a.label).join(", ")}</p>}
+          {!agenten ? (
+            <p className="text-sm text-quiet">Die Agenten melden sich …</p>
+          ) : (
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {agenten.agenten.map((a) => (
+                <li key={a.name} className="flex justify-between gap-3">
+                  <span className="shrink-0 text-sky-50">{a.label}</span>
+                  <span className={`truncate text-right ${a.zustand === "laeuft" ? "text-sky-200" : a.zustand === "fehler" || a.zustand === "gesperrt" || a.zustand === "angehalten" ? "text-amber-200/90" : "text-quiet"}`} title={a.satz}>
+                    {ZUSTAND_LABEL[a.zustand]}
+                    {a.zustand === "laeuft" || a.zustand === "fehler" ? ` · ${a.fehler ?? a.satz}` : a.name === "desk" && a.ergebnis ? ` · ${a.ergebnis}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="mt-2 text-xs text-quiet">Der Desk handelt nur mit Spielgeld.</p>
         </Karte>
       </div>

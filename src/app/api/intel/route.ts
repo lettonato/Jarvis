@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { protokolliere } from "@/lib/server/gateway/audit";
 import { guard, readBody } from "@/lib/server/guard";
 import { autoIntel, IntelError, intelSnapshot, refreshIntel, saveIntelSettings, startIntel } from "@/lib/server/intel";
 
@@ -27,6 +28,8 @@ export async function POST(request: Request) {
     if (body.action === "aktualisieren") {
       const topic = typeof body.thema === "string" && body.thema.trim() ? body.thema : null;
       await refreshIntel(topic);
+      // Ein Start von Hand kostet Geld bei xAI; deshalb steht er im Audit-Log. Das Thema bleibt draußen.
+      await protokolliere({ art: "werkzeug", agent: "mensch", kanal: "mac", was: topic ? "Intel: gezielte Suche von Hand gestartet" : "Intel: Lagebild von Hand gestartet", ergebnis: "ausgefuehrt" });
     } else if (body.action === "einstellungen") {
       await saveIntelSettings(body);
     } else {

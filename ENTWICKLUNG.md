@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026 (Schritt G1)
+Letzte Aktualisierung: 13. November 2026 (Schritt F1)
 
 ## Aktueller Stand
 
@@ -25,9 +25,9 @@ Grenzen: keine echten Firmendaten, keine Kosten, keine echten Mails/Termine, kei
 Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 
 Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
-„Heute“ (Schritt E1) und die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
-Tagesabschluss) sind gebaut und in der Sandbox geprüft: 322 von 322 automatischen Tests bestehen,
-0 übersprungen, 0 bekannte Lücken als TODO.
+„Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
+Tagesabschluss) und die Agentensteuerung (Schritt F1) sind gebaut und in der Sandbox geprüft: 339 von 339
+automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
 dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
@@ -40,8 +40,8 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
 | B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk, Obsidian, Gedächtnis; **Offen** für Mail (IMAP), Sprache, 3D-Oberfläche | nachgebautes Postfach; Oberflächentests im Browser; Mac-Prüfliste |
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
-| E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“ und Projektübersicht (13 Ansichten); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teil F; Unternehmensübersicht (braucht Microsoft 365); Agentenübersicht kommt mit F; Projekte in der 3D-Übersicht (Frage 7) |
-| F Agenten | Offen (Browser, Analyst, Intel, Crawler, Desk vorhanden) | zentrale Steuerung mit Zeitplan, weitere Agenten |
+| E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht und Agentenübersicht (13 Ansichten); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teil F; Unternehmensübersicht (braucht Microsoft 365); Projekte in der 3D-Übersicht (Frage 7) |
+| F Agenten | **Testbereit** für die zentrale Steuerung der fünf vorhandenen Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre); **Offen** für weitere Agenten und einen gemeinsamen Zeitplan | Mac-Prüfliste Teil H; Marktagent, Edelmetallagent, Newsletter und weitere; Kostenzählung für Gespräch und Browser (J) |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss und Projektüberwachung im Briefing (einstellbar, abschaltbar); **Offen** für Mail-Entwürfe, Marktüberwachung über Intel hinaus | Mac-Prüfliste Teil G; Meldung im Lauf des Tages, wenn etwas überfällig wird; Mail-Unterstützung |
 | D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
 | H Sprache und Desktop | Teilweise vorhanden (Weckwort, Vorlesen, Programme öffnen auf macOS) | Unterbrechen, Desktop-Agent mit Regeln |
@@ -90,7 +90,8 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | JARVIS-Chat (Text und Sprache, öffnet Bereiche) | vorhanden, öffnet Ansichten | zentral im Dashboard | 7/8 | Testbereit |
 | Mitarbeiterkapazitäten | fehlt | nur offizielle Zeiterfassung, keine Überwachung | 7 | Offen |
 | **Gemeinsame Agentensteuerung** | | | | |
-| KI-Gehirn mit Werkzeugen | 27 Werkzeuge + Websuche, alle über das Gateway | über Gateway, Datenminimierung | 2/4 | Testbereit |
+| Agentensteuerung an einer Stelle | Ansicht „Agenten“: Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre für fünf Agenten | dazu Zeitplan und weitere Agenten | 9 | Testbereit (Steuerung), Offen (Zeitplan, neue Agenten) |
+| KI-Gehirn mit Werkzeugen | 28 Werkzeuge + Websuche, alle über das Gateway | über Gateway, Datenminimierung | 2/4 | Testbereit |
 | Browser-Agent | eigenes Chrome, harte Kauf-/Passwortsperren, jede Aktion über das Gateway, jede Verbindung über die Netzschleuse (kein DNS-Rebinding, auch WebSockets geprüft) | über Gateway, DNS-geprüfte Adressen | 2/9 | Testbereit (R-04 samt Rest behoben, Mac offen) |
 | Dokumentenagent (Recherche → PDF) | vorhanden, Kostenbremse 10 $, Abgabe über das Gateway, Not-Aus bricht ab | über Gateway, Ablage SharePoint/Blob | 9 | Testbereit |
 | Grok-Marktbeobachtung (Intel) | 2× täglich, Tagesbudget | proaktive Berichte | 9 | Testbereit |
@@ -329,7 +330,7 @@ und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-ris
 | E2 Projekte in der 3D-Übersicht (eigener Fels) | Offen | Die Übersicht hat zehn feste Plätze; ein elfter würde das Bild verschieben. Vorschlag: Projekte statt des Platzhalters „Telefon“ (Frage 7) |
 | E3 Unternehmensübersicht (Teams, Dateien, Planner) | Blockiert | braucht Microsoft 365 (Bereich D) |
 | E4 Finanz- und Marktübersicht über Spielgeld-Desk und Intel hinaus | Offen | |
-| E5 Agentenübersicht mit Steuerung | Offen | kommt mit F; „Heute“ zeigt bisher nur den Zustand |
+| E5 Agentenübersicht mit Steuerung | Testbereit | Schritt F1: Ansicht „Agenten“, Karte in „Heute“ |
 
 ### Testergebnisse Schritt E1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -345,6 +346,35 @@ und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-ris
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Sicherheitsrisiken:**
 keine neuen. Die Tagesübersicht liest nur, schickt nichts an ein Modell und zeigt vertrauliche Projekte nur
 am Mac (wie die Ansicht „Projekte“).
+
+## Bereich F – Agenten
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| F1.1 Eine Lage für alle Agenten (Gespräch, Browser, Analyst, Intel, Spielgeld-Desk): Zustand, Arbeitsweise, letzter und nächster Lauf, letztes Ergebnis, Fehler, Kosten von heute, feste Grenzen | Testbereit | `src/lib/agenten.ts`, `test/regeln/agenten.test.ts` |
+| F1.2 Not-Aus und Sperre gehen jedem anderen Zustand vor; dann wird kein Start angeboten | Testbereit | wie oben, dazu `test/module/agenten.test.ts` gegen die echten Module |
+| F1.3 Steuerung in der Ansicht „Agenten“: Intel von Hand starten (mit Kostenhinweis), Desk pausieren und fortsetzen, jeden Agenten sperren und entsperren; Karte „Agenten“ in „Heute“ | Testbereit | `src/components/AgentControl.tsx`; im Browser geprüft (`test/hand/agenten-rauch.ts`) |
+| F1.4 Die Steuerung hat keine eigenen Rechte: `/api/agenten` liest nur; die Knöpfe gehen an Intel, Desk und Sicherheitszentrale mit deren Prüfungen | Testbereit | POST auf `/api/agenten` gibt 405 |
+| F1.5 Werkzeug `agenten_lesen` für das KI-Gehirn (Klasse A): nur Zustände, Zeiten und Zahlen, kein Text aus dem Netz | Testbereit | Test mit eingeschleuster Anweisung im Lagebild |
+| F1.6 Ein Start von Intel von Hand steht im Audit-Log | Testbereit (nur gelesen, kein eigener Test) | `src/app/api/intel/route.ts` |
+| F2 Gemeinsamer Zeitplan für Agenten (heute hat nur Intel einen) | Offen | |
+| F3 Weitere Agenten: Markt, Edelmetalle, Newsletter, Unternehmen und Technologie, Investoren, Compliance; mit Quellen, Zeitstempeln, Trennung von Fakt und Prognose | Offen | neue bezahlte Datenquellen brauchen Benedikts Freigabe |
+| F4 Kosten je Agent auch für Gespräch und Browser zählen | Offen | kommt mit J (Kostenübersicht) |
+
+### Testergebnisse Schritt F1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run lint`, `npm run typecheck` | 0 Befunde, 0 Fehler |
+| `npm test` | **339 Tests: 339 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: Regeln der Agentensteuerung 12, gegen die echten Module und als Werkzeug 5) |
+| `npx next build` | erfolgreich; neu `/api/agenten` |
+| Handprüfung im Browser (Chromium, gebauter Server, Testdaten) | fünf Agenten mit Zustand; ohne xAI-Schlüssel kein Start-Knopf; Analyst sperren und entsperren wirkt und steht in der Datei der Sicherheitszentrale; „Heute“ zeigt dieselben Agenten; keine Fehler in der Seite; Bildschirmfoto angesehen |
+| Gegenproben (Schutz entfernt, Tests müssen fehlschlagen) | Not-Aus ohne Vorrang: 2 schlagen fehl; Sperre ohne Vorrang: 3; Start trotz aufgebrauchtem Budget: 1; Werkzeug gibt Ergebnistext eines Agenten ans Modell: 1. Danach wiederhergestellt, 17 von 17 bestehen |
+| Nicht geprüft | echter Mac (Prüfliste Teil H); Start von Intel aus der Steuerung mit echtem Grok (kostet Geld, nur am Mac); Pausieren eines laufenden Desks im Browser (im Test nur die Regel) |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. Für Gespräch und
+Browser steht bei den Kosten „noch nicht gezählt“; das ist eine Lücke, kein Wert von null. **Sicherheitsrisiken:**
+keine neuen. Die Steuerung kann nichts, was die Ansichten dahinter nicht schon konnten.
 
 ## Bereich G – Proaktive Routinen
 
@@ -395,7 +425,7 @@ Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Sc
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis G). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis H). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
@@ -420,8 +450,18 @@ Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Sc
 
 ## Nächste Schritte
 
-1. **F Agentensteuerung:** eine Stelle für alle Agenten (Zustand, letzter Lauf, nächster Lauf, Start von Hand,
-   Kosten- und Sicherheitsgrenzen), dazu die Agentenübersicht im Dashboard (E5).
-2. B-Rest: nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
-3. G2/G3: Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
-4. D Microsoft 365 nur gegen nachgebaute Schnittstellen; J Modelladapter und Kostenübersicht.
+Benedikts Wünsche vom 13. November 2026 gehen vor:
+
+1. **H1 Stimme:** ElevenLabs als wählbare Stimme, geprüft gegen einen nachgebauten Dienst; aus, bis Benedikt
+   seinen Schlüssel einträgt (kostet Geld, und was JARVIS vorliest, geht dann an ElevenLabs). Dazu Unterbrechen
+   beim Sprechen prüfen und verbessern.
+2. **E-Design:** zwei bis drei Entwürfe für ein neues Design als Bilder, Benedikt wählt die Richtung, danach Umbau.
+
+Danach wie geplant:
+
+3. **B-Rest:** nachgebautes Postfach für Mail-Tests, Kaufpfad des Desks mit nachgebautem Markt.
+4. **J Kostenübersicht und Modelladapter:** Kosten je Agent zählen (auch Gespräch und Browser), eine Stelle
+   für die Modellwahl.
+5. **F2/F3:** gemeinsamer Zeitplan, erster neuer Agent (Edelmetalle über die vorhandene Twelve-Data-Anbindung).
+6. G2/G3: Meldung im Lauf des Tages mit Obergrenze, Antwortentwürfe für Mails (ohne Senden).
+7. D Microsoft 365 nur gegen nachgebaute Schnittstellen.

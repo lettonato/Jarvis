@@ -443,7 +443,7 @@ const RULES: Rule[] = [
   },
   {
     match: /\bagenten\b|\bmodule\b/,
-    run: () => ({ reply: "Hier sind alle meine Agenten und was sie können.", navigate: "/agenten" }),
+    run: () => ({ reply: "Hier ist die Agentensteuerung: was jeder Agent gerade tut, und darunter, was sie können.", navigate: "/agenten" }),
   },
   {
     match: REFRESH_NEWS,
