@@ -40,6 +40,7 @@ const projekt = (name: string, extra: Partial<ProjektKarte> = {}): ProjektKarte 
   risiken: 0,
   letzteEntscheidung: null,
   naechsterSchritt: null,
+  textVonDritten: false,
   eintraege: 0,
   ...extra,
 });

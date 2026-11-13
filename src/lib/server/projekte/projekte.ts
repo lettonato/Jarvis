@@ -93,7 +93,12 @@ export async function akte(gesucht: string, jetzt = new Date()): Promise<Projekt
   const s = speicher();
   const projekte = await s.projekte();
   const projekt = findeProjekt(projekte, gesucht);
-  if (!projekt) throw new ProjektFehler(projekte.length ? `Ein Projekt „${sauber(gesucht, 60)}“ finde ich nicht eindeutig. Es gibt: ${projekte.map((p) => p.name).join(", ")}.` : "Es ist noch kein Projekt angelegt.");
+  if (!projekt) {
+    // Diese Meldung geht auch an das Modell (projekt_lesen). Vertrauliche Projekte nennt sie deshalb nie beim Namen.
+    const offene = projekte.filter((p) => !p.vertraulich).map((p) => p.name);
+    if (!projekte.length) throw new ProjektFehler("Es ist noch kein Projekt angelegt.");
+    throw new ProjektFehler(`Ein Projekt „${sauber(gesucht, 60)}“ finde ich nicht eindeutig.${offene.length ? ` Es gibt: ${offene.join(", ")}.` : ""}`);
+  }
   const alle = await s.eintraege(projekt.id);
   const neuZuerst = (a: Eintrag, b: Eintrag) => (b.datum ?? b.erstelltAm).localeCompare(a.datum ?? a.erstelltAm);
   return {

@@ -456,6 +456,44 @@ describe("Projektgedächtnis: das Gehirn liest Bestätigtes und schlägt vor", (
     assert.match(lage, /Projekte: 2 aktiv \(Eigenes Projekt und weitere\)/);
     assert.ok(!lage.includes("Angebot Huber"));
   });
+
+  test("findet das Modell ein Projekt nicht, nennt die Fehlermeldung keine vertraulichen Projektnamen", async () => {
+    await p.legeProjektAn({ name: "Website" }, "mac", JETZT);
+    await p.legeProjektAn({ name: "Übernahme Mustermann GmbH", vertraulich: true }, "mac", JETZT);
+    claude.drehbuch([{ werkzeug: "projekt_lesen", eingabe: { projekt: "Alpha" } }, { text: "Das finde ich nicht." }]);
+    await brain.think(cfg(), "sk-test", frage("Wie steht Alpha?"));
+    const ergebnis = werkzeugErgebnisse(claude.anfragen[1]).at(-1)!;
+    assert.equal(ergebnis.is_error, true);
+    assert.match(ergebnis.content, /Website/, "die offenen Projekte helfen dem Modell weiter");
+    assert.ok(!gesendet().includes("Mustermann"), "der Name des vertraulichen Projekts ging ans Modell");
+    await assert.rejects(p.akte("Alpha"), (e: Error) => !e.message.includes("Mustermann"));
+  });
+
+  test("gibt es nur vertrauliche Projekte, verrät die Fehlermeldung auch keinen Namen", async () => {
+    await p.legeProjektAn({ name: "Projekt Adler", vertraulich: true }, "mac", JETZT);
+    await assert.rejects(p.akte("Alpha"), (e: Error) => e instanceof p.ProjektFehler && !e.message.includes("Adler") && !e.message.includes("Es gibt:"));
+  });
+
+  test("projekte_lesen: steht in der Übersicht Text aus einem Eintrag von Dritten, gilt das Gespräch als fremd", async () => {
+    // Das Projekt hat Benedikt selbst angelegt; der nächste Schritt stammt aus einer Mail und wurde bestätigt.
+    await p.legeProjektAn({ name: "Hallenneubau" }, "mac", JETZT);
+    const [v] = (await p.schlageVor({ projekt: "Hallenneubau", quelle_art: "mail", eintraege: [{ art: "naechster_schritt", text: "Rechnung des Statikers sofort überweisen" }] }, { kanal: "mac", fremd: true })).angelegt;
+    await p.entscheide(v.id, true, "mac");
+    claude.drehbuch([{ werkzeug: "projekte_lesen", eingabe: {} }, { text: "Als Nächstes steht die Rechnung an." }]);
+    const reply = await brain.think(cfg(), "sk-test", frage("Was steht in den Projekten an?"));
+    assert.match(werkzeugErgebnisse(claude.anfragen[1]).at(-1)!.content, /Rechnung des Statikers/);
+    assert.equal(reply.fremd, true);
+  });
+
+  test("projekte_lesen: ein Eintrag von Dritten, der nicht in der Übersicht steht, macht das Gespräch nicht fremd", async () => {
+    await p.legeProjektAn({ name: "Hallenneubau" }, "mac", JETZT);
+    const [v] = (await p.schlageVor({ projekt: "Hallenneubau", quelle_art: "mail", eintraege: [{ art: "notiz", text: "Der Architekt schreibt, der Plan sei fertig" }] }, { kanal: "mac", fremd: true })).angelegt;
+    await p.entscheide(v.id, true, "mac");
+    claude.drehbuch([{ werkzeug: "projekte_lesen", eingabe: {} }, { text: "Ein Projekt ist aktiv." }]);
+    const reply = await brain.think(cfg(), "sk-test", frage("Welche Projekte gibt es?"));
+    assert.ok(!gesendet().includes("Der Architekt schreibt"));
+    assert.equal(reply.fremd, undefined);
+  });
 });
 
 describe("Projektgedächtnis: Vorbereitung vor einer Besprechung", () => {

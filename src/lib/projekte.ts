@@ -83,6 +83,9 @@ export type ProjektKarte = Projekt & {
   letzteEntscheidung: { text: string; datum: string } | null;
   naechsterSchritt: string | null;
   eintraege: number;
+  // Stammt einer der Texte auf dieser Karte (Projekt selbst, nächste Frist, letzte Entscheidung, nächster
+  // Schritt) von Dritten? Dann gilt ein Gespräch, das die Karte liest, als fremd beeinflusst.
+  textVonDritten: boolean;
 };
 
 export type ProjekteSnapshot = { projekte: ProjektKarte[]; vorschlaege: VorschlagAnzeige[]; ablage: string };
@@ -138,6 +141,7 @@ export function karteVon(projekt: Projekt, eintraege: Eintrag[], heute: string):
   const schritte = gueltig.filter((e) => e.art === "naechster_schritt" && !e.erledigt).sort((a, b) => b.erstelltAm.localeCompare(a.erstelltAm));
   return {
     ...projekt,
+    textVonDritten: projekt.quelle.fremd || [mitFrist[0], entscheidungen[0], schritte[0]].some((e) => e?.quelle.fremd === true),
     offeneAufgaben: offen.length,
     ueberfaellig: mitFrist.filter((e) => e.faellig! < heute).length,
     naechsteFrist: mitFrist[0] ? { text: mitFrist[0].text, faellig: mitFrist[0].faellig! } : null,

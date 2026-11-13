@@ -698,7 +698,8 @@ export async function think(
       run: async () => {
         const snap = await uebersicht(now);
         const offen = snap.projekte.filter((p) => !p.vertraulich);
-        if (offen.some((p) => p.quelle.fremd)) markiereFremd();
+        // Die Karte zeigt auch Text aus Einträgen (Frist, Entscheidung, nächster Schritt), nicht nur das Projekt selbst.
+        if (offen.some((p) => p.textVonDritten)) markiereFremd();
         return JSON.stringify({
           heute: today,
           projekte: offen.map(projektZeile),

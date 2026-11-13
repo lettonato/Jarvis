@@ -27,7 +27,7 @@ Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
-Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 427 von 427 automatischen Tests
+Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 431 von 431 automatischen Tests
 bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
@@ -312,9 +312,27 @@ Gebaut wurden nur Tests und zwei nachgebaute Dienste, dazu eine Korrektur in der
 | Kaufpfad (`desk-kauf.test.ts`) | Kauf mit 2 bis 5 % des Kontos samt Gebühren und Slippage; kein Doppelkauf; Stop-Loss und 12 Stunden Sperre; Hälfte bei +100 %; Nachlauf-Stop vor und nach dem Teilverkauf; Platz machen nach 12 Stunden ohne +20 %; Liquiditätsabzug; verschwundenes Handelspaar; spät auftauchendes Rug-Zeichen; harte Filter und Blockchain-Prüfung vor dem Chief; der Chief kann gemessene Grenzen nicht überstimmen; unbrauchbare Chief-Antwort; RugCheck fällt aus; Kurs läuft davon; Rückfrage ab der Grenze (einmal fragen, Ja, Nein, verfallen, Kurs gestiegen); höchstens acht Positionen; Pause; Tageslimit; Not-Aus |
 | Gegenproben (Regel verbogen, Tests müssen fehlschlagen) | Post: 5 von 5 fallen auf (Zeitraum, Obergrenze, automatische Antworten, Zwischenspeicher nach „gelesen“, Verschlüsselungspflicht). Desk: 17 von 17 fallen auf, zwei davon (Nachlauf-Stop vor dem Teilverkauf, Verfall der Rückfrage) erst nach geschärften Tests (Stop-Loss, Positionszahl, Tageslimit, Sperre, Teilverkauf, beide Nachlauf-Stops, Liquiditätsabzug, Einsatzhöhe, Hinterherlaufen, Prüfungen je Runde, verschwundenes Paar, Wache, Rückfrage, Verfall kurz und lang, 12-Stunden-Regel). Danach wiederhergestellt |
 | Dabei gefundene Fehler | einer: Passwort ohne Verschlüsselung (R-21, behoben, siehe oben). Im Desk kein Fehler im Verhalten |
-| Code-Review (Skill `code-review`, Stufe mittel) | An den Dateien dieses Schritts kein Befund. Die Durchsicht lief über den ganzen Zweig und meldet **zehn Befunde an früheren Schritten**; sie sind **noch nicht geprüft und nicht behoben**: Name vertraulicher Projekte in einer Fehlermeldung an das Modell (`projekte.ts`); `projekte_lesen` setzt „fremd“ nicht für Einträge von Dritten (`brain.ts`); Projektsuche trifft kurze Namen zu leicht (`projekte.ts`); umbenannter Projektvorschlag verwaist Einträge; Tonfreigabe nach blockierter Wolkenstimme (`useVoice.ts`); Schlüsselbund wird bei jedem Lesen neu gefragt (`config.ts`); gleichzeitiges Speichern der Einstellungen stößt zusammen (`config.ts`); Klartextprüfung nach dem Umzug meldet Fehlalarm (`zugangsdaten.ts`); Regel „Projekt“ fängt kurze Eingaben ab (`commands.ts`); „Heute“ fragt alle 10 Sekunden die ganze Sicherheitslage ab (`TodayView.tsx`). Nächster Schritt: einzeln nachstellen und beheben |
+| Code-Review (Skill `code-review`, Stufe mittel) | An den Dateien dieses Schritts kein Befund. Die Durchsicht lief über den ganzen Zweig und meldet **zehn Befunde an früheren Schritten**; die ersten beiden sind nachgestellt und behoben (siehe Schritt B3), die übrigen acht sind **noch nicht geprüft und nicht behoben**: Name vertraulicher Projekte in einer Fehlermeldung an das Modell (`projekte.ts`); `projekte_lesen` setzt „fremd“ nicht für Einträge von Dritten (`brain.ts`); Projektsuche trifft kurze Namen zu leicht (`projekte.ts`); umbenannter Projektvorschlag verwaist Einträge; Tonfreigabe nach blockierter Wolkenstimme (`useVoice.ts`); Schlüsselbund wird bei jedem Lesen neu gefragt (`config.ts`); gleichzeitiges Speichern der Einstellungen stößt zusammen (`config.ts`); Klartextprüfung nach dem Umzug meldet Fehlalarm (`zugangsdaten.ts`); Regel „Projekt“ fängt kurze Eingaben ab (`commands.ts`); „Heute“ fragt alle 10 Sekunden die ganze Sicherheitslage ab (`TodayView.tsx`). Nächster Schritt: einzeln nachstellen und beheben |
 | Sicherheitsprüfung (von Hand; `security-review` braucht `origin/HEAD`) | Die Änderung an der Post verschärft nur; beide Nachbauten hören nur auf 127.0.0.1; Adresse und Passwort im Nachbau sind erfunden; kein Test fragt einen echten Dienst |
 | Nicht geprüft | ein echtes Postfach (ob der echte Anbieter sich wie der Nachbau verhält, zeigt die Mac-Prüfliste); STARTTLS selbst (der Nachbau bietet es nicht an, geprüft ist nur, dass JARVIS sich ohne nicht anmeldet); echte Marktdienste; Rohstoffe im Kaufpfad (eigene Tests in `test/regeln/`) |
+
+### Schritt B3: zwei Befunde zum Schutz vertraulicher Projekte (13. November 2026)
+
+Beide Befunde aus der Durchsicht ließen sich nachstellen (Tests zuerst rot) und sind behoben:
+
+* **R-22 Vertraulicher Projektname in einer Fehlermeldung:** Fragte das Modell nach einem Projekt, das es nicht
+  gibt, zählte die Fehlermeldung alle Projekte auf, auch die vertraulichen. Der Name wäre damit an Anthropic
+  und in eine Telegram-Antwort gelangt. Jetzt nennt die Meldung nur noch nicht vertrauliche Projekte.
+* **R-23 Übersicht mit Text von Dritten galt nicht als fremd:** `projekte_lesen` zeigt je Projekt auch die
+  nächste Frist, die letzte Entscheidung und den nächsten Schritt. Stammte so ein Eintrag aus einer Mail, das
+  Projekt selbst aber von Benedikt, blieb das Gespräch „sauber“, und spätere Aktionen brauchten kein Ja. Jetzt
+  trägt jede Projektkarte das Kennzeichen `textVonDritten`, und das Gespräch gilt dann als fremd beeinflusst.
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **431 Tests: 431 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: 4 in `projekte.test.ts`) |
+| Gegenproben (Korrektur einzeln zurückgenommen) | Name wieder in der Meldung: 2 Tests schlagen fehl; altes Kennzeichen: 1 Test schlägt fehl. Danach wiederhergestellt |
+| Nicht geprüft | die übrigen acht Befunde der Durchsicht; das echte Modell |
 
 ## Bereich C – Gehirn und Projektgedächtnis
 
@@ -533,8 +551,9 @@ Benedikts Wünsche vom 13. November 2026 gehen vor:
    Entwurf B wie gezeigt, ohne Zutaten aus den anderen Entwürfen. Vorlage: `docs/design-entwuerfe/b.html`.
    **Status: Offen**, der Umbau beginnt mit dem Skill `frontend-design`; alle Funktionen bleiben. An der
    Oberfläche ist noch nichts geändert.
-3. **Befunde aus der Durchsicht vom 13.11.** (zehn, siehe Testergebnisse Schritt B2): einzeln nachstellen,
-   mit Test belegen, beheben. Die beiden zum Projektgedächtnis (vertraulicher Name, „fremd“) zuerst.
+3. **Befunde aus der Durchsicht vom 13.11.**: die zwei zum Schutz vertraulicher Projekte sind behoben
+   (Schritt B3). Die übrigen acht (Liste in den Testergebnissen von Schritt B2) einzeln nachstellen, mit Test
+   belegen, beheben.
 
 Danach wie geplant:
 

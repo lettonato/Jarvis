@@ -216,6 +216,17 @@ der Anmeldung ab, mit einer verständlichen Meldung. Einzige Ausnahme ist ein Ma
 (127.0.0.1, localhost). Belegt durch `test/module/post.test.ts` (kein LOGIN ohne Verschlüsselung). Nicht
 geprüft: STARTTLS gegen einen echten Anbieter.
 
+**R-22 Vertraulicher Projektname in einer Fehlermeldung (gefunden in der Durchsicht, behoben in Schritt B3,
+13. November 2026):** Suchte das Modell mit `projekt_lesen` ein Projekt, das es nicht gibt, zählte die
+Fehlermeldung alle Projektnamen auf, auch vertrauliche. Die Namen wären an Anthropic und in Telegram-Antworten
+gelangt. Behoben: Die Meldung nennt nur noch nicht vertrauliche Projekte. Beleg: `test/module/projekte.test.ts`.
+
+**R-23 Übersicht mit Text von Dritten galt nicht als fremd (gefunden in der Durchsicht, behoben in Schritt B3):**
+`projekte_lesen` gibt je Projekt auch Text aus Einträgen aus (nächste Frist, letzte Entscheidung, nächster
+Schritt). Kam so ein Eintrag aus einer Mail, galt das Gespräch trotzdem nicht als fremd beeinflusst; eine
+eingeschleuste Anweisung hätte ohne Rückfrage weiterwirken können. Behoben: Die Karte trägt das Kennzeichen
+`textVonDritten`, das Gespräch gilt dann als fremd, und Aktionen brauchen ein Ja. Beleg: derselbe Test.
+
 ## Was bereits gut ist und erhalten bleiben soll
 
 * Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt H1 sind es 20) prüfen Host, Herkunft und einen eigenen Header.
