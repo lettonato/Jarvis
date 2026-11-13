@@ -168,8 +168,10 @@ export async function writeConfig(config: JarvisConfig): Promise<void> {
         tresor.unlesbar.delete(name);
         continue;
       }
-      if (wert === "" && tresor.unlesbar.has(name)) {
-        // War nicht lesbar (Schlüsselbund gesperrt?): nie aus Versehen löschen, Marke bleibt.
+      if (wert === "" && (tresor.unlesbar.has(name) || geheimnisLesen(vorher, name) === GEHEIM_MARKE)) {
+        // Ein leerer Wert für einen Eintrag, der im Schlüsselbund liegt, heißt nie „löschen“ (dafür wird der
+        // Abschnitt entfernt), sondern: Beim Lesen war der Schlüsselbund nicht lesbar. Das gilt auch, wenn er
+        // inzwischen wieder aufgegangen ist. Der Eintrag bleibt unangetastet, die Marke bleibt in der Datei.
         geheimnisSetzen(datei, name, GEHEIM_MARKE);
         continue;
       }

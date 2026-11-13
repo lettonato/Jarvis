@@ -141,6 +141,30 @@ describe("Zugangsdaten: Umzug in den Schlüsselbund", () => {
     );
   });
 
+  test("wird der Schlüsselbund zwischen Lesen und Speichern wieder lesbar, überschreibt der alte, leere Stand keinen Schlüssel", async () => {
+    await z.inSchluesselbund("mac");
+    config.vergissGeheimnisse();
+    // Anfrage A liest, während der Schlüsselbund gesperrt ist: Die Werte sind leer.
+    process.env.JARVIS_SECURITY_KAPUTT = "lesen";
+    const alt = await config.readConfig();
+    assert.equal(alt.claude?.apiKey, "");
+    assert.equal(alt.telegram?.token, "");
+    // Der Schlüsselbund geht wieder auf, Anfrage B liest alles richtig.
+    delete process.env.JARVIS_SECURITY_KAPUTT;
+    assert.equal((await config.readConfig()).claude?.apiKey, CLAUDE);
+    // Jetzt speichert A ihren alten Stand (sie wollte nur den Namen ändern).
+    alt.name = "Benedikt S.";
+    await config.writeConfig(alt);
+    assert.equal(ablageInhalt()["JARVIS/claude.apiKey"], CLAUDE, "Claude-Schlüssel unverändert");
+    assert.equal(ablageInhalt()["JARVIS/telegram.token"], TELEGRAM, "Telegram-Schlüssel unverändert");
+    assert.equal(ablageInhalt()["JARVIS/mail.password"], MAILPW, "Mail-Passwort unverändert");
+    config.vergissGeheimnisse();
+    const danach = await config.readConfig();
+    assert.equal(danach.name, "Benedikt S.");
+    assert.equal(danach.claude?.apiKey, CLAUDE, "JARVIS liest weiter den echten Schlüssel");
+    assert.equal(danach.telegram?.token, TELEGRAM);
+  });
+
   test("Rückweg in die Datei stellt den alten Zustand her und leert den Schlüsselbund", async () => {
     await z.inSchluesselbund("mac");
     await assert.rejects(z.zurueckInDatei("telegram"), z.ZugangsdatenFehler);

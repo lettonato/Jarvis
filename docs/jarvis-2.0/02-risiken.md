@@ -227,6 +227,27 @@ Schritt). Kam so ein Eintrag aus einer Mail, galt das Gespräch trotzdem nicht a
 eingeschleuste Anweisung hätte ohne Rückfrage weiterwirken können. Behoben: Die Karte trägt das Kennzeichen
 `textVonDritten`, das Gespräch gilt dann als fremd, und Aktionen brauchen ein Ja. Beleg: derselbe Test.
 
+**R-24 Eigene Antworten mit Text von Dritten galten nicht als fremd (gefunden in der Durchsicht, behoben in
+Schritt B4, 13. November 2026):** Antworten, die JARVIS ohne das KI-Gehirn selbst zusammensetzt (Briefing,
+Besprechung der Post, vorgelesene Mail, Erinnerung an einen Termin, Nachrichten von Grok, Projektsätze), standen
+im Gesprächsverlauf ohne Kennzeichen. Bei der nächsten freien Frage ging so ein Satz an Claude, und das
+Gespräch galt trotzdem als „sauber“. Mit der Standardeinstellung (Klasse C fragt immer) blieb das ohne Folgen;
+wer „nur nach fremdem Text fragen“ gewählt hatte, bekam keine Rückfrage. Behoben: `src/lib/herkunft.ts`
+erkennt Betreff, Absender, Termintitel und -ort, Nachrichten, Coin-Namen und Projekttext aus fremder Quelle in
+einer Antwort; solche Antworten und jede vorgelesene Mail tragen jetzt das Kennzeichen. Beleg:
+`test/regeln/herkunft.test.ts` (8 Tests) und eine Handprüfung im Browser. Grenze: erkannt wird wörtlicher Text
+ab vier Zeichen (bei langen Texten der Anfang); eine sinngemäße Wiedergabe gibt es in diesen Antworten nicht.
+Betroffen war nur die Oberfläche am Mac; Telegram nimmt eigene Antworten nicht in den Verlauf.
+
+**R-25 Schlüssel im Schlüsselbund konnte mit einem leeren Wert überschrieben werden (gefunden in der
+Durchsicht, behoben in Schritt B4):** Las eine Anfrage die Einstellungen, während der Schlüsselbund gesperrt
+war (Werte leer), ging der Schlüsselbund dann auf und speicherte die Anfrage ihren alten Stand, schrieb
+`writeConfig` den leeren Wert über den echten Schlüssel. Der Schutz davor griff nur, solange der Eintrag noch
+als unlesbar galt. Behoben: Ein leerer Wert für einen Eintrag, der laut Datei im Schlüsselbund liegt, lässt den
+Eintrag immer unangetastet; gelöscht wird nur, wenn der ganze Abschnitt entfernt wird. Beleg:
+`test/module/zugangsdaten.test.ts` (neuer Test, vorher rot: Der Schlüssel war leer). Nur gegen das
+nachgebaute `security` geprüft.
+
 ## Was bereits gut ist und erhalten bleiben soll
 
 * Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt H1 sind es 20) prüfen Host, Herkunft und einen eigenen Header.

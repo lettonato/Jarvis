@@ -14,7 +14,7 @@ Mac). Bekannte Lücken werden nie als bestanden geführt. Produktive Änderungen
 Zugangsdaten, Kosten und vertrauliche Daten nur nach ausdrücklicher Freigabe. Vertrauliche
 Unternehmensdaten erst nach Sicherheits- und Datenschutzfreigabe. Merge nur auf Benedikts „merge“.
 
-Letzte Aktualisierung: 13. November 2026 (Schritt E2, neue Oberfläche „Glashaus“)
+Letzte Aktualisierung: 13. November 2026 (Schritt B4, nach E2 „Glashaus“)
 
 ## Aktueller Stand
 
@@ -27,7 +27,7 @@ Zugangsdaten, kein Push/Merge ohne ausdrückliche Freigabe.
 Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schritt C1), die Tagesübersicht
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
-Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 435 von 435 automatischen Tests
+Benedikts Wunsch vom 13. November) sind gebaut und in der Sandbox geprüft: 444 von 444 automatischen Tests
 bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
@@ -337,6 +337,29 @@ Beide Befunde aus der Durchsicht ließen sich nachstellen (Tests zuerst rot) und
 | Gegenproben (Korrektur einzeln zurückgenommen) | Name wieder in der Meldung: 2 Tests schlagen fehl; altes Kennzeichen: 1 Test schlägt fehl. Danach wiederhergestellt |
 | Nicht geprüft | die übrigen acht Befunde der Durchsicht; das echte Modell |
 
+### Schritt B4: zwei Sicherheitsbefunde aus der Durchsicht zu Schritt E2 (13. November 2026)
+
+Beide ließen sich nachstellen (Tests zuerst rot) und sind behoben:
+
+* **R-25 Schlüssel im Schlüsselbund mit leerem Wert überschrieben:** Speicherte JARVIS Einstellungen, die er
+  gelesen hatte, während der Schlüsselbund gesperrt war, und war der Schlüsselbund inzwischen wieder offen,
+  wurde der echte Schlüssel durch einen leeren ersetzt. Jetzt bleibt ein Eintrag im Schlüsselbund bei einem
+  leeren Wert immer unangetastet (`src/lib/server/config.ts`).
+* **R-24 Eigene Antworten mit Text von Dritten:** Briefing, Besprechung der Post, vorgelesene Mails,
+  Terminerinnerungen und Nachrichten standen im Gespräch, ohne als „von Dritten“ zu gelten. Jetzt erkennt
+  `src/lib/herkunft.ts` solchen Text, und die Antwort trägt das Kennzeichen; der Server fragt danach bei
+  Änderungen nach, auch wenn „nur nach fremdem Text fragen“ eingestellt ist.
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **444 Tests: 444 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu: 8 in `herkunft.test.ts`, 1 in `zugangsdaten.test.ts`) |
+| Vorher rot | Schlüsselbund-Test: „Claude-Schlüssel unverändert“ schlug fehl, der Wert war leer |
+| Handprüfung im Browser (gebauter Server, Beispieldaten) | „Wetter“ und der Satz mit der Zahl der Mails bleiben ohne Kennzeichen; „Die Mail ist von Petra Bauer. Betreff: …“ trägt es |
+| Nicht geprüft | echter macOS-Schlüsselbund; ob das Gateway nach einer so gekennzeichneten Antwort am Mac wirklich nachfragt (die Weitergabe des Kennzeichens an den Server ist seit Schritt 2 gebaut und dort getestet, hier nicht erneut) |
+
+**Offen aus der Durchsicht:** die acht Befunde aus Schritt B2 und zwei neue aus Schritt E2 (Korrekturvorschlag
+überschreibt Handänderungen; Netzschleuse ohne Ausweichadresse). Keiner davon betrifft Zugangsdaten.
+
 ## Bereich C – Gehirn und Projektgedächtnis
 
 Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-projektgedaechtnis.md).
@@ -453,7 +476,7 @@ nachgestellt sind:
 | Ein Korrekturvorschlag merkt sich alle Felder zum Zeitpunkt des Vorschlags; wer den Eintrag danach von Hand ändert und dann übernimmt, bekommt die alten Werte zurück | `src/lib/server/projekte/projekte.ts` (um Zeile 375) |
 | Die Netzschleuse verbindet nur zur ersten gefundenen Adresse eines Servers, ohne Ausweichen auf die nächste | `src/lib/server/netzschleuse.ts` (um Zeile 78) |
 
-Die ersten beiden betreffen Sicherheit und kommen im nächsten Paket zuerst dran.
+Die ersten beiden betreffen Sicherheit und sind in Schritt B4 behoben (R-25, R-24).
 
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** In den dichten Räumen (Trading, Einstellungen)
 stehen noch weiße Kästen aus der alten Oberfläche auf der Wand; das ist lesbar, aber noch nicht so ruhig wie
@@ -619,9 +642,9 @@ Benedikts Wünsche vom 13. November 2026 gehen vor:
    geblieben. Offen ist Benedikts Blick am Mac (Prüfliste Teil J) und der Feinschliff der dichten Räume
    Trading und Einstellungen.
 3. **Befunde aus der Durchsicht vom 13.11.**: die zwei zum Schutz vertraulicher Projekte sind behoben
-   (Schritt B3). Die übrigen acht (Liste in den Testergebnissen von Schritt B2) und die vier neuen aus der
-   Durchsicht zu Schritt E2 (Tabelle dort; zuerst Schlüsselbund und Kennzeichnung im Briefing) einzeln
-   nachstellen, mit Test belegen, beheben.
+   (Schritt B3), ebenso Schlüsselbund und Kennzeichnung eigener Antworten (Schritt B4). Die übrigen acht
+   (Liste in den Testergebnissen von Schritt B2) und die zwei übrigen neuen aus der Durchsicht zu Schritt E2
+   (Korrekturvorschlag, Netzschleuse) einzeln nachstellen, mit Test belegen, beheben.
 
 Danach wie geplant:
 

@@ -14,6 +14,7 @@ import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
 import type { DeskSnapshot } from "@/lib/paper";
 import type { ProjekteSnapshot } from "@/lib/projekte";
+import { enthaeltFremdes } from "@/lib/herkunft";
 import type { Settings } from "@/lib/settings";
 import type { TasksSnapshot } from "@/lib/tasks";
 import { usePolling } from "@/lib/usePolling";
@@ -201,7 +202,10 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
 
   const addTurn = useCallback((who: Turn["who"], text: string, extra: Partial<Turn> = {}) => {
     const id = turnId++;
-    setTurns((prev) => [...prev, { id, who, text, ...extra }].slice(-KEEP_TURNS));
+    // Was JARVIS selbst zusammensetzt (Briefing, Besprechung, Erinnerung) und dabei Text von Dritten nennt,
+    // gilt als fremd, damit der Server danach bei Änderungen nachfragt. Antworten des KI-Gehirns (live) kennzeichnet der Server.
+    const fremd = who === "jarvis" && !extra.live && !extra.fremd && enthaeltFremdes(text, latest.current);
+    setTurns((prev) => [...prev, { id, who, text, ...extra, ...(fremd ? { fremd: true } : {}) }].slice(-KEEP_TURNS));
     return id;
   }, []);
 
@@ -332,7 +336,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       if (d.session !== undefined) setSession(d.session);
       if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: fahrtArten(place.current, d.navigate) });
       const first = [d.reply, said].filter(Boolean).join(" ");
-      if (first) addTurn("jarvis", first);
+      // Der vorgelesene Text einer Mail stammt immer von Dritten.
+      if (first) addTurn("jarvis", first, said && d.effect?.type === "readMail" ? { fremd: true } : {});
       if (d.after) addTurn("jarvis", d.after);
       speakThenMaybeListen([first, d.after].filter(Boolean).join(" "));
     },
@@ -454,7 +459,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       // Was die Besprechung noch anhängt, kommt dazu, etwa „Bis nächste Woche ist nichts fällig“ oder der erste Punkt.
       const more = d.reply.startsWith(result.reply) ? d.reply.slice(result.reply.length).trim() : "";
       if (more) {
-        updateTurn(id, { text: `${result.reply} ${more}` });
+        // Der Anhang der Besprechung (etwa die erste Mail) kann Text von Dritten nennen, auch wenn Claudes Antwort es nicht tat.
+        updateTurn(id, { text: `${result.reply} ${more}`, ...(enthaeltFremdes(more, latest.current) ? { fremd: true } : {}) });
         speech.push(more);
       }
       if (d.after) {
