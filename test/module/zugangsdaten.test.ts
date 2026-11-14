@@ -45,6 +45,7 @@ before(async () => {
 
 beforeEach(async () => {
   delete process.env.JARVIS_SECURITY_KAPUTT;
+  delete process.env.JARVIS_SECURITY_KAPUTT_NAME;
   await fs.rm(STORE, { force: true });
   await fs.rm(LOG, { force: true });
   config.vergissGeheimnisse();
@@ -211,6 +212,122 @@ describe("Zugangsdaten: Umzug in den Schlüsselbund", () => {
     assert.deepEqual(ablageInhalt(), {});
     config.vergissGeheimnisse();
     assert.equal((await config.readConfig()).telegram?.token, TELEGRAM);
+  });
+
+  // Der Umzug liest die Einstellungen, schreibt dann jeden Wert in den Schlüsselbund (das dauert) und stellt
+  // erst danach die Datei um. Was in dieser Zeit woanders gespeichert wird, darf nicht verloren gehen.
+  const gleichDanach = (aendern: (c: Awaited<ReturnType<typeof config.readConfig>>) => void) =>
+    new Promise((r) => setTimeout(r, 25)).then(() =>
+      config.aendereConfig((c) => {
+        aendern(c);
+        return c;
+      }),
+    );
+
+  test("eine Einstellung, die während des Umzugs gespeichert wird, bleibt", async () => {
+    await Promise.all([z.inSchluesselbund("mac"), gleichDanach((c) => void (c.name = "Ben"))]);
+    config.vergissGeheimnisse();
+    const c = await config.readConfig();
+    assert.equal(c.name, "Ben");
+    assert.equal(c.geheimnisse, "schluesselbund");
+    assert.equal(c.claude?.apiKey, CLAUDE);
+    for (const geheim of [CLAUDE, TELEGRAM, MAILPW]) assert.ok(!datei().includes(geheim), "Klartext in config.json");
+  });
+
+  test("ein Schlüssel, der während des Umzugs geändert wird, landet im Schlüsselbund und nirgends im Klartext", async () => {
+    const neu = ["sk-ant-api03", "waehrend", "des", "umzugs", "ZYXWVUT"].join("-");
+    await Promise.all([z.inSchluesselbund("mac"), gleichDanach((c) => void (c.claude = { apiKey: neu }))]);
+    assert.ok(!datei().includes(neu) && !datei().includes(CLAUDE), "Klartext in config.json");
+    assert.equal(ablageInhalt()["JARVIS/claude.apiKey"], neu);
+    config.vergissGeheimnisse();
+    assert.equal((await config.readConfig()).claude?.apiKey, neu);
+  });
+
+  test("ein Abschnitt, der während des Umzugs entfernt wird, bleibt entfernt und hinterlässt nichts im Schlüsselbund", async () => {
+    await Promise.all([z.inSchluesselbund("mac"), gleichDanach((c) => void delete c.mail)]);
+    assert.equal(ablageInhalt()["JARVIS/mail.password"], undefined);
+    assert.ok(!datei().includes(MAILPW));
+    config.vergissGeheimnisse();
+    const c = await config.readConfig();
+    assert.equal(c.mail, undefined);
+    assert.equal(c.telegram?.token, TELEGRAM);
+    const e = (await audit.leseAudit(5)).find((x) => x.was === "Zugangsdaten in den Schlüsselbund")!;
+    assert.doesNotMatch(JSON.stringify(e), /mail\.password/);
+  });
+
+  test("eine Einstellung, die während des Rückwegs gespeichert wird, bleibt", async () => {
+    await z.inSchluesselbund("mac");
+    config.vergissGeheimnisse();
+    await Promise.all([z.zurueckInDatei("mac"), gleichDanach((c) => void (c.name = "Ben"))]);
+    config.vergissGeheimnisse();
+    const c = await config.readConfig();
+    assert.equal(c.name, "Ben");
+    assert.equal(c.geheimnisse, "datei");
+    assert.equal(c.claude?.apiKey, CLAUDE);
+    assert.equal(c.mail?.password, MAILPW);
+  });
+
+  test("wird der Schlüsselbund kurz vor dem Rückweg gesperrt, bleibt alles im Schlüsselbund und nichts geht verloren", async () => {
+    await z.inSchluesselbund("mac");
+    config.vergissGeheimnisse();
+    process.env.JARVIS_SECURITY_KAPUTT = "lesen";
+    await assert.rejects(z.zurueckInDatei("mac"), /Nicht lesbar/);
+    delete process.env.JARVIS_SECURITY_KAPUTT;
+    assert.match(datei(), /@schluesselbund/);
+    assert.equal(ablageInhalt()["JARVIS/claude.apiKey"], CLAUDE);
+    config.vergissGeheimnisse();
+    assert.equal((await config.readConfig()).claude?.apiKey, CLAUDE);
+  });
+
+  test("scheitert das Umstellen der Datei am Schluss, wird alles zurückgenommen und nichts bleibt im Schlüsselbund", async () => {
+    // Während des Umzugs kommt ein neuer Schlüssel dazu; den nimmt der Schlüsselbund nicht an.
+    const xai = ["xai", "test", "waehrend", "des", "umzugs", "ABCDEFGH"].join("-");
+    process.env.JARVIS_SECURITY_KAPUTT_NAME = "xai.apiKey";
+    try {
+      const [umzug] = await Promise.allSettled([z.inSchluesselbund("mac"), gleichDanach((c) => void (c.xai = { apiKey: xai }))]);
+      assert.equal(umzug.status, "rejected");
+      assert.ok(umzug.status === "rejected" && umzug.reason instanceof z.ZugangsdatenFehler);
+    } finally {
+      delete process.env.JARVIS_SECURITY_KAPUTT_NAME;
+    }
+    assert.deepEqual(ablageInhalt(), {});
+    assert.ok(!datei().includes("@schluesselbund"));
+    const c = await config.readConfig();
+    assert.equal(c.geheimnisse, undefined);
+    assert.equal(c.claude?.apiKey, CLAUDE);
+    assert.equal(c.xai?.apiKey, xai);
+    assert.equal(c.mail?.password, MAILPW);
+    const e = (await audit.leseAudit(5)).find((x) => x.was === "Zugangsdaten in den Schlüsselbund")!;
+    assert.equal(e.ergebnis, "fehler");
+    assert.ok(!JSON.stringify(e).includes(xai));
+  });
+
+  test("zweimal zugleich gestartet (Doppelklick): Es läuft nacheinander, am Ende ist jeder Wert lesbar", async () => {
+    await z.inSchluesselbund("mac");
+    const [zurueck, hin] = await Promise.all([z.zurueckInDatei("mac"), z.inSchluesselbund("mac")]);
+    assert.match(zurueck, /wieder in der Datei/);
+    assert.match(hin, /3 Einträge liegen jetzt im Schlüsselbund/);
+    config.vergissGeheimnisse();
+    const c = await config.readConfig();
+    assert.equal(c.geheimnisse, "schluesselbund");
+    assert.equal(c.claude?.apiKey, CLAUDE);
+    assert.equal(c.telegram?.token, TELEGRAM);
+    assert.equal(c.mail?.password, MAILPW);
+    assert.equal(config.unlesbareGeheimnisse().size, 0);
+    const [a, b] = await Promise.all([z.zurueckInDatei("mac"), z.zurueckInDatei("mac")]);
+    assert.match(a, /wieder in der Datei/);
+    assert.match(b, /schon in der Datei/);
+    assert.ok(datei().includes(CLAUDE));
+  });
+
+  test("ein leerer Wert ist kein Geheimnis: Er kommt nicht in den Schlüsselbund", async () => {
+    await z.inSchluesselbund("mac");
+    // So speichert die Einstellungsseite ein Tagesbudget, wenn der xAI-Schlüssel nur aus der Umgebung kommt.
+    await config.aendereConfig((c) => ({ ...c, xai: { apiKey: "", dailyBudgetUsd: 2 } }));
+    assert.equal("JARVIS/xai.apiKey" in ablageInhalt(), false);
+    config.vergissGeheimnisse();
+    assert.deepEqual((await config.readConfig()).xai, { apiKey: "", dailyBudgetUsd: 2 });
+    assert.equal(config.unlesbareGeheimnisse().size, 0);
   });
 
   test("das Audit-Log nennt die Einträge, nie die Werte", async () => {

@@ -185,6 +185,8 @@ export async function readConfig(jetzt = Date.now()): Promise<JarvisConfig> {
 const warteschlange = globalThis as typeof globalThis & { __jarvisConfigSchreiben?: Promise<unknown> };
 let nebendatei = 0;
 
+// Schreibt genau, was es bekommt, auch einen veralteten Stand. Nur für die erste Einrichtung und für Tests; im
+// Programm ändert jede Stelle über aendereConfig (ein Test prüft, dass sonst niemand writeConfig benutzt).
 export function writeConfig(config: JarvisConfig): Promise<void> {
   const lauf = (warteschlange.__jarvisConfigSchreiben ?? Promise.resolve()).then(() => schreibeConfig(config));
   warteschlange.__jarvisConfigSchreiben = lauf.catch(() => {});
@@ -194,11 +196,14 @@ export function writeConfig(config: JarvisConfig): Promise<void> {
 // Lesen, ändern und speichern in einem Zug, in derselben Reihe wie jedes andere Speichern: Dazwischen kommt
 // keine zweite Änderung, die sonst mit ihrem älteren Stand die erste wieder überschriebe. fn bekommt den Stand
 // von jetzt und gibt den neuen zurück, oder null, wenn nichts zu ändern ist.
-export function aendereConfig(fn: (config: JarvisConfig) => JarvisConfig | null): Promise<JarvisConfig> {
+// danach läuft nach dem Speichern noch in derselben Reihe, also bevor die nächste Änderung drankommt (der Umzug
+// der Zugangsdaten räumt so auf, ohne dass ihm ein anderes Speichern dazwischenkommt).
+export function aendereConfig(fn: (config: JarvisConfig) => JarvisConfig | null, danach?: (neu: JarvisConfig) => Promise<void>): Promise<JarvisConfig> {
   const lauf = (warteschlange.__jarvisConfigSchreiben ?? Promise.resolve()).then(async () => {
     const alt = await readConfig();
     const neu = fn(alt);
     if (neu) await schreibeConfig(neu);
+    if (neu && danach) await danach(neu);
     return neu ?? alt;
   });
   warteschlange.__jarvisConfigSchreiben = lauf.catch(() => {});
@@ -226,6 +231,9 @@ async function schreibeConfig(config: JarvisConfig): Promise<void> {
         geheimnisSetzen(datei, name, GEHEIM_MARKE);
         continue;
       }
+      // Ein leerer Wert ohne Eintrag im Schlüsselbund ist kein Geheimnis (etwa ein Tagesbudget für X, wenn der
+      // Schlüssel nur aus der Umgebung kommt): Er bleibt leer in der Datei und kommt nicht in den Schlüsselbund.
+      if (wert === "") continue;
       if (wert !== GEHEIM_MARKE && tresor.werte.get(name) !== wert) {
         await schreibe(name, wert);
         tresor.werte.set(name, wert);

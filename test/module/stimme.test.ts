@@ -20,11 +20,9 @@ let stimme: typeof import("../../src/lib/server/stimme");
 let zustand: typeof import("../../src/lib/server/gateway/zustand");
 let audit: typeof import("../../src/lib/server/gateway/audit");
 
-// So wie die Einstellungen-Schnittstelle: lesen, ändern, bei Erfolg speichern, Zustand zurück.
+// So wie die Einstellungen-Schnittstelle: prüfen, in einem Zug speichern, Zustand zurück.
 const stelle = async (body: import("../../src/lib/server/stimme").StimmeAktion) => {
-  const c = await config.readConfig();
-  const r = await stimme.stimmeEinstellen(c, body);
-  if (r.ok) await config.writeConfig(c);
+  const r = await stimme.stimmeEinstellen(body);
   const daten = { stimme: await stimme.stimmeStatusVon(await config.readConfig(), JETZT), error: r.ok ? undefined : r.error, message: r.ok ? r.message : undefined };
   return { status: r.ok ? 200 : 400, daten };
 };
@@ -85,6 +83,17 @@ describe("ElevenLabs-Stimme: einrichten", () => {
     assert.deepEqual([s.configured, s.enabled, s.aktiv, s.grund, s.hint], [true, false, false, "keine-stimme", "…cdef"]);
     assert.ok(!JSON.stringify(r.daten).includes(MOCK_SCHLUESSEL), "die Antwort an die Seite enthält den Schlüssel nicht");
     assert.equal(el.gesprochen().length, 0, "beim Einrichten wird nichts vorgelesen");
+  });
+
+  test("wird der Schlüssel getauscht, während eine Stimme gewählt wird, gilt die Wahl nicht für das neue Konto", async () => {
+    await config.writeConfig({ name: "Benedikt", elevenlabs: { apiKey: MOCK_SCHLUESSEL } });
+    const anderer = ["sk", "ein0anderes0konto0nur0fuer0diesen0test0abcdef012345"].join("_");
+    // Die Wahl fragt erst bei ElevenLabs nach der Stimme; in dieser Zeit wird woanders der Schlüssel getauscht.
+    const wahl = stelle({ action: "elevenlabsPrefs", voiceId: "DeutscheStimme00001", enabled: true });
+    await config.aendereConfig((c) => ({ ...c, elevenlabs: { apiKey: anderer } }));
+    await wahl;
+    assert.deepEqual((await config.readConfig()).elevenlabs, { apiKey: anderer });
+    assert.ok(!(await audit.leseAudit(20)).some((e) => /ElevenLabs-Stimme eingeschaltet/.test(e.was)), "nichts wurde eingeschaltet, also steht auch nichts im Audit-Log");
   });
 
   test("einschalten geht erst mit einer Stimme aus dem eigenen Konto; der Name kommt von ElevenLabs", async () => {

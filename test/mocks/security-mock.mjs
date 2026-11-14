@@ -3,6 +3,7 @@
 // JSON-Datei aus JARVIS_SECURITY_STORE und schreibt jeden Aufruf (nur die Argumente) nach
 // JARVIS_SECURITY_LOG, damit Tests prüfen können, dass kein Schlüssel in einer Befehlszeile steht.
 // JARVIS_SECURITY_KAPUTT=lesen|schreiben lässt den jeweiligen Befehl scheitern.
+// JARVIS_SECURITY_KAPUTT_NAME=<Eintrag> lässt nur das Schreiben dieses einen Eintrags scheitern (z. B. xai.apiKey).
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 
 const store = process.env.JARVIS_SECURITY_STORE;
@@ -30,7 +31,7 @@ function befehl(args) {
     return 0;
   }
   if (cmd === "add-generic-password") {
-    if (kaputt === "schreiben") {
+    if (kaputt === "schreiben" || (process.env.JARVIS_SECURITY_KAPUTT_NAME && process.env.JARVIS_SECURITY_KAPUTT_NAME === arg(rest, "-a"))) {
       process.stderr.write("security: SecKeychainItemCreateFromContent: error\n");
       return 0;
     }

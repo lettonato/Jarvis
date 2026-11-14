@@ -27,6 +27,9 @@ npm run pruefen     # Lint, Typprüfung und Tests
   prüfen lässt: die Adresse (außerhalb dieses Rechners immer verschlüsselt, kein Kennwort in Anzeige oder
   Meldung), die Wahl des Speichers (ohne Einstellung die Datei, kein stilles Ausweichen), bereinigter Text
   und das Kopieren von einem Speicher in den anderen. Alles Weitere prüft die Handprüfung `postgres-rauch.ts`.
+  `einstellungen.test.ts` prüft jede Stelle, die Einstellungen speichert, auf verlorene Änderungen: zwei
+  Änderungen zur selben Zeit, eine Änderung, während ein Schlüssel noch beim Anbieter geprüft wird, Handy
+  koppeln und trennen, und dass im Programm niemand mehr einen ganzen, vorher gelesenen Stand zurückschreibt.
   `sicherung.test.ts` prüft die Sicherung (`scripts/sichern.sh`) und ihr Zurückspielen
   (`scripts/wiederherstellen-pruefen.sh`) an einem winzigen Wegwerf-Projekt mit eigenem Git: Eine gute
   Sicherung besteht, jeder Schaden wird beim Namen genannt, und eine misslungene neue Sicherung lässt die
@@ -78,7 +81,7 @@ normale Tests.
 
 `test/hand/` enthält Handprüfungen, die ein echtes Chrome brauchen und deshalb nicht bei `npm test` mitlaufen
 (Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung,
-Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“). Aufruf steht jeweils oben in der Datei.
+Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“, Einstellungen speichern mit vielen Änderungen zur selben Zeit). Aufruf steht jeweils oben in der Datei.
 
 `test/hand/postgres-rauch.ts` braucht kein Chrome, aber ein installiertes PostgreSQL (die Programme `initdb`
 und `pg_ctl`; gesucht in `JARVIS_PG_BIN` und an den üblichen Orten). Es startet ein eigenes, leeres PostgreSQL

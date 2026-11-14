@@ -1,6 +1,5 @@
 import { connection } from "next/server";
-import { readConfig, writeConfig } from "@/lib/server/config";
-import { addEvent, CalendarError, openCalendar, openUrl, readCalendarGanz, requestAccess } from "@/lib/server/calendar";
+import { addEvent, CalendarError, openCalendar, openUrl, readCalendarGanz, requestAccess, speichereKalenderZiel } from "@/lib/server/calendar";
 import { guard, readBody } from "@/lib/server/guard";
 import type { NewEvent } from "@/lib/calendar";
 
@@ -48,10 +47,7 @@ export async function POST(request: Request) {
       const snap = await readCalendarGanz();
       const name = body.calendar?.trim() ?? "";
       if (name && !snap.calendars.some((c) => c.name === name && c.writable)) return Response.json({ error: `In den Kalender „${name}“ darf ich nicht eintragen.` }, { status: 400 });
-      const config = await readConfig();
-      if (name) config.calendar = { target: name };
-      else delete config.calendar;
-      await writeConfig(config);
+      await speichereKalenderZiel(name);
       return Response.json(await readCalendarGanz({ force: true }));
     }
   } catch (e) {

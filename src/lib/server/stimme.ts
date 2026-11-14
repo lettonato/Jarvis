@@ -21,7 +21,7 @@ import {
   type StimmeStatus,
   type StimmeWahl,
 } from "../stimme";
-import { CONFIG_DIR, readConfig, type JarvisConfig } from "./config";
+import { aendereConfig, CONFIG_DIR, readConfig, type ElevenlabsConfig, type JarvisConfig } from "./config";
 import { protokolliere } from "./gateway/audit";
 import { notausAktiv } from "./gateway/zustand";
 
@@ -142,61 +142,79 @@ export type StimmeAktion =
   | { action: "elevenlabsPrefs"; enabled?: boolean; voiceId?: string; model?: string; tagesZeichen?: number }
   | { action: "removeElevenlabs" };
 
-// Einrichten und Schalten aus den Einstellungen. Ändert nur das übergebene config; gespeichert wird beim Aufrufer.
-export async function stimmeEinstellen(config: JarvisConfig, body: StimmeAktion): Promise<{ ok: true; message?: string } | { ok: false; error: string }> {
+// Einrichten und Schalten aus den Einstellungen. Erst wird geprüft (Schlüssel und Stimme beim Anbieter, das kann
+// dauern), dann in einem Zug gelesen, geändert und gespeichert. Geändert wird der Abschnitt der Stimme, wie er
+// in dem Augenblick ist: Wurde der Schlüssel inzwischen entfernt oder getauscht, gilt eine Änderung an Stimme,
+// Modell, Limit oder Schalter nicht mehr. Ins Audit-Log kommt, was sich wirklich geändert hat.
+export async function stimmeEinstellen(body: StimmeAktion): Promise<{ ok: true; config: JarvisConfig; message?: string } | { ok: false; error: string }> {
+  const stand = (await readConfig()).elevenlabs;
+  let aendern: (alt: ElevenlabsConfig | undefined) => ElevenlabsConfig | undefined;
+  let message: string | undefined;
+  let grund = "";
   if (body.action === "removeElevenlabs") {
-    if (config.elevenlabs?.enabled) await protokolliere({ ...AUS, was: "ElevenLabs-Stimme ausgeschaltet (Schlüssel entfernt)" });
-    delete config.elevenlabs;
-    shared.fehler = null;
-    return { ok: true };
-  }
-  if (body.action === "elevenlabs") {
+    aendern = () => undefined;
+    grund = " (Schlüssel entfernt)";
+  } else if (body.action === "elevenlabs") {
     const apiKey = String(body.apiKey ?? "").trim();
     if (!siehtAusWieSchluessel(apiKey)) return { ok: false, error: "Das sieht nicht nach einem ElevenLabs-Schlüssel aus. Bitte den ganzen Schlüssel einfügen, er beginnt meist mit sk_." };
     const result = await testElevenKey(apiKey);
     if (!result.ok) return result;
-    const alt = config.elevenlabs;
-    shared.fehler = null;
-    if (alt?.apiKey === apiKey) return { ok: true, message: "Verbunden. Der Schlüssel ist derselbe wie bisher." };
+    message = stand?.apiKey === apiKey ? "Verbunden. Der Schlüssel ist derselbe wie bisher." : `Verbunden. In deinem Konto sind ${result.stimmen.length} Stimmen. Such dir eine aus und schalte sie ein.`;
     // Ein neuer Schlüssel schaltet nichts ein, und ein anderer Schlüssel kann zu einem anderen Konto gehören:
     // Stimme und Schalter wählst du danach selbst. Modell und Tageslimit bleiben.
-    if (alt?.enabled) await protokolliere({ ...AUS, was: "ElevenLabs-Stimme ausgeschaltet (neuer Schlüssel)" });
-    config.elevenlabs = { apiKey, ...(alt?.model ? { model: alt.model } : {}), ...(alt?.tagesZeichen ? { tagesZeichen: alt.tagesZeichen } : {}) };
-    return { ok: true, message: `Verbunden. In deinem Konto sind ${result.stimmen.length} Stimmen. Such dir eine aus und schalte sie ein.` };
-  }
-  if (!config.elevenlabs?.apiKey) return { ok: false, error: "Bitte zuerst den ElevenLabs-Schlüssel eintragen." };
-  const next = { ...config.elevenlabs };
-  if (body.voiceId !== undefined) {
-    // Der Name kommt aus der Liste von ElevenLabs, nicht von der Seite; eine fremde Kennung wird nicht gespeichert.
-    const liste = istStimmeId(body.voiceId) ? await stimmenListe(next.apiKey) : null;
-    if (liste && !liste.ok) return liste;
-    const stimme = liste?.ok ? liste.stimmen.find((v) => v.id === body.voiceId) : undefined;
-    if (!stimme) return { ok: false, error: "Diese Stimme gibt es in deinem ElevenLabs-Konto nicht." };
-    next.voiceId = stimme.id;
-    next.voiceName = stimme.name;
-  }
-  if (body.model !== undefined) {
-    if (!istStimmeModell(body.model)) return { ok: false, error: "Dieses Modell gibt es nicht." };
-    next.model = body.model;
-  }
-  if (body.tagesZeichen !== undefined) {
-    const limit = Math.round(Number(body.tagesZeichen));
-    if (!(limit >= STIMME_LIMIT_MIN && limit <= STIMME_LIMIT_MAX)) {
-      return { ok: false, error: `Bitte eine Zahl zwischen ${STIMME_LIMIT_MIN.toLocaleString("de-DE")} und ${STIMME_LIMIT_MAX.toLocaleString("de-DE")} eintragen.` };
+    aendern = (alt) => (alt?.apiKey === apiKey ? alt : { apiKey, ...(alt?.model ? { model: alt.model } : {}), ...(alt?.tagesZeichen ? { tagesZeichen: alt.tagesZeichen } : {}) });
+    grund = " (neuer Schlüssel)";
+  } else {
+    if (!stand?.apiKey) return { ok: false, error: "Bitte zuerst den ElevenLabs-Schlüssel eintragen." };
+    let stimme: { id: string; name: string } | undefined;
+    if (body.voiceId !== undefined) {
+      // Der Name kommt aus der Liste von ElevenLabs, nicht von der Seite; eine fremde Kennung wird nicht gespeichert.
+      const liste = istStimmeId(body.voiceId) ? await stimmenListe(stand.apiKey) : null;
+      if (liste && !liste.ok) return liste;
+      stimme = liste?.ok ? liste.stimmen.find((v) => v.id === body.voiceId) : undefined;
+      if (!stimme) return { ok: false, error: "Diese Stimme gibt es in deinem ElevenLabs-Konto nicht." };
     }
-    next.tagesZeichen = limit;
-  }
-  if (typeof body.enabled === "boolean") {
-    if (body.enabled && !next.voiceId) return { ok: false, error: "Bitte zuerst eine Stimme auswählen." };
-    if (body.enabled !== (next.enabled === true)) {
-      // Ab hier geht Vorgelesenes an einen fremden Dienst (oder nicht mehr): Das gehört ins Audit-Log.
-      await protokolliere({ ...AUS, was: body.enabled ? "ElevenLabs-Stimme eingeschaltet: Vorgelesenes geht an ElevenLabs" : "ElevenLabs-Stimme ausgeschaltet" });
+    if (body.model !== undefined && !istStimmeModell(body.model)) return { ok: false, error: "Dieses Modell gibt es nicht." };
+    const model = body.model;
+    let limit: number | undefined;
+    if (body.tagesZeichen !== undefined) {
+      limit = Math.round(Number(body.tagesZeichen));
+      if (!(limit >= STIMME_LIMIT_MIN && limit <= STIMME_LIMIT_MAX)) {
+        return { ok: false, error: `Bitte eine Zahl zwischen ${STIMME_LIMIT_MIN.toLocaleString("de-DE")} und ${STIMME_LIMIT_MAX.toLocaleString("de-DE")} eintragen.` };
+      }
     }
-    next.enabled = body.enabled;
+    if (body.enabled === true && !(stimme ?? stand.voiceId)) return { ok: false, error: "Bitte zuerst eine Stimme auswählen." };
+    const schluessel = stand.apiKey;
+    aendern = (alt) => {
+      if (!alt || alt.apiKey !== schluessel) return alt;
+      const next = { ...alt };
+      if (stimme) {
+        next.voiceId = stimme.id;
+        next.voiceName = stimme.name;
+      }
+      if (model !== undefined) next.model = model;
+      if (limit !== undefined) next.tagesZeichen = limit;
+      // Einschalten nur mit einer Stimme (sie könnte inzwischen fehlen); ausschalten geht immer.
+      if (typeof body.enabled === "boolean" && (!body.enabled || next.voiceId)) next.enabled = body.enabled;
+      return next;
+    };
   }
-  config.elevenlabs = next;
+  let war = false;
+  let ist = false;
+  const config = await aendereConfig((c) => {
+    war = c.elevenlabs?.enabled === true;
+    const next = aendern(c.elevenlabs);
+    ist = next?.enabled === true;
+    if (next === c.elevenlabs) return null;
+    const neu = { ...c };
+    if (next) neu.elevenlabs = next;
+    else delete neu.elevenlabs;
+    return neu;
+  });
   shared.fehler = null;
-  return { ok: true };
+  // Ab dem Einschalten geht Vorgelesenes an einen fremden Dienst (oder nicht mehr): Das gehört ins Audit-Log.
+  if (war !== ist) await protokolliere({ ...AUS, was: ist ? "ElevenLabs-Stimme eingeschaltet: Vorgelesenes geht an ElevenLabs" : `ElevenLabs-Stimme ausgeschaltet${grund}` });
+  return { ok: true, config, ...(message ? { message } : {}) };
 }
 
 export type Gesprochen =

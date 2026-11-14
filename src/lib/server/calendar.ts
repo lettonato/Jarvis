@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { addDays, isoDate } from "../dates";
 import { eventTimes, fuerGespraech, READ_DAYS, type CalendarAccess, type CalendarEvent, type CalendarSnapshot, type NewEvent } from "../calendar";
 import { OUTLOOK_KALENDER } from "../microsoft";
-import { readConfig } from "./config";
+import { aendereConfig, readConfig } from "./config";
 import { outlookTermine } from "./microsoft";
 
 // Der Apple-Kalender auf dem Mac, über EventKit, dieselbe Schnittstelle, die auch die Kalender-App
@@ -363,4 +363,16 @@ export async function openUrl(url: string): Promise<void> {
 export async function openFile(file: string, reveal = false): Promise<void> {
   if (!onMac()) throw new CalendarError("Das geht nur auf dem Mac.");
   await run(OPEN(), reveal ? ["-R", file] : [file], 10_000);
+}
+
+// In welchen Kalender neue Termine kommen (leer: der übliche). In einem Zug gelesen, geändert und gespeichert,
+// damit das hier nichts überschreibt, was gerade woanders gespeichert wird. Ob es den Kalender gibt und ob
+// JARVIS dort eintragen darf, prüft vorher, wer das hier aufruft.
+export async function speichereKalenderZiel(name: string): Promise<void> {
+  await aendereConfig((config) => {
+    const neu = { ...config };
+    if (name) neu.calendar = { target: name };
+    else delete neu.calendar;
+    return neu;
+  });
 }

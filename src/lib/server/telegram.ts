@@ -26,7 +26,7 @@ import {
 } from "../telegram";
 import { brainKey, explainBrainError, HISTORY_TURNS, think } from "./brain";
 import { kalenderStand, readCalendar } from "./calendar";
-import { CONFIG_DIR, readConfig, writeConfig, type JarvisConfig, type TelegramConfig } from "./config";
+import { aendereConfig, CONFIG_DIR, readConfig, type JarvisConfig, type TelegramConfig } from "./config";
 import { answerApproval, approvalStateOf, control, DeskError, deskSnapshot } from "./desk/engine";
 import { intelSnapshot } from "./intel";
 import { readMail } from "./mail";
@@ -287,10 +287,14 @@ export function renewCode() {
 }
 
 async function pairChat(token: string, msg: TgMessage) {
-  const config = await readConfig();
-  if (!config.telegram || config.telegram.token !== token) return;
-  config.telegram = { ...config.telegram, chatId: msg.chat.id, chatName: msg.from?.first_name ?? msg.chat.first_name ?? undefined };
-  await writeConfig(config);
+  // In einem Zug: Was gerade woanders gespeichert wird (ein Schalter in den Einstellungen), bleibt erhalten.
+  let gekoppelt = false;
+  const config = await aendereConfig((c) => {
+    if (!c.telegram || c.telegram.token !== token) return null;
+    gekoppelt = true;
+    return { ...c, telegram: { ...c.telegram, chatId: msg.chat.id, chatName: msg.from?.first_name ?? msg.chat.first_name ?? undefined } };
+  });
+  if (!gekoppelt) return;
   shared.pair = null;
   await call(token, "setMyCommands", { commands: COMMANDS }).catch(() => {});
   await send(token, msg.chat.id, `Verbunden. ${helpText(config.name, Boolean(brainKey(config)))}`);
@@ -302,8 +306,19 @@ export async function unpairTelegram(): Promise<void> {
   const tg = config.telegram;
   if (!tg) return;
   if (tg.chatId) await send(tg.token, tg.chatId, "JARVIS ist jetzt von diesem Chat getrennt. Neu koppeln kannst du am Mac unter Einstellungen → Handy.").catch(() => {});
-  config.telegram = { token: tg.token, bot: tg.bot, trades: tg.trades, warnings: tg.warnings, reminders: tg.reminders, projekte: tg.projekte, briefing: tg.briefing, abschluss: tg.abschluss };
-  await writeConfig(config);
+  // Die Abschiedsnachricht oben kann dauern. Geändert wird deshalb der Stand von jetzt, und nur die Kopplung:
+  // Schlüssel, Bot und alle Schalter bleiben (auch „Hinweise am Tag“, der früher hier verloren ging).
+  // Hat sich in der Zwischenzeit ein anderes Handy gekoppelt oder ist es ein anderer Bot, bleibt das unberührt.
+  let getrennt = false;
+  await aendereConfig((c) => {
+    if (!c.telegram || c.telegram.token !== tg.token || c.telegram.chatId !== tg.chatId) return null;
+    getrennt = true;
+    const telegram = { ...c.telegram };
+    delete telegram.chatId;
+    delete telegram.chatName;
+    return { ...c, telegram };
+  });
+  if (!getrennt) return;
   const state = await load();
   state.history = [];
   await save(state);

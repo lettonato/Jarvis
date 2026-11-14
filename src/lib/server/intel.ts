@@ -13,7 +13,7 @@ import {
   type IntelReport,
   type IntelSnapshot,
 } from "../intel";
-import { CONFIG_DIR, grokKey, readConfig, writeConfig, type JarvisConfig } from "./config";
+import { aendereConfig, CONFIG_DIR, grokKey, readConfig, type JarvisConfig } from "./config";
 import { askGrok, GrokError } from "./desk/grok";
 import { agentSperre } from "./gateway/zustand";
 import { notify } from "./notify";
@@ -307,15 +307,18 @@ async function runIntel(apiKey: string, topics: string[], focus: string | null, 
 }
 
 export async function saveIntelSettings(input: { topics?: unknown; budgetUsd?: unknown; auto?: unknown }): Promise<void> {
-  const config = await readConfig();
-  const intel = { ...config.intel };
-  if (input.topics !== undefined) intel.topics = cleanTopics(input.topics);
+  // Erst prüfen, dann in einem Zug lesen, ändern, speichern: So überschreibt das hier nichts, was gerade
+  // woanders gespeichert wird.
+  let budget: number | undefined;
   if (input.budgetUsd !== undefined) {
-    const budget = Math.round(Number(input.budgetUsd) * 100) / 100;
+    budget = Math.round(Number(input.budgetUsd) * 100) / 100;
     if (!(budget >= TYPICAL_INTEL_COST_USD && budget <= 10)) throw new IntelError(`Bitte ein Tagesbudget zwischen ${TYPICAL_INTEL_COST_USD.toLocaleString("de-DE", { minimumFractionDigits: 2 })} und 10 Dollar eintragen.`);
-    intel.budgetUsd = budget;
   }
-  if (input.auto !== undefined) intel.auto = input.auto === true;
-  config.intel = intel;
-  await writeConfig(config);
+  await aendereConfig((config) => {
+    const intel = { ...config.intel };
+    if (input.topics !== undefined) intel.topics = cleanTopics(input.topics);
+    if (budget !== undefined) intel.budgetUsd = budget;
+    if (input.auto !== undefined) intel.auto = input.auto === true;
+    return { ...config, intel };
+  });
 }

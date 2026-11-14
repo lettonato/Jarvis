@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { baueBericht, einordnung, fakten, HINWEIS, METALLE, METALLE_ZEITEN, metallLage, TAGE_ABFRAGEN, veraltet, type MetallBericht, type MetalleSnapshot, type MetallId, type TagesKerze } from "../metalle";
 import { faelligerTermin, MAX_ZEITEN, NACHHOL_FENSTER_MS, naechsterTermin, saeubereZeiten } from "../zeitplan";
-import { CONFIG_DIR, readConfig, twelveKey, writeConfig, type JarvisConfig } from "./config";
+import { aendereConfig, CONFIG_DIR, readConfig, twelveKey, type JarvisConfig } from "./config";
 import { getTwelve, TwelveError } from "./desk/commodities";
 import { agentSperre } from "./gateway/zustand";
 
@@ -199,18 +199,21 @@ export async function metalleSnapshot(now = new Date()): Promise<MetalleSnapshot
 }
 
 export async function saveMetalleSettings(input: { auto?: unknown; zeiten?: unknown }): Promise<void> {
-  const config = await readConfig();
-  const metalle = { ...config.metalle };
-  if (input.auto !== undefined) metalle.auto = input.auto === true;
+  // Erst prüfen, dann in einem Zug lesen, ändern, speichern: So überschreibt das hier nichts, was gerade
+  // woanders gespeichert wird.
+  let zeiten: string[] | undefined;
   if (input.zeiten !== undefined) {
-    const zeiten = saeubereZeiten(input.zeiten);
+    zeiten = saeubereZeiten(input.zeiten);
     if (zeiten.length === 0 || !Array.isArray(input.zeiten) || zeiten.length !== new Set(input.zeiten).size) {
       throw new MetalleError(`Bitte eine bis ${MAX_ZEITEN} Uhrzeiten in der Form 07:30 eintragen.`);
     }
-    metalle.zeiten = zeiten;
   }
-  config.metalle = metalle;
-  await writeConfig(config);
+  await aendereConfig((config) => {
+    const metalle = { ...config.metalle };
+    if (input.auto !== undefined) metalle.auto = input.auto === true;
+    if (zeiten) metalle.zeiten = zeiten;
+    return { ...config, metalle };
+  });
 }
 
 // Nur für Tests: vergisst den Stand im Speicher, damit die Datei neu gelesen wird.

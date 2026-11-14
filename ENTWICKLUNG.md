@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 764 von 764 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 795 von 795 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -64,7 +64,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | D Microsoft 365 | **Testbereit** (nur gegen Nachbau) für Termine aus Outlook lesen (Schritt D1); **Blockiert** für die echte Anbindung, bis eure IT die Anwendung in Entra angelegt hat; **Offen** für Mail, Dateien, Teams | App-Registrierung durch die IT (Frage 14), Mac-Prüfliste Teil N; weitere Teile nur nach Benedikts Entscheidung |
 | H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
 | I Azure | **Testbereit** für die Vorbereitung (Schritt I1): Projektgedächtnis in PostgreSQL, Claude-Zugang an einer Stelle, Anleitung; **Blockiert** für alles in Azure selbst (Entscheidung und Kostenfreigabe) | Abonnement, IT-Kontakt, Region, Budget (Frage 3); davor Anmeldung je Person und die übrigen Daten auf die Datenbank umstellen |
-| J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Testbereit** für das Zurückspielen der Sicherung (Schritt J2); **Offen** für einen zweiten Zugang zu Claude (die Stelle dafür gibt es seit I1) | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
+| J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Testbereit** für das Zurückspielen der Sicherung (Schritt J2) und das Speichern der Einstellungen in einem Zug (Schritt J3); **Offen** für einen zweiten Zugang zu Claude (die Stelle dafür gibt es seit I1) | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
 
 ## Wiederaufnahmepunkt
 
@@ -531,8 +531,8 @@ Zugangsdaten; im Schlüsselbund-Modus im Schlüsselbund. (2) Titel und Orte von 
 (Einladungen). Mit gesetztem Haken gehen sie wie Mac-Termine an das KI-Modell; das Gespräch gilt dann wie
 bisher als „fremd“, sobald Termine gelesen wurden. (3) Steht das Firmenkonto auch in der Kalender-App des
 Macs, gehen diese Termine über den Mac-Kalender ins Gespräch, unabhängig vom Haken (siehe Anleitung).
-(4) Andere Abschnitte der Einstellungen werden noch ohne Sperre gelesen, geändert und gespeichert; zwei
-Änderungen im selben Augenblick können sich dort überschreiben (offen in Bereich J).
+(4) Seit Schritt J3 werden auch alle anderen Abschnitte der Einstellungen in einem Zug gelesen, geändert und
+gespeichert; zwei Änderungen im selben Augenblick überschreiben sich nicht mehr.
 
 ## Bereich E – Geschäftsführungsdashboard
 
@@ -1124,6 +1124,55 @@ herunterlädt oder GitHub wieder geht; die Sandbox ist kein dauerhafter Speicher
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
+
+### Schritt J3: Einstellungen in einem Zug lesen, ändern und speichern (14. November 2026)
+
+**Warum:** Jede Stelle, die Einstellungen speichert, las bisher erst alle Einstellungen, prüfte dann (ein
+Schlüssel wird beim Anbieter getestet, eine Abschiedsnachricht geht ans Handy; das dauert Sekunden) und schrieb
+am Ende ihren alten Stand ganz zurück. Was in der Zwischenzeit woanders gespeichert wurde, war wieder weg: ein
+Schalter, die Kopplung des Handys, oder die Anmeldung bei Microsoft 365, die sich im Hintergrund erneuert (der
+alte Anmeldeschlüssel gilt dann nicht mehr, du müsstest dich neu anmelden). Seit D1 gab es dafür
+`aendereConfig`, benutzt hat es nur der Abschnitt Microsoft 365.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J3.1 Die Einstellungsseite: Prüfen und Speichern stehen jetzt in `src/lib/server/einstellungen.ts` (vorher in der Schnittstelle, dort nicht prüfbar). Jede der 22 Aktionen prüft erst und ändert dann den Stand von dem Augenblick, in dem gespeichert wird | Testbereit | `test/module/einstellungen.test.ts` (22) |
+| J3.2 Handy koppeln und trennen, Edelmetalle, Lagebild, Kalenderziel: ebenso | Testbereit | derselbe Test; `speichereKalenderZiel` in `calendar.ts` |
+| J3.3 Stimme (ElevenLabs): prüfen, dann den Abschnitt ändern, wie er dann ist. Wurde der Schlüssel inzwischen entfernt oder getauscht, gilt eine Wahl von Stimme, Modell, Limit oder Schalter nicht mehr. Ins Audit-Log kommt, was sich wirklich geändert hat | Testbereit | `test/module/stimme.test.ts` (21) |
+| J3.4 Umzug der Zugangsdaten in den Schlüsselbund und zurück: umgestellt wird der Stand von jetzt. Ein Schlüssel, der während des Umzugs geändert wird, landet im Schlüsselbund; ein entfernter Abschnitt hinterlässt dort nichts; scheitert das Umstellen am Schluss, wird alles zurückgenommen; hin und zurück laufen nie zugleich | Testbereit, **nur gegen den nachgebauten Schlüsselbund** | `test/module/zugangsdaten.test.ts` (21, davon 8 neu). Am echten Schlüsselbund weiter nur am Mac prüfbar (Prüfliste). Ein Umzug findet weiter nur auf deinen Knopfdruck statt |
+| J3.5 Im Programm speichert niemand mehr einen ganzen, vorher gelesenen Stand | Testbereit | Regeltest: `writeConfig` benutzt in `src` nur noch `config.ts` selbst |
+
+**Dabei gefunden und behoben:** (1) Beim Trennen des Handys ging der Schalter „Hinweise am Tag“ verloren (er
+fehlte in der Liste dessen, was beim Trennen bleibt). (2) Im Schlüsselbund-Betrieb schrieb JARVIS einen leeren
+Wert als „Geheimnis“ in den Schlüsselbund, wenn du ein Tagesbudget für X eingestellt hast und der xAI-Schlüssel
+nur aus der Umgebung kam. (3) Eine Mail-Einstellung ohne Angaben ließ die Schnittstelle abstürzen statt eine
+Meldung zu geben.
+
+**Eigene Entscheidungen:** Zwei Änderungen am selben Abschnitt zur selben Zeit (zwei Fenster): Die spätere gilt,
+aber nur für diesen Abschnitt. Der Eintrag im Audit-Log zur Stimme wird nach dem Speichern geschrieben statt
+davor, damit er stimmt; scheitert das Schreiben des Logs, ist der Schalter trotzdem gespeichert.
+
+**Grenzen:** Geschützt ist ein laufender JARVIS gegen sich selbst. Zwei gleichzeitig laufende JARVIS auf
+demselben Mac (zwei gestartete Server) können sich weiter überschreiben; dagegen gibt es keine Sperre über die
+Datei (bei der Handprüfung gesehen: Eine Änderung aus einem zweiten Programm war nach dem nächsten Speichern des
+Servers wieder weg). Wer `config.json` von Hand ändert, während JARVIS speichert, ebenso.
+
+### Testergebnisse Schritt J3 (14. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **795 Tests: 795 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 31: Einstellungen 22, Zugangsdaten 8, Stimme 1) |
+| Tests zuerst | Die alte Logik wurde zuerst unverändert in das neue Modul verschoben; dagegen liefen 9 der ersten 17 Tests rot (jede Stelle verlor nachweislich Änderungen), die 4 neuen Tests zum Umzug der Zugangsdaten ebenso. Nach der Durchsicht noch einmal 8 Tests rot, bevor die Korrekturen kamen |
+| Gegenproben | 36 absichtlich eingebaute Fehler: 36 bemerkt, 0 nicht bemerkt (unter anderem: Speichern nicht mehr in einem Zug, die Einstellungsseite schreibt ihren alten Stand, entfernter Bot oder Schlüssel kommt zurück, Trennen nimmt ein neu gekoppeltes Handy mit oder verliert Schalter, Stimme gilt für ein anderes Konto, Umzug stellt den alten Stand um, Rückweg trotz gesperrtem Schlüsselbund, gescheitertes Umstellen lässt Einträge im Schlüsselbund, hin und zurück zugleich) |
+| `npx next build` | erfolgreich, mit den vier bekannten Warnungen |
+| Handprüfung `einstellungen-rauch` (Chromium, gebauter Server, nachgebauter Claude und nachgebautes Telegram) | alle Schritte in Ordnung: fremde Seiten abgewiesen; sechs abgelehnte Eingaben mit klarer Meldung; Name und Rückfrage-Grenze über die Seite gespeichert; sechs Änderungen im selben Augenblick (Bot-Schlüssel mit langsamer Prüfung, Claude-Schlüssel, Name, Grenze, Lagebild, Edelmetalle) stehen alle in der Datei; das Handy koppelt sich über den Code, währenddessen werden Schalter umgelegt, beides bleibt; Handy getrennt, während der Name geändert wird, Schalter bleiben; kein Schlüssel im Seitentext. Dazu `stimme-rauch` (Stimme einrichten und schalten über die Seite): alle Schritte in Ordnung |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde. Eingearbeitet: Die Stimme setzte ihren alten Abschnitt in den frischen Stand ein und holte so einen entfernten Schlüssel zurück (jetzt wie alle anderen: prüfen, dann am frischen Stand ändern); das Budget für X legte einen entfernten Abschnitt leer wieder an; der Umzug in den Schlüsselbund hatte für seinen letzten Schritt keine Rücknahme; das Aufräumen danach lief außerhalb der Reihe und konnte einen eben gespeicherten Eintrag löschen; hin und zurück konnten zugleich laufen; das Trennen nahm auch ein inzwischen neu gekoppeltes Handy mit; Mail ohne Angaben. Bewusst nicht geändert: Telegram entfernen speichert weiter in zwei Schritten (trennen, dann entfernen; der Schlüssel ist danach ohnehin weg); `writeConfig` bleibt für Tests und die erste Einrichtung bestehen, mit dem Regeltest als Wächter |
+| Sicherheitsprüfung (von Hand) | Keine neue Stelle, an der ein Schlüssel gelesen, gezeigt oder gesendet wird. Das neue Modul gibt dieselben Meldungen wie vorher zurück, nie einen Wert; ins Audit-Log gehen weiter nur Namen. Der Umzug der Zugangsdaten räumt bei einem Fehler jetzt auch im letzten Schritt auf; gelöscht wird im Schlüsselbund nur unter dem Namen von JARVIS und nur, solange die Datei noch im Klartext-Betrieb ist |
+| Nicht geprüft | **der echte Schlüsselbund am Mac**; echte Dienste (alles gegen Nachbauten); zwei gleichzeitig laufende JARVIS; Safari |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen; eines weniger (verlorene
+Änderungen an Einstellungen, darunter die Anmeldung bei Microsoft 365). **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -1217,7 +1266,8 @@ Danach wie geplant:
    zu Claude an einer Stelle, Anleitung für Azure. In Azure selbst ist nichts angelegt.
 10. **J2: gebaut, Testbereit** (Schritt J2 in Bereich J): Die Sicherung lässt sich zurückspielen und prüfen;
    eine misslungene neue Sicherung lässt die alte liegen.
-   **Als Nächstes: J:** Einstellungen überall in einem Zug lesen und speichern (wie seit D1 für
-   Microsoft 365). Danach G2.4 (Hinweis als Mitteilung am Mac). Die
+11. **J3: gebaut, Testbereit** (Schritt J3 in Bereich J): Einstellungen werden überall in einem Zug gelesen,
+   geändert und gespeichert.
+   **Als Nächstes:** G2.4 (Hinweis als Mitteilung am Mac). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).
