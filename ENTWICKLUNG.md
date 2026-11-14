@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 821 von 821 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 848 von 848 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -47,7 +47,9 @@ vorbereitet, soweit das ohne Azure geht: Das Projektgedächtnis kann in einer Po
 (geprüft gegen ein echtes PostgreSQL 16 in der Sandbox, **nicht in Azure**), und die Verbindung zu Claude wird
 an einer Stelle aufgebaut. In Azure ist nichts angelegt; es gibt keine Kosten.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
-„Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
+„Testbereit“. Seit Schritt C2 hat auch das persönliche Gedächtnis die Zusagen des Projektgedächtnisses: Zwei
+Einträge zur selben Zeit überschreiben sich nicht, und eine beschädigte Datei wird nie stillschweigend ersetzt.
+Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
 dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
 (siehe „Offene Fragen“, Punkt 5).
 
@@ -57,7 +59,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 |---|---|---|
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
 | B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; zwei kleine Befunde aus den Durchsichten (siehe Schritt B5) |
-| C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen; Speicher wahlweise Datei oder PostgreSQL (Schritt I1) | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
+| C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen; Speicher wahlweise Datei oder PostgreSQL (Schritt I1); das persönliche Gedächtnis mit denselben Zusagen wie das Projektgedächtnis (Schritt C2) | Mac-Prüfliste Teile E und Q; Zuordnung von Mails; persönliches Gedächtnis in die Datenbank (erst mit Anmeldung je Person); Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der sechs Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre), den gemeinsamen Zeitplan und den Edelmetall-Agenten (nur gegen Nachbau); **Offen** für weitere Agenten | Mac-Prüfliste Teile H und K; Marktagent, Newsletter und weitere |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss, Projektüberwachung, Hinweise am Tag aufs Handy und als Mitteilung am Mac (einstellbar, abschaltbar) und Antwortentwürfe für Mails ohne Versand; **Offen** für Marktüberwachung über Intel hinaus | Mac-Prüfliste Teile G, L, M und P; Entwurf im Ordner „Entwürfe“ des Postfachs (Frage 13) |
@@ -99,7 +101,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Betrieb in Azure | lokaler Next-Server; vorbereitet: Projektgedächtnis in PostgreSQL, Anleitung (Schritt I1) | Container Apps, Test- und Prod-Umgebung, IaC | 3 | Blockiert (Azure-Abo/IT klären) |
 | Modelladapter | Modell und Preise je Rolle an einer Stelle (`src/lib/modelle.ts`); die Aufrufe selbst sind weiter Anthropic-Aufrufe in 4 Dateien | Claude primär, andere Modelle austauschbar | 4 | Modellwahl an einer Stelle Testbereit (Schritt J1); anderer Anbieter Offen |
 | **Zentrales Gedächtnis** | | | | |
-| Persönliches Gedächtnis | `gedaechtnis.json`, jeder Eintrag erst nach Ja per Knopf | Teil des Projektgedächtnisses, mit Bestätigung | 2/6 | Testbereit (Bestätigung), Umbau Offen |
+| Persönliches Gedächtnis | `gedaechtnis.json`, jeder Eintrag erst nach Ja per Knopf; Änderungen eine nach der anderen, eine beschädigte Datei wird nie ersetzt (Schritt C2) | Teil des Projektgedächtnisses, mit Bestätigung | 2/6 | Testbereit (Bestätigung, sichere Ablage in der Datei); Ablage in der Datenbank Offen (braucht die Anmeldung je Person) |
 | Projektakten (Verantwortliche, Termine, Aufgaben, Entscheidungen, Risiken, Quellen) | `projekte.json` hinter einer Speicherschnittstelle; jeder Eintrag mit Quelle, Zeitstempel und Korrekturverlauf; Ansicht „Projekte“ | PostgreSQL mit Quelle und Zeitstempel | 6 | Testbereit (Datei, Testdaten); PostgreSQL Offen (Phase 3) |
 | Gesprächsnachbereitung (Aufgaben/Entscheidungen aus Notizen, Vorschlag zur Bestätigung) | JARVIS schlägt im Gespräch Einträge vor; sie gelten erst nach Bestätigung am Mac (auch geändert) | strukturiert, erst nach Bestätigung gespeichert | 6 | Testbereit (im Gespräch); aus Mails und Besprechungsnotizen von selbst Offen |
 | Intelligente Erinnerung vor Folgeterminen | Vorbereitung aus bestätigten Einträgen, wenn der Termin ein Projekt nennt; am Mac im Gespräch, per Telegram nur nach Einschalten | frühere Entscheidungen mit Quelle | 6 | Testbereit |
@@ -437,7 +439,10 @@ Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-proj
 | C1.6 Ansicht „Projekte“: Eingang für Vorschläge, Projektliste, Akte, Formulare | Testbereit | im Browser durchgeklickt (`test/hand/projekte-rauch.ts`) |
 | C1.7 Vorbereitung vor Besprechungen (Mac; Telegram nur nach Einschalten) | Testbereit | `terminVorbereitung` |
 | C1.8 Vertrauliche Projekte: nichts davon an das KI-Gehirn oder über Telegram | Testbereit | Test „geht nicht an Anthropic“ |
-| C2 Persönliches Gedächtnis in dieselbe Speicherschicht (Bestätigung gibt es dort schon über das Gateway) | Offen | |
+| C2.1 Persönliches Gedächtnis mit denselben Zusagen wie das Projektgedächtnis: Änderungen eine nach der anderen, eine beschädigte Datei wird nie ersetzt, ein gescheitertes Speichern wird gemeldet und ändert nichts | Testbereit | Schritt C2 unten; `src/lib/server/memory.ts`, `test/module/gedaechtnis.test.ts` (27) |
+| C2.2 Ausweg aus einer beschädigten Datei über die Einstellungen: beiseitelegen, Lesbares behalten, nichts löschen | Testbereit | im Browser durchgeklickt (`test/hand/gedaechtnis-rauch.ts`) |
+| C2.3 Das Gespräch läuft mit beschädigtem Gedächtnis weiter und weiß davon | Testbereit | `brain.ts`; derselbe Test |
+| C2.4 Persönliches Gedächtnis in der Datenbank (dieselbe Speicherschnittstelle wie die Projekte) | **Offen, bewusst nicht gebaut** | Dieses Gedächtnis gehört zu einer Person. In einer gemeinsamen Datenbank braucht es erst die Anmeldung je Person (Schritt I2), sonst läse jeder das Gedächtnis des anderen |
 | C3 Mails und Besprechungsnotizen von selbst Projekten zuordnen und Vorschläge machen | Offen | braucht die Freigabe, Mailinhalte dafür auszuwerten |
 | C4 Projektüberwachung (Überfälliges und nahe Fristen von selbst melden) | Testbereit im Morgenbriefing, im Tagesabschluss, in „Heute“ und als Hinweis am Tag | Schritte G1 und G2; offen: offene Risiken |
 | C5 PostgreSQL-Umsetzung der Speicherschnittstelle | Testbereit (gegen PostgreSQL 16 in der Sandbox, nicht in Azure) | Schritt I1 in Bereich I; `pg-speicher.ts`, `test/hand/postgres-rauch.ts` |
@@ -457,6 +462,53 @@ Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-proj
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Sicherheitsrisiken:**
 R-17 (Projektinhalte gehen beim Lesen an Anthropic; gemildert durch „vertraulich“), R-18 (Datei unverschlüsselt
 und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-risiken.md).
+
+### Schritt C2: das persönliche Gedächtnis sicher ablegen (14. November 2026)
+
+**Warum:** Das persönliche Gedächtnis (was JARVIS sich über dich merkt, `~/.jarvis/gedaechtnis.json`) war älter
+als das Projektgedächtnis und hatte dessen Schutz nicht. Drei Fehler, alle zuerst mit einem Test nachgestellt:
+(1) Merkt sich JARVIS zwei Dinge im selben Augenblick (das KI-Gehirn ruft Werkzeuge auch nebeneinander auf),
+blieb nur eines übrig. (2) Eine beschädigte Datei (halb geschrieben, von Hand verändert) galt stillschweigend
+als leer; beim nächsten Merken war alles Frühere überschrieben. (3) Scheiterte das Speichern, erfuhr es niemand,
+und bis zum nächsten Neustart tat JARVIS so, als wüsste er es.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| C2.1a Jede Änderung liest, ändert und speichert in einem Zug, eine nach der anderen | Testbereit | zwanzig Änderungen durcheinander, keine geht verloren |
+| C2.1b Eine beschädigte Datei bleibt Byte für Byte liegen. Als beschädigt gilt: kein lesbares JSON, falscher Aufbau, oder auch nur ein Eintrag in fremder Form (er fiele sonst beim nächsten Speichern still weg). Merken, Ändern und Vergessen werden so lange mit einem festen Satz abgelehnt | Testbereit | sieben beschädigte Inhalte |
+| C2.1c Geschrieben wird über eine Nebendatei, nur für dich lesbar. Scheitert es, kommt ein fester Satz, und es ist nichts geändert, auch nicht im laufenden JARVIS | Testbereit | |
+| C2.1d Eine Datei, die sich nicht öffnen lässt (Rechte), gilt nicht als leer und wird nicht weggeräumt | Testbereit | |
+| C2.2 Einstellungen → Gedächtnis sagt, dass die Datei beschädigt ist, welche es ist und wie viele Einträge sich noch lesen lassen (nur die Zahl). Ein Knopf legt sie unter neuem Namen daneben (`gedaechtnis.json.beschaedigt-…`) und macht mit den lesbaren Einträgen weiter. Gelöscht wird nie | Testbereit | `legeBeiseite`, `/api/gedaechtnis` (`beiseite`) |
+| C2.3 Das Gespräch antwortet weiter. Das Modell erfährt nur, dass das Gedächtnis gerade nicht lesbar ist, und verweist auf die Einstellungen | Testbereit | `memoryBlock(null)` |
+| C2.5 Die Datei behält ihren Aufbau; eine Datei von früher wird gelesen, wie sie ist | Testbereit | kein Umzug nötig |
+
+**Eigene Entscheidungen:** (1) „In dieselbe Speicherschicht“ heißt hier: dieselben Zusagen, nicht dieselbe
+Datenbank. Eine Fassung für PostgreSQL gibt es bewusst nicht (C2.4). (2) Die Fehlersätze nennen weder den Inhalt
+noch den Ort der Datei, weil sie als Ergebnis eines Werkzeugs auch ans Modell gehen (im Pfad steht der
+Benutzername). Den Ort zeigt nur die Seite. (3) Aus einer beschädigten Datei gilt nichts, bis du sie
+beiseitelegst; erst dann übernimmt JARVIS die lesbaren Einträge. (4) „Alles vergessen“ auf einer beschädigten
+Datei legt sie ebenfalls beiseite, behält aber nichts.
+
+**Grenzen:** Geschützt ist ein laufender JARVIS gegen sich selbst. Wer die Datei von Hand ändert, während
+JARVIS läuft, sieht das erst nach einem Neustart, und die nächste Änderung von JARVIS überschreibt die
+Handänderung. Zwei gleichzeitig laufende JARVIS können sich weiter überschreiben (wie bei den Einstellungen,
+Schritt J3). Die Datei ist nicht verschlüsselt.
+
+### Testergebnisse Schritt C2 (14. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **848 Tests: 848 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 27: `gedaechtnis.test.ts`) |
+| Tests zuerst | Die drei Fehler oben und alle Befunde der Durchsicht wurden zuerst als Test geschrieben und liefen rot. Der Wettlauf „Lesen überholt eine Änderung“ ist mit einem angehaltenen Lesen nachgestellt: Ohne die Korrektur fehlte danach ein Eintrag |
+| Gegenproben | Erste Runde vor der Durchsicht: 26 absichtlich eingebaute Fehler, 26 bemerkt. Zweite Runde für die Stellen, die nach der Durchsicht neu sind: 23 absichtlich eingebaute Fehler, 23 bemerkt (unter anderem: überholtes Lesen bringt den alten Stand zurück, beschädigte Datei wird verschoben statt kopiert, Kopie bleibt nach gescheitertem Speichern liegen, heiles oder nicht lesbares Gedächtnis wird beiseitegelegt, Beiseitelegen behält nichts oder zu viel, eine früher beiseitegelegte Datei wird überschrieben, Fehlersatz nennt den Ort der Datei) |
+| `npx next build` | erfolgreich, mit den vier bekannten Warnungen |
+| Handprüfung `gedaechtnis-rauch` (Chromium, gebauter Server, nachgebauter Claude) | alle Schritte in Ordnung: zwanzig Einträge im selben Augenblick aus der Seite, alle zwanzig in der Datei; Eintrag anlegen und vergessen über die Seite; Datei von außen beschädigt und JARVIS neu gestartet: Die Seite sagt es, nennt die Datei und zeigt nichts von ihrem Inhalt; Merken und Vergessen abgelehnt, Datei unverändert; das Gespräch antwortet, das Modell bekommt nichts aus der Datei; Beiseitelegen über den Knopf: alte Datei liegt Byte für Byte daneben; teils lesbare Datei: Die Seite nennt „2 Einträge“, danach sind genau die zwei da; nach einem Neustart noch alles da; keine Fehler in der Seite |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | neun Befunde. Eingearbeitet: Ein Lesen kurz nach dem Start konnte eine gleichzeitige Änderung überholen und den alten Stand zurückbringen (ein Eintrag wäre verloren gegangen); der Knopf zum Beiseitelegen erschien auch bei einer nicht lesbaren Datei, wo er nichts tun kann; ein einzelner kaputter Eintrag hätte alle guten unbrauchbar gemacht (jetzt bleiben die lesbaren beim Beiseitelegen erhalten); scheiterte das Schreiben beim Beiseitelegen, war die Datei schon verschoben, obwohl der Satz „nichts geändert“ sagte (jetzt erst kopieren, dann schreiben); der Satz nannte einen Knopf, den es in dem Zustand nicht gab, und den Pfad der Datei; die Seite verlor den Hinweis „beschädigt“ nach einer Antwort; eine unlesbare Zeit in einem Eintrag ließ die Einstellungen abstürzen; Störungen der Ablage antworten jetzt mit 500 statt 400. Bewusst nicht geändert: Die Ablage ist wie bei Entwürfen, Hinweisen und Zeitplan je Modul eigens gebaut; ein gemeinsamer Baustein dafür wäre ein eigener Umbau |
+| Sicherheitsprüfung (von Hand) | Kein neuer Weg nach außen. Was in einer beschädigten Datei steht, erscheint weder auf der Seite noch im Fehlersatz noch beim Modell (geprüft mit einem Kennwort in der Datei). Die beiseitegelegte Datei ist nur für dich lesbar. Spitze Klammern, Steuerzeichen und halbe Zeichenpaare kommen weiter nicht ins Gedächtnis (kein Ausbruch aus dem Gedächtnis-Block im Prompt) |
+| Nicht geprüft | echter Mac und Safari; ein echtes Claude-Modell (ob es bei beschädigtem Gedächtnis sinnvoll auf die Einstellungen verweist); eine volle Platte (das Scheitern ist mit einer blockierten Nebendatei nachgestellt); zwei gleichzeitig laufende JARVIS |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen; eines weniger (verlorene oder
+still überschriebene Einträge im Gedächtnis). **Neue laufende Kosten:** keine.
 
 ## Bereich D – Microsoft 365
 
@@ -1334,7 +1386,8 @@ Danach wie geplant:
    geändert und gespeichert.
 12. **G2.4: gebaut, Testbereit, nur gegen einen nachgebauten Mac** (Schritt G2.4 in Bereich G): Hinweise am Tag
    als Mitteilung am Mac, ohne Handy.
-   **Als Nächstes:** C2 (persönliches Gedächtnis in dieselbe Speicherschicht wie das Projektgedächtnis), danach
-   G3.5 (Antwortentwürfe mit Zitat der ursprünglichen Mail). Die
+13. **C2: gebaut, Testbereit** (Schritt C2 in Bereich C): Das persönliche Gedächtnis verliert keine Einträge
+   mehr und ersetzt nie eine beschädigte Datei. In der Datenbank liegt es bewusst noch nicht (C2.4).
+   **Als Nächstes:** G3.5 (Antwortentwürfe mit Zitat der ursprünglichen Mail). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

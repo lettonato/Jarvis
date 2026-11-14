@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { AvatarState } from "@/lib/avatar";
 import { ApiError, getJson, postJson, postStream } from "@/lib/api";
 import { fahrtArten } from "@/lib/raeume";
-import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type Source } from "@/lib/brain";
+import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type MemoryStand, type Source } from "@/lib/brain";
 import { erinnerungsSatz, fuerGespraech, type CalendarSnapshot } from "@/lib/calendar";
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import { intelSentence, searchSentence, type IntelSnapshot } from "@/lib/intel";
@@ -64,7 +64,11 @@ type Jarvis = {
   spotlight: { uids: number[]; n: number };
   // Was JARVIS sich über dich gemerkt hat.
   memory: MemoryFact[] | null;
-  setMemory: (m: MemoryFact[]) => void;
+  // Lässt sich das Gedächtnis nicht lesen: der feste Satz dazu und, bei einer beschädigten Datei, was die Seite
+  // zum Beiseitelegen braucht. Sonst null.
+  memoryError: Pick<MemoryStand, "fehler" | "beschaedigt"> | null;
+  setMemory: (stand: MemoryStand) => void;
+  reloadMemory: () => void;
   state: AvatarState;
   session: Session | null;
   ask: (text: string) => void;
@@ -160,7 +164,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const { data: intel, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
   const { data: documents, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
   const { data: projekte, set: setProjekte } = usePolling<ProjekteSnapshot>("/api/projekte", 60_000);
-  const { data: memoryData, set: setMemoryData } = usePolling<{ facts: MemoryFact[] }>("/api/gedaechtnis", 10 * 60_000);
+  const { data: memoryData, reload: loadMemory, set: setMemoryData } = usePolling<MemoryStand>("/api/gedaechtnis", 10 * 60_000);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [session, setSessionState] = useState<Session | null>(null);
@@ -642,7 +646,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       mailText,
       spotlight,
       memory: memoryData?.facts ?? null,
-      setMemory: (facts: MemoryFact[]) => setMemoryData({ facts }),
+      memoryError: memoryData?.fehler ? { fehler: memoryData.fehler, beschaedigt: memoryData.beschaedigt } : null,
+      setMemory: setMemoryData,
+      reloadMemory: () => void loadMemory(),
       state,
       session,
       ask,
@@ -679,6 +685,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       spotlight,
       memoryData,
       setMemoryData,
+      loadMemory,
       state,
       session,
       ask,

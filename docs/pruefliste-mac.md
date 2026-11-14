@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 60 Minuten (Teil N geht erst, wenn eure IT so weit ist; Teil P ist neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 65 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P und Q sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -223,6 +223,18 @@ gegen einen nachgebauten Mac geprüft; ob macOS die Mitteilung bei dir wirklich 
 | P3 | Weitere fünf Minuten warten | Dieselbe Mitteilung kommt nicht noch einmal |
 | P4 | Auf die Mitteilung klicken | JARVIS öffnet sich dadurch nicht; macOS öffnet vermutlich den Skripteditor (einfach wieder schließen). Schreib mir, was passiert ist |
 | P5 | Haken wieder wegnehmen | Im Zeitplan steht bei der Zeile „Ausgeschaltet.“, es kommt nichts mehr |
+
+## Q. Persönliches Gedächtnis (Schritt C2, neu)
+
+Was JARVIS sich über dich merkt, liegt jetzt sicherer: Zwei Einträge zur selben Zeit überschreiben sich nicht
+mehr, und eine beschädigte Datei wird nie stillschweigend durch eine leere ersetzt. An deiner Datei ändert der
+neue Stand nichts.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| Q1 | Einstellungen → Gedächtnis öffnen | Deine bisherigen Einträge stehen alle noch da. Steht dort stattdessen „Die Datei des Gedächtnisses ist beschädigt“, klick **nichts** an und schick mir ein Bildschirmfoto |
+| Q2 | Dort selbst etwas eintragen („Merken“), dann bei diesem Eintrag „Vergessen“ klicken | Der Eintrag erscheint und verschwindet wieder; die anderen bleiben |
+| Q3 | Im Gespräch: „Merk dir, dass ich montags in München bin, und dass meine Steuerberaterin Frau Huber heißt“ und beide Freigaben mit Ja bestätigen | Unter Einstellungen → Gedächtnis stehen danach beide Einträge |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

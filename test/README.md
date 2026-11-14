@@ -51,6 +51,10 @@ npm run pruefen     # Lint, Typprüfung und Tests
   Zahlen, der Text nie im Skript, eigener Stand neben dem fürs Handy. Mit `JARVIS_MAC_MITTEILUNG=abgelehnt`
   nimmt der nachgebaute Mac die Mitteilung nicht an, mit `haengt` antwortet er nicht;
   `JARVIS_MITTEILUNG_FRIST_MS` verkürzt dafür die Wartezeit.
+  `gedaechtnis.test.ts` prüft das persönliche Gedächtnis im Testordner: Änderungen zur selben Zeit, ein Lesen,
+  das eine Änderung überholt (dafür wird das erste Lesen der Datei angehalten), beschädigte und nicht lesbare
+  Dateien (nie ersetzt, nichts vom Inhalt im Fehlersatz oder beim Modell), Beiseitelegen mit den lesbaren
+  Einträgen, gescheitertes Speichern (eine Nebendatei, die ein Ordner ist) und den Aufbau der Datei.
   `entwuerfe.test.ts` prüft die Antwortentwürfe gegen das nachgebaute Postfach und den nachgebauten Claude:
   Empfänger und Betreff kommen nur aus dem Postfach, nie vom Modell oder aus dem Text der Mail; es geht kein
   Befehl an das Postfach, der etwas ändert oder ablegt; was du selbst geändert hast, wird nicht überschrieben;
@@ -86,7 +90,8 @@ normale Tests.
 `test/hand/` enthält Handprüfungen, die ein echtes Chrome brauchen und deshalb nicht bei `npm test` mitlaufen
 (Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung,
 Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“, Einstellungen speichern mit vielen Änderungen zur selben Zeit,
-Hinweise als Mitteilung am Mac vom Schalter bis zur Mitteilung des laufenden Servers). Aufruf steht jeweils oben in der Datei.
+Hinweise als Mitteilung am Mac vom Schalter bis zur Mitteilung des laufenden Servers,
+das persönliche Gedächtnis mit beschädigter Datei und Beiseitelegen über die Einstellungen). Aufruf steht jeweils oben in der Datei.
 
 `test/hand/postgres-rauch.ts` braucht kein Chrome, aber ein installiertes PostgreSQL (die Programme `initdb`
 und `pg_ctl`; gesucht in `JARVIS_PG_BIN` und an den üblichen Orten). Es startet ein eigenes, leeres PostgreSQL

@@ -10,7 +10,7 @@ import { TelegramSetup } from "../TelegramSetup";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { APPROVAL, APPROVAL_CHOICES, type ApprovalLimit } from "@/lib/approval";
-import type { MemoryFact } from "@/lib/brain";
+import type { MemoryStand } from "@/lib/brain";
 import { COMMODITY_RULES } from "@/lib/commodities";
 import { HINWEIS_REGELN } from "@/lib/hinweise";
 import { SAFETY } from "@/lib/paper";
@@ -335,7 +335,7 @@ function BrainSetup() {
 const SINCE = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" });
 
 function MemorySetup() {
-  const { memory, setMemory } = useJarvis();
+  const { memory, memoryError, setMemory, reloadMemory } = useJarvis();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -345,7 +345,7 @@ function MemorySetup() {
     setBusy(true);
     setError(null);
     try {
-      setMemory((await postJson<{ facts: MemoryFact[] }>("/api/gedaechtnis", body)).facts);
+      setMemory(await postJson<MemoryStand>("/api/gedaechtnis", body));
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -361,6 +361,36 @@ function MemorySetup() {
   };
 
   if (!memory) return <p className="text-sm text-quiet">Lade …</p>;
+  // Die Datei ist beschädigt oder nicht lesbar: JARVIS ersetzt sie nicht von selbst. Beiseitelegen gibt es nur für
+  // eine beschädigte Datei; es zerstört nichts und behält, was sich darin noch lesen lässt.
+  if (memoryError) {
+    const kaputt = memoryError.beschaedigt;
+    return (
+      <div className="space-y-3 text-sm">
+        <Notice tone="error">{kaputt ? "Die Datei des Gedächtnisses ist beschädigt. JARVIS lässt sie unverändert." : memoryError.fehler}</Notice>
+        <p className="text-xs text-quiet">Solange das so ist, merkt sich JARVIS nichts Neues. Deine Gespräche gehen weiter, nur ohne das Gedächtnis.</p>
+        {kaputt ? (
+          <>
+            <p className="text-quiet">
+              {kaputt.lesbar > 0
+                ? `${kaputt.lesbar === 1 ? "Ein Eintrag lässt" : `${kaputt.lesbar} Einträge lassen`} sich daraus noch lesen. Beim Beiseitelegen übernimmt JARVIS ${kaputt.lesbar === 1 ? "ihn" : "sie"}.`
+                : "Daraus lässt sich nichts mehr lesen. Nach dem Beiseitelegen fängt JARVIS leer an."}{" "}
+              Gelöscht wird nichts: Die Datei bleibt unter neuem Namen im selben Ordner liegen.
+            </p>
+            <p className="break-all text-xs text-quiet">Datei: {kaputt.datei}</p>
+            <Button tone="danger" disabled={busy} onClick={() => send({ action: "beiseite" })}>
+              {kaputt.lesbar > 0 ? "Datei beiseitelegen und Lesbares behalten" : "Datei beiseitelegen und leer anfangen"}
+            </Button>
+          </>
+        ) : (
+          <Button disabled={busy} onClick={reloadMemory}>
+            Noch einmal versuchen
+          </Button>
+        )}
+        {error && <Notice tone="error">{error}</Notice>}
+      </div>
+    );
+  }
   return (
     <div className="space-y-3 text-sm">
       {memory.length === 0 ? (

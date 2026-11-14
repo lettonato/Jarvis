@@ -30,6 +30,9 @@ export type BrainRequest = {
 
 // Ein Eintrag im Gedächtnis von JARVIS.
 export type MemoryFact = { id: string; text: string; at: string };
+// Was die Seite vom Gedächtnis erfährt. fehler: der feste Satz, wenn es sich nicht lesen lässt. beschaedigt: Die Datei
+// ist beschädigt und lässt sich beiseitelegen; dabei steht, welche es ist und wie viele Einträge noch lesbar sind.
+export type MemoryStand = { facts: MemoryFact[]; fehler?: string; beschaedigt?: { datei: string; lesbar: number } };
 
 // Eine Webseite, aus der Claude etwas hat.
 export type Source = { title: string; url: string };
