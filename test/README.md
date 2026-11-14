@@ -27,6 +27,11 @@ npm run pruefen     # Lint, Typprüfung und Tests
   prüfen lässt: die Adresse (außerhalb dieses Rechners immer verschlüsselt, kein Kennwort in Anzeige oder
   Meldung), die Wahl des Speichers (ohne Einstellung die Datei, kein stilles Ausweichen), bereinigter Text
   und das Kopieren von einem Speicher in den anderen. Alles Weitere prüft die Handprüfung `postgres-rauch.ts`.
+  `sicherung.test.ts` prüft die Sicherung (`scripts/sichern.sh`) und ihr Zurückspielen
+  (`scripts/wiederherstellen-pruefen.sh`) an einem winzigen Wegwerf-Projekt mit eigenem Git: Eine gute
+  Sicherung besteht, jeder Schaden wird beim Namen genannt, und eine misslungene neue Sicherung lässt die
+  alte liegen. Braucht `git`, `unzip` und `npm`, aber kein Netz. Die echte Sicherung fasst der Test nicht an;
+  die prüft man von Hand mit `bash scripts/wiederherstellen-pruefen.sh <Ordner>` (einige Minuten, mit Netz).
   `kosten.test.ts` prüft das Kostenbuch: Buchen je Agent und Tag, nur Zahlen in der Datei, gleichzeitige
   Buchungen, abgebrochene Antwort, nicht lesbare und kaputte Datei. Der nachgebaute Claude meldet je Antwort
   10 Token Eingabe und 5 Ausgabe und nennt das angefragte Modell; mit dem Zug `{ abbruch: true }` reißt eine

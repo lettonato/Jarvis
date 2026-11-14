@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 732 von 732 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 764 von 764 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -64,7 +64,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | D Microsoft 365 | **Testbereit** (nur gegen Nachbau) für Termine aus Outlook lesen (Schritt D1); **Blockiert** für die echte Anbindung, bis eure IT die Anwendung in Entra angelegt hat; **Offen** für Mail, Dateien, Teams | App-Registrierung durch die IT (Frage 14), Mac-Prüfliste Teil N; weitere Teile nur nach Benedikts Entscheidung |
 | H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
 | I Azure | **Testbereit** für die Vorbereitung (Schritt I1): Projektgedächtnis in PostgreSQL, Claude-Zugang an einer Stelle, Anleitung; **Blockiert** für alles in Azure selbst (Entscheidung und Kostenfreigabe) | Abonnement, IT-Kontakt, Region, Budget (Frage 3); davor Anmeldung je Person und die übrigen Daten auf die Datenbank umstellen |
-| J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Offen** für einen zweiten Zugang zu Claude (die Stelle dafür gibt es seit I1) und Wiederherstellungstests | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
+| J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Testbereit** für das Zurückspielen der Sicherung (Schritt J2); **Offen** für einen zweiten Zugang zu Claude (die Stelle dafür gibt es seit I1) | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
 
 ## Wiederaufnahmepunkt
 
@@ -73,8 +73,9 @@ Für jede Fortsetzung, auch nach einer Unterbrechung:
 * **Letzter gesicherter Stand:** siehe Abschnitt „Sicherung“ am Ende dieser Datei (Commit und Dateien).
 * **Arbeitsort:** Cloud-Sandbox, nicht dauerhaft. Dauerhaft sind nur die Sicherungen in den Projektdateien
   (`jarvis/sicherung/`): ein Git-Bündel des Arbeitszweigs, ein Bündel aller Zweige, ein ZIP zum Entpacken.
-  Wiederherstellen: `git clone jarvis-<datum>.bundle -b claude/project-thread-200bzy`, dann `npm ci`,
-  `npm run pruefen`.
+  Wiederherstellen: `git clone jarvis-aktuell.bundle -b claude/project-thread-200bzy`, dann `npm ci`,
+  `npm run pruefen`. Ob sich die Sicherung wirklich zurückspielen lässt, prüft
+  `bash scripts/wiederherstellen-pruefen.sh <Ordner>` (Schritt J2), ohne sie zu verändern.
 * **GitHub:** seit 13. November gesperrt (Konto). Letzter hochgeladener Stand `093129f`. Hochladen erst nach
   Benedikts Freigabe, kein Force-Push.
 * **Exakt nächster Schritt:** steht unter „Nächste Schritte“ am Ende dieser Datei.
@@ -1042,7 +1043,7 @@ Preise standen in vier Dateien.
 | J1.4 Ansicht „Agenten“: „Kosten heute“ bei jedem Agenten, beim Desk Grok und Claude einzeln; oben „Heute zusammen“ und der laufende Monat, mit dem Hinweis „geschätzt nach Listenpreis“ | Testbereit | `src/components/AgentControl.tsx`; im gebauten Server mit Beispieldaten angesehen (Gespräch, Browser, Desk mit zwei Diensten) |
 | J1.5 JARVIS kann die Kosten nennen („Was hat JARVIS heute gekostet?“): `agenten_lesen` liefert Summe heute, Monat und die Dienste einzeln, weiter nur Zahlen und feste Bezeichnungen | Testbereit | `test/module/agenten.test.ts` (erweitert) |
 | J1.6 Anderer Anbieter als Anthropic austauschbar | Offen; vorbereitet in Schritt I1 | die Verbindung zu Claude wird seit I1 an einer Stelle aufgebaut (`src/lib/server/claude.ts`, Test `claude-zugang.test.ts`). Ein zweiter Zugang (Claude über Microsoft Foundry) ist nicht gebaut; was dabei anders wäre, steht in 09-azure-vorbereitung.md |
-| J1.7 Wiederherstellungstests (Sicherung zurückspielen und prüfen) | Offen | `scripts/sichern.sh` prüft bisher nur, dass sich das Bündel klonen lässt |
+| J1.7 Wiederherstellungstests (Sicherung zurückspielen und prüfen) | Testbereit | gebaut in Schritt J2 (unten): `scripts/wiederherstellen-pruefen.sh`, `test/module/sicherung.test.ts` (32) |
 
 **So wird gerechnet (Stand der Preise: 13. November 2026, abgelesen aus der Preisliste von Anthropic):**
 Opus 5.5 kostet 4 Dollar je Million Token Eingabe und 20 je Million Ausgabe, gelesener Zwischenspeicher 0,20,
@@ -1089,6 +1090,39 @@ Ausweichmodell, zählt jeder Versuch zum Preis seines Modells. Grok rechnet sein
 
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** siehe „Grenzen“ oben. **Sicherheitsrisiken:**
 keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** keine.
+
+
+### Schritt J2: Sicherung zurückspielen und prüfen (14. November 2026)
+
+**Warum:** Eine Sicherung, die noch nie zurückgespielt wurde, ist eine Hoffnung. Bisher prüfte `sichern.sh`
+nur, dass sich das Git-Bündel klonen lässt; das ZIP wurde gar nicht geprüft, und eine neue Sicherung
+überschrieb die alte, bevor feststand, dass sie taugt.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J2.1 `scripts/wiederherstellen-pruefen.sh <Ordner>`: Bündel unbeschädigt und klonbar, Commit wie in der letzten Zeile von `sicherungen.txt`, Geschichte heil (`git fsck`); ZIP entpackt und Datei für Datei gleich dem Commit | Testbereit | 13 Tests in `test/module/sicherung.test.ts`: jede Art Schaden wird beim Namen genannt (abgeschnittenes Bündel, ein umgekipptes Byte, unlesbarer Kopf, falscher Commit, ein geänderter Buchstabe im ZIP, Datei zu viel, abgeschnittenes ZIP, fehlende Datei) |
+| J2.2 Vollständig: aus dem entpackten ZIP allein Pakete installieren (`npm ci`) und `npm run pruefen`; nur „alle bestanden, nichts ausgelassen“ zählt | Testbereit | mit der echten Sicherung gelaufen: **732 von 732 Tests im wiederhergestellten Stand** (Stand `5432fe7`, 77 Sekunden). 7 Tests an einem Wegwerf-Projekt |
+| J2.3 `scripts/sichern.sh`: neue Sicherung entsteht in einem eigenen Unterordner, wird dort geprüft und ersetzt die alte erst danach; an ihrem Platz wird sie noch einmal geprüft. Scheitert etwas, liegt am Ende wieder die alte Sicherung im Ordner | Testbereit | 12 Tests: Prüfung scheitert vorher, nachher, Verschieben bricht an jeder der vier Stellen ab, allererste Sicherung scheitert, Liste ohne Zeilenumbruch, kein Zweig ausgecheckt, Reste eines abgebrochenen Laufs |
+| J2.4 Sicherung der Daten in `~/.jarvis` (Gedächtnis, Projekte, Einstellungen, Schlüssel) | **Offen; braucht Benedikts Freigabe** | Diese Sicherung enthält nur das Programm. Eine Sicherung der Daten würde Zugangsdaten anfassen; bis dahin schützt sie nur Time Machine am Mac |
+
+**Grenzen:** Die Prüfung liest die Sicherung nur und arbeitet in einem Wegwerf-Ordner. Der vollständige Lauf
+braucht Netz (für `npm ci`) und einige Minuten. Er beweist, dass sich das **Programm** wiederherstellen lässt,
+nicht die Daten. Ob die Sicherung auf dem Mac ankommt, hängt weiter davon ab, dass Benedikt das ZIP
+herunterlädt oder GitHub wieder geht; die Sandbox ist kein dauerhafter Speicher.
+
+### Testergebnisse Schritt J2 (14. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, git 2.43)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **764 Tests: 764 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 32: Sicherung prüfen 13, vollständig zurückspielen 7, sichern 12) |
+| Echte Sicherung vollständig zurückgespielt | Bündel unbeschädigt, Commit `5432fe7` wie in `sicherungen.txt`, 59 Commits Geschichte; ZIP enthält dieselben 300 Dateien, Byte für Byte; `npm ci` in Ordnung; Lint, Typprüfung und 732 von 732 Tests im wiederhergestellten Stand |
+| Tests zuerst | Die Tests für das neue Verhalten liefen vor dem Bau rot (erst 5, nach der Durchsicht noch einmal 11). Dabei gefunden: `git bundle verify` liest nur den Kopf, ein abgeschnittenes Bündel fällt erst beim Klonen auf; ein Lauf ohne Testzahlen brach ohne Meldung ab; eine Liste ohne Zeilenumbruch am Ende ebenso |
+| Gegenproben | 32 absichtlich eingebaute Fehler in den beiden Skripten: 31 bemerkt. Der eine (Fehler beim Verschieben des Bündels wird übergangen) ändert am Ergebnis nichts: Die Prüfung im Ordner fängt denselben Fall, die alte Sicherung wird zurückgelegt |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde. Eingearbeitet: Ordner ohne ganzen Pfad galt als beschädigt; das Tauschen in drei Schritten konnte eine gemischte Sicherung hinterlassen (jetzt Zurücklegen); neue Zeile hing an der alten, wenn der Zeilenumbruch fehlte; `bc` als unnötige Abhängigkeit; kein ausgecheckter Zweig; liegen gebliebene Arbeitsordner; Tests erbten `GIT_DIR`; Unterlagen. Bewusst nicht geändert: Die doppelte Prüfung bleibt (sie dauert 0,6 Sekunden und prüft, was wirklich im Ordner liegt); das ZIP wird weiter mit allen Dateien des Commits verglichen (ein ZIP, dem Dateien fehlen, soll auffallen) |
+| Sicherheitsprüfung (von Hand) | Die Skripte lesen keine Einstellungen und keine Schlüssel und senden nichts; `npm ci` lädt dieselben Pakete wie jede Installation. Zweig und Commit aus `sicherungen.txt` gehen nur als einzelne, in Anführungszeichen gesetzte Angaben an git. Gelöscht wird nur in eigenen Wegwerf-Ordnern und in Arbeitsordnern mit dem Namen `.neu-<Zahl>` im Sicherungsordner |
+| Nicht geprüft | **am Mac**: Die Skripte sind für die Bash des Mac geschrieben (keine neueren Sprachmittel), dort aber nicht gelaufen. Windows. Eine Sicherung der Daten in `~/.jarvis` gibt es nicht (J2.4) |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
 ## Phase 3 bis 10
 
@@ -1151,7 +1185,7 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
 
 | Was | Wo | Stand |
 |---|---|---|
-| Arbeitszweig als Git-Bündel | Projektdateien `jarvis/sicherung/jarvis-aktuell.bundle` | wird nach jedem Arbeitspaket mit `scripts/sichern.sh` erneuert und dabei geprüft (klonen, gleicher Commit); Verlauf in `sicherungen.txt` |
+| Arbeitszweig als Git-Bündel | Projektdateien `jarvis/sicherung/jarvis-aktuell.bundle` | wird nach jedem Arbeitspaket mit `scripts/sichern.sh` erneuert. Die neue Sicherung wird erst für sich geprüft und ersetzt die alte nur, wenn sie besteht (Schritt J2); Verlauf in `sicherungen.txt`. Zurückspielen und prüfen: `bash scripts/wiederherstellen-pruefen.sh <Ordner>` |
 | Alle Zweige (alle PRs) | Projektdateien `jarvis/sicherung/jarvis-alle-zweige-2026-11-13.bundle` | Stand 13.11. |
 | ZIP zum Entpacken auf dem Mac | Projektdateien `jarvis/sicherung/Jarvis-aktuell.zip` | wie der Arbeitszweig, ohne `node_modules` |
 | GitHub | `lettonato/jarvis`, PR #18 | Stand `093129f` vom 8.11.; alles danach nur lokal |
@@ -1181,7 +1215,9 @@ Danach wie geplant:
    echte Anbindung wartet auf eure IT (Frage 14). Mail, Dateien und Teams über Graph sind nicht gebaut.
 9. **I1: gebaut, Testbereit** (Schritt I1 in Bereich I): Projektgedächtnis wahlweise in PostgreSQL, Verbindung
    zu Claude an einer Stelle, Anleitung für Azure. In Azure selbst ist nichts angelegt.
-   **Als Nächstes: J:** Wiederherstellungstest der Sicherung (J1.7) und Einstellungen überall in einem Zug
-   lesen und speichern (wie seit D1 für Microsoft 365). Danach G2.4 (Hinweis als Mitteilung am Mac). Die
+10. **J2: gebaut, Testbereit** (Schritt J2 in Bereich J): Die Sicherung lässt sich zurückspielen und prüfen;
+   eine misslungene neue Sicherung lässt die alte liegen.
+   **Als Nächstes: J:** Einstellungen überall in einem Zug lesen und speichern (wie seit D1 für
+   Microsoft 365). Danach G2.4 (Hinweis als Mitteilung am Mac). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).
