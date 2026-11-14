@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 55 Minuten (Teil N geht erst, wenn eure IT so weit ist; Teil O ist neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 60 Minuten (Teil N geht erst, wenn eure IT so weit ist; Teil P ist neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -210,6 +210,19 @@ und an der Sicherung nichts (gearbeitet wird in einem Wegwerf-Ordner).
 | O2 | Im Terminal im JARVIS-Ordner: `bash scripts/wiederherstellen-pruefen.sh ~/Downloads/jarvis-sicherung` (dauert einige Minuten) | Vier Zeilen „in Ordnung“ und am Ende „Sicherung geprüft und wiederhergestellt“. Steht dort „FEHLER“, schick mir die Zeile |
 | O3 | Einstellungen → Handy: „Hinweise am Tag“ einschalten, dann „Handy trennen“ und neu koppeln | Der Schalter „Hinweise am Tag“ ist danach noch an (früher ging er beim Trennen verloren) |
 | O4 | Einstellungen: einen Schlüssel neu einfügen und, während „Prüfen“ noch läuft, in einem zweiten Fenster deinen Namen ändern | Beides ist danach gespeichert |
+
+## P. Hinweise als Mitteilung am Mac (Schritt G2.4, neu)
+
+JARVIS kann sich am Mac selbst melden, ohne Handy: mit einer Mitteilung von macOS oben rechts. Das habe ich nur
+gegen einen nachgebauten Mac geprüft; ob macOS die Mitteilung bei dir wirklich zeigt, sieht man nur am Mac.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| P1 | Einstellungen → Mitteilungen: „Mitteilung zur Probe zeigen“ klicken | Oben rechts erscheint eine Mitteilung „JARVIS: So sieht ein Hinweis von JARVIS aus.“ Beim ersten Mal fragt macOS vielleicht, ob der „Skripteditor“ Mitteilungen zeigen darf: erlauben. Erscheint nichts, sieh unter Systemeinstellungen → Mitteilungen → Skripteditor nach, und ob ein Fokus (Nicht stören) an ist. Schreib mir, was du gesehen hast |
+| P2 | Zwischen 9 und 18 Uhr: dort „Hinweise am Tag“ anhaken. Im Testprojekt eine Aufgabe mit Frist von gestern eintragen und bestätigen, dann bis zu zwei Minuten warten | Eine Mitteilung „Eine Aufgabe ist überfällig. Einzelheiten in JARVIS unter „Heute“.“ Darin steht kein Projektname und kein Text der Aufgabe. Unter Agenten → Zeitplan steht bei „Hinweise am Tag als Mitteilung am Mac“ der Lauf |
+| P3 | Weitere fünf Minuten warten | Dieselbe Mitteilung kommt nicht noch einmal |
+| P4 | Auf die Mitteilung klicken | JARVIS öffnet sich dadurch nicht; macOS öffnet vermutlich den Skripteditor (einfach wieder schließen). Schreib mir, was passiert ist |
+| P5 | Haken wieder wegnehmen | Im Zeitplan steht bei der Zeile „Ausgeschaltet.“, es kommt nichts mehr |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

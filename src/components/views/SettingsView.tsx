@@ -12,6 +12,7 @@ import { postJson } from "@/lib/api";
 import { APPROVAL, APPROVAL_CHOICES, type ApprovalLimit } from "@/lib/approval";
 import type { MemoryFact } from "@/lib/brain";
 import { COMMODITY_RULES } from "@/lib/commodities";
+import { HINWEIS_REGELN } from "@/lib/hinweise";
 import { SAFETY } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
 import { MODELLE } from "@/lib/modelle";
@@ -55,6 +56,13 @@ function abschnitteVon(settings: Settings): Abschnitt[] {
       title: "Handy (Telegram)",
       text: "Über Telegram hast du JARVIS auch unterwegs dabei: Er schickt dir morgens das Briefing, erinnert dich an Termine, meldet Warnungen und Trades, und du kannst ihm schreiben wie in der App. Dafür legst du dir bei Telegram einen eigenen Bot an. JARVIS antwortet nur deinem Handy, und dein Mac bleibt von außen unerreichbar.",
       inhalt: <TelegramSetup />,
+    },
+    {
+      id: "mitteilungen",
+      kurz: "Mitteilungen",
+      title: "Mitteilungen am Mac",
+      text: "JARVIS kann sich auch am Mac selbst melden, ohne Handy: als Mitteilung von macOS oben rechts am Bildschirm, auch wenn das Fenster von JARVIS gerade nicht vorn ist. Dafür wird nichts installiert, und nichts verlässt den Mac.",
+      inhalt: <MitteilungenSetup />,
     },
     {
       id: "rueckfrage",
@@ -558,6 +566,64 @@ function CommoditySetup() {
           Schlüssel entfernen
         </Button>
       )}
+      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+    </div>
+  );
+}
+
+// Hinweise am Tag als Mitteilung von macOS. Der Schalter ist unabhängig vom Handy; die Probe zeigt, ob macOS
+// die Mitteilung auch wirklich anzeigt (Erlaubnis, Fokus), denn das kann JARVIS selbst nicht sehen.
+function MitteilungenSetup() {
+  const { settings, setSettings } = useJarvis();
+  const m = settings?.mitteilungen;
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  async function send(body: object) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const next = await postJson<Settings & { message?: string }>("/api/einstellungen", body);
+      setSettings(next);
+      setMessage(next.message ? { tone: "ok", text: next.message } : null);
+    } catch (e) {
+      setMessage({ tone: "error", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!m) return null;
+  return (
+    <div className="space-y-3 text-sm">
+      {!m.moeglich && <Notice tone="error">Mitteilungen gibt es nur auf dem Mac. JARVIS läuft gerade auf einem anderen Rechner.</Notice>}
+      <label className="flex items-start gap-3 text-schiefer/85">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 shrink-0 accent-gletscher"
+          checked={m.hinweise}
+          disabled={busy || (!m.moeglich && !m.hinweise)}
+          onChange={(e) => send({ action: "macHinweise", an: e.target.checked })}
+        />
+        <span>
+          Hinweise am Tag: wenn in einem Projekt etwas überfällig wird, eine Rückmeldung fehlt oder am Nachmittag noch etwas von heute offen ist
+          <span className="block text-xs text-quiet">
+            Aus, bis du es willst. Nur zwischen {HINWEIS_REGELN.vonStunde} und {HINWEIS_REGELN.bisStunde} Uhr, höchstens {HINWEIS_REGELN.hoechstensJeTag} am Tag, jedes Ding nur einmal. Unabhängig vom
+            Handy: Du kannst beides einschalten oder nur eines.
+          </span>
+        </span>
+      </label>
+      <ul className="space-y-1 text-xs text-schiefer/85">
+        <li>
+          · In der Mitteilung stehen immer nur Zahlen, zum Beispiel „Eine Aufgabe ist überfällig“. Projektnamen und Aufgaben stehen dort nie, weil eine Mitteilung
+          auch auf dem Sperrbildschirm oder beim Teilen des Bildschirms zu sehen ist. Die Einzelheiten zeigt der Raum Heute.
+        </li>
+        <li>· Ob eine Mitteilung erscheint, entscheidet macOS: Sie muss für den „Skripteditor“ erlaubt sein, und ein Fokus (Nicht stören) hält sie zurück.</li>
+        <li>· Ein Klick auf die Mitteilung öffnet nicht JARVIS; macOS öffnet dabei meist den Skripteditor. Das lässt sich ohne Zusatzprogramm nicht ändern.</li>
+      </ul>
+      <Button disabled={busy || !m.moeglich} onClick={() => send({ action: "macMitteilungProbe" })}>
+        {busy ? "Einen Moment …" : "Mitteilung zur Probe zeigen"}
+      </Button>
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
     </div>
   );

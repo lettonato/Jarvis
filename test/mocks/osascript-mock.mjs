@@ -47,5 +47,19 @@ if (args[0] === "-l") {
   process.stdout.write(JSON.stringify({ zugriff: "ok", kalender: stand.kalender, standard: stand.standard, events: stand.events.filter((e) => e.start >= von && e.start <= bis) }));
   process.exit(0);
 }
-// osascript -e <Skript zum Anzeigen eines Tages> j m t
-process.exit(0);
+// osascript -e <Skript für eine Mitteilung> <Text> <Titel>. JARVIS_MAC_MITTEILUNG stellt nach, was am Mac schiefgehen
+// kann: „abgelehnt“ (der Mac nimmt sie nicht an), „haengt“ (er antwortet nicht), „abgeschossen“ (osascript wird von
+// außen beendet) und „langsam“ (er antwortet erst nach einem Augenblick).
+if (args[0] === "-e" && args[1]?.includes("display notification")) {
+  if (process.env.JARVIS_MAC_MITTEILUNG === "abgelehnt") {
+    process.stderr.write("execution error: Testfehler vom Mac (-1743)\n");
+    process.exit(1);
+  }
+  if (process.env.JARVIS_MAC_MITTEILUNG === "abgeschossen") process.kill(process.pid, "SIGKILL");
+  if (process.env.JARVIS_MAC_MITTEILUNG === "haengt") setTimeout(() => process.exit(0), 10_000);
+  else if (process.env.JARVIS_MAC_MITTEILUNG === "langsam") setTimeout(() => process.exit(0), 300);
+  else process.exit(0);
+} else {
+  // osascript -e <Skript zum Anzeigen eines Tages> j m t
+  process.exit(0);
+}

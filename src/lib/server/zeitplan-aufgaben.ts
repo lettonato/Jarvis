@@ -1,17 +1,18 @@
-import { HINWEIS_TAKT } from "../hinweise";
+import { HINWEIS_TAKT, HINWEIS_TAKT_MAC } from "../hinweise";
 import { AUTO_HOURS } from "../intel";
 import { REMINDER_MINUTES } from "../telegram";
 import { naechsterTermin, taktText, type ZeitplanSnapshot } from "../zeitplan";
 import { readConfig, twelveKey } from "./config";
-import { hinweiseFaellig, merkeGemeldet, sendeHinweise } from "./hinweise";
+import { hinweiseFaellig, macHinweiseAn, macHinweiseFaellig, merkeAmMac, merkeGemeldet, sendeHinweise, zeigeHinweise } from "./hinweise";
 import { IntelError, intelFaellig, intelSnapshot, refreshIntel } from "./intel";
+import { MitteilungError, mitteilungMoeglich } from "./mitteilung";
 import { MetalleError, metalleAuto, metalleFaellig, metalleNaechster, metalleZeiten, refreshMetalle } from "./metalle";
 import { erinnerungenFaellig, naechsteErinnerung, prefsOf, sendeErinnerungen, sendeTagesmeldung, tagesmeldungFaellig, TelegramError, TelegramNichtErreichbar, type Tagesmeldung } from "./telegram";
 import { starteTakt, zeitplanMinute, zeitplanUebersicht, type Aufgabe } from "./zeitplan";
 
-// Was JARVIS von selbst tut, an einer Stelle: Intel, der Edelmetall-Agent und alles, was per Telegram von selbst
-// kommt (Morgenbriefing, Erinnerungen vor Terminen, Hinweise am Tag, Tagesabschluss), laufen über den gemeinsamen
-// Taktgeber (zeitplan.ts). Wann eine Aufgabe dran ist, entscheidet sie selbst (Budget, Tageszeit, eigene
+// Was JARVIS von selbst tut, an einer Stelle: Intel, der Edelmetall-Agent, alles, was per Telegram von selbst
+// kommt (Morgenbriefing, Erinnerungen vor Terminen, Hinweise am Tag, Tagesabschluss), und die Hinweise am Tag als
+// Mitteilung am Mac laufen über den gemeinsamen Taktgeber (zeitplan.ts). Wann eine Aufgabe dran ist, entscheidet sie selbst (Budget, Tageszeit, eigene
 // Uhrzeiten); Not-Aus und Sperre für Agenten, Überlappung, Fristen und feste Fehlersätze regelt der Taktgeber.
 // Nachrichten an dich sind kein Agent: Sie kommen auch, wenn der Not-Aus steht (der Tagesabschluss nennt ihn).
 
@@ -96,7 +97,15 @@ function meldung(id: Tagesmeldung, name: string, was: string, wen: string): Aufg
     faellig: (now, letzterLauf) => tagesmeldungFaellig(id, now, letzterLauf),
     // Was die Meldung an Überfälligem nennt, gilt als gemeldet, noch bevor sie selbst als erledigt gilt: So
     // schickt der Zeitplan nie in derselben Minute einen Hinweis auf dasselbe hinterher.
-    lauf: (now) => sendeTagesmeldung(id, now, () => merkeGemeldet(now).catch(() => {})),
+    // Für die Mitteilung am Mac gilt es erst als gesagt, wenn die Meldung wirklich hinausging: Wirft das Senden,
+    // hat sie niemand gelesen, und der Mac zeigt den Hinweis selbst.
+    lauf: async (now) => {
+      let gesagt: Awaited<ReturnType<typeof merkeGemeldet>> = [];
+      await sendeTagesmeldung(id, now, async () => {
+        gesagt = await merkeGemeldet(now).catch(() => []);
+      });
+      await merkeAmMac(gesagt, now);
+    },
     fehlerSatz: telegramSatz(was, wen),
   };
 }
@@ -116,6 +125,12 @@ const erinnerungen: Aufgabe = {
   fehlerSatz: telegramSatz("Die Erinnerung", "die Erinnerung"),
 };
 
+// Steht gerade das Morgenbriefing oder der Tagesabschluss an, wartet der Hinweis: Erst danach steht fest, was neu ist.
+const meldungStehtAn = async (now: Date, fensterMs?: number) => (await tagesmeldungFaellig("briefing", now, null, fensterMs)) || (await tagesmeldungFaellig("abschluss", now, null, fensterMs));
+// Die Mitteilung am Mac wartet darauf nur kurz. Kommt die Meldung nicht durch, weil Telegram fehlt, bliebe der
+// Hinweis am Mac sonst bis zu drei Stunden aus, obwohl er Telegram gar nicht braucht.
+const MAC_WARTET_MS = 10 * 60_000;
+
 // Hinweise am Tag (src/lib/hinweise.ts): Die Obergrenze steht dort; hier wird nur gefragt und gesendet.
 const hinweise: Aufgabe = {
   id: "hinweise",
@@ -128,13 +143,30 @@ const hinweise: Aufgabe = {
     const { verbunden, prefs } = await telegram();
     return !verbunden ? "Telegram ist nicht verbunden." : prefs.hinweise ? null : "Ausgeschaltet.";
   },
-  // Steht gerade das Morgenbriefing oder der Tagesabschluss an, wartet der Hinweis: Erst danach steht fest, was neu ist.
-  faellig: async (now, letzterLauf) => !(await tagesmeldungFaellig("briefing", now, null)) && !(await tagesmeldungFaellig("abschluss", now, null)) && hinweiseFaellig(now, letzterLauf),
+  faellig: async (now, letzterLauf) => !(await meldungStehtAn(now)) && hinweiseFaellig(now, letzterLauf),
   lauf: (now) => sendeHinweise(now),
   fehlerSatz: telegramSatz("Der Hinweis", "den Hinweis"),
 };
 
-export const aufgaben = (): Aufgabe[] => [intel, metalle, meldung("briefing", "Morgenbriefing", "Das Morgenbriefing", "das Morgenbriefing"), erinnerungen, hinweise, meldung("abschluss", "Tagesabschluss", "Der Tagesabschluss", "den Tagesabschluss")];
+// Dieselben Hinweise als Mitteilung am Mac selbst, ohne Handy. Eigener Schalter, eigener Stand, dieselbe Obergrenze.
+const hinweiseMac: Aufgabe = {
+  id: "hinweise-mac",
+  agent: null,
+  name: "Hinweise am Tag als Mitteilung am Mac",
+  takt: async () => ((await macHinweiseAn()) && mitteilungMoeglich() ? HINWEIS_TAKT_MAC : "ausgeschaltet"),
+  naechster: async () => null,
+  hinweis: async () => (!(await macHinweiseAn()) ? "Ausgeschaltet." : mitteilungMoeglich() ? null : "Mitteilungen gibt es nur auf dem Mac."),
+  faellig: async (now, letzterLauf) => !(await meldungStehtAn(now, MAC_WARTET_MS)) && macHinweiseFaellig(now, letzterLauf),
+  lauf: (now) => zeigeHinweise(now),
+  // Nur feste Sätze: Was osascript als Fehler schreibt, steht weder in der Datei noch in der Anzeige.
+  fehlerSatz: (e) => {
+    if (!(e instanceof MitteilungError)) return "Der Hinweis konnte nicht zusammengestellt werden.";
+    if (e.art === "unklar") return `${e.message} JARVIS versucht es frühestens in einer Stunde noch einmal, höchstens dreimal am Tag.`;
+    return e.art === "abgelehnt" ? `${e.message} JARVIS versucht es in einer Viertelstunde noch einmal.` : e.message;
+  },
+};
+
+export const aufgaben = (): Aufgabe[] => [intel, metalle, meldung("briefing", "Morgenbriefing", "Das Morgenbriefing", "das Morgenbriefing"), erinnerungen, hinweise, hinweiseMac, meldung("abschluss", "Tagesabschluss", "Der Tagesabschluss", "den Tagesabschluss")];
 
 // Startet den gemeinsamen Taktgeber. Mehrfach aufrufen schadet nicht.
 export const starteZeitplan = () => starteTakt(aufgaben);

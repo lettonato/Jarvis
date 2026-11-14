@@ -627,12 +627,13 @@ export type Tagesmeldung = "briefing" | "abschluss";
 const GEMERKT = { briefing: "briefedOn", abschluss: "abgeschlossenAm" } as const;
 
 // Ist das Morgenbriefing oder der Tagesabschluss jetzt dran? Einmal am Tag zur eingestellten Uhrzeit, auch wenn
-// der Mac da kurz geschlafen hat, aber höchstens drei Stunden später.
-export async function tagesmeldungFaellig(welche: Tagesmeldung, now: Date, letzterLauf: Date | null): Promise<boolean> {
+// der Mac da kurz geschlafen hat, aber höchstens drei Stunden später. fensterMs: Wer nur kurz auf die Meldung
+// warten will (die Mitteilung am Mac), fragt mit einem kleineren Fenster.
+export async function tagesmeldungFaellig(welche: Tagesmeldung, now: Date, letzterLauf: Date | null, fensterMs = BRIEFING_WINDOW_MS): Promise<boolean> {
   const tg = (await readConfig()).telegram;
   if (!tg?.chatId) return false;
   const state = await load();
-  return istFaellig(prefsOf(tg)[welche], now, state[GEMERKT[welche]], BRIEFING_WINDOW_MS) && !wartetNoch(now, letzterLauf, NEUER_VERSUCH_MS);
+  return istFaellig(prefsOf(tg)[welche], now, state[GEMERKT[welche]], fensterMs) && !wartetNoch(now, letzterLauf, NEUER_VERSUCH_MS);
 }
 
 // davor: läuft, unmittelbar bevor die Meldung als erledigt gilt (der Zeitplan merkt damit, was sie schon sagt).

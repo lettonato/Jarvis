@@ -21,6 +21,10 @@ export type XaiConfig = { apiKey: string; dailyBudgetUsd?: number };
 // Kalender JARVIS neue Termine einträgt (leer: der Standardkalender des Macs).
 export type CalendarConfig = { target?: string };
 
+// Was JARVIS am Mac selbst als Mitteilung von macOS zeigt. hinweise: die Hinweise am Tag (src/lib/hinweise.ts).
+// Aus, bis du es einschaltest.
+export type MitteilungenConfig = { hinweise?: boolean };
+
 // Intel liest mit demselben xAI-Schlüssel Nachrichten und X. Eigene Themen und ein eigenes Tagesbudget.
 export type IntelConfig = { topics?: string[]; budgetUsd?: number; auto?: boolean };
 
@@ -75,6 +79,7 @@ export type JarvisConfig = {
   metalle?: MetalleConfig;
   elevenlabs?: ElevenlabsConfig;
   microsoft?: MicrosoftConfig;
+  mitteilungen?: MitteilungenConfig;
   // Wo Schlüssel und Passwörter liegen: in dieser Datei (bisher) oder im macOS-Schlüsselbund.
   geheimnisse?: GeheimnisModus;
 };

@@ -19,6 +19,8 @@ export type Settings = {
   telegram: TelegramStatus;
   // Die ElevenLabs-Stimme: ob ein Schlüssel da ist, ob sie an ist und wie viel heute schon vorgelesen wurde.
   stimme: StimmeStatus;
+  // Mitteilungen am Mac selbst. hinweise: die Hinweise am Tag sind eingeschaltet. moeglich: JARVIS läuft auf einem Mac.
+  mitteilungen: { hinweise: boolean; moeglich: boolean };
   // Ab welchem Betrag der Desk vor einem Kauf fragt.
   approval: { limitUsd: ApprovalLimit };
   configFile: string;

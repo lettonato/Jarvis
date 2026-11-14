@@ -5,6 +5,7 @@ import { brainKey } from "@/lib/server/brain";
 import { aendereEinstellung, type EinstellungAktion } from "@/lib/server/einstellungen";
 import { protokolliere } from "@/lib/server/gateway/audit";
 import { guard, readBody } from "@/lib/server/guard";
+import { mitteilungMoeglich } from "@/lib/server/mitteilung";
 import { stimmeStatusVon } from "@/lib/server/stimme";
 import { telegramStatus } from "@/lib/server/telegram";
 import { detectVaults } from "@/lib/server/obsidian";
@@ -38,6 +39,7 @@ async function settings(config: JarvisConfig): Promise<Settings> {
     },
     telegram: telegramStatus(config),
     stimme: await stimmeStatusVon(config),
+    mitteilungen: { hinweise: config.mitteilungen?.hinweise === true, moeglich: mitteilungMoeglich() },
     approval: { limitUsd: approvalLimitOf(config.approval?.limitUsd) },
     configFile: path.join(CONFIG_DIR, "config.json"),
   };

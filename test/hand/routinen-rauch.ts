@@ -76,7 +76,8 @@ async function main() {
     assert.equal(gespeichert().abschluss, null);
 
     // Hinweise am Tag: aus, bis man sie einschaltet. Danach steht die Regel im gemeinsamen Zeitplan.
-    const hinweise = seite.getByLabel(/Hinweise am Tag/);
+    // (Im Abschnitt Handy: Denselben Schalter gibt es seit G2.4 noch einmal für die Mitteilung am Mac.)
+    const hinweise = seite.locator("#handy").getByLabel(/Hinweise am Tag/);
     assert.equal(await hinweise.isChecked(), false, "Voreinstellung: keine Hinweise am Tag");
     await hinweise.click();
     await warte(() => gespeichert().hinweise === true, "Hinweise am Tag gespeichert");

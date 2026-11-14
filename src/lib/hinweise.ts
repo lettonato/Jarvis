@@ -10,10 +10,15 @@ import { fristText } from "./projekte";
 // einzigen Nachricht. Was Morgenbriefing oder Tagesabschluss schon gesagt haben, gilt als gemeldet.
 // Für Projektinhalte gelten dieselben zwei Regeln wie in src/lib/routinen.ts: Vertrauliches nie beim Namen,
 // und über Telegram stehen Namen und Inhalte nur, wenn du es eingeschaltet hast.
+//
+// Denselben Hinweis gibt es auch als Mitteilung am Mac selbst, ohne Handy (hinweisMitteilung). Beide Wege haben
+// ihren eigenen Schalter und ihren eigenen Stand: Jeder zählt für sich bis drei, und fällt einer aus, holt nur er nach.
 
 const MINUTE = 60_000;
 export const HINWEIS_REGELN = { vonStunde: 9, bisStunde: 18, nachmittagStunde: 15, hoechstensJeTag: 3, abstandMs: 60 * MINUTE, zeilen: 5, merkenTage: 60 };
-export const HINWEIS_TAKT = `zwischen ${HINWEIS_REGELN.vonStunde} und ${HINWEIS_REGELN.bisStunde} Uhr, höchstens ${HINWEIS_REGELN.hoechstensJeTag} am Tag, per Telegram`;
+const taktAuf = (weg: string) => `zwischen ${HINWEIS_REGELN.vonStunde} und ${HINWEIS_REGELN.bisStunde} Uhr, höchstens ${HINWEIS_REGELN.hoechstensJeTag} am Tag, ${weg}`;
+export const HINWEIS_TAKT = taktAuf("per Telegram");
+export const HINWEIS_TAKT_MAC = taktAuf("als Mitteilung am Mac");
 
 // Eine offene Projektaufgabe, die heute oder früher fällig ist.
 export type FaelligeAufgabe = { id: string; projekt: string; vertraulich: boolean; text: string; zustaendig: string; faellig: string };
@@ -90,6 +95,16 @@ function liste(anlaesse: Anlass[], zeile: (a: Anlass) => string): string[] {
   return zeilen;
 }
 
+// Wie viel ansteht, ohne zu sagen, was: „Eine Aufgabe ist überfällig, bei 2 fehlt eine Rückmeldung, …“.
+function inZahlen(ueber: number, rueck: number, heute: number): string {
+  const stuecke = [
+    ueber ? `${zahl(ueber, "eine Aufgabe ist", "Aufgaben sind")} überfällig` : "",
+    rueck ? `bei ${rueck === 1 ? "einer" : rueck} fehlt eine Rückmeldung` : "",
+    heute ? `${zahl(heute, "eine von heute ist", "von heute sind")} noch offen` : "",
+  ].filter(Boolean);
+  return gross(stuecke.join(", "));
+}
+
 // Der Hinweis als Nachricht aufs Handy. namen: Projektnamen und -inhalte dürfen über Telegram gehen.
 export function hinweisNachricht(anlaesse: Anlass[], heute: string, namen: boolean): string {
   const von = (art: Anlass["art"]) => anlaesse.filter((a) => a.art === art && a.projekt !== null);
@@ -106,12 +121,16 @@ export function hinweisNachricht(anlaesse: Anlass[], heute: string, namen: boole
     return teile.join("\n\n");
   }
 
-  const stuecke = [
-    ueber.length ? `${zahl(ueber.length, "eine Aufgabe ist", "Aufgaben sind")} überfällig` : "",
-    rueck.length ? `bei ${rueck.length === 1 ? "einer" : rueck.length} fehlt eine Rückmeldung` : "",
-    offen.length ? `${zahl(offen.length, "eine von heute ist", "von heute sind")} noch offen` : "",
-  ].filter(Boolean);
-  if (stuecke.length) teile.push(`Projekte: ${gross(stuecke.join(", "))}. Einzelheiten am Mac unter „Heute“.`);
+  const zahlen = inZahlen(ueber.length, rueck.length, offen.length);
+  if (zahlen) teile.push(`Projekte: ${zahlen}. Einzelheiten am Mac unter „Heute“.`);
   if (eigene.length) teile.push(["Heute noch offen:", ...eigeneZeilen].join("\n"));
   return teile.join("\n\n");
+}
+
+// Der Hinweis als Mitteilung von macOS. Eine Mitteilung sieht jeder, der gerade auf den Bildschirm schaut, auch
+// auf dem Sperrbildschirm oder wenn du in einer Besprechung den Bildschirm teilst. Deshalb stehen darin immer
+// nur Zahlen: kein Projektname, kein Wortlaut einer Aufgabe, auch nicht der eigenen aus dem Tresor.
+export function hinweisMitteilung(anlaesse: Anlass[]): { titel: string; text: string } {
+  const von = (art: Anlass["art"]) => anlaesse.filter((a) => a.art === art).length;
+  return { titel: "JARVIS", text: `${inZahlen(von("ueberfaellig"), von("rueckmeldung"), von("heute"))}. Einzelheiten in JARVIS unter „Heute“.` };
 }

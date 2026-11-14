@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { anlaesse, darfJetzt, HINWEIS_REGELN, hinweisNachricht, istAnderer, merke, neueHinweise, type FaelligeAufgabe, type HinweisStand } from "../../src/lib/hinweise";
+import { anlaesse, darfJetzt, HINWEIS_REGELN, hinweisMitteilung, hinweisNachricht, istAnderer, merke, neueHinweise, type FaelligeAufgabe, type HinweisStand } from "../../src/lib/hinweise";
 
 const um = (stunde: number, minute = 0, tag = 13) => new Date(2026, 10, tag, stunde, minute, 0, 0);
 const HEUTE = "2026-11-13";
@@ -144,5 +144,37 @@ describe("Hinweise am Tag: die Nachricht", () => {
     const text = hinweisNachricht(viele, HEUTE, true);
     assert.equal(text.split("\n").filter((z) => z.startsWith("• Hallenneubau")).length, 5);
     assert.match(text, /• und 3 weitere/);
+  });
+});
+
+describe("Hinweise am Tag: die Mitteilung am Mac", () => {
+  const alle = anlaesse(
+    [
+      aufgabe("e1", "2026-11-12", { text: "Statik prüfen" }),
+      aufgabe("e2", "2026-11-10", { text: "Angebot Stahlbau", zustaendig: "Thomas" }),
+      aufgabe("e3", "2026-11-11", { projekt: "Adler", vertraulich: true, text: "Kaufpreis nachverhandeln", zustaendig: "Meier" }),
+      aufgabe("e4", HEUTE, { text: "Vertrag gegenlesen" }),
+    ],
+    [{ text: "Steuerberater anrufen" }],
+    HEUTE,
+    "Benedikt",
+  );
+
+  test("eine Mitteilung kann jeder sehen, der auf den Bildschirm schaut: nur Zahlen, nie Namen oder Inhalte", () => {
+    const m = hinweisMitteilung(alle);
+    assert.equal(m.titel, "JARVIS");
+    assert.equal(m.text, "Eine Aufgabe ist überfällig, bei 2 fehlt eine Rückmeldung, 2 von heute sind noch offen. Einzelheiten in JARVIS unter „Heute“.");
+    for (const wort of ["Hallenneubau", "Statik", "Stahlbau", "Thomas", "Vertrag", "Adler", "Kaufpreis", "Meier", "Steuerberater"]) assert.ok(!`${m.titel} ${m.text}`.includes(wort), `„${wort}“ steht in der Mitteilung`);
+  });
+
+  test("Einzahl und Mehrzahl, und nur was es gibt", () => {
+    const eine = anlaesse([aufgabe("e1", "2026-11-12")], [], HEUTE, "Benedikt");
+    assert.equal(hinweisMitteilung(eine).text, "Eine Aufgabe ist überfällig. Einzelheiten in JARVIS unter „Heute“.");
+    const drei = anlaesse([aufgabe("e1", "2026-11-12"), aufgabe("e2", "2026-11-12"), aufgabe("e3", "2026-11-12")], [], HEUTE, "Benedikt");
+    assert.equal(hinweisMitteilung(drei).text, "3 Aufgaben sind überfällig. Einzelheiten in JARVIS unter „Heute“.");
+    const rueck = anlaesse([aufgabe("e1", "2026-11-12", { zustaendig: "Thomas" })], [], HEUTE, "Benedikt");
+    assert.equal(hinweisMitteilung(rueck).text, "Bei einer fehlt eine Rückmeldung. Einzelheiten in JARVIS unter „Heute“.");
+    const eigene = anlaesse([], [{ text: "Steuerberater anrufen" }], HEUTE, "Benedikt");
+    assert.equal(hinweisMitteilung(eigene).text, "Eine von heute ist noch offen. Einzelheiten in JARVIS unter „Heute“.");
   });
 });

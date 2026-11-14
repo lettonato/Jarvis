@@ -12,6 +12,7 @@ import { testTwelveKey } from "./desk/commodities";
 import { testGrokKey } from "./desk/grok";
 import { testKey } from "./brain";
 import { testMail } from "./mail";
+import { MITTEILUNG_SATZ, MitteilungError, mitteilungMoeglich, zeigeMitteilung } from "./mitteilung";
 import { stimmeEinstellen, type StimmeAktion } from "./stimme";
 import { explainTelegramError, prefsOf, renewCode, resetTelegram, sendTest, testTelegramToken, unpairTelegram, wakeTelegram } from "./telegram";
 import { createVault, vaultProblem } from "./obsidian";
@@ -41,6 +42,8 @@ export type EinstellungAktion =
   | { action: "approval"; limitUsd: ApprovalLimit }
   | { action: "twelvedata"; apiKey: string }
   | { action: "removeTwelvedata" }
+  | { action: "macHinweise"; an: boolean }
+  | { action: "macMitteilungProbe" }
   | StimmeAktion;
 
 // Mehr als 20 $ am Tag sind für einen Spielgeld-Test sicher ein Tippfehler.
@@ -200,5 +203,32 @@ export async function aendereEinstellung(body: EinstellungAktion): Promise<Einst
     const limitUsd = body.limitUsd;
     return { ok: true, config: await speichere((c) => void (c.approval = { limitUsd })) };
   }
+  // Hinweise am Tag als Mitteilung am Mac selbst. Ausschalten geht immer, einschalten nur auf einem Mac.
+  if (body.action === "macHinweise") {
+    const an = body.an;
+    if (typeof an !== "boolean") return nein("Ungültige Anfrage.");
+    if (an && !mitteilungMoeglich()) return nein(MITTEILUNG_SATZ["kein-mac"]);
+    const neu = await speichere((c) => {
+      c.mitteilungen = { ...c.mitteilungen, hinweise: an };
+    });
+    return { ok: true, config: neu, message: an ? "Eingeschaltet. Mit der Mitteilung zur Probe siehst du, ob sie bei dir ankommt." : "Ausgeschaltet." };
+  }
+
+  // Zeigt eine Mitteilung zur Probe. Ob sie wirklich erscheint, entscheidet macOS (Erlaubnis, Fokus); das kann
+  // JARVIS nicht sehen, deshalb sagt die Antwort, wo du nachsiehst.
+  if (body.action === "macMitteilungProbe") {
+    try {
+      await zeigeMitteilung("JARVIS", "So sieht ein Hinweis von JARVIS aus.");
+    } catch (e) {
+      return nein(e instanceof MitteilungError ? e.message : MITTEILUNG_SATZ.abgelehnt);
+    }
+    // Die Probe kann einige Sekunden dauern: Die Antwort zeigt den Stand von jetzt, nicht den von vorhin.
+    return {
+      ok: true,
+      config: await readConfig(),
+      message: "Die Mitteilung ist unterwegs und sollte oben rechts erscheinen. Kommt nichts: In den Systemeinstellungen unter Mitteilungen den „Skripteditor“ erlauben und nachsehen, ob gerade ein Fokus (Nicht stören) eingeschaltet ist.",
+    };
+  }
+
   return nein("Unbekannte Aktion.");
 }

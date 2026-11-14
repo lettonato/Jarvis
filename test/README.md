@@ -47,6 +47,10 @@ npm run pruefen     # Lint, Typprüfung und Tests
   jedes Ding einmal, nichts doppelt, feste Sätze bei Fehlschlägen). Die Regeln dazu stehen ohne Netz in
   `test/regeln/hinweise.test.ts`. Der nachgebaute Telegram-Server kann für die nächste Anfrage einer Methode
   einen Fehler liefern (`tg.fehler.sendMessage = 400`) oder die Verbindung ohne Antwort abreißen lassen (`-1`).
+  Dieselbe Datei prüft die Hinweise als Mitteilung am Mac gegen den nachgebauten Mac: eigener Schalter, nur
+  Zahlen, der Text nie im Skript, eigener Stand neben dem fürs Handy. Mit `JARVIS_MAC_MITTEILUNG=abgelehnt`
+  nimmt der nachgebaute Mac die Mitteilung nicht an, mit `haengt` antwortet er nicht;
+  `JARVIS_MITTEILUNG_FRIST_MS` verkürzt dafür die Wartezeit.
   `entwuerfe.test.ts` prüft die Antwortentwürfe gegen das nachgebaute Postfach und den nachgebauten Claude:
   Empfänger und Betreff kommen nur aus dem Postfach, nie vom Modell oder aus dem Text der Mail; es geht kein
   Befehl an das Postfach, der etwas ändert oder ablegt; was du selbst geändert hast, wird nicht überschrieben;
@@ -81,7 +85,8 @@ normale Tests.
 
 `test/hand/` enthält Handprüfungen, die ein echtes Chrome brauchen und deshalb nicht bei `npm test` mitlaufen
 (Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung,
-Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“, Einstellungen speichern mit vielen Änderungen zur selben Zeit). Aufruf steht jeweils oben in der Datei.
+Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“, Einstellungen speichern mit vielen Änderungen zur selben Zeit,
+Hinweise als Mitteilung am Mac vom Schalter bis zur Mitteilung des laufenden Servers). Aufruf steht jeweils oben in der Datei.
 
 `test/hand/postgres-rauch.ts` braucht kein Chrome, aber ein installiertes PostgreSQL (die Programme `initdb`
 und `pg_ctl`; gesucht in `JARVIS_PG_BIN` und an den üblichen Orten). Es startet ein eigenes, leeres PostgreSQL
@@ -102,5 +107,5 @@ Neue Werkzeuge: Der Test „jedes Werkzeug steht in der Tabelle“ liest alle `b
 `brain.ts` und `browser.ts`. Ein Werkzeug ohne Zeile in `src/lib/server/gateway/richtlinien.ts` lässt ihn
 fehlschlagen, ebenso eine freigabepflichtige Regel ohne Aktion in `src/lib/server/aktionen.ts`.
 
-Nur auf dem Mac prüfbar und deshalb nicht automatisiert: Apple-Kalender (osascript), Öffnen von
-Programmen, echtes Chrome für Browser-Agent und PDF, Spracherkennung, echte Postfächer und Telegram.
+Nur auf dem Mac prüfbar und deshalb nicht automatisiert: Apple-Kalender (osascript), Mitteilungen von macOS
+(ob sie wirklich erscheinen), Öffnen von Programmen, echtes Chrome für Browser-Agent und PDF, Spracherkennung, echte Postfächer und Telegram.

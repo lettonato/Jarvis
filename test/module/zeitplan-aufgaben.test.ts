@@ -68,7 +68,7 @@ beforeEach(async () => {
 });
 
 describe("Zeitplan: was angemeldet ist", () => {
-  test("die Agenten und alles, was per Telegram von selbst kommt, stehen in einer Liste", async () => {
+  test("die Agenten und alles, was per Telegram oder als Mitteilung am Mac von selbst kommt, stehen in einer Liste", async () => {
     const u = await aufgaben.zeitplanSnapshot(um(6));
     assert.deepEqual(u.eintraege.map((e) => [e.id, e.agent]), [
       ["intel", "intel"],
@@ -76,6 +76,7 @@ describe("Zeitplan: was angemeldet ist", () => {
       ["briefing", null],
       ["erinnerungen", null],
       ["hinweise", null],
+      ["hinweise-mac", null],
       ["abschluss", null],
     ]);
     assert.ok(aufgaben.aufgaben().every((a) => a.lauf && a.faellig), "alles führt der gemeinsame Taktgeber selbst aus");
@@ -91,6 +92,7 @@ describe("Zeitplan: was angemeldet ist", () => {
       ["Telegram ist nicht verbunden.", null],
       ["Telegram ist nicht verbunden.", null],
       ["Telegram ist nicht verbunden.", null],
+      ["Ausgeschaltet.", null],
       ["Telegram ist nicht verbunden.", null],
     ]);
   });

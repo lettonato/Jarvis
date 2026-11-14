@@ -5,10 +5,10 @@
 // gegen nachgebaute Dienste; echte Dienste und echte Einstellungen werden nicht berührt.
 
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { after, before, beforeEach, describe, test } from "node:test";
-import { sichereUmgebung } from "../helfer/umgebung";
+import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
 import { starteClaudeMock, type ClaudeMock } from "../mocks/claude-mock";
 import { starteTelegramMock, type TelegramMock } from "../mocks/telegram-mock";
 
@@ -260,6 +260,83 @@ describe("Einstellungen: was inzwischen entfernt wurde, kommt nicht zurück", ()
     await config.writeConfig({ name: "Benedikt", xai: { apiKey: "xai-test-nur-fuer-den-mock" } });
     await Promise.all([gut(einstellungen.aendereEinstellung({ action: "removeXai" })), gut(einstellungen.aendereEinstellung({ action: "xaiBudget", budgetUsd: 2.5 }))]);
     assert.deepEqual(await config.readConfig(), { name: "Benedikt" });
+  });
+});
+
+describe("Einstellungen: Mitteilungen am Mac", () => {
+  const LOG = path.join(testOrdner("einstellungen-mac"), "aufrufe.log");
+  const gezeigt = () =>
+    (existsSync(LOG) ? readFileSync(LOG, "utf8") : "")
+      .split("\n")
+      .filter(Boolean)
+      .map((z) => (JSON.parse(z) as { args: string[] }).args)
+      .filter((a) => a[1]?.includes("display notification"))
+      .map((a) => ({ text: a[2], titel: a[3] }));
+
+  before(() => chmodSync("test/mocks/osascript-mock.mjs", 0o755));
+  beforeEach(() => {
+    rmSync(LOG, { force: true });
+    Object.assign(process.env, { JARVIS_OSASCRIPT: path.resolve("test/mocks/osascript-mock.mjs"), JARVIS_MAC_LOG: LOG, JARVIS_MITTEILUNG_FRIST_MS: "1500" });
+    delete process.env.JARVIS_MAC_MITTEILUNG;
+  });
+  after(() => {
+    for (const name of ["JARVIS_OSASCRIPT", "JARVIS_MAC_LOG", "JARVIS_MITTEILUNG_FRIST_MS", "JARVIS_MAC_MITTEILUNG"]) delete process.env[name];
+  });
+
+  test("der Schalter für die Hinweise am Tag ist aus, lässt sich ein- und wieder ausschalten und fasst sonst nichts an", async () => {
+    await config.writeConfig({ name: "Benedikt", telegram: { token: TOKEN, bot: "jarvis_test_bot", chatId: 111, hinweise: true } });
+    assert.equal((await config.readConfig()).mitteilungen, undefined);
+    const an = await gut(einstellungen.aendereEinstellung({ action: "macHinweise", an: true }));
+    assert.deepEqual(an.config.mitteilungen, { hinweise: true });
+    assert.match(an.message ?? "", /zur Probe/);
+    assert.deepEqual(gezeigt(), [], "einschalten allein zeigt noch nichts");
+    const aus = await gut(einstellungen.aendereEinstellung({ action: "macHinweise", an: false }));
+    assert.deepEqual(aus.config.mitteilungen, { hinweise: false });
+    assert.deepEqual((await config.readConfig()).telegram, { token: TOKEN, bot: "jarvis_test_bot", chatId: 111, hinweise: true }, "der Schalter fürs Handy ist ein anderer");
+  });
+
+  test("einschalten, während woanders gespeichert wird: beides bleibt", async () => {
+    await Promise.all([gut(einstellungen.aendereEinstellung({ action: "macHinweise", an: true })), gut(einstellungen.aendereEinstellung({ action: "name", name: "Ben" }))]);
+    const c = await config.readConfig();
+    assert.deepEqual([c.name, c.mitteilungen], ["Ben", { hinweise: true }]);
+  });
+
+  test("ohne klares Ja oder Nein wird nichts gespeichert", async () => {
+    for (const an of [undefined, "ja", 1, null]) await schlecht(einstellungen.aendereEinstellung({ action: "macHinweise", an } as never), /Ungültige Anfrage/);
+    assert.deepEqual(await config.readConfig(), { name: "Benedikt" });
+  });
+
+  test("die Mitteilung zur Probe: ein fester Satz ohne Inhalte, und die Einstellungen bleiben, wie sie sind", async () => {
+    const r = await gut(einstellungen.aendereEinstellung({ action: "macMitteilungProbe" }));
+    assert.deepEqual(gezeigt(), [{ titel: "JARVIS", text: "So sieht ein Hinweis von JARVIS aus." }]);
+    assert.match(r.message ?? "", /Skripteditor/);
+    assert.deepEqual(await config.readConfig(), { name: "Benedikt" });
+  });
+
+  test("nimmt der Mac die Probe nicht an oder antwortet er nicht, steht ein fester Satz da, nichts vom Mac", async () => {
+    process.env.JARVIS_MAC_MITTEILUNG = "abgelehnt";
+    const r = await einstellungen.aendereEinstellung({ action: "macMitteilungProbe" });
+    assert.deepEqual(r, { ok: false, error: "Der Mac hat die Mitteilung nicht angenommen." });
+    process.env.JARVIS_MAC_MITTEILUNG = "haengt";
+    assert.deepEqual(await einstellungen.aendereEinstellung({ action: "macMitteilungProbe" }), { ok: false, error: "Der Mac hat nicht rechtzeitig geantwortet." });
+    // Wird osascript von außen beendet, weiß auch niemand, ob die Mitteilung erschienen ist.
+    process.env.JARVIS_MAC_MITTEILUNG = "abgeschossen";
+    assert.deepEqual(await einstellungen.aendereEinstellung({ action: "macMitteilungProbe" }), { ok: false, error: "Der Mac hat nicht rechtzeitig geantwortet." });
+  });
+
+  test("was während der Probe woanders gespeichert wird, steht in der Antwort", async () => {
+    process.env.JARVIS_MAC_MITTEILUNG = "langsam";
+    const [probe] = await Promise.all([gut(einstellungen.aendereEinstellung({ action: "macMitteilungProbe" })), gut(einstellungen.aendereEinstellung({ action: "name", name: "Ben" }))]);
+    assert.equal(probe.config.name, "Ben");
+  });
+
+  test("nicht auf einem Mac: einschalten und Probe werden abgelehnt, ausschalten geht", { skip: process.platform === "darwin" && "nur außerhalb von macOS prüfbar" }, async () => {
+    await config.writeConfig({ name: "Benedikt", mitteilungen: { hinweise: true } });
+    delete process.env.JARVIS_OSASCRIPT;
+    await schlecht(einstellungen.aendereEinstellung({ action: "macHinweise", an: true }), /^Mitteilungen gibt es nur auf dem Mac\.$/);
+    await schlecht(einstellungen.aendereEinstellung({ action: "macMitteilungProbe" }), /^Mitteilungen gibt es nur auf dem Mac\.$/);
+    const aus = await gut(einstellungen.aendereEinstellung({ action: "macHinweise", an: false }));
+    assert.deepEqual(aus.config.mitteilungen, { hinweise: false });
   });
 });
 

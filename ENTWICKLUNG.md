@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 795 von 795 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 821 von 821 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -60,7 +60,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen; Speicher wahlweise Datei oder PostgreSQL (Schritt I1) | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der sechs Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre), den gemeinsamen Zeitplan und den Edelmetall-Agenten (nur gegen Nachbau); **Offen** für weitere Agenten | Mac-Prüfliste Teile H und K; Marktagent, Newsletter und weitere |
-| G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss, Projektüberwachung, Hinweise am Tag (einstellbar, abschaltbar) und Antwortentwürfe für Mails ohne Versand; **Offen** für Marktüberwachung über Intel hinaus | Mac-Prüfliste Teile G, L und M; Hinweis als Mitteilung am Mac (G2.4); Entwurf im Ordner „Entwürfe“ des Postfachs (Frage 13) |
+| G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss, Projektüberwachung, Hinweise am Tag aufs Handy und als Mitteilung am Mac (einstellbar, abschaltbar) und Antwortentwürfe für Mails ohne Versand; **Offen** für Marktüberwachung über Intel hinaus | Mac-Prüfliste Teile G, L, M und P; Entwurf im Ordner „Entwürfe“ des Postfachs (Frage 13) |
 | D Microsoft 365 | **Testbereit** (nur gegen Nachbau) für Termine aus Outlook lesen (Schritt D1); **Blockiert** für die echte Anbindung, bis eure IT die Anwendung in Entra angelegt hat; **Offen** für Mail, Dateien, Teams | App-Registrierung durch die IT (Frage 14), Mac-Prüfliste Teil N; weitere Teile nur nach Benedikts Entscheidung |
 | H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
 | I Azure | **Testbereit** für die Vorbereitung (Schritt I1): Projektgedächtnis in PostgreSQL, Claude-Zugang an einer Stelle, Anleitung; **Blockiert** für alles in Azure selbst (Entscheidung und Kostenfreigabe) | Abonnement, IT-Kontakt, Region, Budget (Frage 3); davor Anmeldung je Person und die übrigen Daten auf die Datenbank umstellen |
@@ -781,7 +781,7 @@ KI-Gehirn). Über Telegram stehen Projektnamen und -inhalte nur, wenn der Schalt
 | G2.1 Hinweise am Tag per Telegram: in einem Projekt ist etwas überfällig geworden, jemand anderes ist mit seiner Aufgabe im Verzug („Hier fehlt eine Rückmeldung“), am Nachmittag ist noch etwas von heute offen. **Voreinstellung: aus** | Testbereit | Schritt G2; `src/lib/hinweise.ts`, `src/lib/server/hinweise.ts` |
 | G2.2 Regel gegen zu viele Meldungen: nur 9 bis 18 Uhr, höchstens drei am Tag, mindestens eine Stunde Abstand, jedes Ding einmal, alles Gleichzeitige in einer Nachricht; was das Briefing schon sagt, kommt nicht noch einmal | Testbereit | `test/regeln/hinweise.test.ts` |
 | G2.3 Morgenbriefing, Erinnerungen vor Terminen und Tagesabschluss laufen über den gemeinsamen Taktgeber; ein Fehlschlag steht mit festem Satz im Zeitplan; war Telegram nicht erreichbar, kommt die Nachricht nach, aber nie doppelt | Testbereit | `test/module/hinweise.test.ts` |
-| G2.4 Hinweis am Mac selbst (ohne Handy), etwa als Mitteilung von macOS | Offen | am Mac steht Überfälliges wie bisher unter „Heute“ |
+| G2.4 Hinweis am Mac selbst (ohne Handy) als Mitteilung von macOS: eigener Schalter unter Einstellungen → Mitteilungen (**Voreinstellung: aus**), dieselbe Obergrenze, in der Mitteilung nur Zahlen, Knopf „Mitteilung zur Probe zeigen“ | Testbereit, **nur gegen einen nachgebauten Mac geprüft** | Schritt G2.4; `src/lib/server/mitteilung.ts`, `test/module/hinweise.test.ts`; Prüfliste Teil P |
 | G3.1 Antwortentwurf auf Zuruf: am Mac im Raum „Post“ mit dem Knopf „Antwort entwerfen“ oder im Gespräch, auch per Telegram. Der Entwurf liegt nur auf dem Mac (`~/.jarvis/entwuerfe.json`), je Mail einer | Testbereit | Schritt G3; `src/lib/entwuerfe.ts`, `src/lib/server/entwuerfe.ts`, Werkzeug `antwort_entwerfen` (Klasse B) |
 | G3.2 Kein Versand: Es gibt kein Werkzeug und keine Schnittstelle zum Senden. Empfänger ist immer der Absender, den der Server im Postfach liest; Betreff ist „Re: …“. Weder das KI-Modell noch der Text der Mail können das ändern. Im Postfach ändert sich nichts | Testbereit | `test/module/entwuerfe.test.ts`, `test/regeln/entwuerfe.test.ts` |
 | G3.3 Lesen, ändern, kopieren, verwerfen im Raum „Post“; „Im Mailprogramm öffnen“ trägt Empfänger, Betreff und Text in eine neue Mail ein, abschicken musst du selbst. Was du geändert hast, überschreibt JARVIS nicht | Testbereit | `src/components/Antwortentwuerfe.tsx`; im Browser geprüft (`test/hand/post-rauch.ts`) |
@@ -862,9 +862,73 @@ Briefing und gehen damit über Telegram; für das Projektgedächtnis gilt der Sc
 
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. Bekannte Grenzen: Reißt
 die Verbindung mitten im Senden ab, weiß niemand, ob die Nachricht ankam; JARVIS schickt sie dann nicht noch
-einmal und schreibt das in den Zeitplan. Die Hinweise kommen nur aufs Handy, nicht als Mitteilung am Mac (G2.4).
+einmal und schreibt das in den Zeitplan. Die Hinweise kamen bis hierher nur aufs Handy; die Mitteilung am Mac
+ist seit Schritt G2.4 gebaut (siehe unten).
 **Sicherheitsrisiken:** keine neuen. Es geht nichts an ein KI-Modell, und über Telegram geht nichts, was nicht
 schon Briefing und Tagesabschluss nach denselben Regeln schicken.
+
+### Schritt G2.4: Hinweise am Tag als Mitteilung am Mac (14. November 2026)
+
+**Was gebaut wurde.** Die Hinweise am Tag (überfällig, Rückmeldung fehlt, heute noch offen) gibt es jetzt auch
+am Mac selbst, ohne Handy: als Mitteilung von macOS oben rechts am Bildschirm. Unter Einstellungen steht ein
+neuer Abschnitt „Mitteilungen am Mac“ mit einem Schalter (Voreinstellung: aus) und dem Knopf „Mitteilung zur
+Probe zeigen“. Im Zeitplan steht eine eigene Zeile „Hinweise am Tag als Mitteilung am Mac“.
+
+**Wie es gebaut ist.**
+
+* `src/lib/server/mitteilung.ts` ruft das auf jedem Mac vorhandene `osascript` auf. Es wird nichts installiert,
+  und nichts verlässt den Mac. Text und Titel stehen nie im Skript, sie gehen als eigene Argumente an
+  `osascript`; so kann kein Zeichen darin das Skript verändern. Steuerzeichen werden entfernt, überlange Texte
+  gekürzt. Fehler werden nur als feste Sätze gemeldet.
+* Handy und Mac sind zwei Wege mit je eigenem Schalter und eigenem Stand (`src/lib/server/hinweise.ts`). Jeder
+  zählt für sich bis drei am Tag. Ist Telegram nicht erreichbar, zeigt der Mac den Hinweis trotzdem, und aufs
+  Handy kommt er nach, ohne am Mac ein zweites Mal zu erscheinen. Die Datei `~/.jarvis/hinweise.json` behält
+  ihr Format; der Stand für den Mac steht zusätzlich unter „mac“. Eine Datei von früher wird gelesen: Was dort
+  schon als gemeldet steht, ist auch für den Mac nichts Neues.
+* Die Regel gegen zu viele Meldungen ist dieselbe wie fürs Handy (`src/lib/hinweise.ts`): nur 9 bis 18 Uhr,
+  höchstens drei am Tag, eine Stunde Abstand, jedes Ding einmal.
+* Was das Morgenbriefing oder der Tagesabschluss schon gesagt hat, kommt auch am Mac nicht noch einmal, aber
+  erst, wenn die Meldung wirklich hinausging. Nimmt Telegram sie nicht an, hat sie niemand gelesen, und der Mac
+  zeigt den Hinweis selbst. Steht das Briefing gerade an, wartet der Mac darauf höchstens zehn Minuten (das
+  Handy wartet wie bisher bis zu drei Stunden; ohne Telegram käme dort ohnehin nichts an).
+
+**Eigene Entscheidungen (ohne Rückfrage getroffen).**
+
+1. **In der Mitteilung stehen immer nur Zahlen** („2 Aufgaben sind überfällig. Einzelheiten in JARVIS unter
+   „Heute“.“), nie ein Projektname oder der Wortlaut einer Aufgabe, auch nicht bei den eigenen Aufgaben aus dem
+   Tresor. Grund: Eine Mitteilung sieht jeder, der auf den Bildschirm schaut, auch auf dem Sperrbildschirm oder
+   wenn in einer Besprechung der Bildschirm geteilt wird. Einen Schalter „mit Namen“ gibt es bewusst nicht.
+2. **Eigener Schalter, unabhängig vom Handy.** Man kann beides einschalten oder nur eines.
+3. **Nimmt der Mac die Mitteilung nicht an**, ist sicher nichts erschienen: Nichts wird gemerkt, neuer Versuch
+   eine Viertelstunde später. **Antwortet der Mac gar nicht** (15 Sekunden) oder wird `osascript` von außen
+   beendet, weiß niemand, ob sie erschienen ist. Dann geht der Hinweis nicht verloren, aber der Versuch zählt
+   wie eine Mitteilung: nächster Versuch frühestens eine Stunde später, höchstens drei am Tag. Schlimmstenfalls
+   erscheint dieselbe Mitteilung also dreimal an einem Tag; verloren geht nichts.
+4. **Kein Zusatzprogramm.** Deshalb öffnet ein Klick auf die Mitteilung nicht JARVIS (macOS ordnet sie nach
+   meinem Wissen dem Skripteditor zu; am Mac nicht geprüft). Das steht so in den Einstellungen.
+5. **Wer die Mitteilung am Mac zum ersten Mal einschaltet**, bekommt als Erstes eine Zusammenfassung dessen, was
+   am Mac noch nicht als gemeldet gilt (ohne Handy also alles, was gerade ansteht). Das ist gewollt: So sieht
+   man gleich, dass es geht.
+
+### Testergebnisse Schritt G2.4 (14. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **821 Tests: 821 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 26: Text der Mitteilung 2, Mitteilung am Mac über den Taktgeber gegen den nachgebauten Mac 17, Schalter und Probe in den Einstellungen 7). Zwei frühere Tests zählen jetzt sieben statt sechs Zeilen im Zeitplan. Zwei der neuen Tests laufen nur außerhalb von macOS (dort ließe sich „kein Mac“ nicht nachstellen, ohne das echte `osascript` zu rufen) und würden auf einem Mac als übersprungen gemeldet |
+| `npx next build` | erfolgreich, weiter nur die vier bekannten Hinweise von Turbopack. Ein fünfter (der Bau wollte dem Pfad zu `osascript` folgen) ist behoben |
+| Handprüfung `mitteilung-rauch` (Chromium, gebauter Server, nachgebauter Mac) | alle fünf Schritte in Ordnung: Abschnitt und Schalter (aus) sind da, und ausgeschaltet kommt nichts; die Probe geht an den nachgebauten Mac und schaltet nichts ein; nach dem Einschalten über die Seite zeigt der Zeitplan des laufenden Servers von selbst „2 Aufgaben sind überfällig. …“, ohne Namen und ohne den Text im Skript; die Zeile steht im Zeitplan, und dieselbe Mitteilung kommt kein zweites Mal; Ausschalten über die Seite, unsinnige Angabe (400), fremde Seiten (403). `agenten-rauch` und `routinen-rauch` an die neue Zeile und den zweiten Schalter angepasst, beide laufen durch |
+| Gegenproben (absichtlich eingebaute Fehler, Tests müssen fehlschlagen) | 52 von 52 erkannt, in zwei Läufen (35 nach dem Bau, 17 nach dem Code-Review). Unter anderem: Mitteilung kommt ausgeschaltet; Mac und Handy teilen sich den Stand; gezeigte Mitteilung wird nicht gemerkt; abgelehnte gilt als gezeigt; Versuch jede Minute; Wortlaut oder Projektname in der Mitteilung; Text im Skript; Steuerzeichen bleiben; alte Datei verliert den Teil fürs Handy; Mac wartet gar nicht oder volle drei Stunden auf das Briefing; Briefing gilt am Mac schon vor dem Senden als gesagt; hängende Mitteilung geht verloren; Schalter stellt auch das Handy um; Probe schaltet ein oder meldet Erfolg trotz Ablehnung |
+| Code-Review | neun Punkte. Sieben eingearbeitet: Der Mac wartete bis zu drei Stunden auf ein Briefing, das wegen Telegram nicht durchkam (jetzt höchstens zehn Minuten); das Briefing galt am Mac schon als gesagt, bevor es hinausging (jetzt erst danach); eine hängende Mitteilung ließ den Hinweis verloren gehen (jetzt neuer Versuch nach einer Stunde); nach dem Umstieg hätte der Mac alles noch einmal gemeldet, was längst gesagt war; ein Stand in alter Form im Speicher wäre nach einem Neuladen falsch benutzt worden; ein von außen beendetes `osascript` galt als „sicher nicht gezeigt“; die Probe antwortete mit einem veralteten Stand der Einstellungen; der Zeitplan zeigte den Takt auch ohne Mac. Bewusst gelassen: Lässt sich `osascript` gar nicht starten, steht „nicht angenommen“ da und JARVIS versucht es alle Viertelstunde wieder (auf einem Mac gibt es das Programm immer, der Versuch kostet nichts); sind beide Wege an, wird das Projektgedächtnis je Minute zweimal statt einmal gelesen (eine kleine Datei; ein gemeinsamer Zwischenspeicher hätte gleichzeitige Änderungen verdeckt) |
+| Am echten Mac geprüft | **nein.** Alles lief gegen ein nachgebautes `osascript`; eine echte Mitteilung ist nirgends erschienen |
+| Nicht geprüft | ob macOS die Mitteilung zeigt (Erlaubnis für den Skripteditor, Fokus), wie sie auf dem Sperrbildschirm aussieht, was ein Klick darauf öffnet, ob die 15 Sekunden Frist am Mac passen (Prüfliste Teil P) |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Bekannte Grenzen:**
+JARVIS kann nicht sehen, ob macOS eine Mitteilung wirklich zeigt: Fehlt die Erlaubnis oder ist ein Fokus (Nicht
+stören) an, meldet macOS „erledigt“ und zeigt nichts; der Hinweis gilt dann als gezeigt. Dafür gibt es die
+Mitteilung zur Probe. Ein Klick auf die Mitteilung führt nicht zu JARVIS. Die Mitteilung kommt nur, solange
+JARVIS am Mac läuft. Antwortet der Mac mehrmals nicht, kann dieselbe Mitteilung bis zu dreimal am Tag erscheinen. **Sicherheitsrisiken:** keine neuen. Es geht nichts an ein KI-Modell und nichts ins Netz;
+die Mitteilung enthält keine Inhalte. Der neue Schalter und die Probe laufen über dieselbe geschützte
+Schnittstelle wie alle Einstellungen (fremde Seiten werden abgewiesen).
 
 ### Schritt G3: Antwortentwürfe für Mails, ohne Versand (13. November 2026)
 
@@ -1188,7 +1252,7 @@ Servers wieder weg). Wer `config.json` von Hand ändert, während JARVIS speiche
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis O; Teil N erst, wenn eure IT so weit ist; Teil O neu seit J2 und J3). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis P; Teil N erst, wenn eure IT so weit ist; Teil P neu seit G2.4). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -1268,6 +1332,9 @@ Danach wie geplant:
    eine misslungene neue Sicherung lässt die alte liegen.
 11. **J3: gebaut, Testbereit** (Schritt J3 in Bereich J): Einstellungen werden überall in einem Zug gelesen,
    geändert und gespeichert.
-   **Als Nächstes:** G2.4 (Hinweis als Mitteilung am Mac). Die
+12. **G2.4: gebaut, Testbereit, nur gegen einen nachgebauten Mac** (Schritt G2.4 in Bereich G): Hinweise am Tag
+   als Mitteilung am Mac, ohne Handy.
+   **Als Nächstes:** C2 (persönliches Gedächtnis in dieselbe Speicherschicht wie das Projektgedächtnis), danach
+   G3.5 (Antwortentwürfe mit Zitat der ursprünglichen Mail). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

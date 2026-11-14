@@ -67,8 +67,8 @@ export function Zeitplan() {
       )}
       <p className="mt-3 max-w-[46rem] text-xs text-quiet">
         Hier stehen die Läufe nach Plan; einen Start von Hand siehst du oben in der Steuerung. War der Mac zur Uhrzeit aus, holt JARVIS einen Lauf für Gold und Silber bis zu zwei Stunden später nach, Briefing und
-        Tagesabschluss bis zu drei Stunden, danach nicht mehr. Hinweise am Tag kommen nur zwischen {HINWEIS_REGELN.vonStunde} und {HINWEIS_REGELN.bisStunde} Uhr und höchstens {HINWEIS_REGELN.hoechstensJeTag} am Tag. Was aufs Handy kommt, stellst du unter Einstellungen beim Handy ein, die Uhrzeiten für
-        Gold und Silber im Raum Intel.
+        Tagesabschluss bis zu drei Stunden, danach nicht mehr. Hinweise am Tag kommen nur zwischen {HINWEIS_REGELN.vonStunde} und {HINWEIS_REGELN.bisStunde} Uhr und höchstens {HINWEIS_REGELN.hoechstensJeTag} am Tag. Was aufs Handy kommt, stellst du unter Einstellungen beim Handy ein, die Mitteilung am Mac
+        dort unter Mitteilungen, die Uhrzeiten für Gold und Silber im Raum Intel.
       </p>
     </Panel>
   );
