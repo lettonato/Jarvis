@@ -6,7 +6,7 @@ import type { AvatarState } from "@/lib/avatar";
 import { ApiError, getJson, postJson, postStream } from "@/lib/api";
 import { fahrtArten } from "@/lib/raeume";
 import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type Source } from "@/lib/brain";
-import type { CalendarSnapshot } from "@/lib/calendar";
+import { erinnerungsSatz, fuerGespraech, type CalendarSnapshot } from "@/lib/calendar";
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import { intelSentence, searchSentence, type IntelSnapshot } from "@/lib/intel";
 import { docDoneSentence, type DocsSnapshot } from "@/lib/documents";
@@ -190,7 +190,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const name = settings?.name ?? "Benedikt";
 
   useEffect(() => {
-    latest.current = { name, market, weather, tasks, mail, desk, calendar, intel, projekte };
+    // Ins Gespräch gehen Outlook-Termine nur, wenn du es eingeschaltet hast: Was JARVIS hier antwortet, liest
+    // das KI-Modell beim nächsten Satz mit. Die Räume zeigen weiter den ganzen Kalender.
+    latest.current = { name, market, weather, tasks, mail, desk, calendar: fuerGespraech(calendar), intel, projekte };
     place.current = pathname;
     history.current = turns;
     brain.current = Boolean(settings?.brain.configured);
@@ -449,7 +451,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         tasks: result.tasks ?? ctx.tasks,
         mail: result.mail ?? ctx.mail,
         desk: result.desk ?? ctx.desk,
-        calendar: result.calendar ?? ctx.calendar,
+        calendar: result.calendar ? fuerGespraech(result.calendar) : ctx.calendar,
         intel: result.intel ?? ctx.intel,
       };
       // Führt Claude dich während einer Besprechung in eine andere Ansicht, endet die Besprechung.
@@ -550,9 +552,10 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       if (!due) return;
       reminded.current.add(due.id);
       const minutes = Math.round((due.start - now) / 60_000);
-      const text = minutes <= 1 ? `Jetzt beginnt ${due.title}.` : `In ${minutes} Minuten: ${due.title}.`;
+      const { text, mitTitel } = erinnerungsSatz(due, minutes, calendar.outlook?.extern === true);
       addTurn("jarvis", text);
       speak(text);
+      if (!mitTitel) return;
       // Gehört der Termin zu einem Projekt, blendet JARVIS ein, was dazu festgehalten ist.
       void getJson<{ vorbereitung: { projekt: string; text: string; fremd: boolean }[] }>(`/api/projekte?termin=${encodeURIComponent(due.title)}`)
         .then(({ vorbereitung }) => {

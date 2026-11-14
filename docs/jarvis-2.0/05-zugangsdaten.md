@@ -21,7 +21,7 @@ statt des Werts nur die Marke `@schluesselbund`. Alles andere in der Datei bleib
 | Teil | Datei | Was er tut |
 |---|---|---|
 | Schlüsselbund-Zugriff | `src/lib/server/schluesselbund.ts` | ruft das Bordwerkzeug `/usr/bin/security` auf, Dienst „JARVIS“, je Geheimnis ein Eintrag (z. B. `claude.apiKey`) |
-| Einstellungen | `src/lib/server/config.ts` | `GEHEIMNISSE` listet die fünf Werte; `readConfig` setzt sie aus dem Schlüsselbund ein, `writeConfig` legt neue oder geänderte Werte dort ab |
+| Einstellungen | `src/lib/server/config.ts` | `GEHEIMNISSE` listet die Werte (seit Schritt D1 auch die Anmeldung bei Microsoft 365, `microsoft.refreshToken`); `readConfig` setzt sie aus dem Schlüsselbund ein, `writeConfig` legt neue oder geänderte Werte dort ab |
 | Umzug und Rückweg | `src/lib/server/zugangsdaten.ts` | `inSchluesselbund`, `zurueckInDatei`, `zugangsdatenStatus` |
 | Bedienung | Einstellungen → Sicherheit → „Zugangsdaten“ | zeigt je Geheimnis, wo es liegt; Knopf zum Umziehen (mit Bestätigungshäkchen) und Rückweg |
 | Schnittstelle | `/api/sicherheit`, Aktionen `zugangsdaten_schluesselbund` und `zugangsdaten_datei` | nur von diesem Mac, nur mit `x-jarvis`-Header |

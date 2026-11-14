@@ -14,6 +14,8 @@ export type CalendarEvent = {
   allDay: boolean;
   location: string;
   calendar: string;
+  // Fehlt: aus der Kalender-App des Macs. outlook: aus Microsoft 365 gelesen (src/lib/microsoft.ts).
+  quelle?: "outlook";
 };
 
 // ok: lesen und eintragen. offen: noch nie gefragt. nur-schreiben: macOS erlaubt nur das Eintragen.
@@ -29,7 +31,62 @@ export type CalendarSnapshot = {
   from: string;
   to: string;
   error?: string;
+  // Gesetzt, wenn Microsoft 365 verbunden ist. extern: Outlook-Termine dürfen ins Gespräch mit dem KI-Modell
+  // und über Telegram. fehler: warum die Outlook-Termine gerade fehlen. verdeckt: nur Zeiten der Outlook-Termine,
+  // die fuerGespraech herausgenommen hat, damit JARVIS sagen kann, dass es sie gibt, ohne sie zu nennen.
+  // unvollstaendig: Outlook hat mehr geliefert, als JARVIS auf einmal liest; es fehlen Termine.
+  outlook?: { konto: string; extern: boolean; fehler?: string; unvollstaendig?: true; verdeckt?: Verdeckt[] };
+  // Gesetzt, wenn es keinen Mac-Kalender gibt und nur Outlook liefert: lesen ja, eintragen nein.
+  nurLesen?: true;
 };
+
+export type Verdeckt = { start: number; end: number; allDay: boolean };
+
+// Was vom Kalender den Mac verlassen darf (Gespräch mit dem KI-Modell, Telegram): Outlook-Termine nur, wenn du
+// es eingeschaltet hast. Der Bildschirm am Mac zeigt immer alles.
+export function fuerGespraech<T extends CalendarSnapshot | null>(snap: T): T {
+  if (!snap || snap.outlook?.extern) return snap;
+  const outlook = snap.events.filter((e) => e.quelle === "outlook");
+  if (outlook.length === 0) return snap;
+  const verdeckt = outlook.map((e) => ({ start: e.start, end: e.end, allDay: e.allDay }));
+  return { ...snap, events: snap.events.filter((e) => e.quelle !== "outlook"), ...(snap.outlook ? { outlook: { ...snap.outlook, verdeckt } } : {}) };
+}
+
+// Findet der Termin an diesem Tag statt? Ein Termin ohne Dauer zählt an seinem Starttag.
+function amTag(e: { start: number; end: number }, iso: string): boolean {
+  return e.start < fromIso(addDays(iso, 1)).getTime() && Math.max(e.end, e.start + 1) > fromIso(iso).getTime();
+}
+
+// Wie viele Outlook-Termine an diesem Tag verdeckt sind. ab: Nur was dann noch nicht vorbei ist.
+export function verdecktAm(cal: CalendarSnapshot | null, iso: string, ab = 0): number {
+  return (cal?.outlook?.verdeckt ?? []).filter((v) => amTag(v, iso) && (v.allDay || v.end > ab)).length;
+}
+
+// Fehlen gerade Termine aus Outlook (Microsoft nicht erreichbar, Anmeldung abgelaufen, zu viele Termine)?
+// Dann sagt JARVIS das dazu, statt einen Tag „frei“ zu nennen, den er nur halb kennt. Leer, wenn nichts fehlt.
+export function outlookLuecke(cal: CalendarSnapshot | null): string {
+  if (cal?.outlook?.fehler) return "Die Termine aus Outlook fehlen gerade.";
+  if (cal?.outlook?.unvollstaendig) return "Aus Outlook fehlen gerade Termine: Es sind mehr, als ich auf einmal lese.";
+  return "";
+}
+const mitLuecke = (satz: string, cal: CalendarSnapshot | null) => [satz, outlookLuecke(cal)].filter(Boolean).join(" ");
+
+// Der Satz zu Outlook-Terminen, die JARVIS im Gespräch und über Telegram nicht nennt. allein: Sonst steht
+// an dem Tag nichts im Kalender.
+export function outlookSatz(n: number, allein = false): string {
+  if (n <= 0) return "";
+  if (allein) return n === 1 ? "ein Termin aus Outlook, den ich hier nicht nenne" : `${n} Termine aus Outlook, die ich hier nicht nenne`;
+  return n === 1 ? "Dazu kommt ein Termin aus Outlook, den ich hier nicht nenne." : `Dazu kommen ${n} Termine aus Outlook, die ich hier nicht nenne.`;
+}
+
+// Die Erinnerung kurz vor einem Termin, am Mac gesprochen und im Gespräch gezeigt. Ein Outlook-Termin kommt
+// ohne Titel, solange Outlook nicht fürs Gespräch freigegeben ist: Was im Gespräch steht, liest das KI-Modell
+// beim nächsten Satz mit, und eine Stimme aus dem Netz bekäme den Text auch.
+export function erinnerungsSatz(e: CalendarEvent, minuten: number, outlookExtern: boolean): { text: string; mitTitel: boolean } {
+  const mitTitel = e.quelle !== "outlook" || outlookExtern;
+  const was = mitTitel ? e.title : "ein Termin aus Outlook";
+  return { text: minuten <= 1 ? `Jetzt beginnt ${was}.` : `In ${minuten} Minuten: ${was}.`, mitTitel };
+}
 
 // Was JARVIS eintragen soll. Uhrzeit als HH:MM, ohne Uhrzeit ist der Termin ganztägig.
 export type NewEvent = { title: string; date: string; time?: string; minutes?: number; location?: string; calendar?: string };
@@ -57,14 +114,11 @@ const spokenClock = (time: string) => {
 
 const list = (parts: string[]) => (parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} und ${parts.at(-1)}`);
 
-const dayStart = (iso: string) => fromIso(iso).getTime();
 
 // Alle Termine, die an diesem Tag stattfinden, ganztägige zuerst.
 export function eventsOn(events: CalendarEvent[], iso: string): CalendarEvent[] {
-  const from = dayStart(iso);
-  const to = dayStart(addDays(iso, 1));
   return events
-    .filter((e) => e.start < to && Math.max(e.end, e.start + 1) > from)
+    .filter((e) => amTag(e, iso))
     .sort((a, b) => (a.allDay !== b.allDay ? (a.allDay ? -1 : 1) : a.start - b.start));
 }
 
@@ -97,31 +151,45 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function daySentence(cal: CalendarSnapshot | null, iso: string, today: string): string {
   const problem = accessProblem(cal);
   if (problem) return problem;
-  if (iso > cal!.to) return `So weit voraus lese ich deinen Kalender nicht, nur bis ${spokenDay(cal!.to, today)}. Im Kalender auf dem Mac siehst du alles.`;
+  return mitLuecke(tagesSatz(cal!, iso, today), cal);
+}
+
+function tagesSatz(cal: CalendarSnapshot, iso: string, today: string): string {
+  if (iso > cal.to) return `So weit voraus lese ich deinen Kalender nicht, nur bis ${spokenDay(cal.to, today)}. Im Kalender auf dem Mac siehst du alles.`;
   const day = dayWord(iso, today);
   const now = Date.now();
-  const all = eventsOn(cal!.events, iso);
+  const all = eventsOn(cal.events, iso);
   // Für heute zählt nur, was noch kommt.
   const events = iso === today ? all.filter((e) => e.allDay || e.end > now) : all;
+  const verdeckt = verdecktAm(cal, iso, iso === today ? now : 0);
   if (events.length === 0) {
+    if (verdeckt > 0) return `${day} steht nur Outlook im Kalender: ${outlookSatz(verdeckt, true)}.`;
     if (iso === today && all.length > 0) return "Für heute steht nichts mehr im Kalender.";
     return `${day} steht nichts im Kalender.`;
   }
   const what = list(events.slice(0, 6).map(eventPhrase));
   const more = events.length > 6 ? `, und noch ${events.length - 6} weitere` : "";
+  const dazu = verdeckt > 0 ? ` ${outlookSatz(verdeckt)}` : "";
   // Ist heute schon etwas vorbei, zählt JARVIS nur, was noch kommt.
   if (iso === today && events.length < all.length) {
-    return events.length === 1 ? `Heute kommt noch ein Termin: ${what}.` : `Heute kommen noch ${events.length} Termine: ${what}${more}.`;
+    return (events.length === 1 ? `Heute kommt noch ein Termin: ${what}.` : `Heute kommen noch ${events.length} Termine: ${what}${more}.`) + dazu;
   }
-  return events.length === 1 ? `${day} hast du einen Termin: ${what}.` : `${day} hast du ${events.length} Termine: ${what}${more}.`;
+  return (events.length === 1 ? `${day} hast du einen Termin: ${what}.` : `${day} hast du ${events.length} Termine: ${what}${more}.`) + dazu;
 }
 
 // Der nächste Termin, für „wann ist mein nächster Termin“.
 export function nextSentence(cal: CalendarSnapshot | null, today: string): string {
   const problem = accessProblem(cal);
   if (problem) return problem;
+  return mitLuecke(naechsterSatz(cal!, today), cal);
+}
+
+function naechsterSatz(cal: CalendarSnapshot, today: string): string {
   const now = Date.now();
-  const next = nextEvent(cal!.events, now);
+  const next = nextEvent(cal.events, now);
+  // Liegt ein verdeckter Outlook-Termin davor, wäre „dein nächster Termin ist …“ falsch.
+  const davor = (cal.outlook?.verdeckt ?? []).some((v) => !v.allDay && v.end > now && (!next || v.start < next.start));
+  if (davor) return "Dein nächster Termin steht in Outlook. Den nenne ich hier nicht; am Mac siehst du ihn im Raum Kalender.";
   if (!next) return `In den nächsten ${READ_DAYS} Tagen steht kein Termin mit Uhrzeit im Kalender.`;
   if (next.start <= now) return `Gerade läuft ${next.title}, bis ${spokenTime(next.end).replace(/^um /, "")}.`;
   const iso = isoDate(new Date(next.start));
@@ -134,16 +202,24 @@ export function nextSentence(cal: CalendarSnapshot | null, today: string): strin
 export function briefingSentence(cal: CalendarSnapshot | null, today: string): string {
   if (!cal || cal.access === "offen" || cal.access === "kein-mac") return "";
   if (accessProblem(cal)) return accessProblem(cal)!;
+  return mitLuecke(briefingSatz(cal, today), cal);
+}
+
+function briefingSatz(cal: CalendarSnapshot, today: string): string {
   const now = Date.now();
   const rest = eventsOn(cal.events, today).filter((e) => e.allDay || e.end > now);
+  const verdeckt = verdecktAm(cal, today, now);
+  if (rest.length === 0 && verdeckt > 0) return `Im Kalender steht heute nur Outlook: ${outlookSatz(verdeckt, true)}.`;
   if (rest.length === 0) {
     const tomorrow = eventsOn(cal.events, addDays(today, 1));
-    return tomorrow.length ? `Heute ist dein Kalender frei. Morgen geht es los mit ${eventPhrase(tomorrow[0])}.` : "Heute und morgen ist dein Kalender frei.";
+    if (tomorrow.length) return `Heute ist dein Kalender frei. Morgen geht es los mit ${eventPhrase(tomorrow[0])}.`;
+    const morgenVerdeckt = verdecktAm(cal, addDays(today, 1));
+    return morgenVerdeckt > 0 ? `Heute ist dein Kalender frei. Morgen steht nur Outlook darin: ${outlookSatz(morgenVerdeckt, true)}.` : "Heute und morgen ist dein Kalender frei.";
   }
   const timed = rest.filter((e) => !e.allDay);
   const first = timed[0] ?? rest[0];
   const n = rest.length === 1 ? "einen Termin" : `${rest.length} Termine`;
-  return `Im Kalender hast du heute noch ${n}, ${first === rest[0] && rest.length === 1 ? "" : "als Nächstes "}${eventPhrase(first)}.`;
+  return `Im Kalender hast du heute noch ${n}, ${first === rest[0] && rest.length === 1 ? "" : "als Nächstes "}${eventPhrase(first)}.${verdeckt > 0 ? ` ${outlookSatz(verdeckt)}` : ""}`;
 }
 
 // ---------- Neuer Termin per Zuruf ----------

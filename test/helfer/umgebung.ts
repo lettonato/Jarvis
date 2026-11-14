@@ -28,6 +28,8 @@ export function sichereUmgebung(name: string): string {
     TWELVEDATA_URL: tot,
     OPEN_METEO_URL: tot,
     ELEVENLABS_BASE_URL: tot,
+    MICROSOFT_LOGIN_URL: tot,
+    MICROSOFT_GRAPH_URL: tot,
   });
   // Echte Schlüssel aus der Umgebung des Entwicklers dürfen in Tests nie benutzt werden.
   for (const key of ["ANTHROPIC_API_KEY", "XAI_API_KEY", "TWELVEDATA_API_KEY"]) delete process.env[key];

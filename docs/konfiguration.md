@@ -23,6 +23,8 @@ Umgebungsvariablen.
 | `telegram.token` | Schlüssel des eigenen Telegram-Bots | **ja** |
 | `telegram.bot`, `chatId`, `chatName`, `trades`, `warnings`, `reminders`, `projekte`, `briefing`, `abschluss` | Kopplung und Meldungen | nein |
 | `calendar.target` | Kalender für neue Termine | nein |
+| `microsoft.tenantId`, `clientId`, `konto`, `extern` | Microsoft 365: Verzeichnis und Anwendung, verbundenes Konto, Schalter „Outlook-Termine auch im Gespräch und über Telegram“ (siehe `docs/jarvis-2.0/08-microsoft-365.md`) | nein |
+| `microsoft.refreshToken` | Anmeldung bei Microsoft 365 (Schlüssel zum Angemeldetbleiben); entsteht bei der Anmeldung mit Code, nie von Hand eintragen | **ja** |
 | `intel.topics`, `budgetUsd`, `auto` | Themen und Budget für Intel | nein |
 | `approval.limitUsd` | Ab welchem Betrag der Desk vor Käufen fragt (`null` = nie) | nein |
 | `geheimnisse` | `datei` (Standard) oder `schluesselbund`; nur über Einstellungen → Sicherheit ändern | nein |
@@ -72,6 +74,8 @@ Alle optional. Ohne sie gilt der Wert in der Spalte „Standard“.
 | `RUGCHECK_URL` | `https://api.rugcheck.xyz` |
 | `OPEN_METEO_URL` | `https://api.open-meteo.com` |
 | `TWELVEDATA_URL` | `https://api.twelvedata.com` |
+| `MICROSOFT_LOGIN_URL` | `https://login.microsoftonline.com` |
+| `MICROSOFT_GRAPH_URL` | `https://graph.microsoft.com/v1.0` |
 | `ELEVENLABS_BASE_URL` | `https://api.elevenlabs.io` (ElevenLabs-Stimme) |
 | `JARVIS_SEARCH_URL` | DuckDuckGo-HTML-Suche (Browser-Agent) |
 

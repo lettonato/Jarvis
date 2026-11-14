@@ -1,4 +1,4 @@
-import { accessProblem, clock, eventsOn, type CalendarEvent } from "./calendar";
+import { accessProblem, clock, eventsOn, outlookLuecke, outlookSatz, verdecktAm, type CalendarEvent } from "./calendar";
 import { addDays, isoDate } from "./dates";
 import { tageslage, type ProjektHinweis, type TagesDaten, type Tageslage } from "./heute";
 import { fristText } from "./projekte";
@@ -62,6 +62,10 @@ export type Abschluss = {
   ueberfaellig: number;
   // null: Der Kalender ist nicht lesbar; dann steht der Grund in kalenderProblem (oder nichts, wenn er nie verbunden war).
   termineMorgen: CalendarEvent[] | null;
+  // Outlook-Termine morgen, die nicht fürs Gespräch und fürs Handy freigegeben sind: nur ihre Zahl.
+  outlookMorgen: number;
+  // Fehlen gerade Termine aus Outlook, steht hier der Satz dazu, sonst nichts.
+  outlookLuecke: string;
   kalenderProblem: string | null;
   aufgabenMorgen: Task[];
   // Projekte, bei denen morgen etwas fällig ist.
@@ -88,6 +92,8 @@ export function tagesabschluss(d: TagesDaten, now: Date): Abschluss {
     offenHeute: lage.aufgaben.heute,
     ueberfaellig: lage.aufgaben.ueberfaellig.length,
     termineMorgen: lesbar ? eventsOn(d.calendar!.events, morgen) : null,
+    outlookMorgen: lesbar ? verdecktAm(d.calendar, morgen) : 0,
+    outlookLuecke: lesbar ? outlookLuecke(d.calendar) : "",
     kalenderProblem: lesbar || stumm ? null : accessProblem(d.calendar),
     aufgabenMorgen: offen.filter((t) => dateOf(t) === morgen),
     fristenMorgen,
@@ -120,7 +126,11 @@ export function abschlussNachricht(a: Abschluss, o: { name: string; namen: boole
   }
 
   if (a.kalenderProblem) teileDerNachricht.push(`Kalender: ${a.kalenderProblem}`);
-  else if (a.termineMorgen) teileDerNachricht.push(a.termineMorgen.length ? `Morgen im Kalender:\n${liste(a.termineMorgen, terminZeile)}` : "Morgen ist dein Kalender frei.");
+  else if (a.termineMorgen) {
+    if (a.termineMorgen.length) teileDerNachricht.push(`Morgen im Kalender:\n${liste(a.termineMorgen, terminZeile)}${a.outlookMorgen > 0 ? `\n• ${outlookSatz(a.outlookMorgen)}` : ""}`);
+    else teileDerNachricht.push(a.outlookMorgen > 0 ? `Morgen steht nur Outlook im Kalender: ${outlookSatz(a.outlookMorgen, true)}.` : "Morgen ist dein Kalender frei.");
+    if (a.outlookLuecke) teileDerNachricht[teileDerNachricht.length - 1] += `\n${a.outlookLuecke}`;
+  }
   if (a.aufgabenMorgen.length > 0) teileDerNachricht.push(`Morgen fällig:\n${liste(a.aufgabenMorgen, (t) => `• ${t.text}`)}`);
 
   const projekte = [...a.projekteOffen, ...a.fristenMorgen];
@@ -162,8 +172,9 @@ export function abschlussSatz(a: Abschluss, name: string): string {
   if (a.kalenderProblem) saetze.push(a.kalenderProblem);
   else if (a.termineMorgen) {
     const mitZeit = a.termineMorgen.find((e) => !e.allDay);
-    if (a.termineMorgen.length === 0) saetze.push("Morgen ist dein Kalender frei.");
-    else saetze.push(`Morgen hast du ${zahl(a.termineMorgen.length, "einen Termin", "Termine")}${mitZeit ? `, ${a.termineMorgen.length === 1 ? "" : "der erste "}um ${clock(mitZeit.start)} Uhr: ${mitZeit.title}` : `: ${a.termineMorgen[0].title}`}.`);
+    if (a.termineMorgen.length === 0) saetze.push(a.outlookMorgen > 0 ? `Morgen steht nur Outlook im Kalender: ${outlookSatz(a.outlookMorgen, true)}.` : "Morgen ist dein Kalender frei.");
+    else saetze.push(`Morgen hast du ${zahl(a.termineMorgen.length, "einen Termin", "Termine")}${mitZeit ? `, ${a.termineMorgen.length === 1 ? "" : "der erste "}um ${clock(mitZeit.start)} Uhr: ${mitZeit.title}` : `: ${a.termineMorgen[0].title}`}.${a.outlookMorgen > 0 ? ` ${outlookSatz(a.outlookMorgen)}` : ""}`);
+    if (a.outlookLuecke) saetze.push(a.outlookLuecke);
   }
   if (a.aufgabenMorgen.length > 0) saetze.push(`${zahl(a.aufgabenMorgen.length, "Eine Aufgabe ist", "Aufgaben sind")} morgen fällig.`);
 

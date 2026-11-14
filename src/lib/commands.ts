@@ -386,6 +386,7 @@ const RULES: Rule[] = [
     match: /(öffne|öffnen|starte|starten)\w*\b.{0,30}\bkalender|kalender(-?app)?\b.{0,12}\b(öffnen|starten)/,
     run: (ctx, text) => {
       if (ctx.calendar?.access === "kein-mac") return { reply: accessProblem(ctx.calendar)! };
+      if (ctx.calendar?.nurLesen) return { reply: "Die Kalender-App gibt es nur auf dem Mac. Deine Outlook-Termine siehst du im Raum Kalender.", navigate: "/kalender" };
       const date = findDate(text, today(ctx))?.iso;
       const day = date && date !== today(ctx) ? ` für ${spokenDay(date, today(ctx))}` : "";
       return { reply: `Ich öffne deinen Kalender${day}.`, effect: { type: "openCalendar", date }, navigate: "/kalender" };
@@ -408,6 +409,8 @@ const RULES: Rule[] = [
         if (/^termin\b/.test(text)) return calendarQuery(ctx, text);
         return { reply: "Wann und was soll ich eintragen? Sag zum Beispiel: Trag morgen um 9 Uhr Zahnarzt ein." };
       }
+      // Nur Outlook, kein Mac-Kalender: lesen ja, eintragen nein. JARVIS schreibt nichts nach Outlook.
+      if (ctx.calendar?.nurLesen) return { reply: "Eintragen kann ich nur in den Kalender am Mac. Outlook lese ich nur.", navigate: "/kalender" };
       const blocked = ctx.calendar?.access === "ok" || ctx.calendar?.access === "nur-schreiben" ? null : accessProblem(ctx.calendar ?? null);
       if (blocked) return { reply: blocked, navigate: "/kalender" };
       return { reply: confirmSentence(event, today(ctx), ctx.calendar?.target), effect: { type: "addEvent", event }, navigate: "/kalender" };

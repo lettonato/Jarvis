@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 45 Minuten.
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 45 Minuten (Teil N geht erst, wenn eure IT so weit ist).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -174,6 +174,30 @@ Mailprogramm. Geprüft ist das bisher nur gegen ein nachgebautes Postfach und ei
 | M8 | Eine Antwort auf einen Newsletter oder eine „no-reply“-Mail entwerfen lassen | Am Entwurf steht der Hinweis, dass diese Adresse vermutlich keine Antworten annimmt |
 | M9 | Auf „Verwerfen“ klicken | Der Entwurf ist weg. Im Postfach selbst hat sich nichts geändert: Die Mail ist weiter ungelesen, im Ordner „Entwürfe“ und im Ordner „Gesendet“ deines Mailprogramms liegt nichts von JARVIS |
 | M10 | In Telegram schreiben: „Entwirf eine Antwort auf die Mail von … “ | JARVIS antwortet, dass der Entwurf am Mac im Raum „Post“ liegt. Dort steht er mit dem Zusatz „vom Handy aus“ |
+
+## N. Microsoft 365: Termine aus Outlook (Schritt D1, neu)
+
+JARVIS liest deine Termine aus Outlook und zeigt sie im Raum „Kalender“. Er trägt in Outlook nichts ein und
+ändert nichts. **Das geht erst, wenn eure IT einmal eine Anwendung im Microsoft-Verzeichnis der Firma angelegt
+hat** (was genau, steht unter Einstellungen → Microsoft 365 und in der Anleitung für die IT). Bis dahin kannst
+du nur N1 prüfen. Geprüft ist dieser Teil bisher nur gegen ein nachgebautes Microsoft, nie gegen das echte.
+
+Mit N3 liest JARVIS zum ersten Mal echte Firmentermine. Das entscheidest du, indem du dich selbst anmeldest.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| N1 | Einstellungen öffnen, zu „Microsoft 365“ springen | Der Abschnitt erklärt, was eure IT anlegt (zwei Rechte, beide nur lesend), und hat zwei Felder: Verzeichnis-ID und Anwendungs-ID. Tippst du „common“ oder irgendein Wort ein, bleibt „Speichern“ grau |
+| N2 | Die beiden Nummern von eurer IT eintragen, „Speichern“ | Es steht „Gespeichert. Jetzt kannst du dich bei Microsoft anmelden.“ |
+| N3 | „Bei Microsoft anmelden“ klicken, den Link zur Anmeldeseite öffnen, den Code eingeben, dich mit dem Firmenkonto anmelden | JARVIS zeigt einen Code und einen Link. Der Link führt auf eine Seite von Microsoft (microsoft.com oder login.microsoftonline.com). Microsoft fragt, ob JARVIS dein Profil und deine Kalender lesen darf, und nichts darüber hinaus. Ein Passwort gibst du nur bei Microsoft ein, nie in JARVIS |
+| N4 | Zurück zu JARVIS, ein paar Sekunden warten | Es steht „Verbunden mit …“ und dein Firmenkonto. Der Haken „Outlook-Termine auch im Gespräch und über Telegram“ ist **nicht** gesetzt |
+| N5 | Raum „Kalender“ öffnen | Deine Outlook-Termine stehen bei den Tagen, mit „Outlook“ dahinter. Darüber steht, dass sie nur hier am Bildschirm stehen. Abgesagte Termine fehlen |
+| N6 | Einen Termin ansehen, der in Outlook als „Privat“ markiert ist | Er heißt „Privater Termin“, ohne Titel und ohne Ort |
+| N7 | Einen ganztägigen Termin und einen Termin mit Uhrzeit mit Outlook vergleichen | Tag und Uhrzeit stimmen mit Outlook überein. **Bitte genau hinsehen:** Verrutscht ein ganztägiger Termin um einen Tag oder eine Uhrzeit um eine Stunde, schreib mir das |
+| N8 | JARVIS fragen: „Was steht morgen an?“ (an einem Tag mit Outlook-Terminen) | JARVIS nennt die Termine aus dem Mac-Kalender und sagt dazu, wie viele aus Outlook kommen, ohne ihre Titel zu nennen. In Telegram dasselbe |
+| N9 | In den Einstellungen den Haken „Outlook-Termine auch im Gespräch und über Telegram“ setzen, dann noch einmal fragen | Jetzt nennt JARVIS auch die Outlook-Termine beim Namen. Den Haken wieder herausnehmen: sofort wieder nur die Zahl. Lass ihn so, wie du es haben willst |
+| N10 | Stehen Termine doppelt im Raum „Kalender“? | Nein. Falls doch: Dann steht dein Firmenkonto auch in der Kalender-App des Macs, und die Titel weichen leicht ab. Schreib mir ein Beispiel. Wichtig zu wissen: Firmentermine, die über die Kalender-App des Macs kommen, nennt JARVIS immer auch im Gespräch |
+| N11 | In Outlook nachsehen | Dort hat sich nichts geändert: kein neuer Termin, keine Zu- oder Absage von JARVIS |
+| N12 | „Abmelden“ klicken | Die Outlook-Termine sind aus dem Raum „Kalender“ verschwunden, die beiden Nummern stehen noch da. „Microsoft 365 ganz entfernen“ löscht auch sie |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { VIEWS, viewName, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type Source, type ViewName } from "../brain";
-import { clock, dayOf, eventsOn, nextEvent, type CalendarEvent, type CalendarSnapshot } from "../calendar";
+import { clock, dayOf, eventsOn, nextEvent, outlookLuecke, verdecktAm, type CalendarEvent, type CalendarSnapshot } from "../calendar";
 import { addDays, isoDate } from "../dates";
 import type { MailMessage } from "../mail";
 import { dateOf, dueSoon, sortTasks, type Task } from "../tasks";
@@ -383,7 +383,7 @@ export async function think(
     }),
     betaTool({
       name: "termine_lesen",
-      description: "Liest die Termine aus dem Apple-Kalender für einen Zeitraum (höchstens die nächsten 31 Tage): Titel, Beginn, Ende, ganztägig, Ort und Kalender.",
+      description: "Liest die Termine aus dem Apple-Kalender für einen Zeitraum (höchstens die nächsten 31 Tage): Titel, Beginn, Ende, ganztägig, Ort und Kalender. Termine aus Outlook sind nur dabei, wenn sie fürs Gespräch freigegeben sind; sonst steht nur da, dass es welche gibt.",
       strict: true,
       inputSchema: {
         type: "object",
@@ -401,9 +401,14 @@ export async function think(
         for (let d = from, n = 0; d <= checkDate(bis) && n < 32; d = addDays(d, 1), n++) {
           for (const e of eventsOn(cal.events, d)) if (!days.includes(e)) days.push(e);
         }
+        // Outlook-Termine, die nicht fürs Gespräch freigegeben sind: nur ihre Zahl im gefragten Zeitraum.
+        let verdeckt = 0;
+        for (let d = from, n = 0; d <= checkDate(bis) && n < 32; d = addDays(d, 1), n++) verdeckt += verdecktAm(cal, d);
         return JSON.stringify({
           heute: today,
           gelesen_bis: cal.to,
+          ...(outlookLuecke(cal) ? { unvollstaendig: `${outlookLuecke(cal)} Was hier steht, ist deshalb nicht alles; nenne einen Tag nicht „frei“, ohne das zu sagen.` } : {}),
+          ...(verdeckt > 0 ? { nicht_gezeigt: `In diesem Zeitraum stehen außerdem Termine aus Outlook (${verdeckt}, mehrtägige zählen je Tag). Sie sind nicht fürs Gespräch freigegeben und stehen nur am Mac im Raum Kalender. Freigeben kann ${name} sie in den Einstellungen unter Microsoft 365.` } : {}),
           termine: days.slice(0, 150).map((e) => ({
             titel: e.title,
             tag: dayOf(e.start),
@@ -909,7 +914,11 @@ export async function think(
     const next = nextEvent(cal.events, now.getTime());
     // Ohne Titel: Termine können von Dritten stammen (Einladungen). Den Titel liest Claude mit termine_lesen.
     const nextLine = next ? `, nächster Termin ${dayOf(next.start)} ${next.allDay ? "ganztägig" : clock(next.start)}` : "";
-    lines.push(`Kalender: heute noch ${rest.length} Termine${nextLine}; Standard für neue Termine: ${cal.target ?? "unbekannt"}`);
+    const verdeckt = verdecktAm(cal, today, now.getTime());
+    const outlook = verdeckt > 0 ? `; dazu heute ${verdeckt} aus Outlook, die nicht fürs Gespräch freigegeben sind (stehen nur am Mac im Raum Kalender)` : "";
+    const luecke = outlookLuecke(cal) ? `; ${outlookLuecke(cal)}` : "";
+    const ziel = cal.nurLesen ? "eintragen geht hier nicht (nur Outlook, nur lesen)" : `Standard für neue Termine: ${cal.target ?? "unbekannt"}`;
+    lines.push(`Kalender: heute noch ${rest.length} Termine${nextLine}${outlook}${luecke}; ${ziel}`);
   } else if (cal?.access === "offen") lines.push("Kalender: noch nicht verbunden");
   else if (cal && cal.access !== "kein-mac") lines.push(`Kalender: kein Zugriff (${cal.error ?? cal.access})`);
   const intel = await intelSnapshot().catch(() => null);

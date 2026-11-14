@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { readConfig, writeConfig } from "@/lib/server/config";
-import { addEvent, CalendarError, openCalendar, openUrl, readCalendar, requestAccess } from "@/lib/server/calendar";
+import { addEvent, CalendarError, openCalendar, openUrl, readCalendarGanz, requestAccess } from "@/lib/server/calendar";
 import { guard, readBody } from "@/lib/server/guard";
 import type { NewEvent } from "@/lib/calendar";
 
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const blocked = guard(request);
   if (blocked) return blocked;
   const force = new URL(request.url).searchParams.get("force") === "1";
-  return Response.json(await readCalendar({ force }));
+  return Response.json(await readCalendarGanz({ force }));
 }
 
 // Es gibt nur Lesen, Eintragen und Öffnen. Ändern und Löschen kann JARVIS im Kalender nicht.
@@ -38,21 +38,21 @@ export async function POST(request: Request) {
     }
     if (body.action === "oeffnen") {
       const note = await openCalendar(body.date);
-      return Response.json({ ...(await readCalendar()), note });
+      return Response.json({ ...(await readCalendarGanz()), note });
     }
     if (body.action === "einstellungen") {
       await openUrl(PRIVACY_CALENDARS);
-      return Response.json(await readCalendar());
+      return Response.json(await readCalendarGanz());
     }
     if (body.action === "ziel") {
-      const snap = await readCalendar();
+      const snap = await readCalendarGanz();
       const name = body.calendar?.trim() ?? "";
       if (name && !snap.calendars.some((c) => c.name === name && c.writable)) return Response.json({ error: `In den Kalender „${name}“ darf ich nicht eintragen.` }, { status: 400 });
       const config = await readConfig();
       if (name) config.calendar = { target: name };
       else delete config.calendar;
       await writeConfig(config);
-      return Response.json(await readCalendar({ force: true }));
+      return Response.json(await readCalendarGanz({ force: true }));
     }
   } catch (e) {
     const status = e instanceof CalendarError ? 400 : 500;

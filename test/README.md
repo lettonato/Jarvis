@@ -38,13 +38,23 @@ npm run pruefen     # Lint, Typprüfung und Tests
   Befehl an das Postfach, der etwas ändert oder ablegt; was du selbst geändert hast, wird nicht überschrieben;
   ein Schreibfehler wird gemeldet. Die Regeln für Adresse, Betreff und den Link ins Mailprogramm stehen ohne
   Netz in `test/regeln/entwuerfe.test.ts`.
+  `microsoft.test.ts` prüft Microsoft 365 (Termine aus Outlook lesen) gegen ein nachgebautes Microsoft:
+  Anmeldung mit Code, Erneuern, nur lesende Anfragen an Graph, der Schlüssel geht nur an Graph (keine fremde
+  Folgeseite, keine Umleitung), feste Sätze statt der Texte von Microsoft, Outlook im Kalender von JARVIS,
+  und dass kein Outlook-Termin an das KI-Modell oder über Telegram geht, solange der Schalter aus ist. Die
+  Regeln ohne Netz stehen in `test/regeln/microsoft.test.ts`. Einige Tests dort hängen an der echten Uhr
+  (der Kalender liest ab heute) und rechnen ihre Tage deshalb von jetzt aus.
 * Nachgebaute Dienste in `test/mocks/`: Claude (`claude-mock.ts`), Telegram (`telegram-mock.ts`), xAI/Grok
   (`xai-mock.ts`), ElevenLabs mit Stimmenliste, Kontostand und einem stillen, echten MP3
   (`elevenlabs-mock.ts`), der Mac für Kalender und Programme (`osascript-mock.mjs`, `open-mock.mjs`), der
   macOS-Schlüsselbund (`security-mock.mjs`), ein Postfach (`imap-mock.ts`: IMAP auf 127.0.0.1 mit sieben
   Beispiel-Mails, schreibt jeden Befehl mit; `post.test.ts`) und der Markt für den Spielgeld-Desk
   (`markt-mock.ts`: DexScreener, GeckoTerminal, CoinGecko, RugCheck; `desk-kauf.test.ts`) und Twelve Data für
-  Tageskurse (`twelve-mock.ts`: je Symbol eine Kursreihe oder ein Fehler, schreibt Adresse und Schlüssel-Kopf mit). Der Desk merkt
+  Tageskurse (`twelve-mock.ts`: je Symbol eine Kursreihe oder ein Fehler, schreibt Adresse und Schlüssel-Kopf mit) und
+  Microsoft (`microsoft-mock.ts`: Anmeldeserver mit Gerätecode und Erneuern, dazu Graph mit `/me` und
+  `/me/calendarView`; einstellbar sind unter anderem abgelehnte oder abgelaufene Anmeldung, Störungen, eine
+  fremde Folgeseite, eine Umleitung, eine langsame Antwort; die Form der Anmeldung folgt der Beschreibung von
+  Microsoft, Teile der Graph-Antworten sind angenommen, siehe `docs/jarvis-2.0/08-microsoft-365.md`). Der Desk merkt
   sich Kurse 15 Sekunden: Die Kaufpfad-Tests stellen deshalb die Uhr und springen je Runde 20 Sekunden.
 * `test/helfer/umgebung.ts` sorgt dafür, dass kein Test echte Einstellungen, echte Schlüssel oder echte
   Dienste berührt.
@@ -57,7 +67,7 @@ normale Tests.
 
 `test/hand/` enthält Handprüfungen, die ein echtes Chrome brauchen und deshalb nicht bei `npm test` mitlaufen
 (Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung,
-Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“). Aufruf steht jeweils oben in der Datei.
+Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“). Aufruf steht jeweils oben in der Datei.
 
 `test/hand/glashaus-schau.ts` ist keine Prüfung, sondern eine Schau: Sie startet JARVIS mit Beispieldaten
 (nachgebautes Postfach, nachgebauter Markt, nachgebaute Tageskurse für Gold und den Silber-Fonds, Kalender, Aufgaben, drei Projekte), damit man alle Räume gefüllt

@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { CloudVoiceSetup } from "../CloudVoiceSetup";
 import { useJarvis } from "../JarvisProvider";
+import { MicrosoftSetup } from "../MicrosoftSetup";
 import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
 import { SicherheitsZentrale } from "../Sicherheit";
 import { TelegramSetup } from "../TelegramSetup";
@@ -89,6 +90,13 @@ function abschnitteVon(settings: Settings): Abschnitt[] {
       title: "Kalender",
       text: "JARVIS liest die Kalender-App auf deinem Mac und trägt neue Termine auf Zuruf ein. Ändern oder löschen kann er nichts. Einen Schlüssel braucht es nicht, nur einmal die Freigabe von macOS.",
       inhalt: <CalendarSetup />,
+    },
+    {
+      id: "microsoft",
+      kurz: "Microsoft 365",
+      title: "Microsoft 365: Termine aus Outlook",
+      text: "JARVIS liest deine Termine aus Outlook und zeigt sie im Raum Kalender. Er trägt dort nichts ein, ändert und löscht nichts, und Mails, Dateien oder Teams liest er darüber nicht. Als privat oder vertraulich markierte Termine zeigt er ohne Titel und Ort.",
+      inhalt: <MicrosoftSetup />,
     },
     {
       id: "email",

@@ -53,6 +53,11 @@ export type TwelveDataConfig = { apiKey: string };
 // tagesZeichen begrenzt, wie viele Zeichen am Tag an ElevenLabs gehen dürfen.
 export type ElevenlabsConfig = { apiKey: string; enabled?: boolean; voiceId?: string; voiceName?: string; model?: string; tagesZeichen?: number };
 
+// Microsoft 365 (src/lib/microsoft.ts): Verzeichnis und Anwendung aus Entra, das verbundene Konto und der
+// Schlüssel, mit dem JARVIS angemeldet bleibt (refreshToken, ein Geheimnis). extern: Outlook-Termine dürfen ins
+// Gespräch mit dem KI-Modell und über Telegram; fehlt der Wert, bleiben sie am Mac.
+export type MicrosoftConfig = { tenantId: string; clientId: string; konto?: string; refreshToken?: string; extern?: boolean };
+
 // Ab welchem Betrag der Desk vor einem Kauf fragt (src/lib/approval.ts). Fehlt der Wert, gilt die Grenze von dort.
 export type ApprovalConfig = { limitUsd: ApprovalLimit };
 
@@ -69,6 +74,7 @@ export type JarvisConfig = {
   twelvedata?: TwelveDataConfig;
   metalle?: MetalleConfig;
   elevenlabs?: ElevenlabsConfig;
+  microsoft?: MicrosoftConfig;
   // Wo Schlüssel und Passwörter liegen: in dieser Datei (bisher) oder im macOS-Schlüsselbund.
   geheimnisse?: GeheimnisModus;
 };
@@ -87,6 +93,7 @@ export const GEHEIMNISSE = [
   { name: "mail.password", label: "Mail-Passwort", umgebung: null },
   { name: "telegram.token", label: "Telegram-Bot-Schlüssel", umgebung: null },
   { name: "elevenlabs.apiKey", label: "ElevenLabs-Schlüssel", umgebung: null },
+  { name: "microsoft.refreshToken", label: "Microsoft-365-Anmeldung", umgebung: null },
 ] as const;
 
 export type GeheimnisName = (typeof GEHEIMNISSE)[number]["name"];
@@ -180,6 +187,20 @@ let nebendatei = 0;
 
 export function writeConfig(config: JarvisConfig): Promise<void> {
   const lauf = (warteschlange.__jarvisConfigSchreiben ?? Promise.resolve()).then(() => schreibeConfig(config));
+  warteschlange.__jarvisConfigSchreiben = lauf.catch(() => {});
+  return lauf;
+}
+
+// Lesen, ändern und speichern in einem Zug, in derselben Reihe wie jedes andere Speichern: Dazwischen kommt
+// keine zweite Änderung, die sonst mit ihrem älteren Stand die erste wieder überschriebe. fn bekommt den Stand
+// von jetzt und gibt den neuen zurück, oder null, wenn nichts zu ändern ist.
+export function aendereConfig(fn: (config: JarvisConfig) => JarvisConfig | null): Promise<JarvisConfig> {
+  const lauf = (warteschlange.__jarvisConfigSchreiben ?? Promise.resolve()).then(async () => {
+    const alt = await readConfig();
+    const neu = fn(alt);
+    if (neu) await schreibeConfig(neu);
+    return neu ?? alt;
+  });
   warteschlange.__jarvisConfigSchreiben = lauf.catch(() => {});
   return lauf;
 }

@@ -6,6 +6,7 @@ import { CalendarSetup } from "../setup";
 import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
 import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
+import { MICROSOFT_SATZ, OUTLOOK_KALENDER } from "@/lib/microsoft";
 import { clock, confirmSentence, eventsOn, nextEvent, type CalendarEvent, type CalendarSnapshot, type NewEvent } from "@/lib/calendar";
 import { addDays, isoDate, shortDue } from "@/lib/dates";
 import { useNow } from "@/lib/useNow";
@@ -33,12 +34,17 @@ export function CalendarView() {
   };
 
   const ready = calendar?.access === "ok";
+  // Outlook liefert auch dann, wenn der Mac-Kalender (noch) nicht verbunden ist.
+  const outlook = calendar?.outlook;
+  const zeigen = ready || Boolean(outlook && !outlook.fehler);
+  // Outlook steht als eigener, schreibgeschützter Kalender in der Liste; eintragen kann JARVIS nur am Mac.
+  const macKalender = (calendar?.calendars.length ?? 0) - (calendar?.calendars.some((c) => c.name === OUTLOOK_KALENDER && !c.writable) && outlook ? 1 : 0);
   const days = today ? Array.from({ length: AGENDA_DAYS }, (_, i) => addDays(today, i)) : [];
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
-      <PageHeader icon="kalender" holo="modul-kalender" title="Kalender" subtitle={ready ? `${calendar.calendars.length} Kalender aus der Kalender-App auf deinem Mac` : "dein Apple-Kalender"}>
-        {calendar && calendar.access !== "kein-mac" && (
+      <PageHeader icon="kalender" holo="modul-kalender" title="Kalender" subtitle={ready ? (macKalender === 0 ? "deine Termine aus Outlook" : `${macKalender} Kalender aus der Kalender-App auf deinem Mac${outlook ? ", dazu Outlook" : ""}`) : "dein Apple-Kalender"}>
+        {calendar && calendar.access !== "kein-mac" && !calendar.nurLesen && (
           <Button icon="kalender" onClick={() => open()}>
             In Kalender-App öffnen
           </Button>
@@ -60,11 +66,21 @@ export function CalendarView() {
       )}
 
       {note && <Notice tone="info">{note}</Notice>}
+      {outlook?.fehler && <Notice tone="error">Outlook: {outlook.fehler}</Notice>}
+      {outlook?.unvollstaendig && <Notice tone="error">{MICROSOFT_SATZ.zuViele}</Notice>}
+      {outlook && !outlook.fehler && (
+        <p className="text-xs text-quiet">
+          Outlook-Termine von {outlook.konto} sind nur gelesen. {outlook.extern ? "Du hast sie auch fürs Gespräch und für Telegram freigegeben." : "Sie stehen nur hier am Bildschirm, nicht im Gespräch und nicht auf dem Handy."}{" "}
+          <a href="/einstellungen#microsoft" className="underline hover:text-schiefer">
+            In den Einstellungen ändern
+          </a>
+        </p>
+      )}
 
-      {ready && now && today && (
+      {zeigen && calendar && now && today && (
         <>
           <Summary calendar={calendar} now={now} today={today} />
-          <AddEvent calendar={calendar} today={today} />
+          {ready && macKalender > 0 && <AddEvent calendar={calendar} today={today} />}
           {days.map((day) => (
             <Day key={day} day={day} today={today} events={eventsOn(calendar.events, day)} now={now.getTime()} onOpen={() => open(day)} />
           ))}

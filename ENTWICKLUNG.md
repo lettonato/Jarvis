@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 653 von 653 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 711 von 711 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -39,7 +39,10 @@ Einstellungen haben oben eine Sprungleiste. Seit Schritt F2 gibt es einen gemein
 JARVIS von selbst tut, und den ersten neuen Agenten: ein Lagebild für Gold und Silber aus Tageskursen, nach
 festen Regeln und ohne KI-Modell. Er ist nur gegen ein nachgebautes Twelve Data geprüft. Seit Schritt G3
 entwirft JARVIS auf Zuruf Antworten auf Mails; verschicken kann er nichts, und im Postfach ändert er dafür
-nichts (nur gegen ein nachgebautes Postfach und ein nachgebautes KI-Modell geprüft).
+nichts (nur gegen ein nachgebautes Postfach und ein nachgebautes KI-Modell geprüft). Seit Schritt D1 kann
+JARVIS die Termine aus Outlook lesen (Microsoft 365 über Graph, nur lesen, nur der Kalender). Das ist **nur
+gegen ein nachgebautes Microsoft geprüft**; mit dem echten läuft es erst, wenn eure IT eine Anwendung im
+Verzeichnis angelegt hat und Benedikt sich am Mac selbst anmeldet.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
 dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
@@ -55,7 +58,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der sechs Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre), den gemeinsamen Zeitplan und den Edelmetall-Agenten (nur gegen Nachbau); **Offen** für weitere Agenten | Mac-Prüfliste Teile H und K; Marktagent, Newsletter und weitere |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss, Projektüberwachung, Hinweise am Tag (einstellbar, abschaltbar) und Antwortentwürfe für Mails ohne Versand; **Offen** für Marktüberwachung über Intel hinaus | Mac-Prüfliste Teile G, L und M; Hinweis als Mitteilung am Mac (G2.4); Entwurf im Ordner „Entwürfe“ des Postfachs (Frage 13) |
-| D Microsoft 365 | Offen | Graph-Anbindung zuerst gegen nachgebaute Schnittstellen; echte Anbindung **blockiert** bis Entra-Freigabe |
+| D Microsoft 365 | **Testbereit** (nur gegen Nachbau) für Termine aus Outlook lesen (Schritt D1); **Blockiert** für die echte Anbindung, bis eure IT die Anwendung in Entra angelegt hat; **Offen** für Mail, Dateien, Teams | App-Registrierung durch die IT (Frage 14), Mac-Prüfliste Teil N; weitere Teile nur nach Benedikts Entscheidung |
 | H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
 | I Azure | **Blockiert** (Entscheidung und Kostenfreigabe) | Vorbereitung: Speicher- und Modellschicht austauschbar, Anleitung |
 | J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Offen** für austauschbare Anbieter und Wiederherstellungstests | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
@@ -450,6 +453,82 @@ Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-proj
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Sicherheitsrisiken:**
 R-17 (Projektinhalte gehen beim Lesen an Anthropic; gemildert durch „vertraulich“), R-18 (Datei unverschlüsselt
 und für denselben Benutzer änderbar) in [02-risiken.md](docs/jarvis-2.0/02-risiken.md).
+
+## Bereich D – Microsoft 365
+
+Einzelheiten und die Anleitung für die IT: [docs/jarvis-2.0/08-microsoft-365.md](docs/jarvis-2.0/08-microsoft-365.md).
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| D1.1 Anmeldung mit Code an genau einem Verzeichnis, ohne Passwort in JARVIS und ohne Geheimnis der Anwendung; drei Rechte, alle nur lesend (`offline_access`, `User.Read`, `Calendars.ReadBasic`) | Testbereit (nur gegen Nachbau) | `src/lib/microsoft.ts`, `src/lib/server/microsoft.ts`; `test/module/microsoft.test.ts` |
+| D1.2 Termine aus Outlook lesen (heute und 31 Tage), im Raum „Kalender“ neben den Terminen des Macs; Privates ohne Titel und Ort; Abgesagtes fehlt; kein Termin doppelt | Testbereit (nur gegen Nachbau) | `src/lib/server/calendar.ts`; im Browser geprüft (`test/hand/microsoft-rauch.ts`) |
+| D1.3 Outlook-Termine bleiben am Bildschirm des Macs, bis du den Schalter setzt: nichts davon an das KI-Modell, über Telegram oder in eine gesprochene Antwort; JARVIS nennt nur die Zahl | Testbereit (nur gegen Nachbau) | `fuerGespraech`, `readCalendar` (gefiltert) und `readCalendarGanz` (nur für den Bildschirm) |
+| D1.4 Einstellungen → Microsoft 365: Nummern eintragen, anmelden, Schalter, abmelden, ganz entfernen | Testbereit (nur gegen Nachbau) | `src/components/MicrosoftSetup.tsx`, `/api/microsoft` |
+| D1.5 Schlüssel: Zugang nur im Arbeitsspeicher, Anmeldung bei den Zugangsdaten (Datei oder Schlüsselbund); der Schlüssel geht nur an Graph (keine fremde Folgeseite, keine Umleitung); feste Sätze statt der Texte von Microsoft | Testbereit (nur gegen Nachbau) | `test/module/microsoft.test.ts` |
+| D1.6 Echte Anbindung an euer Microsoft 365 | Blockiert | braucht die App-Registrierung durch eure IT und Benedikts eigene Anmeldung (Frage 14) |
+| D2 Mails über Graph lesen | Offen | weiteres Recht bei Microsoft; Benedikts Entscheidung |
+| D3 Dateien (OneDrive, SharePoint) finden und lesen | Offen | weiteres Recht; Firmendaten, daher nur nach Freigabe |
+| D4 Teams-Besprechungen; Termine in Outlook eintragen | Offen | schreibend nur über das Gateway mit Freigabe im Einzelfall; keine Auswertung von Online-Zeiten |
+
+### Schritt D1: Termine aus Outlook lesen, nur lesen (13. und 14. November 2026)
+
+**Ziel:** der erste, kleinste Schritt zu Microsoft 365: Firmentermine im Kalender von JARVIS sehen, ohne dass
+JARVIS in Outlook etwas ändern kann und ohne dass Firmentermine den Mac verlassen, bevor du es willst.
+
+**Was sich für dich ändert**
+
+* In den Einstellungen gibt es den Abschnitt **„Microsoft 365: Termine aus Outlook“**. Er erklärt, was eure IT
+  einmal anlegt, nimmt die zwei Nummern an und führt dich durch die Anmeldung: JARVIS zeigt einen Code, den du
+  auf der Seite von Microsoft eingibst. Dein Passwort gibst du nur dort ein.
+* Danach stehen deine Outlook-Termine im Raum **„Kalender“**, mit „Outlook“ dahinter. Als privat markierte
+  Termine heißen „Privater Termin“, ohne Titel und Ort.
+* **Im Gespräch, in Telegram und in gesprochenen Antworten nennt JARVIS Outlook-Termine nicht**, solange du den
+  Haken „Outlook-Termine auch im Gespräch und über Telegram“ nicht setzt. Er sagt nur, dass es welche gibt:
+  „Morgen hast du einen Termin: um 9 Uhr Zahnarzt. Dazu kommen 2 Termine aus Outlook, die ich hier nicht
+  nenne.“ Die Erinnerung am Mac lautet dann „In 10 Minuten: ein Termin aus Outlook.“
+* Kann JARVIS Outlook gerade nicht lesen, steht der Grund im Raum „Kalender“, und im Gespräch sagt er „Die
+  Termine aus Outlook fehlen gerade.“ dazu, statt einen Tag „frei“ zu nennen.
+* Solange nichts eingetragen ist, ändert sich nichts: Es geht keine Anfrage an Microsoft.
+
+**Die festen Regeln** stehen in [08-microsoft-365.md](docs/jarvis-2.0/08-microsoft-365.md): nur lesen, nur der
+Kalender, geringste Rechte, ein Verzeichnis, kein Passwort in JARVIS, der Schlüssel geht nur an Graph, feste
+Sätze, nichts wird geraten.
+
+**Entwurfsentscheidungen (von mir getroffen, Benedikt kann sie ändern)**
+
+* Kalender zuerst und nur lesend, weil das den kleinsten Zugriff braucht und sofort nützt. Mail, Dateien und
+  Teams sind bewusst nicht dabei.
+* Outlook im Gespräch ist **aus**, bis du es einschaltest. Grund ist deine Vorgabe, dass sensible Daten nur mit
+  deiner Zustimmung an externe Dienste gehen: Im Gespräch liest das KI-Modell (Anthropic) mit, Telegram ist ein
+  weiterer Dienst.
+* `readCalendar` liefert seitdem den gefilterten Kalender; den ganzen liest nur `readCalendarGanz`, und das nur
+  für die Schnittstelle des Bildschirms. Ein Test hält fest, dass es dabei bleibt.
+
+### Testergebnisse Schritt D1 (14. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **711 Tests: 711 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 58: Regeln ohne Netz 21; gegen das nachgebaute Microsoft, den nachgebauten Mac-Kalender und den nachgebauten Claude 37) |
+| `npx next build` | erfolgreich; weiter die vier bekannten Hinweise von Turbopack, keine neuen |
+| Handprüfung im Browser (Chromium, gebauter Server, nachgebautes Microsoft) | `microsoft-rauch.ts` (neu): Schutz der Schnittstelle, unbrauchbare Nummern bleiben draußen, Code und Adresse erscheinen, kein Passwortfeld, die Seite merkt die Anmeldung von selbst, kein Schlüssel in der Seite, Outlook-Termine im Raum Kalender (Privates ohne Titel und Ort, Abgesagtes fehlt), Schalter an und aus, neue Anmeldung abbrechen, fester Satz bei fehlendem Recht, abmelden, ganz entfernen; an Graph gingen nur lesende Anfragen an `/me` und `/me/calendarView`. `post-rauch.ts` und `projekte-rauch.ts` laufen weiter durch |
+| Gegenproben (60 absichtlich eingebaute Fehler, Tests müssen fehlschlagen) | 60 erkannt, 0 nicht erkannt (unter anderem: nur lesende Rechte, Sammeladressen, nur https und nur Microsoft als Anmeldeadresse, Folgeseite nur unter Graph, keiner Umleitung folgen, andere Zeitzone wird nicht geraten, Privates ohne Titel und Ort, ohne Schalter kein Outlook im Gespräch, verdeckt ohne Titel, Erinnerung ohne Titel, nicht „frei“ bei Outlook-Terminen oder bei einer Lücke, höchstens fünf Seiten und das steht dabei, abgelaufen fragt nicht ständig, erneuerter Schlüssel wird gemerkt, nur ein Erneuern zugleich, kein Schlüssel im Stand, kein Termin doppelt, laufendes Lesen zählt nach dem Umschalten nicht, Erinnerungen vergessen den gemerkten Kalender, lesen und speichern in einem Zug) |
+| Code-Review | zehn Punkte, alle eingearbeitet: Erinnerungen fürs Handy nutzten bis zu fünf Minuten einen gemerkten Kalender, auch nach dem Ausschalten; ein gerade laufendes Lesen schrieb seinen alten Stand zurück; nach einer neuen Anmeldung bei schon verbundenem Konto blieb die alte Fehlermeldung stehen; die Sätze nannten einen Tag „frei“, wenn Outlook gerade nicht lesbar war; Termine erschienen doppelt, wenn das Firmenkonto auch in der Kalender-App steht; ohne Mac-Kalender wirkte der Kalender beschreibbar; bei mehr als 500 Terminen fehlten welche ohne Hinweis; eine halb kaputte Antwort nach der Anmeldung hätte die Anmeldung verloren und den Code ein zweites Mal geschickt; am Anmeldeserver galt auch eine unverschlüsselte Adresse; der ungefilterte Kalender war der übliche Weg (jetzt ist es der gefilterte) |
+| Beim Einarbeiten selbst gefunden | Der Schalter konnte sich zurückstellen: Lief gerade ein Erneuern des Schlüssels, während du den Haken herausnahmst, schrieb das Erneuern seinen älteren Stand der Einstellungen zurück, mit gesetztem Haken. Behoben: Änderungen am Abschnitt Microsoft 365 lesen und speichern jetzt in einem Zug (`aendereConfig`); ein Test stellt genau diese Lage nach |
+| Bei Microsoft nachgelesen (Microsoft Learn, 13.11.) | Anmeldung mit Code und Erneuern, `Calendars.ReadBasic` als geringstes Recht, Zeiten in UTC, Fehlerform und Statuscodes, die Felder für abgesagt, ganztägig und privat, Folgeseiten über die ganze Adresse |
+| Gegen den echten Dienst geprüft | **nein.** Anmeldeserver und Graph waren nachgebaut. Angenommen und nicht nachgelesen sind: die genaue Schreibweise der Zeiten, dass die Kalenderansicht `$select` und `$top` annimmt und in Seiten liefert, und wie ganztägige Termine in UTC ankommen (siehe 08-microsoft-365.md) |
+| Nicht geprüft | echter Mac, echtes Microsoft 365 (Prüfliste Teil N); ob Richtlinien eures Verzeichnisses die Anmeldung mit Code zulassen |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Bekannte Grenzen:**
+höchstens 500 Outlook-Termine für 31 Tage (steht dann dabei); nur der eigene Hauptkalender; ist der
+Mac-Kalender noch nicht verbunden, zeigt der Raum Kalender Outlook trotzdem, das Gespräch aber nicht.
+**Sicherheitsrisiken:** (1) Mit der Anmeldung liest JARVIS echte Firmentermine und hält einen Schlüssel, mit dem
+sich deine Termine lesen lassen, solange die Zustimmung bei Microsoft besteht. Er liegt bei den anderen
+Zugangsdaten; im Schlüsselbund-Modus im Schlüsselbund. (2) Titel und Orte von Terminen stammen oft von Dritten
+(Einladungen). Mit gesetztem Haken gehen sie wie Mac-Termine an das KI-Modell; das Gespräch gilt dann wie
+bisher als „fremd“, sobald Termine gelesen wurden. (3) Steht das Firmenkonto auch in der Kalender-App des
+Macs, gehen diese Termine über den Mac-Kalender ins Gespräch, unabhängig vom Haken (siehe Anleitung).
+(4) Andere Abschnitte der Einstellungen werden noch ohne Sperre gelesen, geändert und gespeichert; zwei
+Änderungen im selben Augenblick können sich dort überschreiben (offen in Bereich J).
 
 ## Bereich E – Geschäftsführungsdashboard
 
@@ -961,7 +1040,7 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
 |---|---|---|
 | 3 Azure-Infrastruktur | Blockiert | D&S-Abonnement, IT-Verantwortliche, freigegebene Dienste, Kosten klären |
 | 4 Claude sicher integrieren | Offen | persönlicher API-Schlüssel; AVV, Aufbewahrung, ZDR klären (R-14) |
-| 5 Microsoft 365 / Entra ID | Blockiert | braucht Phase 2 und einen Test-Tenant bzw. Testpostfach |
+| 5 Microsoft 365 / Entra ID | Testbereit für Termine aus Outlook lesen (Schritt D1, nur gegen Nachbau); echte Anbindung blockiert | siehe Bereich D; braucht die App-Registrierung durch eure IT |
 | 6 Projektgedächtnis | Testbereit (Schritt C1, Datei statt Datenbank) | siehe Bereich C |
 | 7 Geschäftsführungsdashboard | Testbereit für „Heute“ und „Projekte“ (Schritt E1), Rest offen | siehe Bereich E |
 | 8 Desktop Agent, Sprache | Blockiert | Windows oder Mac (R-15) |
@@ -970,7 +1049,7 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis M). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis N; Teil N erst, wenn eure IT so weit ist). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
@@ -998,6 +1077,13 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
     Teil M). Soll JARVIS einen Entwurf künftig auf dein Ja hin auch in den Ordner „Entwürfe“ deines echten
     Postfachs legen, damit du ihn am Handy fertig machen kannst? Das würde dein echtes Postfach verändern
     und ist deshalb nicht gebaut, bis du es entscheidest. Senden würde JARVIS auch dann nicht.
+14. Microsoft 365: Willst du deine Outlook-Termine in JARVIS sehen? Dann braucht es einmal eure IT: eine
+    Anwendung im Microsoft-Verzeichnis der Firma mit zwei lesenden Rechten (Anleitung in
+    [08-microsoft-365.md](docs/jarvis-2.0/08-microsoft-365.md), Abschnitt „Was eure IT einmal anlegt“). Das
+    ändert etwas an eurem Verzeichnis und ist deshalb eure Entscheidung, nicht meine. Danach meldest du dich
+    am Mac selbst an (Prüfliste Teil N); damit liest JARVIS zum ersten Mal echte Firmentermine. Steht dein
+    Firmenkonto auch in der Kalender-App des Macs? Dann gehen diese Termine heute schon über den Mac-Kalender
+    ins Gespräch mit dem KI-Modell; sag mir, ob du das so willst.
 10. Kosten: nach ein paar Tagen die Zahlen in „Agenten“ mit der Abrechnung bei Anthropic vergleichen
     (Prüfliste H8). Möchtest du ein gemeinsames Tagesbudget für alle Agenten, bei dem JARVIS warnt oder anhält?
     Bisher hat jeder Agent nur seine eigene Grenze.
@@ -1032,5 +1118,8 @@ Danach wie geplant:
 6. **G2: gebaut, Testbereit** (Schritt G2 in Bereich G): Hinweise am Tag mit Obergrenze; Morgenbriefing,
    Erinnerungen und Tagesabschluss laufen über den gemeinsamen Taktgeber.
 7. **G3: gebaut, Testbereit** (Schritt G3 in Bereich G): Antwortentwürfe für Mails, ohne Versand.
-   **Als Nächstes: D:** Microsoft 365 nur gegen nachgebaute Schnittstellen (Graph: Kalender, Mail, Dateien
-   lesen; nichts Echtes, bis Entra freigegeben ist).
+8. **D1: gebaut, Testbereit, nur gegen Nachbau** (Schritt D1 in Bereich D): Termine aus Outlook lesen. Die
+   echte Anbindung wartet auf eure IT (Frage 14). Mail, Dateien und Teams über Graph sind nicht gebaut.
+   **Als Nächstes: I:** Azure nur vorbereiten (Anleitung, Speicher- und Modellschicht austauschbar; nichts
+   anlegen, keine Kosten). Danach offen in J: anderer Anbieter austauschbar, Wiederherstellungstests,
+   Einstellungen überall in einem Zug lesen und speichern (wie seit D1 für Microsoft 365).

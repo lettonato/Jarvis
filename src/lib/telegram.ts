@@ -1,4 +1,4 @@
-import { accessProblem, clock, eventsOn, type CalendarSnapshot } from "./calendar";
+import { accessProblem, clock, eventsOn, outlookLuecke, outlookSatz, verdecktAm, type CalendarSnapshot } from "./calendar";
 import { deskSentence } from "./commands";
 import { isoDate } from "./dates";
 import { intelBriefing, type IntelSnapshot } from "./intel";
@@ -159,12 +159,17 @@ export function briefingMessage({ name, now, weather, calendar, mail, tasks, int
     if (problem) parts.push(`Kalender: ${problem}`);
     else {
       const rest = eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime());
-      if (rest.length === 0) parts.push("Kalender: heute frei.");
+      // Outlook-Termine, die nicht fürs Handy freigegeben sind: nur ihre Zahl.
+      const verdeckt = verdecktAm(calendar, today, now.getTime());
+      if (rest.length === 0) parts.push(verdeckt > 0 ? `Kalender: heute nur Outlook, ${outlookSatz(verdeckt, true)}. Am Mac steht alles im Raum Kalender.` : "Kalender: heute frei.");
       else {
         const lines = rest.slice(0, MAX_LINES).map((e) => `• ${e.allDay ? "ganztägig" : clock(e.start)} ${e.title}${e.location ? `, ${e.location}` : ""}`);
         if (rest.length > MAX_LINES) lines.push(`• und ${rest.length - MAX_LINES} weitere`);
+        if (verdeckt > 0) lines.push(`• ${outlookSatz(verdeckt)}`);
         parts.push(`Termine heute:\n${lines.join("\n")}`);
       }
+      // Fehlt Outlook gerade, steht das dabei: „frei“ gilt dann nur für das, was JARVIS lesen konnte.
+      if (outlookLuecke(calendar)) parts[parts.length - 1] += `\n${outlookLuecke(calendar)}`;
     }
   }
 

@@ -25,7 +25,7 @@ import {
   type TelegramStatus,
 } from "../telegram";
 import { brainKey, explainBrainError, HISTORY_TURNS, think } from "./brain";
-import { readCalendar } from "./calendar";
+import { kalenderStand, readCalendar } from "./calendar";
 import { CONFIG_DIR, readConfig, writeConfig, type JarvisConfig, type TelegramConfig } from "./config";
 import { answerApproval, approvalStateOf, control, DeskError, deskSnapshot } from "./desk/engine";
 import { intelSnapshot } from "./intel";
@@ -86,7 +86,8 @@ type Shared = {
   error: string | null;
   // Gespräche mit Claude laufen nacheinander, damit die Antworten in der richtigen Reihenfolge kommen.
   queue: Promise<void>;
-  calendar: { at: number; snap: CalendarSnapshot } | null;
+  // stand: der Stand des Kalenders beim Lesen (kalenderStand). Ändert sich etwas an Microsoft 365, gilt er nicht mehr.
+  calendar: { at: number; snap: CalendarSnapshot; stand: number } | null;
 };
 const holder = globalThis as typeof globalThis & { __jarvisTelegram?: Shared };
 const shared: Shared = (holder.__jarvisTelegram ??= {
@@ -639,9 +640,12 @@ export async function sendeTagesmeldung(welche: Tagesmeldung, now: Date, davor?:
 async function zuErinnern(now: Date): Promise<CalendarSnapshot["events"]> {
   const tg = (await readConfig()).telegram;
   if (!tg?.chatId || !prefsOf(tg).reminders) return [];
+  // Wurde Outlook inzwischen getrennt oder der Schalter fürs Handy ausgeschaltet, gilt das Gemerkte sofort nicht mehr.
+  if (shared.calendar && shared.calendar.stand !== kalenderStand()) shared.calendar = null;
   if (!shared.calendar || now.getTime() - shared.calendar.at >= CALENDAR_EVERY_MS || now.getTime() < shared.calendar.at) {
+    const stand = kalenderStand();
     const snap = await readCalendar().catch(() => null);
-    if (snap) shared.calendar = { at: now.getTime(), snap };
+    if (snap && stand === kalenderStand()) shared.calendar = { at: now.getTime(), snap, stand };
   }
   const cal = shared.calendar?.snap;
   if (cal?.access !== "ok") return [];
@@ -671,7 +675,7 @@ export async function sendeErinnerungen(now: Date): Promise<void> {
 
 // Wann die nächste Erinnerung kommt, soweit der zuletzt gelesene Kalender es weiß. Liest selbst nichts.
 export async function naechsteErinnerung(now: Date): Promise<Date | null> {
-  const cal = shared.calendar?.snap;
+  const cal = shared.calendar?.stand === kalenderStand() ? shared.calendar.snap : undefined;
   if (cal?.access !== "ok") return null;
   const state = await load();
   const start = cal.events
