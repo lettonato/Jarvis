@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 711 von 711 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 732 von 732 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -42,7 +42,10 @@ entwirft JARVIS auf Zuruf Antworten auf Mails; verschicken kann er nichts, und i
 nichts (nur gegen ein nachgebautes Postfach und ein nachgebautes KI-Modell geprüft). Seit Schritt D1 kann
 JARVIS die Termine aus Outlook lesen (Microsoft 365 über Graph, nur lesen, nur der Kalender). Das ist **nur
 gegen ein nachgebautes Microsoft geprüft**; mit dem echten läuft es erst, wenn eure IT eine Anwendung im
-Verzeichnis angelegt hat und Benedikt sich am Mac selbst anmeldet.
+Verzeichnis angelegt hat und Benedikt sich am Mac selbst anmeldet. Seit Schritt I1 ist der Umzug nach Azure
+vorbereitet, soweit das ohne Azure geht: Das Projektgedächtnis kann in einer PostgreSQL-Datenbank liegen
+(geprüft gegen ein echtes PostgreSQL 16 in der Sandbox, **nicht in Azure**), und die Verbindung zu Claude wird
+an einer Stelle aufgebaut. In Azure ist nichts angelegt; es gibt keine Kosten.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Das Projektgedächtnis ist nur mit Testdaten geprüft. Benedikt hat am 13. November freigegeben,
 dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- und Kundendaten weiterhin nicht
@@ -54,14 +57,14 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 |---|---|---|
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
 | B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; zwei kleine Befunde aus den Durchsichten (siehe Schritt B5) |
-| C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen, Speicherschicht für PostgreSQL vorbereitet | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
+| C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen; Speicher wahlweise Datei oder PostgreSQL (Schritt I1) | Mac-Prüfliste Teil E; Zuordnung von Mails; persönliches Gedächtnis einbinden; Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der sechs Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre), den gemeinsamen Zeitplan und den Edelmetall-Agenten (nur gegen Nachbau); **Offen** für weitere Agenten | Mac-Prüfliste Teile H und K; Marktagent, Newsletter und weitere |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss, Projektüberwachung, Hinweise am Tag (einstellbar, abschaltbar) und Antwortentwürfe für Mails ohne Versand; **Offen** für Marktüberwachung über Intel hinaus | Mac-Prüfliste Teile G, L und M; Hinweis als Mitteilung am Mac (G2.4); Entwurf im Ordner „Entwürfe“ des Postfachs (Frage 13) |
 | D Microsoft 365 | **Testbereit** (nur gegen Nachbau) für Termine aus Outlook lesen (Schritt D1); **Blockiert** für die echte Anbindung, bis eure IT die Anwendung in Entra angelegt hat; **Offen** für Mail, Dateien, Teams | App-Registrierung durch die IT (Frage 14), Mac-Prüfliste Teil N; weitere Teile nur nach Benedikts Entscheidung |
 | H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
-| I Azure | **Blockiert** (Entscheidung und Kostenfreigabe) | Vorbereitung: Speicher- und Modellschicht austauschbar, Anleitung |
-| J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Offen** für austauschbare Anbieter und Wiederherstellungstests | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
+| I Azure | **Testbereit** für die Vorbereitung (Schritt I1): Projektgedächtnis in PostgreSQL, Claude-Zugang an einer Stelle, Anleitung; **Blockiert** für alles in Azure selbst (Entscheidung und Kostenfreigabe) | Abonnement, IT-Kontakt, Region, Budget (Frage 3); davor Anmeldung je Person und die übrigen Daten auf die Datenbank umstellen |
+| J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Offen** für einen zweiten Zugang zu Claude (die Stelle dafür gibt es seit I1) und Wiederherstellungstests | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
 
 ## Wiederaufnahmepunkt
 
@@ -92,7 +95,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Audit-Log und Alarmierung | `audit.jsonl` mit SHA-256-Kette, Schwärzung, Alarm per Telegram/Mac | manipulationssicher, Azure Monitor | 2/3 | Testbereit (lokal); unveränderliche Ablage Offen (Phase 3) |
 | Geheimnisverwaltung | wahlweise Klartext `~/.jarvis/config.json` oder macOS-Schlüsselbund (Umzug per Knopf am Mac) | Key Vault, Managed Identity, getrennt Test/Prod | 2/3 | Schlüsselbund Testbereit (Sandbox geprüft, Mac offen); Key Vault Offen (Phase 3) |
 | Anmeldung | keine, nur localhost | Entra ID mit MFA, eigene Identität je Nutzer | 5 | Offen |
-| Betrieb in Azure | lokaler Next-Server | Container Apps, Test- und Prod-Umgebung, IaC | 3 | Blockiert (Azure-Abo/IT klären) |
+| Betrieb in Azure | lokaler Next-Server; vorbereitet: Projektgedächtnis in PostgreSQL, Anleitung (Schritt I1) | Container Apps, Test- und Prod-Umgebung, IaC | 3 | Blockiert (Azure-Abo/IT klären) |
 | Modelladapter | Modell und Preise je Rolle an einer Stelle (`src/lib/modelle.ts`); die Aufrufe selbst sind weiter Anthropic-Aufrufe in 4 Dateien | Claude primär, andere Modelle austauschbar | 4 | Modellwahl an einer Stelle Testbereit (Schritt J1); anderer Anbieter Offen |
 | **Zentrales Gedächtnis** | | | | |
 | Persönliches Gedächtnis | `gedaechtnis.json`, jeder Eintrag erst nach Ja per Knopf | Teil des Projektgedächtnisses, mit Bestätigung | 2/6 | Testbereit (Bestätigung), Umbau Offen |
@@ -436,7 +439,7 @@ Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-proj
 | C2 Persönliches Gedächtnis in dieselbe Speicherschicht (Bestätigung gibt es dort schon über das Gateway) | Offen | |
 | C3 Mails und Besprechungsnotizen von selbst Projekten zuordnen und Vorschläge machen | Offen | braucht die Freigabe, Mailinhalte dafür auszuwerten |
 | C4 Projektüberwachung (Überfälliges und nahe Fristen von selbst melden) | Testbereit im Morgenbriefing, im Tagesabschluss, in „Heute“ und als Hinweis am Tag | Schritte G1 und G2; offen: offene Risiken |
-| C5 PostgreSQL-Umsetzung der Speicherschnittstelle | Blockiert | braucht eine Datenbank (Azure, Phase 3) |
+| C5 PostgreSQL-Umsetzung der Speicherschnittstelle | Testbereit (gegen PostgreSQL 16 in der Sandbox, nicht in Azure) | Schritt I1 in Bereich I; `pg-speicher.ts`, `test/hand/postgres-rauch.ts` |
 
 ### Testergebnisse Schritt C1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -970,6 +973,59 @@ informiert; von der Cloud aus wird nichts mehr erzeugt. **Sicherheitsrisiken:** 
 an ElevenLabs). Laufende Kosten entstehen erst, wenn Benedikt einen bezahlten Tarif wählt und die Stimme
 einschaltet; das ist seine Entscheidung.
 
+## Bereich I – Azure vorbereiten
+
+Einzelheiten und die Anleitung für Benedikt und die IT: [docs/jarvis-2.0/09-azure-vorbereitung.md](docs/jarvis-2.0/09-azure-vorbereitung.md).
+
+**In Azure ist nichts angelegt, nichts gebucht, und es gibt keine Kosten.** JARVIS hat keinen Zugang zu einem
+Azure-Konto. Alles in diesem Bereich ist Vorbereitung im Programm und auf dem Papier.
+
+### Schritt I1: Projektgedächtnis in PostgreSQL, Claude-Zugang an einer Stelle, Anleitung (14. November 2026)
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| I1.1 Zweite Umsetzung der Speicherschicht des Projektgedächtnisses mit PostgreSQL; eingeschaltet nur mit `JARVIS_PROJEKTE_DB`, sonst bleibt die Datei | Testbereit (gegen PostgreSQL 16.15 in der Sandbox, **nicht in Azure**) | `src/lib/server/projekte/pg-speicher.ts`, `schnittstelle.ts`; `test/hand/postgres-rauch.ts` |
+| I1.2 Feste Regeln der Datenbank-Anbindung: außerhalb dieses Rechners immer verschlüsselt mit geprüftem Zertifikat; Kennwort nur in der Umgebung, nie in Meldung, Anzeige oder Protokoll; feste Meldungen mit Kennung; kein stilles Ausweichen auf die Datei; geringste Rechte reichen | Testbereit | `test/module/projekte-datenbank.test.ts` (16), Handprüfung Schritte 9b und 9d |
+| I1.3 Änderungen nacheinander, auch bei zwei Prozessen an einer Datenbank: Transaktion unter einer Sperre, Warteschlange je Prozess, Frist von 20 Sekunden statt endlosem Warten | Testbereit | Handprüfung Schritte 6, 7 und 9c |
+| I1.4 Umzug von einem Speicher in den anderen (`kopiereSpeicher`): nur lesen an der Quelle, nur in ein leeres Ziel, nur ganz | Testbereit; **wird von nichts aufgerufen**, ein echter Umzug braucht Benedikts Ansage | `src/lib/server/projekte/umzug.ts` |
+| I1.5 Die Ansicht „Projekte“ sagt, wo das Gedächtnis liegt; ist der Speicher gestört, weiß JARVIS das im Gespräch und rät nichts | Testbereit | `ablageSatz`, Kontextzeile in `brain.ts`; `test/module/projekte.test.ts` (2 neue) |
+| I1.6 Verbindung zu Claude an genau einer Stelle; jede Rolle behält ihre Wartezeit und Wiederholungen | Testbereit | `src/lib/server/claude.ts`, `test/regeln/claude-zugang.test.ts` (3); `browser-rauch.ts` läuft weiter durch |
+| I1.7 Anleitung: was zentral laufen kann und was am Mac bleibt, Bausteine in Azure, Claude direkt oder über Foundry, fehlende Anmeldung, Daten, Reihenfolge, Kosten ohne erfundene Zahlen | Abgeschlossen (Dokument) | 09-azure-vorbereitung.md; Angaben zu Azure am 14.11. auf Microsoft Learn nachgelesen, sechs Seiten, Liste im Dokument |
+| I2 Anmeldung über Entra ID und Rechte je Person | Offen | größter Teil vor einem Umzug; erst nach Benedikts Entscheidung, ob JARVIS zentral laufen soll |
+| I3 Übrige Daten (Einstellungen, Audit-Log, Gateway, Kosten, Zeitplan und weitere) auf Datenbank und Blob Storage, Geheimnisse in den Key Vault | Offen | 18 von 19 Dateien schreiben weiter auf die Platte |
+| I4 Zweiter Zugang zu Claude über Microsoft Foundry | Offen | drei Funktionen fehlen dort oder sind eingeschränkt (Ausweichmodell, neuere Websuche, Schlüsselprüfung); siehe Anleitung |
+| I5 Container, Testumgebung, Betrieb in Azure | Blockiert | Abonnement, IT, Budget, Freigabe (Frage 3) |
+
+**Eigene Entscheidungen (Benedikt hat sie noch nicht gesehen):** Die Tabellen tragen den ganzen Datensatz als
+JSON statt einer Spalte je Angabe (der Entwurf vom 13. November ist damit ersetzt). Die Adresse der Datenbank
+kommt nur aus der Umgebung, nicht aus den Einstellungen der Oberfläche. Für Foundry ist nichts gebaut, weil es
+sich hier nicht prüfen lässt. Neu im Programm ist das Paket `pg` (MIT-Lizenz, keine Kosten, `npm audit` meldet
+für die mitgelieferten Pakete weiter 0 Schwachstellen).
+
+### Testergebnisse Schritt I1 (14. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, PostgreSQL 16.15)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **732 Tests: 732 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 21: Datenbank-Adresse, Wahl des Speichers, bereinigter Text, Umzug 16; Claude-Zugang 3; gestörter Speicher im Gespräch 2) |
+| Tests zuerst | Die neuen Tests liefen vor dem Bau rot (Module fehlten), und nach der Durchsicht noch einmal rot (8 Tests), bevor die Korrekturen kamen |
+| `npx next build` | erfolgreich; weiter die vier bekannten Hinweise von Turbopack, keine neuen |
+| Handprüfung gegen ein echtes PostgreSQL (`postgres-rauch.ts`, eigenes leeres PostgreSQL 16.15 auf 127.0.0.1) | 16 Schritte in Ordnung: Tabellen entstehen einmal, auch bei zwei gleichzeitigen Starts; gleicher Inhalt und gleiche Reihenfolge; Neustart; Abbruch in der Transaktion; verwaister Eintrag abgelehnt und ein verschluckter Fehler geht nicht als Erfolg durch; 40 Einträge und 30 Zählschritte aus zwei Prozessen, keiner verloren; einzelne Änderung wartet auf die laufende Transaktion; von 305 entschiedenen Vorschlägen bleiben 300; Umzug aus der Datei und Verweigern des zweiten; NUL und halbes Zeichenpaar bereinigt; Konto ohne Anlegerecht reicht, fehlende Tabellen geben 42501; lange gehaltene Sperre (Lesen geht, 55P03 nach der Frist); gekappte Verbindung mitten in der Transaktion; fremde Adresse ohne Verschlüsselung oder mit selbst ausgestelltem Zertifikat: keine Verbindung, auch mit `sslmode=disable`; Ausfall und Wiederkehr der Datenbank; **alle 40 Tests aus `test/module/projekte.test.ts` gegen diese Datenbank** (vier davon prüfen nur die Datei) |
+| Handprüfung im Browser (Chromium, gebauter Server) | `projekte-rauch.ts` mit der Datei und mit `--postgres`: Vorschlag übernehmen, ändern, ablehnen, Eintrag korrigieren, zurückziehen; die Seite nennt den richtigen Speicherort; mit Datenbank entsteht keine Datei. `browser-rauch.ts` und `agenten-rauch.ts` laufen weiter durch |
+| Gegenproben (28 absichtlich eingebaute Fehler, Tests müssen fehlschlagen) | 28 erkannt. Zwei davon erst nach geschärften Tests: Das Kopieren in ein gefülltes Ziel fiel nur über den zweiten Schutz auf (jetzt prüft der Test die Meldung des ersten), und der Abriss der Verbindung wurde vom Ablauf der Handprüfung nicht mehr sicher ausgelöst (jetzt kappt die Prüfung die Verbindung gezielt mitten in einer Transaktion) |
+| Dabei gefundener Fehler | **Riss die Verbindung zur Datenbank ab, während JARVIS sie für eine Änderung hielt, beendete das den ganzen Server** (ein Ereignis ohne Zuhörer). Gefunden von der Handprüfung gegen das echte PostgreSQL, behoben, mit eigener Prüfung und Gegenprobe |
+| Code-Review (Skill `code-review`, Stufe mittel) | zehn Punkte, alle eingearbeitet: Text mit NUL oder einem zerschnittenen Emoji lehnte die Datenbank ab; jeder erste Zugriff brauchte das Recht, Tabellen anzulegen; Kennungen für Zertifikatsfehler wurden zu „unbekannt“ und nichts stand im Protokoll; wartende Änderungen belegten alle Verbindungen, sodass auch Lesen scheiterte; fiel der Speicher nach einem gelungenen Vorschlag aus, ging die ganze Antwort verloren; ein gestörter Speicher blieb im Gespräch unbemerkt; der Umzug scheiterte an Angaben ohne Wert; „nicht auf diesem Mac“ stand auch bei einer Datenbank auf diesem Rechner; die Handprüfung räumte bei einem frühen Fehler nicht auf; die Grenze von 300 Vorschlägen stand an zwei Stellen |
+| Sicherheitsprüfung (von Hand) | alle Anweisungen an die Datenbank mit Platzhaltern, keine zusammengesetzten Texte; Kennwort und Benutzer stehen in keiner Meldung und nicht in der Anzeige (Test mit erkennbarem Kennwort); der Text der Datenbank geht nie an die Seite oder das Modell, nur ins Protokoll des Servers und dort ohne die Einzelheiten zur betroffenen Zeile; die Kennung der Störung geht nicht an das Modell (Test); keine Schlüssel im Diff; `npm audit --omit=dev`: 0 Schwachstellen vor und nach dem neuen Paket |
+| Bei Microsoft nachgelesen (Microsoft Learn, 14.11.) | Anmeldung vor Container Apps und ihre Kopfzeilen, Geheimnisse aus dem Key Vault, Entra-Anmeldung und TLS bei Azure Database for PostgreSQL, unveränderlicher Blob-Speicher, Claude in Microsoft Foundry |
+| Gegen Azure geprüft | **nein, nichts.** Nicht geprüft sind insbesondere: ob JARVIS dem Zertifikat der Azure-Datenbank von Haus aus vertraut, Anmeldung ohne Kennwort, andere PostgreSQL-Versionen, Geschwindigkeit über das Netz, Sicherung der Datenbank |
+| Nicht geprüft | echter Mac (für diesen Schritt gibt es dort nichts zu prüfen: Ohne die Umgebungsvariable ändert sich nichts außer einem Satz in der Ansicht Projekte); der Schritt zur Verschlüsselung der Handprüfung braucht die Adresse 127.0.0.2 und läuft so nur unter Linux |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Bekannte Grenzen:**
+Fällt die Datenbank aus, lassen Hinweise am Tag, Morgenbriefing und Vorbereitung vor Besprechungen die
+Projekte ohne eigene Meldung weg (wie bisher bei einer beschädigten Datei); die Ansicht Projekte und das
+Gespräch melden es. Die Sperre lässt nur eine Änderung zur Zeit zu. Nur das Projektgedächtnis ist umgestellt.
+**Sicherheitsrisiken:** neu R-26 in [02-risiken.md](docs/jarvis-2.0/02-risiken.md) (Kennwort in der Umgebung,
+Inhalte lesbar für die Verwaltung der Datenbank, keine Benutzer in JARVIS). **Neue laufende Kosten:** keine.
+
 ## Bereich J – Qualität
 
 ### Schritt J1: Kostenbuch und Modellwahl an einer Stelle (13. November 2026)
@@ -985,7 +1041,7 @@ Preise standen in vier Dateien.
 | J1.3 Alle fünf Agenten buchen: Gespräch und Browser je Anfrage, Analyst je Anfrage (seine Summe je Dokument bleibt), Chief des Desks, Intel und das X-Lesen des Desks mit dem Betrag, den Grok meldet | Testbereit | Tests gegen den nachgebauten Claude und xAI; Browser mit echtem Chrome in `test/hand/browser-rauch.ts`. **Nicht automatisch geprüft:** die Buchung beim X-Lesen des Desks (zwei Zeilen wie bei Intel) |
 | J1.4 Ansicht „Agenten“: „Kosten heute“ bei jedem Agenten, beim Desk Grok und Claude einzeln; oben „Heute zusammen“ und der laufende Monat, mit dem Hinweis „geschätzt nach Listenpreis“ | Testbereit | `src/components/AgentControl.tsx`; im gebauten Server mit Beispieldaten angesehen (Gespräch, Browser, Desk mit zwei Diensten) |
 | J1.5 JARVIS kann die Kosten nennen („Was hat JARVIS heute gekostet?“): `agenten_lesen` liefert Summe heute, Monat und die Dienste einzeln, weiter nur Zahlen und feste Bezeichnungen | Testbereit | `test/module/agenten.test.ts` (erweitert) |
-| J1.6 Anderer Anbieter als Anthropic austauschbar | Offen | die vier Aufrufstellen nutzen weiter das Anthropic-SDK direkt; ein Wechsel des Modells innerhalb von Claude braucht jetzt eine Zeile |
+| J1.6 Anderer Anbieter als Anthropic austauschbar | Offen; vorbereitet in Schritt I1 | die Verbindung zu Claude wird seit I1 an einer Stelle aufgebaut (`src/lib/server/claude.ts`, Test `claude-zugang.test.ts`). Ein zweiter Zugang (Claude über Microsoft Foundry) ist nicht gebaut; was dabei anders wäre, steht in 09-azure-vorbereitung.md |
 | J1.7 Wiederherstellungstests (Sicherung zurückspielen und prüfen) | Offen | `scripts/sichern.sh` prüft bisher nur, dass sich das Bündel klonen lässt |
 
 **So wird gerechnet (Stand der Preise: 13. November 2026, abgelesen aus der Preisliste von Anthropic):**
@@ -1038,7 +1094,7 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
 
 | Phase | Zustand | Hinweis |
 |---|---|---|
-| 3 Azure-Infrastruktur | Blockiert | D&S-Abonnement, IT-Verantwortliche, freigegebene Dienste, Kosten klären |
+| 3 Azure-Infrastruktur | Blockiert; vorbereitet in Schritt I1 (Bereich I) | D&S-Abonnement, IT-Verantwortliche, freigegebene Dienste, Kosten klären |
 | 4 Claude sicher integrieren | Offen | persönlicher API-Schlüssel; AVV, Aufbewahrung, ZDR klären (R-14) |
 | 5 Microsoft 365 / Entra ID | Testbereit für Termine aus Outlook lesen (Schritt D1, nur gegen Nachbau); echte Anbindung blockiert | siehe Bereich D; braucht die App-Registrierung durch eure IT |
 | 6 Projektgedächtnis | Testbereit (Schritt C1, Datei statt Datenbank) | siehe Bereich C |
@@ -1052,7 +1108,10 @@ keine neuen; das Kostenbuch enthält keine Inhalte. **Neue laufende Kosten:** ke
 1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis N; Teil N erst, wenn eure IT so weit ist). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
-3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT?
+3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
+   Soll JARVIS überhaupt zentral laufen (mehrere Personen, oder weiterarbeiten, wenn der Mac aus ist)? Solange
+   nur du ihn am Mac nutzt, bringt Azure wenig. Was vorher zu entscheiden ist, steht in
+   [09-azure-vorbereitung.md](docs/jarvis-2.0/09-azure-vorbereitung.md).
 4. Vor Phase 8: Läuft der Geschäftsführungs-PC mit Windows oder macOS?
 5. **Entschieden am 13. November 2026:** Ins Projektgedächtnis dürfen Benedikts eigene, unkritische
    Projektdaten („nur Sachen zu mir, nichts Wichtiges“). Für sensible Dinge überlegt er sich noch etwas; bis
@@ -1120,6 +1179,9 @@ Danach wie geplant:
 7. **G3: gebaut, Testbereit** (Schritt G3 in Bereich G): Antwortentwürfe für Mails, ohne Versand.
 8. **D1: gebaut, Testbereit, nur gegen Nachbau** (Schritt D1 in Bereich D): Termine aus Outlook lesen. Die
    echte Anbindung wartet auf eure IT (Frage 14). Mail, Dateien und Teams über Graph sind nicht gebaut.
-   **Als Nächstes: I:** Azure nur vorbereiten (Anleitung, Speicher- und Modellschicht austauschbar; nichts
-   anlegen, keine Kosten). Danach offen in J: anderer Anbieter austauschbar, Wiederherstellungstests,
-   Einstellungen überall in einem Zug lesen und speichern (wie seit D1 für Microsoft 365).
+9. **I1: gebaut, Testbereit** (Schritt I1 in Bereich I): Projektgedächtnis wahlweise in PostgreSQL, Verbindung
+   zu Claude an einer Stelle, Anleitung für Azure. In Azure selbst ist nichts angelegt.
+   **Als Nächstes: J:** Wiederherstellungstest der Sicherung (J1.7) und Einstellungen überall in einem Zug
+   lesen und speichern (wie seit D1 für Microsoft 365). Danach G2.4 (Hinweis als Mitteilung am Mac). Die
+   weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
+   entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

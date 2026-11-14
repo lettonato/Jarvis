@@ -3,37 +3,20 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { Eintrag, Projekt, Vorschlag } from "../../projekte";
 import { CONFIG_DIR } from "../config";
+import { PgSpeicher } from "./pg-speicher";
+import { MAX_ENTSCHIEDEN, SpeicherFehler, type ProjektSpeicher } from "./schnittstelle";
 
 // Die Speicherschicht des Projektgedächtnisses. Alles, was dauerhaft gespeichert wird, geht durch diese
 // Schnittstelle. Heute steckt dahinter eine Datei auf dem Mac (~/.jarvis/projekte.json, nur für deinen
-// Benutzer lesbar). Für den zentralen Betrieb kommt eine zweite Umsetzung mit PostgreSQL dazu; die Abläufe
-// darüber (projekte.ts) ändern sich dann nicht. Die Methoden entsprechen deshalb schon den Tabellen
-// projekte, projekt_eintraege und projekt_vorschlaege (siehe docs/jarvis-2.0/07-projektgedaechtnis.md).
+// Benutzer lesbar). Für den zentralen Betrieb gibt es eine zweite Umsetzung mit PostgreSQL (pg-speicher.ts);
+// die Abläufe darüber (projekte.ts) sind für beide dieselben. Die Schnittstelle selbst steht in schnittstelle.ts.
 
-export interface ProjektSpeicher {
-  // Wo die Daten liegen, für die Anzeige.
-  readonly ort: string;
-  projekte(): Promise<Projekt[]>;
-  speichereProjekt(projekt: Projekt): Promise<void>;
-  eintraege(projektId?: string): Promise<Eintrag[]>;
-  speichereEintrag(eintrag: Eintrag): Promise<void>;
-  vorschlaege(zustand?: Vorschlag["zustand"]): Promise<Vorschlag[]>;
-  speichereVorschlag(vorschlag: Vorschlag): Promise<void>;
-  // Führt zusammengehörige Schritte nacheinander und ungestört aus (Datei: Warteschlange; PostgreSQL: Transaktion).
-  // Schlägt ein Schritt fehl, bleibt der Stand von vorher.
-  transaktion<T>(arbeit: () => Promise<T>): Promise<T>;
-}
-
-// Der Speicher selbst ist gestört (Datei beschädigt oder nicht lesbar). Das ist kein Bedienfehler.
-export class SpeicherFehler extends Error {}
+export { MAX_ENTSCHIEDEN, SpeicherFehler, type ProjektSpeicher } from "./schnittstelle";
 
 type Daten = { version: 1; projekte: Projekt[]; eintraege: Eintrag[]; vorschlaege: Vorschlag[] };
 const leer = (): Daten => ({ version: 1, projekte: [], eintraege: [], vorschlaege: [] });
 const kopie = <T>(wert: T): T => structuredClone(wert);
 const ersetze = <T extends { id: string }>(liste: T[], neu: T): T[] => (liste.some((x) => x.id === neu.id) ? liste.map((x) => (x.id === neu.id ? neu : x)) : [...liste, neu]);
-
-// Entschiedene Vorschläge bleiben eine Weile als Nachweis stehen, die ältesten fallen dann weg.
-const MAX_ENTSCHIEDEN = 300;
 
 export class DateiSpeicher implements ProjektSpeicher {
   private daten: Daten | null = null;
@@ -44,6 +27,7 @@ export class DateiSpeicher implements ProjektSpeicher {
 
   constructor(private readonly datei: string) {}
 
+  readonly art = "datei";
   get ort() {
     return this.datei;
   }
@@ -133,6 +117,14 @@ export class DateiSpeicher implements ProjektSpeicher {
 
 const holder = globalThis as typeof globalThis & { __jarvisProjekte?: ProjektSpeicher };
 
-// Der Speicher, den JARVIS gerade benutzt. Tests und später die PostgreSQL-Umsetzung setzen hier ihren eigenen ein.
-export const speicher = (): ProjektSpeicher => (holder.__jarvisProjekte ??= new DateiSpeicher(path.join(CONFIG_DIR, "projekte.json")));
+// Der Speicher, den JARVIS gerade benutzt. Ohne weitere Einstellung ist das die Datei auf dem Mac. Steht in der
+// Umgebung JARVIS_PROJEKTE_DB (Adresse einer PostgreSQL-Datenbank), nimmt JARVIS die Datenbank. Ist sie
+// eingestellt, aber gestört, gibt es eine Meldung und kein stilles Ausweichen auf die Datei: Sonst lägen
+// die Projekte danach an zwei Orten.
+const waehle = (): ProjektSpeicher => {
+  const adresse = process.env.JARVIS_PROJEKTE_DB?.trim();
+  return adresse ? new PgSpeicher(adresse) : new DateiSpeicher(path.join(CONFIG_DIR, "projekte.json"));
+};
+export const speicher = (): ProjektSpeicher => (holder.__jarvisProjekte ??= waehle());
+// Tests setzen hier ihren eigenen Speicher ein; null stellt die Wahl von oben wieder her.
 export const setzeSpeicher = (s: ProjektSpeicher | null) => void (holder.__jarvisProjekte = s ?? undefined);

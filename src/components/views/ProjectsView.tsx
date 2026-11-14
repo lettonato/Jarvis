@@ -7,6 +7,7 @@ import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
 import { getJson, postJson } from "@/lib/api";
 import { isoDate } from "@/lib/dates";
 import {
+  ablageSatz,
   ART_LABEL,
   ART_MEHRZAHL,
   EINTRAG_ARTEN,
@@ -160,7 +161,7 @@ export function ProjectsView() {
 
       {projekte && (
         <p className="text-xs text-quiet">
-          Gespeichert auf diesem Mac in {projekte.ablage}. Fragst du JARVIS nach einem Projekt, liest das KI-Gehirn die Akte mit; dabei geht ihr Inhalt an Anthropic. Ein Projekt, das du als
+          {ablageSatz(projekte)} Fragst du JARVIS nach einem Projekt, liest das KI-Gehirn die Akte mit; dabei geht ihr Inhalt an Anthropic. Ein Projekt, das du als
           vertraulich markierst, bleibt davon ausgenommen und ist nur hier zu sehen.
         </p>
       )}

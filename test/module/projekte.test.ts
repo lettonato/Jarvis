@@ -43,6 +43,7 @@ const gesendet = () => JSON.stringify(claude.anfragen);
 // die Logik darauf unverändert, hängt sie nicht an der Datei.
 class SpeicherImKopf implements ProjektSpeicher {
   readonly ort = "Arbeitsspeicher (Test)";
+  readonly art = "datei";
   private d = { projekte: [] as Projekt[], eintraege: [] as Eintrag[], vorschlaege: [] as Vorschlag[] };
   private schlange: Promise<unknown> = Promise.resolve();
   private setze<T extends { id: string }>(liste: T[], neu: T) {
@@ -104,10 +105,24 @@ after(async () => {
 });
 
 // Jeder Test beginnt mit einem leeren Gedächtnis im Arbeitsspeicher; die Tests zur Datei setzen ihren eigenen Speicher.
-beforeEach(() => {
-  sp.setzeSpeicher(new SpeicherImKopf());
+// Die Handprüfung test/hand/postgres-rauch.ts lässt dieselben Tests gegen ein echtes PostgreSQL laufen: Sie
+// setzt JARVIS_TEST_PG auf die Adresse einer Wegwerf-Datenbank, die dann vor jedem Test geleert wird.
+const TEST_PG = process.env.JARVIS_TEST_PG;
+let datenbank: import("../../src/lib/server/projekte/pg-speicher").PgSpeicher | null = null;
+beforeEach(async () => {
   claude.anfragen.length = 0;
+  if (!TEST_PG) return sp.setzeSpeicher(new SpeicherImKopf());
+  const { PgSpeicher } = await import("../../src/lib/server/projekte/pg-speicher");
+  datenbank ??= new PgSpeicher(TEST_PG);
+  await datenbank.projekte();
+  const { Client } = await import("pg");
+  const client = new Client({ connectionString: TEST_PG });
+  await client.connect();
+  await client.query("truncate projekt_vorschlaege, projekt_eintraege, projekte");
+  await client.end();
+  sp.setzeSpeicher(datenbank);
 });
+after(() => datenbank?.schliesse());
 
 describe("Projektgedächtnis: nur ein Mensch am Mac trägt ein", () => {
   test("Projekt anlegen: nur vom Mac, Namen ohne spitze Klammern, kein geschätzter Fortschritt", async () => {
@@ -439,6 +454,36 @@ describe("Projektgedächtnis: das Gehirn liest Bestätigtes und schlägt vor", (
     assert.ok(reply.projekte?.vorschlaege.length);
     assert.ok(reply.projekte?.vorschlaege.every((v) => v.quelle.fremd && v.quelle.kanal === "telegram"));
     assert.equal(reply.projekte?.projekte.length, 0, "auch dann entsteht nichts ohne Bestätigung am Mac");
+  });
+
+  test("ist der Speicher gestört, weiß JARVIS das und rät nichts über Projekte", async () => {
+    const kaputt = new SpeicherImKopf();
+    kaputt.projekte = () => Promise.reject(new sp.SpeicherFehler("Die Datenbank des Projektgedächtnisses ist nicht erreichbar oder hat einen Fehler gemeldet (Kennung ECONNREFUSED)."));
+    sp.setzeSpeicher(kaputt);
+    claude.drehbuch([{ text: "An die Projekte komme ich gerade nicht." }]);
+    await brain.think(cfg(), "sk-test", frage("Was steht in den Projekten an?"));
+    assert.match(gesendet(), /Projektgedächtnis: gerade nicht lesbar/);
+    assert.ok(!gesendet().includes("ECONNREFUSED"), "die Kennung der Störung geht nicht an das Modell");
+  });
+
+  test("fällt der Speicher nach einem gelungenen Vorschlag aus, kommt die Antwort trotzdem an", async () => {
+    const wackelig = new SpeicherImKopf();
+    const lesen = wackelig.vorschlaege.bind(wackelig);
+    const schreiben = wackelig.speichereVorschlag.bind(wackelig);
+    let weg = false;
+    wackelig.vorschlaege = (z) => (weg ? Promise.reject(new sp.SpeicherFehler("gestört")) : lesen(z));
+    sp.setzeSpeicher(wackelig);
+    claude.drehbuch([{ werkzeug: "projekt_vorschlagen", eingabe: { projekt: "Hallenneubau", eintraege: [{ art: "entscheidung", text: "Stahlbau statt Holz" }] } }, { text: "Das wartet jetzt auf dein Ja." }]);
+    // Der Ausfall beginnt, sobald die Vorschläge gespeichert sind und Claude seine Antwort geschrieben hat.
+    wackelig.speichereVorschlag = async (v) => {
+      await schreiben(v);
+      setTimeout(() => void (weg = true), 0);
+    };
+    const reply = await brain.think(cfg(), "sk-test", frage("Wir haben Stahlbau statt Holz entschieden."));
+    assert.equal(reply.reply, "Das wartet jetzt auf dein Ja.");
+    assert.equal(reply.projekte, undefined, "die Seite behält ihren Stand, statt einen Fehler zu bekommen");
+    weg = false;
+    assert.equal((await lesen("offen")).length >= 1, true, "der Vorschlag ist gespeichert");
   });
 
   test("projekt_lesen liefert nur Bestätigtes mit Quelle und Datum; offene Vorschläge nur als Zahl", async () => {

@@ -85,6 +85,7 @@ Alle optional. Ohne sie gilt der Wert in der Spalte „Standard“.
 |---|---|---|
 | `JARVIS_CONFIG_DIR` | `~/.jarvis` | Einstellungen und Zustände |
 | `JARVIS_DOCS_DIR` | `~/Documents/JARVIS` | Ablage der Dokumente |
+| `JARVIS_PROJEKTE_DB` | nicht gesetzt | Adresse einer PostgreSQL-Datenbank (`postgres://benutzer:kennwort@rechner:5432/datenbank`). Gesetzt: Das Projektgedächtnis liegt dort statt in `projekte.json`. Enthält ein Kennwort, gehört deshalb nie in eine Datei im Repository. Außerhalb dieses Rechners immer verschlüsselt. Einzelheiten: [09-azure-vorbereitung.md](jarvis-2.0/09-azure-vorbereitung.md) |
 | `JARVIS_CHROME` | installiertes Google Chrome | Chrome-Programm für Browser-Agent und PDF |
 | `JARVIS_OSASCRIPT` | `/usr/bin/osascript` | macOS-Automation (Tests: nachgebauter Mac) |
 | `JARVIS_OPEN` | `/usr/bin/open` | Programme/Dateien öffnen (Tests: Ersatz) |

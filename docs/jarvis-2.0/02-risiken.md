@@ -248,6 +248,20 @@ Eintrag immer unangetastet; gelöscht wird nur, wenn der ganze Abschnitt entfern
 `test/module/zugangsdaten.test.ts` (neuer Test, vorher rot: Der Schlüssel war leer). Nur gegen das
 nachgebaute `security` geprüft.
 
+**R-26 Projektgedächtnis in einer Datenbank (neu mit Schritt I1, nur wenn `JARVIS_PROJEKTE_DB` gesetzt ist,
+offen):** Liegt das Projektgedächtnis in PostgreSQL, gilt dreierlei. (1) Die Adresse der Datenbank enthält ein
+Kennwort und steht in der Umgebung des Servers; wer die Umgebung lesen kann, kann die Projekte lesen und
+ändern. In Azure gehört es in den Key Vault; besser wäre die Anmeldung ohne Kennwort über eine verwaltete
+Identität, die nicht gebaut ist. (2) Die Inhalte stehen in der Datenbank lesbar, auch die der vertraulichen
+Projekte; wer die Datenbank verwaltet, kann sie lesen. „Vertraulich“ heißt weiterhin nur: nicht an das
+KI-Modell, nicht über Telegram. (3) Es gibt keine Benutzer in JARVIS: Wer die Oberfläche erreicht, sieht
+alles. Heute erreicht sie nur der eigene Rechner; unter einer Adresse im Netz lehnt JARVIS jede Datenanfrage
+ab, bis es eine Anmeldung gibt (siehe [09-azure-vorbereitung.md](09-azure-vorbereitung.md)). Gemildert:
+Verbindungen außerhalb des eigenen Rechners sind immer verschlüsselt und prüfen das Zertifikat
+(`test/hand/postgres-rauch.ts`), Meldungen nennen nie Benutzer, Kennwort oder den Text der Datenbank
+(`test/module/projekte-datenbank.test.ts`), und JARVIS kommt mit einem Konto ohne das Recht aus, Tabellen
+anzulegen.
+
 ## Was bereits gut ist und erhalten bleiben soll
 
 * Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt H1 sind es 20) prüfen Host, Herkunft und einen eigenen Header.

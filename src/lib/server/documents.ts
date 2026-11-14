@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { claudeFuer } from "./claude";
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import os from "node:os";
@@ -358,7 +359,7 @@ function appendNote(messages: Anthropic.Beta.BetaMessageParam[], note: string) {
 }
 
 async function research(job: DocJob, apiKey: string, signal: AbortSignal): Promise<Dokument> {
-  const client = new Anthropic({ apiKey, timeout: 15 * 60_000, maxRetries: 2 });
+  const client = claudeFuer("analyst", apiKey);
   const today = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     { role: "user", content: `Heute ist ${today}.\n\n<auftrag>\nThema: ${job.thema}\n${job.auftrag}\n</auftrag>` },

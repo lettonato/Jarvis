@@ -2,21 +2,38 @@
 // Legt Testdaten in einem eigenen, leeren Einstellungsordner an, startet JARVIS auf einem freien Port und
 // klickt sich durch: Vorschlag übernehmen, Akte öffnen, Eintrag korrigieren, zurückziehen, Schutz der
 // Schnittstelle. Vorher einmal `npx next build`.
-//   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/projekte-rauch.ts [Ordner für Bilder]
+//   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/projekte-rauch.ts [Ordner für Bilder] [--postgres]
+// Mit --postgres liegt das Projektgedächtnis dabei nicht in der Datei, sondern in einem eigenen, leeren
+// PostgreSQL auf diesem Rechner (Wegwerf-Datenbank, siehe test/helfer/postgres.ts). Die Schritte sind dieselben.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { startePostgres } from "../helfer/postgres";
 import { sichereUmgebung } from "../helfer/umgebung";
 
 const PORT = 3107;
 const BASIS = `http://127.0.0.1:${PORT}`;
-const bilder = process.argv[2] ?? "";
+const args = process.argv.slice(2);
+const mitDatenbank = args.includes("--postgres");
+const bilder = args.find((a) => !a.startsWith("--")) ?? "";
 const ordner = sichereUmgebung("projekte-rauch");
 
+// Alles, was am Ende aufgeräumt werden muss, auch wenn schon das Anlegen der Testdaten scheitert.
+const aufraeumen: (() => void | Promise<void>)[] = [];
+const schliesse = (s: unknown) => (s && typeof s === "object" && "schliesse" in s ? (s as { schliesse: () => Promise<void> }).schliesse() : undefined);
+
 async function main() {
+  const db = mitDatenbank ? startePostgres(54331) : null;
+  if (db) {
+    aufraeumen.push(() => db.stop());
+    process.env.JARVIS_PROJEKTE_DB = db.url;
+  }
   const p = await import("../../src/lib/server/projekte/projekte");
+  const sp = await import("../../src/lib/server/projekte/speicher");
+  const erster = sp.speicher();
+  aufraeumen.push(() => schliesse(erster));
   const projekt = await p.legeProjektAn({ name: "Hallenneubau", beschreibung: "Neue Lagerhalle am Standort Süd", verantwortliche: "Thomas, Benedikt", fortschritt: 40, stichworte: "Halle Süd" }, "mac");
   await p.trageEin(projekt.id, { art: "entscheidung", text: "Stahlbau statt Holz", datum: "2026-11-05" }, "mac");
   const aufgabe = await p.trageEin(projekt.id, { art: "aufgabe", text: "Statik prüfen lassen", zustaendig: "Thomas", faellig: "2026-11-10" }, "mac");
@@ -60,6 +77,8 @@ async function main() {
     await seite.goto(`${BASIS}/projekte`);
     await seite.getByText("Wartet auf deine Bestätigung (4)").waitFor({ timeout: 30_000 });
     assert.equal(await seite.getByText("Beruht auf Text von Dritten").count(), 2, "Projekt und Aufgabe aus der Mail tragen den Hinweis");
+    // Die Seite sagt ehrlich, wo das Projektgedächtnis liegt.
+    await seite.getByText(mitDatenbank ? "Gespeichert in der PostgreSQL-Datenbank „postgres“ auf 127.0.0.1." : `Gespeichert auf diesem Mac in ${path.join(ordner, "projekte.json")}.`, { exact: false }).waitFor();
     await bild("1-vorschlaege");
 
     // Vorschlag „Risiko“ übernehmen: Er verschwindet aus dem Eingang, die Akte geht auf und zeigt ihn.
@@ -99,22 +118,33 @@ async function main() {
     await browser.close();
     assert.deepEqual(fehler, [], "keine Fehler in der Seite");
 
-    const datei = JSON.parse(readFileSync(path.join(ordner, "projekte.json"), "utf8")) as { projekte: { name: string }[]; eintraege: { text: string; faellig: string | null; verlauf: unknown[]; zurueckgezogen: unknown }[]; vorschlaege: { zustand: string }[] };
+    // Der Stand, wie ihn ein frisch gestarteter JARVIS aus dem Speicher liest (Datei oder Datenbank).
+    sp.setzeSpeicher(null);
+    const frisch = sp.speicher();
+    const datei = { projekte: await frisch.projekte(), eintraege: await frisch.eintraege(), vorschlaege: await frisch.vorschlaege() };
+    assert.equal(existsSync(path.join(ordner, "projekte.json")), !mitDatenbank, "mit Datenbank entsteht keine Datei, ohne Datenbank liegt alles in der Datei");
     assert.deepEqual(datei.projekte.map((x) => x.name), ["Hallenneubau"], "das abgelehnte Projekt wurde nie angelegt");
     assert.equal(datei.eintraege.find((e) => e.text === "Statik prüfen lassen")?.faellig, "2026-11-25");
     assert.equal(datei.eintraege.filter((e) => e.zurueckgezogen).length, 1);
     assert.equal(datei.eintraege.length, 4, "nichts gelöscht");
     assert.deepEqual(datei.vorschlaege.map((v) => v.zustand).sort(), ["abgelehnt", "abgelehnt", "uebernommen", "uebernommen"]);
-    console.log("Ansicht Projekte: alle Schritte in Ordnung.");
+    console.log(`Ansicht Projekte${mitDatenbank ? " mit PostgreSQL" : ""}: alle Schritte in Ordnung.`);
   } finally {
     stop();
+    await schliesse(sp.speicher());
   }
 }
 
-main().then(
-  () => process.exit(0),
-  (e) => {
-    console.error(e);
-    process.exit(1);
-  },
-);
+main()
+  .then(
+    () => 0,
+    (e) => {
+      console.error(e);
+      return 1;
+    },
+  )
+  .then(async (code) => {
+    // In umgekehrter Reihenfolge: erst die Verbindungen schließen, dann die Wegwerf-Datenbank beenden.
+    for (const schritt of aufraeumen.reverse()) await Promise.resolve(schritt()).catch((e) => console.error(e));
+    process.exit(code);
+  });

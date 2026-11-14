@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
+import { claudeFuer } from "./claude";
 import { VIEWS, viewName, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type Source, type ViewName } from "../brain";
 import { clock, dayOf, eventsOn, nextEvent, outlookLuecke, verdecktAm, type CalendarEvent, type CalendarSnapshot } from "../calendar";
 import { addDays, isoDate } from "../dates";
@@ -23,6 +24,7 @@ import { durchGateway, regelFuer, serverWerkzeugGesehen } from "./gateway/gatewa
 import { agentSperre } from "./gateway/zustand";
 import { ART_LABEL, EINTRAG_ARTEN, GRENZEN, quelleText, STATUS_LABEL as PROJEKT_STATUS, type Eintrag, type ProjektKarte } from "../projekte";
 import { akte, ProjektFehler, schlageVor, uebersicht } from "./projekte/projekte";
+import { SpeicherFehler } from "./projekte/schnittstelle";
 import { ZUSTAND_LABEL } from "../agenten";
 import { agentenSnapshot } from "./agenten";
 import { metalleSnapshot } from "./metalle";
@@ -47,7 +49,7 @@ const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 // Ein Schlüssel aus den Einstellungen geht vor; für Entwickler reicht auch ANTHROPIC_API_KEY.
 export const brainKey = (config: JarvisConfig): string | undefined => config.claude?.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
 
-const client = (apiKey: string) => new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
+const client = (apiKey: string) => claudeFuer("gespraech", apiKey);
 
 // Macht aus einer Meldung einen Satz: ohne Leerraum am Ende und mit Satzzeichen. Die Erklärung steht in
 // Protokollen und Antworten vor weiteren Sätzen.
@@ -936,7 +938,14 @@ export async function think(
   const docs = await documentsSnapshot().catch(() => null);
   const docLine = docs ? docContextLine(docs, now) : null;
   if (docLine) lines.push(docLine);
-  const projekte = await uebersicht(now).catch(() => null);
+  // Ist der Speicher selbst gestört (Datei beschädigt, Datenbank nicht erreichbar), soll JARVIS das wissen,
+  // statt so zu antworten, als gäbe es keine Projekte. Die Kennung der Störung geht nicht an das Modell.
+  let gestoert = false;
+  const projekte = await uebersicht(now).catch((e) => {
+    gestoert = e instanceof SpeicherFehler;
+    return null;
+  });
+  if (gestoert) lines.push("Projektgedächtnis: gerade nicht lesbar (der Speicher ist gestört). Sag das, wenn es um Projekte geht, und rate nichts; in der Ansicht Projekte steht mehr dazu.");
   if (projekte && (projekte.projekte.length || projekte.vorschlaege.length)) {
     // Mit Namen nur, was der Mensch selbst eingetragen hat und was nicht vertraulich ist; den Rest liest Claude mit projekte_lesen.
     const aktiv = projekte.projekte.filter((p) => p.status === "aktiv");
@@ -1070,7 +1079,8 @@ export async function think(
     intel: outcome.intel ? await intelSnapshot() : undefined,
     memory: outcome.memory ? await readMemory() : undefined,
     documents: outcome.documents ? await documentsSnapshot() : undefined,
-    projekte: outcome.projekte ? await uebersicht() : undefined,
+    // Fällt der Speicher genau jetzt aus, behält die Seite ihren Stand; die Antwort geht deshalb nicht verloren.
+    projekte: outcome.projekte ? await uebersicht().catch(() => undefined) : undefined,
     entwuerfe: outcome.entwuerfe ? await entwuerfeSnapshot() : undefined,
   };
 }

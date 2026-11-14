@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
+import { claudeFuer } from "./claude";
 import path from "node:path";
 import type { BrowserContext, CDPSession, Frame, Locator, Page } from "playwright-core";
 import { durchGateway, GatewaySperre } from "./gateway/gateway";
@@ -807,7 +808,7 @@ async function runTask(config: JarvisConfig, apiKey: string, auftrag: string, op
       },
     })) as typeof tools;
 
-    const runner = new Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 }).beta.messages.toolRunner(
+    const runner = claudeFuer("browser", apiKey).beta.messages.toolRunner(
       {
         model: MODEL,
         max_tokens: 8000,

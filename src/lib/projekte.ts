@@ -92,15 +92,33 @@ export type ProjektKarte = Projekt & {
   textVonDritten: boolean;
 };
 
-export type ProjekteSnapshot = { projekte: ProjektKarte[]; vorschlaege: VorschlagAnzeige[]; ablage: string };
+// ablage: wo das Projektgedächtnis liegt, für die Anzeige. ablageArt steht nur dabei, wenn es nicht die Datei
+// auf dem Mac ist, sondern eine Datenbank.
+export type ProjekteSnapshot = { projekte: ProjektKarte[]; vorschlaege: VorschlagAnzeige[]; ablage: string; ablageArt?: "datenbank" };
+
+export const ablageSatz = (s: Pick<ProjekteSnapshot, "ablage" | "ablageArt">): string => (s.ablageArt === "datenbank" ? `Gespeichert in der ${s.ablage}.` : `Gespeichert auf diesem Mac in ${s.ablage}.`);
 export type ProjektAkte = { projekt: ProjektKarte; eintraege: Eintrag[]; zurueckgezogen: Eintrag[]; vorschlaege: VorschlagAnzeige[] };
 // Was /api/projekte antwortet: die Übersicht und, wenn ein Projekt offen ist, seine Akte.
 export type ProjekteAntwort = ProjekteSnapshot & { akte: ProjektAkte | null; message?: string };
 
 export const GRENZEN = { name: 80, beschreibung: 600, text: 600, person: 60, personen: 10, stichworte: 8, hinweis: 160, grund: 200, offeneVorschlaege: 100, eintraegeJeProjekt: 2000, projekte: 200 };
 
+// Text, wie ihn jeder Speicher halten kann: ohne Steuerzeichen (darunter NUL) und ohne halbe Zeichenpaare, wie
+// sie ein beim Kürzen zerschnittenes Emoji hinterlässt. Eine Datenbank lehnt beides ab.
+const HALBES_PAAR = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+export const speicherText = (text: string): string => text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").replace(HALBES_PAAR, "\uFFFD");
+
 // Spitze Klammern fallen weg, damit ein Eintrag im Prompt nie wie ein Abschnitt oder Befehl aussehen kann.
-export const sauber = (wert: unknown, max: number): string => (typeof wert === "string" ? wert.replace(/[<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "");
+// Gekürzt wird nie mitten in einem Zeichenpaar.
+export const sauber = (wert: unknown, max: number): string =>
+  typeof wert === "string"
+    ? speicherText(wert)
+        .replace(/[<>]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, max)
+        .replace(/[\uD800-\uDBFF]$/, "")
+    : "";
 
 export const istDatum = (wert: unknown): wert is string => typeof wert === "string" && /^\d{4}-\d{2}-\d{2}$/.test(wert) && !Number.isNaN(Date.parse(`${wert}T00:00:00`));
 export const datumOderNull = (wert: unknown): string | null => (istDatum(wert) ? wert : null);

@@ -83,71 +83,34 @@ Ein Projekt lässt sich als vertraulich markieren. Dann gilt:
   Projektdaten** in nicht vertrauliche Projekte. Gebaut und geprüft ist alles nur mit Testdaten.
 * Die Datei ist nicht verschlüsselt und wird nicht automatisch gesichert. Time Machine sichert sie mit.
 
-## Vorbereitet für eine zentrale Datenbank
+## Zwei Speicher: Datei oder Datenbank
 
 Alles Speichern läuft über eine Schnittstelle (`ProjektSpeicher` in
-`src/lib/server/projekte/speicher.ts`). Heute steckt dahinter eine Datei, später PostgreSQL; die Abläufe
-darüber ändern sich nicht. Ein Test lässt die gesamte Logik auf einem zweiten Speicher ohne Datei laufen.
+`src/lib/server/projekte/schnittstelle.ts`). Dahinter steckt heute die Datei auf dem Mac (`speicher.ts`). Seit
+Schritt I1 (14. November 2026) gibt es eine zweite Umsetzung mit PostgreSQL (`pg-speicher.ts`); die Abläufe
+darüber sind für beide dieselben. Eingeschaltet wird die Datenbank nur mit der Umgebungsvariable
+`JARVIS_PROJEKTE_DB`; ohne sie bleibt alles bei der Datei.
 
-| Methode | Datei heute | PostgreSQL später |
+| Methode | Datei | PostgreSQL |
 |---|---|---|
 | `projekte()`, `speichereProjekt()` | Liste in der Datei | Tabelle `projekte` |
 | `eintraege(projektId?)`, `speichereEintrag()` | Liste in der Datei | Tabelle `projekt_eintraege` |
 | `vorschlaege(zustand?)`, `speichereVorschlag()` | Liste in der Datei | Tabelle `projekt_vorschlaege` |
-| `transaktion(arbeit)` | Warteschlange, bei Fehler Stand von vorher | `BEGIN … COMMIT`, bei Fehler `ROLLBACK` |
+| `transaktion(arbeit)` | Warteschlange, bei Fehler Stand von vorher | Transaktion unter einer Sperre in der Datenbank, bei Fehler `ROLLBACK` |
 
-Vorgesehene Tabellen (noch nicht angelegt, es gibt noch keine Datenbank):
-
-```sql
-create table projekte (
-  id text primary key,
-  name text not null unique,
-  beschreibung text not null default '',
-  status text not null check (status in ('aktiv','pausiert','abgeschlossen')),
-  verantwortliche jsonb not null default '[]',
-  fortschritt smallint check (fortschritt between 0 and 100),
-  stichworte jsonb not null default '[]',
-  vertraulich boolean not null default false,
-  quelle jsonb not null,
-  erstellt_am timestamptz not null,
-  geaendert_am timestamptz not null
-);
-create table projekt_eintraege (
-  id text primary key,
-  projekt_id text not null references projekte(id),
-  art text not null check (art in ('aufgabe','entscheidung','notiz','risiko','naechster_schritt')),
-  text text not null,
-  zustaendig text not null default '',
-  faellig date,
-  datum date,
-  erledigt boolean not null default false,
-  quelle jsonb not null,
-  erstellt_am timestamptz not null,
-  bestaetigt_am timestamptz not null,
-  geaendert_am timestamptz,
-  verlauf jsonb not null default '[]',
-  zurueckgezogen jsonb
-);
-create table projekt_vorschlaege (
-  id text primary key,
-  art text not null check (art in ('projekt','eintrag','korrektur')),
-  projekt_id text references projekte(id),
-  projekt_name text not null,
-  eintrag_id text references projekt_eintraege(id),
-  inhalt jsonb not null,
-  quelle jsonb not null,
-  erstellt_am timestamptz not null,
-  zustand text not null check (zustand in ('offen','uebernommen','abgelehnt')),
-  entschieden_am timestamptz
-);
-```
+Die Tabellen tragen den ganzen Datensatz als JSON und daneben nur die Spalten, nach denen gesucht oder die
+geprüft werden (Nummer, Projekt, Zustand, Reihenfolge). Der frühere Entwurf mit einer Spalte je Angabe ist
+damit ersetzt: So kann sich die Form eines Eintrags ändern, ohne dass die Datenbank umgebaut werden muss. Die
+Tabellen, die Regeln (Verschlüsselung, Kennwort, feste Meldungen, geringste Rechte) und was geprüft ist, stehen
+in [09-azure-vorbereitung.md](09-azure-vorbereitung.md). **Geprüft gegen ein PostgreSQL 16 in der Sandbox,
+nicht gegen eine Datenbank in Azure.**
 
 Mit mehreren Benutzern kommen später dazu: wer bestätigt hat (heute immer „der Mensch am Mac“), Rechte je
 Projekt und Zeilenschutz in der Datenbank.
 
 ## Geprüft
 
-`test/module/projekte.test.ts` (30 Tests) und `test/hand/projekte-rauch.ts` (Ansicht im echten Browser).
+`test/module/projekte.test.ts` (40 Tests) und `test/hand/projekte-rauch.ts` (Ansicht im echten Browser, mit `--postgres` auch gegen die Datenbank).
 
 | Was | Wie geprüft |
 |---|---|

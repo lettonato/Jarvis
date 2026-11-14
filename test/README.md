@@ -13,6 +13,8 @@ npm run pruefen     # Lint, Typprüfung und Tests
   je Agent). `zeitplan.test.ts` prüft die Regeln des gemeinsamen Zeitplans (fällig, nachholen, auch über
   Mitternacht), `metalle.test.ts` die Rechnung des Edelmetall-Agenten mit von Hand gerechneten Zahlen (Trend,
   Hoch und Tief, Fonds statt Feinunze). `modelle.test.ts` prüft die Modellwahl und die Preisrechnung gegen Zahlen aus der Preisliste.
+  `claude-zugang.test.ts` prüft, dass nur `src/lib/server/claude.ts` eine Verbindung zu Claude aufbaut und
+  jede Rolle ihre Wartezeit und Wiederholungen behält.
   `geteilt.test.ts` prüft die geteilten Abfragen der Oberfläche (eine Abfrage für mehrere Stellen, keine
   veraltete Antwort über einem neueren Stand), mit gestellter Uhr.
 * `test/module/` prüft Module mit echten Dateien im Temp-Ordner und nachgebauten Diensten:
@@ -21,6 +23,10 @@ npm run pruefen     # Lint, Typprüfung und Tests
   Not-Aus, Agentensperren, Audit-Log, ein manipuliertes Modell). `projekte.test.ts` prüft das
   Projektgedächtnis: nur ein Mensch am Mac bestätigt, Vorschläge sind kein Wissen, Korrekturverlauf,
   vertrauliche Projekte, Speicher in der Datei und auf einem zweiten Speicher ohne Datei.
+  `projekte-datenbank.test.ts` prüft, was sich am Projektgedächtnis in PostgreSQL ohne laufende Datenbank
+  prüfen lässt: die Adresse (außerhalb dieses Rechners immer verschlüsselt, kein Kennwort in Anzeige oder
+  Meldung), die Wahl des Speichers (ohne Einstellung die Datei, kein stilles Ausweichen), bereinigter Text
+  und das Kopieren von einem Speicher in den anderen. Alles Weitere prüft die Handprüfung `postgres-rauch.ts`.
   `kosten.test.ts` prüft das Kostenbuch: Buchen je Agent und Tag, nur Zahlen in der Datei, gleichzeitige
   Buchungen, abgebrochene Antwort, nicht lesbare und kaputte Datei. Der nachgebaute Claude meldet je Antwort
   10 Token Eingabe und 5 Ausgabe und nennt das angefragte Modell; mit dem Zug `{ abbruch: true }` reißt eine
@@ -68,6 +74,15 @@ normale Tests.
 `test/hand/` enthält Handprüfungen, die ein echtes Chrome brauchen und deshalb nicht bei `npm test` mitlaufen
 (Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung,
 Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“). Aufruf steht jeweils oben in der Datei.
+
+`test/hand/postgres-rauch.ts` braucht kein Chrome, aber ein installiertes PostgreSQL (die Programme `initdb`
+und `pg_ctl`; gesucht in `JARVIS_PG_BIN` und an den üblichen Orten). Es startet ein eigenes, leeres PostgreSQL
+auf 127.0.0.1 in einem Wegwerf-Ordner (`test/helfer/postgres.ts`), prüft das Projektgedächtnis darin
+(Reihenfolge, Transaktionen, zwei Prozesse gleichzeitig, Sperre, geringste Rechte, Verschlüsselung zu fremden
+Adressen, Ausfall der Datenbank, Umzug aus der Datei), lässt dann `test/module/projekte.test.ts` mit
+`JARVIS_TEST_PG` gegen diese Datenbank laufen und räumt alles weg. Der Schritt zur Verschlüsselung braucht die
+Adresse 127.0.0.2, die Linux von Haus aus kennt, ein Mac nicht. `test/hand/projekte-rauch.ts --postgres`
+klickt die Ansicht Projekte im Browser mit einer solchen Datenbank durch.
 
 `test/hand/glashaus-schau.ts` ist keine Prüfung, sondern eine Schau: Sie startet JARVIS mit Beispieldaten
 (nachgebautes Postfach, nachgebauter Markt, nachgebaute Tageskurse für Gold und den Silber-Fonds, Kalender, Aufgaben, drei Projekte), damit man alle Räume gefüllt

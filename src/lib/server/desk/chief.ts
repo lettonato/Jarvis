@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { claudeFuer } from "../claude";
 import type { Candidate } from "../../market";
 import { liquidityFit, type SoftScores } from "../../paper";
 import { SOFT_FILTERS, SOFT_KEYS, softPasses, type SoftKey } from "../../thresholds";
@@ -191,7 +191,7 @@ function leseCoins(text: string): ClaudeCoin[] {
 
 // Bewertet bis zu ein paar Coins in einer einzigen Anfrage. Wirft bei Fehlern; der Desk kauft dann nichts.
 export async function judgeWithClaude(apiKey: string, inputs: ChiefInput[]): Promise<Verdict[]> {
-  const client = new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
+  const client = claudeFuer("chief", apiKey);
   const res = await client.messages.create({
     model: CHIEF_MODEL,
     max_tokens: 4000,
