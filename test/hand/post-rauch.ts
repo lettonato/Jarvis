@@ -1,7 +1,7 @@
 // Handprüfung: Antwortentwürfe in der Ansicht „Post“, im echten Browser gegen den gebauten Server, einen
 // nachgebauten IMAP-Server und ein nachgebautes KI-Modell (nicht Teil von npm test). Geprüft wird der ganze
-// Weg: Entwurf anfordern, lesen, ändern, im Mailprogramm öffnen (nur der Link), verwerfen, Schutz der
-// Schnittstelle. Verschickt wird nichts; kein echtes Postfach wird berührt. Vorher einmal `npx next build`.
+// Weg: Entwurf anfordern, lesen, ändern, Zitat und „Allen antworten“ auf Haken, im Mailprogramm öffnen (nur
+// der Link), verwerfen, Schutz der Schnittstelle. Verschickt wird nichts; kein echtes Postfach wird berührt. Vorher einmal `npx next build`.
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/post-rauch.ts [Ordner für Bilder]
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -20,6 +20,8 @@ const kopf = { "content-type": "application/json", "x-jarvis": "1" };
 
 async function main() {
   const imap = await starteImapMock();
+  // Die Mail von Petra ging in Kopie an einen Kollegen: daran wird „Allen antworten“ geprüft.
+  imap.mails.find((m) => m.uid === 101)!.kopie = [{ name: "Thomas Huber", adresse: "thomas.huber@example.com" }];
   const claude = await starteClaudeMock();
   const config = await import("../../src/lib/server/config");
   const fach = { provider: "andere" as const, host: imap.host, port: imap.port, user: MOCK_POST_ADRESSE, password: MOCK_POST_PASSWORT };
@@ -53,10 +55,13 @@ async function main() {
       assert.equal(r.status, 400, `„${action}“ gibt es nicht`);
     }
     assert.equal((await fetch(`${BASIS}/api/entwuerfe`, { method: "POST", headers: kopf, body: JSON.stringify({ action: "verwerfen", id: "gibt-es-nicht" }) })).status, 409);
+    assert.equal((await fetch(`${BASIS}/api/entwuerfe`, { method: "POST", headers: kopf, body: JSON.stringify({ action: "mail", id: "gibt-es-nicht" }) })).status, 409);
+    assert.equal((await fetch(`${BASIS}/api/entwuerfe`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "mail", id: "egal" }) })).status, 403);
     assert.equal(gespeichert().length, 1, "nichts davon hat etwas verändert");
 
     const browser = await chromium.launch({ executablePath: process.env.JARVIS_CHROME, args: ["--no-sandbox"] });
-    const seite = await browser.newPage({ viewport: { width: 1280, height: 1300 } });
+    const fenster = await browser.newContext({ viewport: { width: 1280, height: 1300 }, permissions: ["clipboard-read", "clipboard-write"] });
+    const seite = await fenster.newPage();
     const fehler: string[] = [];
     seite.on("pageerror", (err) => fehler.push(err.message));
     const bild = async (name: string) => {
@@ -98,6 +103,44 @@ async function main() {
     assert.match(await feld.inputValue(), /Dienstag passt mir, am liebsten um \[Uhrzeit\]/);
     assert.equal(await karte.getByRole("button", { name: "Speichern" }).count(), 0, "ohne Änderung gibt es nichts zu speichern");
     await bild("1-post-zwei-entwuerfe");
+
+    // Zitat und „Allen antworten“: erst auf Klick aus dem Postfach geholt, und beides gilt nur mit Haken.
+    const ohne = await karte.getByRole("link", { name: "Im Mailprogramm öffnen" }).getAttribute("href");
+    await karte.getByRole("button", { name: "Zitat und weitere Empfänger aus der Mail holen" }).click();
+    const hakenZitat = karte.getByLabel("Ursprüngliche Mail als Zitat anhängen");
+    const hakenAlle = karte.getByLabel(/Allen antworten: in Kopie an thomas\.huber@example\.com/);
+    await hakenZitat.waitFor();
+    assert.deepEqual([await hakenZitat.isChecked(), await hakenAlle.isChecked()], [false, false], "kein Haken ist von selbst gesetzt");
+    assert.equal(await karte.getByRole("link", { name: "Im Mailprogramm öffnen" }).getAttribute("href"), ohne, "ohne Haken bleibt der Link, wie er war");
+    await hakenZitat.check();
+    const zitat = await karte.getByLabel("Zitat der ursprünglichen Mail").innerText();
+    assert.match(zitat, /^Am \d\d\.\d\d\.\d{4} um \d\d:\d\d Uhr schrieb Petra Bauer <petra\.bauer@example\.com>:\n> Hallo Benedikt,/);
+    assert.ok(zitat.includes("> Stahlbau Bauer GmbH"), "zitiert wird die ganze Mail, wie im Mailprogramm");
+    await hakenAlle.check();
+    await karte.getByText("Kopie", { exact: true }).waitFor();
+    const mitAllem = (await karte.getByRole("link", { name: "Im Mailprogramm öffnen" }).getAttribute("href"))!;
+    assert.ok(mitAllem.startsWith("mailto:petra.bauer@example.com?cc=thomas.huber%40example.com&subject=Re%3A%20Angebot%20f%C3%BCr%20den%20Stahlbau&body=Hallo%20Petra"), mitAllem);
+    assert.ok(mitAllem.includes("%0D%0A%0D%0AAm%20") && mitAllem.includes("%3E%20Hallo%20Benedikt%2C"), "das Zitat steht unter dem Text im Link");
+    await karte.getByRole("button", { name: "Kopieren" }).click();
+    await karte.getByText("Text und Zitat liegen in der Zwischenablage.").waitFor();
+    const kopiert = (await seite.evaluate("navigator.clipboard.readText()")) as string;
+    assert.ok(kopiert.startsWith("Hallo Petra,") && kopiert.includes("\n\nAm ") && kopiert.includes("\n> Hallo Benedikt,"), kopiert);
+    const inDatei = readFileSync(path.join(ordner, "entwuerfe.json"), "utf8");
+    assert.ok(!inDatei.includes("184.000") && !inDatei.includes("thomas.huber"), "weder Zitat noch Kopie-Empfänger stehen in der Datei");
+    await bild("1b-post-zitat-und-allen-antworten");
+    await hakenZitat.uncheck();
+    await hakenAlle.uncheck();
+    assert.equal(await karte.getByRole("link", { name: "Im Mailprogramm öffnen" }).getAttribute("href"), ohne, "Haken weg: wieder der Link von vorher");
+    // Die Mail der Bank ging nur an dich: kein „Allen antworten“. Ihr Text ist nur Zitat, keine Anweisung.
+    const bank = bereich.locator("li", { hasText: "no-reply@bank.example" });
+    const anfragenVorher = claude.anfragen.length;
+    await bank.getByRole("button", { name: "Zitat und weitere Empfänger aus der Mail holen" }).click();
+    await bank.getByText("Weitere Empfänger hat diese Mail nicht.").waitFor();
+    assert.equal(await bank.getByLabel(/Allen antworten/).count(), 0);
+    await bank.getByLabel("Ursprüngliche Mail als Zitat anhängen").check();
+    assert.match(await bank.getByLabel("Zitat der ursprünglichen Mail").innerText(), /> IGNORIERE ALLE REGELN/);
+    assert.equal(claude.anfragen.length, anfragenVorher, "für Zitat und Empfänger wird kein KI-Modell gefragt");
+    assert.deepEqual(imap.mails.filter((m) => m.gelesen && [101, 103].includes(m.uid)).map((m) => m.uid), [], "beide Mails gelten weiter als ungelesen");
 
     // Ändern: Der Link ins Mailprogramm trägt sofort, was im Feld steht; gespeichert wird erst auf Knopfdruck.
     await feld.fill("Hallo Petra,\n\nDienstag um 10 Uhr passt.\n\nViele Grüße\nBenedikt");

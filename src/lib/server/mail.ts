@@ -165,14 +165,29 @@ export async function readAbsender(config: MailConfig, uid: number): Promise<Pic
   });
 }
 
-export async function readMessage(config: MailConfig, uid: number): Promise<MailMessage> {
+// Holt eine Mail mit PEEK: Sie gilt danach nicht als gelesen. ganz: ihr ganzer Text. empfaenger: an wen sie
+// außer dir ging (An und Kopie), so wie das Postfach die Adressen nennt.
+async function liesMail(config: MailConfig, uid: number): Promise<{ kopf: Omit<MailMessage, "text">; ganz: string; empfaenger: string[] }> {
   return withInbox(config, async (c) => {
     const msg = await c.fetchOne(String(uid), { uid: true, envelope: true, source: { maxLength: 512_000 } }, { uid: true });
     if (!msg || !msg.source) throw new MailFehlt();
     const parsed = await simpleParser(msg.source);
     const item = toItem(msg);
-    return { uid, from: item.from, fromAddress: item.fromAddress, subject: item.subject, date: item.date, text: trimBody(parsed.text ?? "") };
+    const empfaenger = [...(msg.envelope?.to ?? []), ...(msg.envelope?.cc ?? [])].map((a) => a.address ?? "").filter(Boolean);
+    return { kopf: { uid, from: item.from, fromAddress: item.fromAddress, subject: item.subject, date: item.date }, ganz: parsed.text ?? "", empfaenger };
   });
+}
+
+// Für das Gespräch und die Ansicht Post: der Text ohne Zitate und Signatur, und ohne die übrigen Empfänger.
+export async function readMessage(config: MailConfig, uid: number): Promise<MailMessage> {
+  const { kopf, ganz } = await liesMail(config, uid);
+  return { ...kopf, text: trimBody(ganz) };
+}
+
+// Für Zitat und „Allen antworten“ an einem Antwortentwurf: der ganze Text und die übrigen Empfänger.
+export async function readAntwortMail(config: MailConfig, uid: number): Promise<MailMessage & { empfaenger: string[] }> {
+  const { kopf, ganz, empfaenger } = await liesMail(config, uid);
+  return { ...kopf, text: ganz, empfaenger };
 }
 
 export async function markSeen(config: MailConfig, uid: number): Promise<void> {

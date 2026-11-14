@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 65 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P und Q sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 70 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P und Q und die Punkte M11 bis M13 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -174,6 +174,9 @@ Mailprogramm. Geprüft ist das bisher nur gegen ein nachgebautes Postfach und ei
 | M8 | Eine Antwort auf einen Newsletter oder eine „no-reply“-Mail entwerfen lassen | Am Entwurf steht der Hinweis, dass diese Adresse vermutlich keine Antworten annimmt |
 | M9 | Auf „Verwerfen“ klicken | Der Entwurf ist weg. Im Postfach selbst hat sich nichts geändert: Die Mail ist weiter ungelesen, im Ordner „Entwürfe“ und im Ordner „Gesendet“ deines Mailprogramms liegt nichts von JARVIS |
 | M10 | In Telegram schreiben: „Entwirf eine Antwort auf die Mail von … “ | JARVIS antwortet, dass der Entwurf am Mac im Raum „Post“ liegt. Dort steht er mit dem Zusatz „vom Handy aus“ |
+| M11 (neu) | An einem Entwurf auf „Zitat und weitere Empfänger aus der Mail holen“ klicken, dann „Ursprüngliche Mail als Zitat anhängen“ anhaken | Unter dem Haken steht „Am … schrieb …:“ und die ganze Mail mit „>“ vor jeder Zeile. Die Mail ist im Postfach weiter ungelesen |
+| M12 (neu) | Mit dem Haken auf „Kopieren“ klicken und in eine neue Mail einfügen (oder „Im Mailprogramm öffnen“, wenn der Text kurz genug ist) | Dein Text, darunter das Zitat. Umlaute und Absätze stimmen |
+| M13 (neu) | Bei einer Mail, die an mehrere Leute ging: „Allen antworten“ anhaken, dann „Im Mailprogramm öffnen“ | Am Entwurf steht die Zeile „Kopie“ mit den Adressen. Im Mailprogramm stehen sie im Feld „Kopie“, der Absender bei „An“. Deine eigene Adresse ist nicht dabei. Schreib mir, wenn dein Mailprogramm das Feld „Kopie“ leer lässt |
 
 ## N. Microsoft 365: Termine aus Outlook (Schritt D1, neu)
 

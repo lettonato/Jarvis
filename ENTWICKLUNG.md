@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 848 von 848 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 870 von 870 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -838,7 +838,8 @@ KI-Gehirn). Über Telegram stehen Projektnamen und -inhalte nur, wenn der Schalt
 | G3.2 Kein Versand: Es gibt kein Werkzeug und keine Schnittstelle zum Senden. Empfänger ist immer der Absender, den der Server im Postfach liest; Betreff ist „Re: …“. Weder das KI-Modell noch der Text der Mail können das ändern. Im Postfach ändert sich nichts | Testbereit | `test/module/entwuerfe.test.ts`, `test/regeln/entwuerfe.test.ts` |
 | G3.3 Lesen, ändern, kopieren, verwerfen im Raum „Post“; „Im Mailprogramm öffnen“ trägt Empfänger, Betreff und Text in eine neue Mail ein, abschicken musst du selbst. Was du geändert hast, überschreibt JARVIS nicht | Testbereit | `src/components/Antwortentwuerfe.tsx`; im Browser geprüft (`test/hand/post-rauch.ts`) |
 | G3.4 Entwurf im Ordner „Entwürfe“ des echten Postfachs ablegen | Blockiert | ändert das echte Postfach; braucht Benedikts Entscheidung (Frage 13) |
-| G3.5 Allen antworten, Anhänge, Zitat der ursprünglichen Mail | Offen | bisher nur Antwort an den Absender, ohne Zitat |
+| G3.5 Zitat der ursprünglichen Mail und „Allen antworten“, beides nur auf deinen Haken am Mac | Testbereit, **nur gegen das nachgebaute Postfach** | Schritt G3.5 unten; `zitatText`, `kopieEmpfaenger`, `mailZumEntwurf`; im Browser geprüft (`test/hand/post-rauch.ts`) |
+| G3.6 Anhänge an der Antwort | Blockiert | Ein Link ins Mailprogramm kann keine Anhänge tragen. Das geht erst mit dem Entwurf im Postfach (G3.4, Frage 13) |
 | G4 Marktüberwachung über Intel und Desk hinaus | Offen | kommt mit den Agenten (F) |
 
 ### Testergebnisse Schritt G1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
@@ -1039,8 +1040,8 @@ nur durch dich“ ist hier keine Einstellung, sondern die Bauweise: Einen Weg zu
 | Nicht geprüft | echter Mac: ob „Im Mailprogramm öffnen“ dein Mailprogramm mit Umlauten und Absätzen richtig füllt (Prüfliste Teil M); echtes Postfach |
 
 **Was gesichert wurde:** siehe „Sicherung“. **Offene Probleme:** keine bekannten Fehler. **Bekannte Grenzen:**
-Die Antwort geht nur an den Absender (kein „Allen antworten“), ohne Anhänge und ohne Zitat der ursprünglichen
-Mail. Im Mailprogramm ist sie eine neue Mail mit „Re:“ im Betreff, nicht technisch an den alten Verlauf
+Die Antwort geht ohne Anhänge (Zitat und „Allen antworten“ gibt es seit Schritt G3.5 auf deinen Haken). Im
+Mailprogramm ist sie eine neue Mail mit „Re:“ im Betreff, nicht technisch an den alten Verlauf
 gehängt. Der Entwurf liegt nicht im Ordner „Entwürfe“ deines Postfachs (Frage 13). Der Absender einer Mail
 lässt sich fälschen: Sieh bei „An“ nach, bevor du abschickst.
 **Sicherheitsrisiken:** Ein Entwurf entsteht aus dem Text einer fremden Mail. Eine manipulierte Mail kann
@@ -1048,6 +1049,67 @@ versuchen, das KI-Modell dazu zu bringen, etwas in den Entwurf zu schreiben, das
 Modell hat die Anweisung, das nicht zu tun; technisch erzwungen ist es nicht. Der Schutz ist: Der Entwurf
 verlässt den Mac nur, wenn du ihn selbst abschickst, er geht nur an den Absender, und am Entwurf steht der
 Hinweis, ihn vorher zu lesen. Wie schon beim Öffnen einer Mail geht ihr Text an das KI-Modell (Anthropic).
+
+### Schritt G3.5: Zitat der ursprünglichen Mail und „Allen antworten“ (14. November 2026)
+
+**Was sich für dich ändert:** An jedem Antwortentwurf im Raum „Post“ steht „Zitat und weitere Empfänger aus der
+Mail holen“. Danach gibt es zwei Haken, beide zunächst aus:
+
+* **„Ursprüngliche Mail als Zitat anhängen“**: Unter deinem Text steht dann „Am … schrieb …:“ und die ganze
+  Mail, jede Zeile mit „>“, wie in einem Mailprogramm. Eine sehr lange Mail (über 6.000 Zeichen) wird an einem
+  Zeilenende gekürzt, und das steht als letzte Zeile da. Du siehst das Zitat vorher. „Im Mailprogramm öffnen“
+  und „Kopieren“ nehmen es mit.
+* **„Allen antworten“**: erscheint nur, wenn die Mail an weitere Leute ging. Die Adressen stehen dabei; mit
+  Haken gehen sie in Kopie (nicht als Empfänger), und am Entwurf steht die Zeile „Kopie“.
+
+**Die festen Regeln dazu**
+
+* **Nur auf deinen Klick am Mac.** Das KI-Modell kann weder ein Zitat noch weitere Empfänger anfordern: Das
+  Werkzeug `antwort_entwerfen` kennt weiter nur die Nummer der Mail und den Text. Per Telegram geht es nicht.
+* **Nichts davon wird gespeichert, nichts geht an ein KI-Modell.** Der Server liest die Mail dafür einmal, nur
+  lesend, aus dem Postfach (sie bleibt ungelesen); Zitat und Adressen stehen nur im Fenster. In
+  `entwuerfe.json` steht weiter kein Text der ursprünglichen Mail.
+* **Weitere Empfänger kommen allein aus dem Kopf der Mail**, so wie der Server ihn im Postfach liest: ohne dich,
+  ohne den Absender, jede Adresse einmal, nur schlichte Adressen. Was keine schlichte Adresse ist, bleibt weg
+  und wird dir als Zahl genannt. Bei mehr als zehn wird keiner übernommen, statt still zu kürzen.
+* **Gezeigt werden nur Adressen, keine Namen** aus dem Kopf der Mail: Ein Name lässt sich frei wählen und
+  könnte über die Adresse dahinter täuschen.
+* **Es ist dieselbe Mail oder keine.** Gehört die Nummer inzwischen zu einer anderen Mail (anderer Absender oder
+  Betreff) oder ist die Mail weg, gibt es weder Zitat noch Empfänger.
+* **Der Link** trägt die Kopie-Adressen als eigenes Feld, jede verschlüsselt; ist er zu lang, bleiben
+  Empfänger, Kopie und Betreff, und der Text samt Zitat kommt über „Kopieren“. Passen nicht einmal die hinein,
+  gibt es keinen Link statt eines abgeschnittenen.
+* **Eine Antwortadresse im Kopf der Mail („Reply-To“) zählt weiter nicht**, auch nicht bei „Allen antworten“.
+
+**Eigene Entscheidungen:** (1) Die frühere Regel „genau ein Empfänger“ gilt weiter als Voreinstellung;
+„Allen antworten“ ist die eine Ausnahme und immer dein eigener Haken. (2) Zitiert wird die ganze Mail, nicht
+die gekürzte Fassung zum Vorlesen: Die hört an manchen Zeilen still auf, und ein Zitat, das mitten im Satz
+endet, ohne dass es dasteht, wäre falsch. (3) Die Haken werden nicht gespeichert: Nach neuem Laden der Seite
+sind sie wieder aus.
+
+**Grenzen:** Mit Zitat ist der Link fast immer zu lang; dann führt der Weg über „Kopieren“. Die Antwort ist im
+Mailprogramm weiter eine neue Mail mit „Re:“, nicht technisch an den alten Verlauf gehängt. Eigene weitere
+Adressen (Aliasse) erkennt JARVIS nicht: Ging die Mail an einen Alias von dir, steht der in Kopie. Bei Mails
+von Verteilern oder Ticketsystemen, die über eine Antwortadresse laufen, erreicht „Allen antworten“ den
+Verteiler deshalb nicht. Wer in Kopie
+stand, bestimmt der Absender der Mail: Sieh die Adressen an, bevor du den Haken setzt.
+
+### Testergebnisse Schritt G3.5 (14. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **870 Tests: 870 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 22: Regeln für Zitat, Kopie-Empfänger und Link 14; gegen das nachgebaute Postfach 8) |
+| Tests zuerst | Alle neuen Tests liefen zuerst rot (die Funktionen gab es noch nicht) und nach dem Bau grün; ihre Aussagekraft belegen die Gegenproben |
+| Gegenproben | Erste Runde: 29 absichtlich eingebaute Fehler, 28 sofort bemerkt. Unbemerkt blieb: Die Liste der übrigen Empfänger wäre mit einer geöffneten Mail in die Antwort an die Seite gegangen (zum KI-Modell nicht; das bekommt einen festen Text). Dafür gibt es jetzt einen eigenen Test, danach bemerkt. Zweite Runde nach der Durchsicht: 13 Fehler, 13 bemerkt (unter anderem: Zitat hört auf, wo das Vorlesen aufhört; gekürzt ohne Hinweis oder mitten in der Zeile; zu langer Link wird trotzdem gebildet) |
+| `npx next build` | erfolgreich, mit den vier bekannten Warnungen |
+| Handprüfung `post-rauch` (Chromium, gebauter Server, nachgebautes Postfach, nachgebauter Claude) | alle Schritte in Ordnung, neu: kein Haken ist von selbst gesetzt, und ohne Haken bleibt der Link, wie er war; mit „Zitat“ steht die Mail ohne Signatur unter dem Text, im Link und in der Zwischenablage; mit „Allen antworten“ steht die Kopie-Adresse am Entwurf und als eigenes Feld im Link; weder Zitat noch Kopie-Adresse stehen in der Datei; eine Mail nur an dich bietet kein „Allen antworten“; eine Mail mit eingeschleuster Anweisung wird nur zitiert, kein KI-Modell wird gefragt; beide Mails bleiben ungelesen, kein ändernder Befehl im Postfach; die Schnittstelle lehnt die Anfrage ohne eigenen Header ab |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | neun Befunde. Eingearbeitet: Das Zitat kam aus der Fassung zum Vorlesen und hörte deshalb still nach 2.500 Zeichen oder an einer Zeile wie „Von: …“ auf (jetzt die ganze Mail, sichtbar gekürzt erst ab 6.000 Zeichen); Tabulatoren fielen ersatzlos weg, Spalten liefen zusammen; der Link ohne Text konnte mit vielen Kopie-Adressen selbst zu lang werden; „Weitere Empfänger hat diese Mail nicht“ stand auch da, wenn Adressen nur ausgelassen wurden; Hinweis, wenn eine Kopie-Adresse vermutlich keine Antworten annimmt; die Mail wird an einer Stelle gelesen statt mit doppelter Feldliste; der Kommentar zur festen Regel stimmte nicht mehr. Bewusst nicht geändert: „Reply-To“ zählt weiter nicht (feste Regel aus G3); eigene Aliasse erkennt JARVIS nicht (steht bei den Grenzen) |
+| Sicherheitsprüfung (von Hand) | Kein Weg zum Senden dazugekommen; die Schnittstelle hat eine lesende Aktion mehr (`mail`), hinter demselben Schutz wie die ändernden. Fremder Text (Name, Mailtext, Adressen) geht nur in die Anzeige, die Zwischenablage und den Link, jeweils als Text; im Link ist jede Kopie-Adresse geprüft und verschlüsselt. Das Öffnen einer Mail im Gespräch gibt dem Modell weiter keine Empfängerliste |
+| Gegen die echten Dienste geprüft | **nein.** Nachgebautes Postfach. Wie ein echter Server An und Kopie liefert (Gruppen, Verteiler) und ob dein Mailprogramm das Feld „Kopie“ aus dem Link füllt, zeigt erst der Mac (Prüfliste M11 bis M13) |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** „Allen antworten“ schickt deine Antwort an
+Adressen, die der Absender der Mail gewählt hat. Gemildert: nur auf deinen Haken, die Adressen stehen sichtbar
+dabei, höchstens zehn, nie durch das KI-Modell. **Neue laufende Kosten:** keine.
 
 ## Bereich H – Sprache und Desktop
 
@@ -1388,6 +1450,9 @@ Danach wie geplant:
    als Mitteilung am Mac, ohne Handy.
 13. **C2: gebaut, Testbereit** (Schritt C2 in Bereich C): Das persönliche Gedächtnis verliert keine Einträge
    mehr und ersetzt nie eine beschädigte Datei. In der Datenbank liegt es bewusst noch nicht (C2.4).
-   **Als Nächstes:** G3.5 (Antwortentwürfe mit Zitat der ursprünglichen Mail). Die
+14. **G3.5: gebaut, Testbereit, nur gegen das nachgebaute Postfach** (Schritt G3.5 in Bereich G): Zitat der
+   ursprünglichen Mail und „Allen antworten“, beides nur auf deinen Haken am Mac. Anhänge gehen erst mit dem
+   Entwurf im Postfach (Frage 13).
+   **Als Nächstes:** C4 (offene Risiken in die Projektüberwachung aufnehmen). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

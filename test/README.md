@@ -58,8 +58,10 @@ npm run pruefen     # Lint, Typprüfung und Tests
   `entwuerfe.test.ts` prüft die Antwortentwürfe gegen das nachgebaute Postfach und den nachgebauten Claude:
   Empfänger und Betreff kommen nur aus dem Postfach, nie vom Modell oder aus dem Text der Mail; es geht kein
   Befehl an das Postfach, der etwas ändert oder ablegt; was du selbst geändert hast, wird nicht überschrieben;
-  ein Schreibfehler wird gemeldet. Die Regeln für Adresse, Betreff und den Link ins Mailprogramm stehen ohne
-  Netz in `test/regeln/entwuerfe.test.ts`.
+  ein Schreibfehler wird gemeldet. Dazu Zitat und „Allen antworten“: nur lesend aus dem Postfach, nichts davon
+  in der Datei, dieselbe Mail oder keine. Die Regeln für Adresse, Betreff, Zitat, Kopie-Empfänger und den Link
+  ins Mailprogramm stehen ohne Netz in `test/regeln/entwuerfe.test.ts`. Im nachgebauten Postfach kann eine Mail
+  weitere Empfänger haben (`an`, `kopie`).
   `microsoft.test.ts` prüft Microsoft 365 (Termine aus Outlook lesen) gegen ein nachgebautes Microsoft:
   Anmeldung mit Code, Erneuern, nur lesende Anfragen an Graph, der Schlüssel geht nur an Graph (keine fremde
   Folgeseite, keine Umleitung), feste Sätze statt der Texte von Microsoft, Outlook im Kalender von JARVIS,

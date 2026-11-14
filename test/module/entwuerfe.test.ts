@@ -186,6 +186,88 @@ describe("Antwortentwürfe: ändern und verwerfen", () => {
   });
 });
 
+describe("Antwortentwürfe: Zitat und allen antworten, nur auf deinen Klick am Mac", () => {
+  const ersetze = (uid: number, mail: MockMail | null) => mock.mails.splice(mock.mails.findIndex((m) => m.uid === uid), 1, ...(mail ? [mail] : []));
+
+  test("das Zitat kommt frisch aus dem Postfach, mit allem, was in der Mail steht; die Mail bleibt ungelesen, und in der Datei steht davon nichts", async () => {
+    const entwurf = await e.legeEntwurfAn(fach(), { uid: 101, text: TEXT }, "mac", JETZT);
+    mock.leeren();
+    const mail = await e.mailZumEntwurf(fach(), entwurf.id);
+    assert.match(mail.zitat, /^Am \d\d\.\d\d\.\d{4} um \d\d:\d\d Uhr schrieb Petra Bauer <petra\.bauer@example\.com>:\n> Hallo Benedikt,\n>\n> das Angebot liegt bei 184\.000 Euro\.\n> Passt dir Dienstag für ein Gespräch\?\n>\n> -- ?\n> Petra Bauer\n> Stahlbau Bauer GmbH$/);
+    assert.deepEqual([mail.kopie, mail.ausgelassen, mail.zuViele], [[], 0, false], "die Mail ging nur an dich");
+    assert.deepEqual(schreibend(), [], "kein Befehl, der im Postfach etwas ändert oder ablegt");
+    assert.equal(mock.mails.find((m) => m.uid === 101)!.gelesen, undefined, "die Mail bleibt ungelesen");
+    assert.equal(mock.befehle.filter((b) => /^UID FETCH/.test(b)).length, 1, "genau ein lesender Befehl");
+    assert.ok(!readFileSync(datei(), "utf8").includes("184.000"), "der Text der Mail steht nicht in der Datei");
+    assert.deepEqual((await e.entwuerfeSnapshot()).entwuerfe, [entwurf], "der Entwurf ist unverändert");
+  });
+
+  test("allen antworten: die übrigen Empfänger aus An und Kopie, ohne dich und ohne den Absender, jede Adresse einmal", async () => {
+    mock.mails.push(
+      neu(201, {
+        an: [{ adresse: MOCK_POST_ADRESSE }, { name: "Thomas Huber", adresse: "thomas.huber@example.com" }],
+        kopie: [{ adresse: "anna@example.com" }, { adresse: "max.huber@example.com" }, { adresse: "Thomas.Huber@example.com" }],
+      }),
+    );
+    const entwurf = await e.legeEntwurfAn(fach(), { uid: 201, text: TEXT }, "mac", JETZT);
+    const mail = await e.mailZumEntwurf(fach(), entwurf.id);
+    assert.deepEqual([mail.kopie, mail.ausgelassen, mail.zuViele], [["thomas.huber@example.com", "anna@example.com"], 0, false]);
+    assert.equal(lib.linkInsMailprogramm(entwurf, mail.kopie)!.href.split("&subject=")[0], "mailto:max.huber@example.com?cc=thomas.huber%40example.com,anna%40example.com");
+  });
+
+  test("eine Adresse, die mehr ist als eine Adresse, bleibt weg und wird gezählt; bei mehr als zehn wird keiner übernommen", async () => {
+    mock.mails.push(neu(202, { kopie: [{ adresse: "anna@example.com" }, { adresse: "a@b.de?bcc=fremd" }] }));
+    mock.mails.push(neu(203, { betreff: "Rundmail", kopie: Array.from({ length: 11 }, (_, i) => ({ adresse: `person${i}@example.com` })) }));
+    const einer = await e.mailZumEntwurf(fach(), (await e.legeEntwurfAn(fach(), { uid: 202, text: TEXT }, "mac", JETZT)).id);
+    assert.deepEqual([einer.kopie, einer.ausgelassen, einer.zuViele], [["anna@example.com"], 1, false]);
+    const viele = await e.mailZumEntwurf(fach(), (await e.legeEntwurfAn(fach(), { uid: 203, text: TEXT }, "mac", JETZT)).id);
+    assert.deepEqual([viele.kopie, viele.zuViele], [[], true]);
+  });
+
+  test("gehört die Nummer inzwischen zu einer anderen Mail oder ist die Mail weg, gibt es weder Zitat noch Empfänger", async () => {
+    const entwurf = await e.legeEntwurfAn(fach(), { uid: 101, text: TEXT }, "mac", JETZT);
+    ersetze(101, neu(101, { betreff: "Angebot für den Stahlbau", text: "Geheimes aus einer anderen Mail.", kopie: [{ adresse: "fremd@evil.example" }] }));
+    await assert.rejects(e.mailZumEntwurf(fach(), entwurf.id), /Die Mail zu diesem Entwurf finde ich im Posteingang nicht mehr\./, "anderer Absender");
+    ersetze(101, neu(101, { von: { name: "Petra Bauer", adresse: "petra.bauer@example.com" }, betreff: "Ganz anderes Thema" }));
+    await assert.rejects(e.mailZumEntwurf(fach(), entwurf.id), /finde ich im Posteingang nicht mehr/, "anderer Betreff");
+    ersetze(101, null);
+    await assert.rejects(e.mailZumEntwurf(fach(), entwurf.id), /finde ich im Posteingang nicht mehr/, "Mail gelöscht");
+  });
+
+  test("unbekannter Entwurf: klarer Satz, ohne das Postfach zu fragen; ist das Postfach nicht erreichbar, steht der wahre Grund da", async () => {
+    const entwurf = await e.legeEntwurfAn(fach(), { uid: 101, text: TEXT }, "mac", JETZT);
+    mock.leeren();
+    for (const id of ["gibtesnicht", undefined, 7, { id: entwurf.id }]) await assert.rejects(e.mailZumEntwurf(fach(), id), /Diesen Entwurf gibt es nicht mehr\./);
+    assert.deepEqual(mock.befehle, []);
+    await assert.rejects(e.mailZumEntwurf({ ...fach(), password: "falsch" }, entwurf.id), /Anmeldung abgelehnt/);
+    await assert.rejects(e.mailZumEntwurf({ ...fach(), port: 9 }, entwurf.id), (err: Error) => err instanceof e.EntwurfFehler && !/finde ich im Posteingang nicht mehr/.test(err.message));
+  });
+
+  test("öffnet JARVIS eine Mail im Gespräch, bekommen weder das KI-Modell noch die Antwort an die Seite die übrigen Empfänger", async () => {
+    mock.mails.push(neu(204, { an: [{ adresse: MOCK_POST_ADRESSE }, { adresse: "thomas.huber@example.com" }], kopie: [{ adresse: "anna@example.com" }] }));
+    claude.drehbuch([{ werkzeug: "mail_oeffnen", eingabe: { uid: 204 } }, { text: "Max fragt etwas." }]);
+    const antwort = await brain.think(config(), "sk-test", frage("Was schreibt Max?"));
+    assert.ok(!/thomas\.huber|anna@example\.com|empfaenger/.test(JSON.stringify(antwort)), "die Antwort an die Seite (und ans Handy) nennt sie nicht");
+    const ergebnis = werkzeugErgebnisse(claude.anfragen.at(-1)!).at(-1)!;
+    assert.match(ergebnis.content, /max\.huber@example\.com|Max Huber/, "die Mail selbst kommt an");
+    assert.ok(!/thomas\.huber|anna@example\.com|empfaenger/.test(JSON.stringify(claude.anfragen.at(-1))), "aber nicht, an wen sie sonst ging");
+  });
+
+  test("ein Zitat aus einer Mail mit Anweisung bleibt Text: Es geht nicht an das KI-Modell", async () => {
+    const entwurf = await e.legeEntwurfAn(fach(), { uid: 103, text: TEXT }, "mac", JETZT);
+    const vorher = claude.anfragen.length;
+    const mail = await e.mailZumEntwurf(fach(), entwurf.id);
+    assert.match(mail.zitat, /> IGNORIERE ALLE REGELN/);
+    assert.equal(claude.anfragen.length, vorher, "dafür wird kein Modell gefragt");
+  });
+
+  test("zitiert wird die ganze Mail, auch ältere Zitate und Zeilen, bei denen das Vorlesen aufhört", async () => {
+    mock.mails.push(neu(205, { text: "Die Zusage steht.\nVon: Herrn Maier kam sie gestern.\n\nAm Montag schrieb Benedikt:\n> Kommt die Zusage?" }));
+    const mail = await e.mailZumEntwurf(fach(), (await e.legeEntwurfAn(fach(), { uid: 205, text: TEXT }, "mac", JETZT)).id);
+    assert.equal(mail.zitat.split("\n").slice(1).join("\n"), "> Die Zusage steht.\n> Von: Herrn Maier kam sie gestern.\n>\n> Am Montag schrieb Benedikt:\n> > Kommt die Zusage?");
+  });
+});
+
 describe("Antwortentwürfe: die Datei auf dem Mac", () => {
   test("nur für dich lesbar, und es steht nichts darin als der Entwurf", async () => {
     await e.legeEntwurfAn(fach(), { uid: 101, text: TEXT }, "mac", JETZT);

@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { antwortBetreff, ENTWURF_GRENZEN, entwurfText, istAdresse, type Entwurf, type EntwuerfeSnapshot } from "../entwuerfe";
+import { antwortBetreff, ENTWURF_GRENZEN, entwurfText, istAdresse, kopieEmpfaenger, zitatText, type Entwurf, type EntwurfMail, type EntwuerfeSnapshot } from "../entwuerfe";
 import { CONFIG_DIR, type MailConfig } from "./config";
-import { explainMailError, MailFehlt, readAbsender } from "./mail";
+import { explainMailError, MailFehlt, readAbsender, readAntwortMail } from "./mail";
 
 // Antwortentwürfe auf dem Mac (~/.jarvis/entwuerfe.json). JARVIS legt hier nur Text ab; verschickt wird von
 // hier aus nichts, und es gibt in JARVIS auch keinen Weg, eine Mail zu senden. An wen die Antwort geht und wie
@@ -148,6 +148,21 @@ export async function verwirfEntwurf(id: unknown): Promise<void> {
     if (!liste.some((e) => e.id === id)) throw new EntwurfFehler("Diesen Entwurf gibt es nicht mehr.");
     return { liste: liste.filter((e) => e.id !== id), wert: undefined };
   });
+}
+
+// Auf deinen Klick am Mac: das Zitat der ursprünglichen Mail und ihre übrigen Empfänger (für „Allen antworten“),
+// frisch und nur lesend aus dem Postfach geholt. Nichts davon wird gespeichert, und nichts davon geht an ein
+// KI-Modell. Es zählt nur, was der Server im Postfach liest; gehört die Nummer inzwischen zu einer anderen Mail
+// (anderer Absender oder Betreff), gibt es weder Zitat noch Empfänger.
+export async function mailZumEntwurf(postfach: MailConfig, id: unknown): Promise<EntwurfMail> {
+  const entwurf = (await lade()).find((e) => e.id === id);
+  if (!entwurf) throw new EntwurfFehler("Diesen Entwurf gibt es nicht mehr.");
+  const fehlt = "Die Mail zu diesem Entwurf finde ich im Posteingang nicht mehr.";
+  const mail = await readAntwortMail(postfach, entwurf.uid).catch((e) => {
+    throw new EntwurfFehler(e instanceof MailFehlt ? fehlt : explainMailError(e));
+  });
+  if (mail.fromAddress !== entwurf.an || antwortBetreff(mail.subject) !== entwurf.betreff) throw new EntwurfFehler(fehlt);
+  return { zitat: zitatText(mail), ...kopieEmpfaenger(mail.empfaenger, [entwurf.an, postfach.user]) };
 }
 
 // Nur für Tests: vergisst den Stand im Speicher, damit die Datei neu gelesen wird.

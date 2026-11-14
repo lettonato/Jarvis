@@ -19,7 +19,11 @@ export type MockMail = {
   markiert?: boolean;
   kopf?: Record<string, string>;
   text: string;
+  // An wen die Mail ging (ohne Angabe: nur an das Postfach) und wer in Kopie stand.
+  an?: Empfaenger[];
+  kopie?: Empfaenger[];
 };
+type Empfaenger = { name?: string; adresse: string };
 
 const stunden = (n: number, jetzt: number) => new Date(jetzt - n * 3_600_000);
 
@@ -55,10 +59,13 @@ const wort2047 = (s: string) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${Buf
 const zitat = (s: string | undefined) => (s === undefined ? "NIL" : `"${s.replace(/[\\"]/g, "\\$&")}"`);
 const flaggen = (m: MockMail) => [m.gelesen ? "\\Seen" : "", m.markiert ? "\\Flagged" : ""].filter(Boolean).join(" ");
 
+const kopfAdresse = (e: Empfaenger) => (e.name ? `${wort2047(e.name)} <${e.adresse}>` : e.adresse);
+
 function kopfzeilen(m: MockMail): Record<string, string> {
   return {
     From: m.von.name ? `${wort2047(m.von.name)} <${m.von.adresse}>` : m.von.adresse,
-    To: MOCK_POST_ADRESSE,
+    To: (m.an ?? [{ adresse: MOCK_POST_ADRESSE }]).map(kopfAdresse).join(", "),
+    ...(m.kopie?.length ? { Cc: m.kopie.map(kopfAdresse).join(", ") } : {}),
     Subject: wort2047(m.betreff),
     Date: m.datum.toUTCString().replace("GMT", "+0000"),
     "Message-ID": `<mail-${m.uid}@nachbau.example>`,
@@ -75,13 +82,14 @@ function quelle(m: MockMail): Buffer {
 }
 
 function umschlag(m: MockMail): string {
-  const adresse = (name: string | undefined, a: string) => {
-    const [postfach, domain] = a.split("@");
-    return `((${zitat(name ? wort2047(name) : undefined)} NIL ${zitat(postfach)} ${zitat(domain)}))`;
+  // Eine Adresse ohne „@“ steht wie beim echten Server ohne Domain da.
+  const eine = (e: Empfaenger) => {
+    const [postfach, domain] = e.adresse.split("@");
+    return `(${zitat(e.name ? wort2047(e.name) : undefined)} NIL ${zitat(postfach)} ${zitat(domain)})`;
   };
-  const von = adresse(m.von.name, m.von.adresse);
-  const an = adresse(undefined, MOCK_POST_ADRESSE);
-  return `(${zitat(m.datum.toUTCString().replace("GMT", "+0000"))} ${zitat(wort2047(m.betreff))} ${von} ${von} ${von} ${an} NIL NIL NIL ${zitat(`<mail-${m.uid}@nachbau.example>`)})`;
+  const liste = (l: Empfaenger[] | undefined) => (l?.length ? `(${l.map(eine).join("")})` : "NIL");
+  const von = liste([m.von]);
+  return `(${zitat(m.datum.toUTCString().replace("GMT", "+0000"))} ${zitat(wort2047(m.betreff))} ${von} ${von} ${von} ${liste(m.an ?? [{ adresse: MOCK_POST_ADRESSE }])} ${liste(m.kopie)} NIL NIL ${zitat(`<mail-${m.uid}@nachbau.example>`)})`;
 }
 
 // Zerlegt die Argumente eines Befehls in Wörter, Zeichenketten und Klammern.
