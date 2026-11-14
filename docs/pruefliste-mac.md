@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 45 Minuten (Teil N geht erst, wenn eure IT so weit ist).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 55 Minuten (Teil N geht erst, wenn eure IT so weit ist; Teil O ist neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -198,6 +198,18 @@ Mit N3 liest JARVIS zum ersten Mal echte Firmentermine. Das entscheidest du, ind
 | N10 | Stehen Termine doppelt im Raum „Kalender“? | Nein. Falls doch: Dann steht dein Firmenkonto auch in der Kalender-App des Macs, und die Titel weichen leicht ab. Schreib mir ein Beispiel. Wichtig zu wissen: Firmentermine, die über die Kalender-App des Macs kommen, nennt JARVIS immer auch im Gespräch |
 | N11 | In Outlook nachsehen | Dort hat sich nichts geändert: kein neuer Termin, keine Zu- oder Absage von JARVIS |
 | N12 | „Abmelden“ klicken | Die Outlook-Termine sind aus dem Raum „Kalender“ verschwunden, die beiden Nummern stehen noch da. „Microsoft 365 ganz entfernen“ löscht auch sie |
+
+## O. Sicherung zurückspielen und Einstellungen speichern (Schritte J2 und J3, neu)
+
+Zwei kurze Proben. O1 und O2 brauchen das Terminal, den Ordner mit JARVIS und Netz; sie ändern an deinem JARVIS
+und an der Sicherung nichts (gearbeitet wird in einem Wegwerf-Ordner).
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| O1 | Die Dateien `jarvis-aktuell.bundle`, `Jarvis-aktuell.zip` und `sicherungen.txt` aus den Projektdateien in einen eigenen Ordner laden, zum Beispiel `~/Downloads/jarvis-sicherung` | Drei Dateien in einem Ordner |
+| O2 | Im Terminal im JARVIS-Ordner: `bash scripts/wiederherstellen-pruefen.sh ~/Downloads/jarvis-sicherung` (dauert einige Minuten) | Vier Zeilen „in Ordnung“ und am Ende „Sicherung geprüft und wiederhergestellt“. Steht dort „FEHLER“, schick mir die Zeile |
+| O3 | Einstellungen → Handy: „Hinweise am Tag“ einschalten, dann „Handy trennen“ und neu koppeln | Der Schalter „Hinweise am Tag“ ist danach noch an (früher ging er beim Trennen verloren) |
+| O4 | Einstellungen: einen Schlüssel neu einfügen und, während „Prüfen“ noch läuft, in einem zweiten Fenster deinen Namen ändern | Beides ist danach gespeichert |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

@@ -1188,7 +1188,7 @@ Servers wieder weg). Wer `config.json` von Hand ändert, während JARVIS speiche
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis N; Teil N erst, wenn eure IT so weit ist). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis O; Teil N erst, wenn eure IT so weit ist; Teil O neu seit J2 und J3). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
