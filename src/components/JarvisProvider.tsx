@@ -31,7 +31,8 @@ import type { WeatherSnapshot } from "@/lib/weather";
 
 // live: Claude schreibt noch; status: was JARVIS gerade tut, etwa „Ich suche im Web“.
 // fremd: Für diese Antwort hat JARVIS Text von Dritten gelesen; der Server fragt danach bei Änderungen nach.
-export type Turn = { id: number; who: "du" | "jarvis"; text: string; live?: boolean; status?: string; sources?: Source[]; fremd?: boolean };
+// alt: aus dem gespeicherten Gespräch zurückgeholt (wird nicht mitgespeichert und nicht noch einmal angesagt).
+export type Turn = { id: number; who: "du" | "jarvis"; text: string; live?: boolean; status?: string; sources?: Source[]; fremd?: boolean; alt?: boolean };
 
 // Alles, was die Leertaste selbst bedient, wenn es markiert ist.
 const BEDIENBAR = 'input, textarea, select, button, a, summary, label, [contenteditable=true], [role=button], [role=menuitem], [role=checkbox], [role=switch], [role=tab], [tabindex]:not([tabindex="-1"])';
@@ -94,6 +95,10 @@ type Jarvis = {
     waiting: boolean;
     // Die Erkennung läuft auf dem Mac selbst.
     local: boolean;
+    // JARVIS will gerade sprechen (auch während das Mikrofon offen ist) …
+    spricht: boolean;
+    // … und ist dabei wirklich zu hören (nicht nur „Spreche …“).
+    hoerbar: boolean;
     error: string | null;
     hint: string | null;
     toggle: () => void;
@@ -143,7 +148,7 @@ function storedTurns(): Turn[] {
     return raw
       .filter((t): t is Turn => (t?.who === "du" || t?.who === "jarvis") && typeof t?.text === "string" && t.text.trim() !== "")
       .slice(-KEEP_TURNS)
-      .map((t) => ({ id: turnId++, who: t.who, text: t.text, sources: Array.isArray(t.sources) ? t.sources : undefined, ...(t.fremd === true ? { fremd: true } : {}) }));
+      .map((t) => ({ id: turnId++, who: t.who, text: t.text, alt: true, sources: Array.isArray(t.sources) ? t.sources : undefined, ...(t.fremd === true ? { fremd: true } : {}) }));
   } catch {
     return [];
   }
@@ -203,7 +208,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
 
   // Die ElevenLabs-Stimme spricht nur, wenn der Server sie als aktiv meldet; lehnt er ab, lädt die Seite den Zustand neu.
   const cloudOff = useCallback(() => void reloadSettings(), [reloadSettings]);
-  const { canListen, handsFree, listening, waiting, interim, local, speaking, error, hint, listen, stopListening, speak, speakStream, stopSpeaking } = useVoice(
+  const { canListen, handsFree, listening, waiting, interim, local, speaking, hoerbar, error, hint, listen, stopListening, speak, speakStream, stopSpeaking } = useVoice(
     useCallback((text: string) => heard.current(text), []),
     settings?.stimme?.aktiv === true,
     cloudOff,
@@ -705,7 +710,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       ask,
       discuss,
       run,
-      voice: { canListen, handsFree, listening, waiting, local, error, hint, toggle, stopSpeaking, setHandsFree },
+      voice: { canListen, handsFree, listening, waiting, local, spricht: speaking, hoerbar, error, hint, toggle, stopSpeaking, setHandsFree },
       stop,
     }),
     [
@@ -749,6 +754,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       listening,
       waiting,
       local,
+      speaking,
+      hoerbar,
       error,
       hint,
       toggle,

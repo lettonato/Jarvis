@@ -4,7 +4,8 @@
 // Geprüft wird: Mit der Tab-Taste kommt man überall hin, und was markiert ist, ist zu sehen (nicht hinter der
 // Leiste unten); die Leertaste bedient, was markiert ist, statt das Mikrofon zu starten; das Menü der Räume geht
 // mit Pfeiltasten und Escape; in Handybreite läuft kein Raum seitlich über, und im Feld für JARVIS ist Platz zum
-// Tippen; an den Scheiben in „Heute“ ist kein Name abgeschnitten.
+// Tippen; an den Scheiben in „Heute“ ist kein Name abgeschnitten; wer tippt, während JARVIS den Raum wechselt,
+// verliert keinen Buchstaben.
 import assert from "node:assert/strict";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -269,7 +270,7 @@ async function main() {
     // Escape klappt es wieder zu, und die Markierung steht wieder auf der Zeile, von der man kam.
     await schmal.keyboard.press("Escape");
     await gespraech.waitFor({ state: "detached" });
-    await schmal.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Ganzes Gespräch zeigen", null, { timeout: 5000 }).catch(() => {});
+    await schmal.waitForFunction(() => document.activeElement?.hasAttribute("data-antwortzeile") === true, null, { timeout: 5000 }).catch(() => {});
     assert.equal(await zeigen.evaluate((b) => b === document.activeElement), true, "nach dem Zuklappen ist wieder die Zeile über der Leiste markiert");
     // Arbeitet JARVIS gerade, gilt Escape ihm: Es unterbricht ihn, und das Gespräch bleibt stehen (man liest ja
     // gerade darin). Erst das nächste Escape klappt zu.
@@ -296,7 +297,7 @@ async function main() {
     await gespraech.waitFor({ state: "detached" });
     // Die Markierung kehrt erst mit dem nächsten Bild auf die Zeile zurück. Darauf warten; sonst nähme sie dem
     // Knopf „Räume“ gleich die Markierung wieder weg, und der Pfeil nach unten ginge ins Leere.
-    await schmal.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Ganzes Gespräch zeigen", null, { timeout: 5000 });
+    await schmal.waitForFunction(() => document.activeElement?.hasAttribute("data-antwortzeile") === true, null, { timeout: 5000 });
     // Das Menü der Räume heißt hier „Räume“ und geht genauso mit der Tastatur.
     const raeume = schmal.getByRole("button", { name: "Räume" });
     await raeume.focus();
@@ -363,6 +364,54 @@ async function main() {
       await seite.close();
     }
     schritt("Scheiben in „Heute“: Kein Name ist abgeschnitten, auch nicht „Intel“ neben „nicht eingerichtet“");
+
+    // 6. Tippen, während JARVIS den Raum wechselt: Nach „Meine Termine“ geht es in den Raum Kalender. Wer genau in
+    //    dem Augenblick weitertippt, in dem der neue Raum fertig wird, verliert keinen Buchstaben. (Vor Schritt J11
+    //    ging in etwa jedem zweiten Versuch der erste verloren; deshalb fünf Versuche mit verschieden schnellem Tippen.)
+    const tipp = await neueSeite(1280, 800);
+    // Zwei Zeichen dafür, dass der Raumwechsel gerade beginnt: Der Browser meldet ihn, und JARVIS setzt gleich
+    // danach zum Sprechen an (hier stumm; gezählt wird nur der Aufruf).
+    await tipp.addInitScript({
+      content: `window.__fahrten = 0; window.__ansaetze = 0;
+        if (window.navigation) window.navigation.addEventListener("navigate", () => { window.__fahrten++; });
+        if (window.speechSynthesis) { const echt = window.speechSynthesis.speak.bind(window.speechSynthesis); window.speechSynthesis.speak = (u) => { window.__ansaetze++; echt(u); }; }`,
+    });
+    const getippt: string[] = [];
+    for (const pause of [25, 40, 60, 80, 120]) {
+      await tipp.goto(`${BASIS}/heute`);
+      const feld = tipp.getByRole("textbox", { name: "Nachricht an JARVIS" });
+      await feld.waitFor({ timeout: 30_000 });
+      await tipp.locator("section.glas").filter({ has: tipp.getByRole("heading", { name: "Termine heute" }) }).getByText("Gesellschafterversammlung").first().waitFor({ timeout: 30_000 });
+      assert.equal(await tipp.evaluate(() => "navigation" in window), true, "der Browser der Prüfung meldet Raumwechsel");
+      await feld.fill("Meine Termine");
+      await feld.press("Enter");
+      await tipp.waitForFunction(() => (window as unknown as { __fahrten: number }).__fahrten > 0, null, { timeout: 15_000 });
+      await tipp.keyboard.type("Wie wird das Wetter", { delay: pause });
+      await tipp.waitForURL(/\/kalender$/, { timeout: 15_000 });
+      await tipp.waitForTimeout(600);
+      getippt.push(await feld.inputValue());
+    }
+    assert.deepEqual(getippt, Array.from({ length: 5 }, () => "Wie wird das Wetter"), "beim Raumwechsel geht kein getippter Buchstabe verloren");
+    // Dasselbe mit der Eingabetaste: Sie schickt ab. (Vorher stand in etwa zwei von drei Versuchen stattdessen
+    // eine neue Zeile im Feld, und nichts ging los.)
+    const danach: string[] = [];
+    for (let versuch = 0; versuch < 5; versuch++) {
+      await tipp.goto(`${BASIS}/heute`);
+      const feld = tipp.getByRole("textbox", { name: "Nachricht an JARVIS" });
+      await feld.waitFor({ timeout: 30_000 });
+      await tipp.locator("section.glas").filter({ has: tipp.getByRole("heading", { name: "Termine heute" }) }).getByText("Gesellschafterversammlung").first().waitFor({ timeout: 30_000 });
+      await feld.fill("Meine Termine");
+      await feld.press("Enter");
+      await tipp.waitForFunction(() => (window as unknown as { __ansaetze: number }).__ansaetze > 0, null, { timeout: 15_000 });
+      await feld.fill("Wie spät ist es");
+      await feld.press("Enter");
+      await tipp.waitForURL(/\/kalender$/, { timeout: 15_000 });
+      await tipp.waitForTimeout(600);
+      danach.push(await feld.inputValue());
+    }
+    assert.deepEqual(danach, Array.from({ length: 5 }, () => ""), "beim Raumwechsel schickt die Eingabetaste ab und macht keine neue Zeile");
+    await tipp.close();
+    schritt("Tippen beim Raumwechsel: Kein Buchstabe geht verloren, und die Eingabetaste schickt ab");
 
     assert.deepEqual(fehler, [], "keine Fehler in der Seite");
     console.log("Handprüfung Bedienung: alle Schritte in Ordnung.");

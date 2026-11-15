@@ -437,7 +437,7 @@ function Positions({ desk, controls, now }: { desk: DeskSnapshot; controls: Cont
               return (
                 <tr key={p.address} className="border-b border-line/60">
                   <td className="px-3 py-2">
-                    <a href={p.url} target="_blank" rel="noreferrer" className="font-bold hover:underline">
+                    <a href={p.url} target="_blank" rel="noreferrer" className="griff font-bold hover:underline">
                       ${p.symbol}
                     </a>
                   </td>
@@ -620,7 +620,7 @@ function CandidateRow({ c, verdict }: { c: Candidate; verdict?: CoinVerdict }) {
   return (
     <tr className="border-b border-line/60 hover:bg-panel-2">
       <td className="px-3 py-2">
-        <a href={c.url} target="_blank" rel="noreferrer" className="font-bold hover:underline">
+        <a href={c.url} target="_blank" rel="noreferrer" className="griff font-bold hover:underline">
           ${c.symbol}
         </a>
         <span className="ml-2 text-quiet">{c.name}</span>

@@ -328,6 +328,25 @@ einschalten: Systemeinstellungen → Tastatur → „Tastaturnavigation“.
 | W7 | Das Gespräch aufklappen, JARVIS etwas Längeres fragen und Escape drücken, während er antwortet oder spricht; danach noch einmal Escape | Das erste Escape unterbricht JARVIS, das Gespräch bleibt offen. Das zweite klappt es zu |
 | W8 | Nur wenn es sich ergibt: JARVIS starten, während das WLAN noch nicht da ist oder der Mac gerade aufwacht, und „Heute“ ansehen | Steht irgendwo „… lässt sich gerade nicht laden“, verschwindet das nach einigen Sekunden von selbst, ohne Neuladen |
 
+## X. Mit VoiceOver, und kleine Klickflächen (Schritt J11, neu)
+
+VoiceOver ist das Vorleseprogramm des Macs. Einschalten und ausschalten: Befehlstaste + F5 (an manchen
+Tastaturen dazu die Taste fn). Du musst es nicht kennen: einschalten, die Schritte machen, ausschalten. In der
+Sandbox lief kein Vorleseprogramm mit; dieser Teil ist deshalb der einzige echte Beleg. Am Mac spricht JARVIS
+jede Antwort selbst; VoiceOver liest eine Antwort nur vor, wenn JARVIS stumm bleibt (einen Schalter „JARVIS ohne
+Stimme“ gibt es bisher nicht; sag mir, wenn du einen möchtest).
+
+| Nr. | Was du tust | Was du hören oder sehen solltest |
+|---|---|---|
+| X1 | VoiceOver einschalten, JARVIS öffnen, mit der Tab-Taste in das Feld für JARVIS gehen, „Meine Termine“ tippen, Eingabetaste | JARVIS spricht die Antwort mit seiner eigenen Stimme. VoiceOver sagt sie **nicht** zusätzlich an. Reden zwei Stimmen durcheinander, schreib es mir bitte |
+| X2 | Mit der Tab-Taste auf die Zeile über der Leiste gehen (dort steht, was JARVIS zuletzt gesagt hat) | VoiceOver liest, was in der Zeile steht, und am Ende „Ganzes Gespräch zeigen“, und das nur einmal |
+| X3 | Eingabetaste auf dieser Zeile, dann mit der Tab-Taste immer weiter, bis die Markierung oben auf der Seite ankommt | Das Gespräch klappt auf. Sobald die Markierung auf der Seite ist, klappt es von selbst zu; was markiert ist, ist zu sehen |
+| X4 | Das Gespräch mit der Maus aufklappen und danach mit der Maus in ein Feld der Seite klicken (etwa „Neue Aufgabe“) und tippen | Das Gespräch bleibt offen |
+| X5 | Raum „Kalender“: einen Termin für morgen eintragen | VoiceOver sagt „Eingetragen im Kalender …“ an, ohne dass du dorthin gehst. Sagt es nichts, schreib es mir bitte (das ist die Stelle, an der VoiceOver in Safari bekannt eigen ist) |
+| X6 | VoiceOver-Taste + U (die VoiceOver-Tasten sind ctrl + alt), mit Pfeil links oder rechts zur Liste der Bereiche („Landmarken“) | In der Liste stehen „Auf einen Blick“ (die Scheiben rechts), „Leiste“ und „Räume“ |
+| X7 | VoiceOver ausschalten. Raum „Aufgaben“: eine Aufgabe mit der Maus abhaken; Raum „Agenten“: „öffnen ›“ und „Feste Grenzen“ anklicken | Der Haken ist etwas größer als früher, alles lässt sich leichter treffen. Sieht irgendwo etwas verrutscht aus, schreib es mir bitte |
+| X8 | Im Feld für JARVIS „Meine Termine“ tippen, Eingabetaste. Sobald JARVIS antwortet und in den Raum Kalender wechselt, sofort weitertippen: „Wie wird das Wetter“, Eingabetaste | Im Feld fehlt kein Buchstabe, und die zweite Frage wird abgeschickt (früher ging in diesem Augenblick manchmal ein Buchstabe verloren, oder die Eingabetaste machte nur eine neue Zeile) |
+
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 
 Das ist der einzige Teil, der echte Zugangsdaten bewegt. **Mach ihn nur, wenn du das möchtest.** Er lässt

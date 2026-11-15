@@ -9,6 +9,7 @@ import { useConversation, useJarvis } from "./JarvisProvider";
 import { Orb } from "./Orb";
 import { RaumLink } from "./RaumLink";
 import { SicherheitsLeiste } from "./Sicherheit";
+import { ANSAGE_START, ANSAGE_WARTET_MS, ansage } from "@/lib/ansage";
 import { antwortAufLetztes } from "@/lib/brain";
 import { eventsOn } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
@@ -171,7 +172,6 @@ function Antwortzeile({ onOpen }: { onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      aria-label="Ganzes Gespräch zeigen"
       data-antwortzeile
       className="pointer-events-auto flex w-[min(46rem,100%)] animate-[jarvis-sheet_260ms_var(--weich)] items-center gap-3 rounded-[1.1rem] bg-white/90 px-4 py-2.5 text-left text-[0.95rem] leading-snug text-schiefer shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl"
     >
@@ -179,8 +179,61 @@ function Antwortzeile({ onOpen }: { onOpen: () => void }) {
         <span className="block text-xs font-bold text-quiet">{sessionLabel(session) ?? label}</span>
         {zeile}
       </span>
+      {/* Der Name des Knopfes ist sein Inhalt (was JARVIS gerade sagt) und am Ende, was der Knopf tut. Mit einem
+          festen Namen läse ein Vorleseprogramm nur den und nie die Antwort; mit einem Titel dazu läse es „Ganzes
+          Gespräch zeigen“ zweimal (als Name und als Beschreibung). */}
+      <span className="sr-only">Ganzes Gespräch zeigen</span>
       <Icon name="hoch" className="h-4 w-4 shrink-0 text-quiet" />
     </button>
+  );
+}
+
+// Sagt einem Vorleseprogramm an, was JARVIS antwortet und was er zum Mikrofon meldet, solange das Gespräch
+// zugeklappt ist. still: Das Gespräch ist aufgeklappt (oder man steht im Raum „Gespräch“); dort sagt der Verlauf
+// selbst an, hier bleibt es dann ruhig. Die Regeln stehen in src/lib/ansage.ts.
+function Ansage({ still }: { still: boolean }) {
+  const { voice } = useJarvis();
+  const { turns } = useConversation();
+  const { spricht, hoerbar } = voice;
+  const stand = useRef(ANSAGE_START);
+  // Die laufende Wartezeit und wofür sie läuft: Ändert sich am Gespräch nur anderes (du tippst schon die nächste
+  // Frage, die nächste Antwort entsteht Wort für Wort), läuft sie weiter und beginnt nicht jedes Mal neu.
+  const wartet = useRef<{ auf: string; uhr: ReturnType<typeof setTimeout> } | null>(null);
+  // Mit der Nummer der Antwort: Dieselben Worte ein zweites Mal (etwa „Notiert.“) geben einen neuen Absatz, und
+  // nur den sagt ein Vorleseprogramm wieder an.
+  const [angesagt, setAngesagt] = useState<{ id: number; text: string }[]>([]);
+  useEffect(() => {
+    const faellig = ansage(turns, spricht, hoerbar, stand.current);
+    stand.current = faellig.stand;
+    const auf = faellig.texte.map((t) => `${t.id}:${t.text.length}`).join(",");
+    if (wartet.current?.auf === auf) return;
+    if (wartet.current) clearTimeout(wartet.current.uhr);
+    wartet.current = null;
+    if (!faellig.texte.length) return;
+    // Kurz warten: Beginnt JARVIS in dieser Zeit selbst zu sprechen, läuft dieser Effekt neu und sagt nichts an.
+    const uhr = setTimeout(() => {
+      wartet.current = null;
+      stand.current = { ...stand.current, bis: faellig.texte[faellig.texte.length - 1].id };
+      setAngesagt(faellig.texte);
+    }, ANSAGE_WARTET_MS);
+    wartet.current = { auf, uhr };
+  }, [turns, spricht, hoerbar]);
+  useEffect(
+    () => () => {
+      if (wartet.current) clearTimeout(wartet.current.uhr);
+    },
+    [],
+  );
+  const meldung = voice.error ?? voice.hint;
+  // Nach „Neues Gespräch“ steht hier nichts Altes mehr.
+  const da = angesagt.filter((a) => turns.some((t) => t.id === a.id));
+  return (
+    <div className="sr-only" aria-live={still ? "off" : "polite"} data-ansage>
+      {da.map((a) => (
+        <p key={a.id}>{a.text}</p>
+      ))}
+      {meldung && <p key="meldung">{meldung}</p>}
+    </div>
   );
 }
 
@@ -246,16 +299,50 @@ function Leiste() {
     setOffen(false);
     requestAnimationFrame(() => (dock.current?.querySelector<HTMLElement>("[data-antwortzeile]") ?? dock.current?.querySelector<HTMLElement>("textarea"))?.focus());
   };
+  // Das aufgeklappte Gespräch liegt über der Seite. Wandert die Markierung mit der Tastatur aus Gespräch und Leiste
+  // hinaus auf die Seite, klappt es zu: Sonst läge, was markiert ist, dahinter. Ein Mausklick neben das Gespräch
+  // schließt es nicht; die Markierung bleibt, wo sie hinging.
+  useEffect(() => {
+    if (!offen) return;
+    // Nur die Tab-Taste zählt (:focus-visible taugt nicht: In einem Feld zum Tippen gilt es auch nach einem
+    // Mausklick). Tippt jemand nach einem Klick in ein Feld der Seite und wechselt kurz das Fenster, kommt die
+    // Markierung beim Zurückkommen wieder in dasselbe Feld: Das ist kein Wandern, das Gespräch bleibt offen.
+    let mitTab = false;
+    const taste = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Tab" && !e.metaKey && !e.altKey && !e.ctrlKey) mitTab = true;
+    };
+    const anders = () => {
+      mitTab = false;
+    };
+    const hinaus = (e: FocusEvent) => {
+      const ziel = e.target as HTMLElement | null;
+      if (mitTab && ziel && !dock.current?.contains(ziel)) setOffen(false);
+    };
+    document.addEventListener("keydown", taste, true);
+    document.addEventListener("pointerdown", anders, true);
+    window.addEventListener("blur", anders);
+    document.addEventListener("focusin", hinaus);
+    return () => {
+      document.removeEventListener("keydown", taste, true);
+      document.removeEventListener("pointerdown", anders, true);
+      window.removeEventListener("blur", anders);
+      document.removeEventListener("focusin", hinaus);
+    };
+  }, [offen]);
   return (
     <div
       ref={dock}
+      // Ein eigener Bereich mit Namen: Antwort, Räume und das Feld für JARVIS stehen sonst außerhalb von allem.
+      role="region"
+      aria-label="Leiste"
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex flex-col items-center gap-3 px-3"
       style={{ viewTransitionName: "jarvis-dock", paddingBottom: "max(10px, calc((var(--boden) - 4.25rem) / 2))" }}
     >
       {!imGespraech && (offen ? <Gespraech onClose={schliesse} onFill={fill} /> : <Antwortzeile onOpen={() => setOffen(true)} />)}
+      <Ansage still={imGespraech || offen} />
       <div className="pointer-events-auto flex h-[4.25rem] max-w-full max-sm:w-full items-center gap-[clamp(0.9rem,1.7vw,2.2rem)] rounded-full bg-white/85 pl-[clamp(1rem,1.8vw,2rem)] pr-2 shadow-[0_24px_50px_-18px_rgba(20,34,40,0.4),0_0_0_1px_rgba(31,42,46,0.06)] backdrop-blur-xl">
         {/* Im schmalen Fenster weicht der Name dem Feld zum Tippen; der Raum „Gespräch“ steht dann unter „Räume“. */}
-        <RaumLink href="/fokus" aria-label="Gespräch mit JARVIS" className="text-[1.45rem] font-extrabold leading-none text-schiefer [font-stretch:66%] max-sm:hidden">
+        <RaumLink href="/fokus" aria-label="Gespräch mit JARVIS" className="griff text-[1.45rem] font-extrabold leading-none text-schiefer [font-stretch:66%] max-sm:hidden">
           JARVIS
         </RaumLink>
         <nav aria-label="Räume" className="flex items-center gap-[clamp(0.9rem,1.7vw,2.2rem)] whitespace-nowrap">

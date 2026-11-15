@@ -102,7 +102,7 @@ export function MicrosoftSetup() {
         </>
       )}
       {status.fehler && <Notice tone="error">{status.fehler}</Notice>}
-      {meldung && <Notice tone={meldung.tone}>{meldung.text}</Notice>}
+      {meldung && <Notice meldung tone={meldung.tone}>{meldung.text}</Notice>}
       {status.eingerichtet && !aendern && (
         <p className="text-xs text-quiet">
           <button type="button" disabled={busy} onClick={() => setAendern(true)} className="underline hover:text-schiefer disabled:opacity-40">

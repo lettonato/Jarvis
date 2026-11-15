@@ -64,7 +64,7 @@ export function DocumentsView() {
         </Panel>
       )}
 
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
       {running && <Running job={running} now={now} onCancel={() => act({ action: "abbrechen" })} />}
       {documents?.configured && <Order busy={Boolean(running)} onOrder={(thema, auftrag) => act({ action: "erstellen", thema, auftrag })} />}
 

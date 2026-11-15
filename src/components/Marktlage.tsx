@@ -14,7 +14,7 @@ function Gruppe({ titel, href, zeilen, fuss }: { titel: string; href: string; ze
   return (
     <div className="min-w-0">
       <h3 className="text-sm font-bold text-schiefer">
-        <RaumLink href={href} className="hover:text-see">
+        <RaumLink href={href} className="griff hover:text-see">
           {titel}
         </RaumLink>
       </h3>

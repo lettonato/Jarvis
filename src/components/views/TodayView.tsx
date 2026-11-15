@@ -31,7 +31,7 @@ function Liste({ titel, href, zahl, children }: { titel: string; href: string; z
     <Panel>
       <div className="mb-2 flex items-baseline justify-between gap-3">
         <Abschnitt>{titel}</Abschnitt>
-        <RaumLink href={href} className="shrink-0 text-sm font-bold text-see hover:text-schiefer">
+        <RaumLink href={href} className="griff shrink-0 text-sm font-bold text-see hover:text-schiefer">
           {zahl ?? "Öffnen"}
         </RaumLink>
       </div>

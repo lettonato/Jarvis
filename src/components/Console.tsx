@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Icon } from "./icons";
 import { useConversation, useJarvis, type Turn } from "./JarvisProvider";
 import type { AvatarState } from "@/lib/avatar";
@@ -143,8 +143,22 @@ export function Chips({ onFill, scroll = false, idle = true }: { onFill: (text: 
 }
 
 export function useDraft() {
-  const [draft, setDraft] = useState("");
+  const [draft, setzeDraft] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Was zuletzt getippt (oder eingesetzt) wurde. Wechselt JARVIS nach einer Antwort den Raum und tippst du genau
+  // in dem Augenblick weiter, in dem der neue Raum fertig wird, kommt der Buchstabe bei React nicht an, und das
+  // nächste Zeichnen stellt das Feld auf den Stand davor zurück: Der Buchstabe war weg (gemessen in Schritt J11:
+  // in 6 von 12 Versuchen). Deshalb meldet der Browser jeden Buchstaben auch an React vorbei (Composer), und nach
+  // jedem Zeichnen steht im Feld wieder, was zuletzt getippt wurde.
+  const zuletzt = useRef("");
+  const setDraft = useCallback((text: string) => {
+    zuletzt.current = text;
+    setzeDraft(text);
+  }, []);
+  useLayoutEffect(() => {
+    const field = inputRef.current;
+    if (field && field.value !== zuletzt.current) field.value = zuletzt.current;
+  });
   const fill = (text: string) => {
     setDraft(text);
     setTimeout(() => {
@@ -179,16 +193,37 @@ export function Composer({ inputRef, draft, setDraft, big = false, vorn }: { inp
   }, [draft, inputRef]);
 
   const send = () => {
-    const text = draft.trim();
+    // Abgeschickt wird, was im Feld steht: Der Stand von React kann einen Augenblick dahinter sein.
+    const text = (inputRef.current?.value ?? draft).trim();
     if (!text) return;
     ask(text);
     setDraft("");
   };
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
-    e.preventDefault();
-    send();
-  };
+  const abschicken = useRef(send);
+  useLayoutEffect(() => {
+    abschicken.current = send;
+  });
+
+  // Getippte Buchstaben und die Eingabetaste nimmt das Feld vom Browser selbst entgegen, nicht über React: In dem
+  // Augenblick, in dem ein neuer Raum fertig wird (JARVIS wechselt ihn nach einer Antwort), kommen Tasten bei React
+  // nicht an (gemessen in Schritt J11). Ein Buchstabe wäre dann weg, und die Eingabetaste machte eine neue Zeile,
+  // statt abzuschicken.
+  useEffect(() => {
+    const field = inputRef.current;
+    if (!field) return;
+    const getippt = () => setDraft(field.value);
+    const taste = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+      e.preventDefault();
+      abschicken.current();
+    };
+    field.addEventListener("input", getippt);
+    field.addEventListener("keydown", taste);
+    return () => {
+      field.removeEventListener("input", getippt);
+      field.removeEventListener("keydown", taste);
+    };
+  }, [inputRef, setDraft]);
 
   return (
     <form
@@ -207,7 +242,6 @@ export function Composer({ inputRef, draft, setDraft, big = false, vorn }: { inp
         rows={1}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={onKeyDown}
         placeholder={voice.canListen && voice.handsFree ? "Sag „Jarvis“ oder tippe" : "Schreib hier, was du brauchst"}
         aria-label="Nachricht an JARVIS"
         className={`min-w-0 flex-1 resize-none bg-transparent px-2.5 text-[0.95rem] leading-5 text-kalk placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:text-[#9fb0b5] focus:outline-none ${big ? "py-3" : "py-2.5"}`}

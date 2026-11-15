@@ -205,7 +205,7 @@ export function CloudVoiceSetup() {
           </p>
         </>
       )}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
       <p className="text-xs text-quiet">
         Wichtig: Ist die Stimme eingeschaltet, geht jeder Satz, den JARVIS laut vorliest, an die Server von ElevenLabs. Das kann auch Inhalt aus Mails, Terminen und
         Aufgaben sein. Was er nur auf dem Bildschirm zeigt, bleibt hier. Beim Not-Aus geht nichts hinaus.

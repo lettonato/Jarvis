@@ -73,7 +73,7 @@ export function Edelmetalle() {
 
       {(note || (data?.fehler && !data.laeuft) || data?.veraltet) && (
         <div className="mt-3 flex flex-col gap-2">
-          {note && <Notice tone={note.tone}>{note.text}</Notice>}
+          {note && <Notice meldung tone={note.tone}>{note.text}</Notice>}
           {data?.fehler && !data.laeuft && note?.tone !== "error" && <Notice tone="error">Letzter Versuch{data.letzterVersuch ? ` (${wann(data.letzterVersuch, now)})` : ""}: {data.fehler}</Notice>}
           {data?.veraltet && <Notice>Der jüngste Kurs ist mehr als vier Tage alt. Lies neu, bevor du dich darauf verlässt.</Notice>}
         </div>

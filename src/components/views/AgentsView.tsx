@@ -68,9 +68,11 @@ function AgentCard({ module, highlighted }: { module: JarvisModule; highlighted:
               <p className="mt-1.5 text-sm leading-relaxed text-schiefer/85">{module.about}</p>
               {module.id === "wetter" && <WeatherDetail />}
               {ownView && (
-                <RaumLink href={module.href} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-see hover:text-schiefer">
-                  Ansicht öffnen
-                </RaumLink>
+                <p className="mt-3">
+                  <RaumLink href={module.href} className="griff inline-flex items-center gap-1.5 text-xs font-bold text-see hover:text-schiefer">
+                    Ansicht öffnen
+                  </RaumLink>
+                </p>
               )}
             </div>
           </div>

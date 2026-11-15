@@ -78,7 +78,7 @@ export function VaultSetup() {
           </Button>
         </div>
       )}
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
     </div>
   );
 }
@@ -173,7 +173,7 @@ export function MailSetup() {
           </Button>
         )}
       </div>
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
       <p className="text-xs text-quiet">Das Passwort bleibt auf deinem Mac in {settings?.configFile ?? "~/.jarvis/config.json"} und wird nie hochgeladen.</p>
     </form>
   );
@@ -266,7 +266,7 @@ export function CalendarSetup() {
           </select>
         </label>
       )}
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
     </div>
   );
 }

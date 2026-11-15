@@ -163,7 +163,7 @@ function AddTask({ today }: { today: string }) {
           </label>
           <span className="ml-auto text-quiet">landet in JARVIS/Eingang.md</span>
         </div>
-        {error && <Notice tone="error">{error}</Notice>}
+        {error && <Notice meldung tone="error">{error}</Notice>}
       </form>
     </Panel>
   );
@@ -201,13 +201,14 @@ function TaskRow({ task, today, active, vaultPath }: { task: Task; today: string
       } ${busy ? "opacity-50" : ""}`}
     >
       <div className="flex min-w-0 flex-1 items-start gap-3">
+        {/* Mindestens 24 Pixel in jeder Richtung, auch wenn die Schrift der Seite klein ist (h-6 allein wären dann 23). */}
         <button
           type="button"
           disabled={busy || task.recurring}
           onClick={() => act({ type: "completeTask", task })}
           title={task.recurring ? "Wiederkehrende Aufgaben bitte in Obsidian abhaken" : "Erledigt"}
           aria-label={`${task.text} erledigt`}
-          className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border border-schiefer/60 text-transparent transition hover:border-up hover:bg-up/20 hover:text-up disabled:cursor-not-allowed disabled:opacity-40"
+          className="grid h-6 min-h-[24px] w-6 min-w-[24px] shrink-0 place-items-center rounded border border-schiefer/60 text-transparent transition hover:border-up hover:bg-up/20 hover:text-up disabled:cursor-not-allowed disabled:opacity-40"
         >
           ✓
         </button>
@@ -220,7 +221,7 @@ function TaskRow({ task, today, active, vaultPath }: { task: Task; today: string
           <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-quiet">
             {d && <span className={overdue ? "font-bold text-down" : "text-stein/80"}>{shortDue(d, today)}</span>}
             {vaultPath ? (
-              <a href={obsidianLink(`${vaultPath}/${task.file}`)} className="truncate hover:text-stein" title="In Obsidian öffnen">
+              <a href={obsidianLink(`${vaultPath}/${task.file}`)} className="griff truncate hover:text-stein" title="In Obsidian öffnen">
                 {task.file.replace(/\.md$/, "")}
               </a>
             ) : (

@@ -97,7 +97,7 @@ export function AgentControl() {
       {(data?.notaus || note) && (
         <div className="mb-3 flex flex-col gap-2">
           {data?.notaus && <Notice tone="error">Der Not-Aus steht: Alle Agenten sind angehalten. Lösen kannst du ihn unter Einstellungen, Sicherheit.</Notice>}
-          {note && <Notice tone={note.tone}>{note.text}</Notice>}
+          {note && <Notice meldung tone={note.tone}>{note.text}</Notice>}
         </div>
       )}
       {data && (
@@ -161,7 +161,7 @@ export function AgentControl() {
                   <div>
                     <dt className="text-quiet">Ansicht</dt>
                     <dd>
-                      <RaumLink href={a.href} className="font-bold text-see hover:text-schiefer">
+                      <RaumLink href={a.href} className="griff font-bold text-see hover:text-schiefer">
                         öffnen ›
                       </RaumLink>
                     </dd>

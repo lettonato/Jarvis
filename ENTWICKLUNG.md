@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1048 von 1048 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1063 von 1063 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -2003,6 +2003,102 @@ dort gerade etwas steht.
 (die Prüfungen fragen nur Nachbauten).
 
 
+### Schritt J11: JARVIS für ein Vorleseprogramm; größere Klickflächen; kein verlorener Buchstabe beim Raumwechsel (15. November 2026)
+
+**Warum:** In J10 blieb offen, wie JARVIS für jemanden ist, der ihn sich vorlesen lässt (VoiceOver am Mac), dazu
+zwei Punkte von dort: die kleinen Klickflächen und das aufgeklappte Gespräch, das verdeckte, was dahinter
+markiert war.
+
+**Bestandsaufnahme zuerst:** Ein Messlauf durch alle zwölf Räume mit den Augen eines Vorleseprogramms: Titel und
+Sprache der Seite, Überschriften der Reihe nach, benannte Bereiche, Namen von Feldern, Knöpfen und Bildern, was
+nach einem Klick gemeldet wird, Höhe von allem Anklickbaren. In Ordnung war: Jeder Raum hat seinen Namen im Titel,
+genau eine Hauptüberschrift und keine übersprungene Stufe; kein Feld, Knopf oder Bild ist ohne Namen; ein Wechsel
+des Raums wird angesagt. Sechs Dinge hakten (Tabelle „Funde“).
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J11.1 Die Scheiben rechts sind ein eigener Bereich „Auf einen Blick“, die Leiste unten ein eigener Bereich „Leiste“; nichts Bedienbares steht mehr außerhalb eines Bereichs | Testbereit | `RaumSeite` in `Raum.tsx` (`aside`), `Leiste` in `AppFrame.tsx`; Prüfung Vorlesen, Schritt 1 |
+| J11.2 Die Zeile über der Leiste heißt wie ihr Inhalt (was JARVIS gerade sagt) und am Ende „Ganzes Gespräch zeigen“ | Testbereit | `Antwortzeile` in `AppFrame.tsx`; Prüfung Vorlesen, Schritt 2 |
+| J11.3 Was JARVIS antwortet, wird angesagt, solange das Gespräch zugeklappt ist: jede fertige Antwort, in ihrer Reihenfolge, auch dieselben Worte ein zweites Mal. Nicht angesagt wird, womit JARVIS selbst zu hören war, und nichts aus dem Gespräch von gestern | Testbereit | Regeln in `src/lib/ansage.ts` (11 Regeltests), `Ansage` in `AppFrame.tsx`; `hoerbar` in `src/lib/useVoice.ts` (wirklich zu hören, nicht nur „Spreche …“); Prüfung Vorlesen, Schritt 2 |
+| J11.4 Was auf einen Klick hin gemeldet wird („Eingetragen …“, „nicht gespeichert“), ist als Meldung ausgezeichnet: Gelungenes als Hinweis, Gescheitertes als Warnung. Was schon dasteht, wenn der Raum aufgeht („Der Not-Aus steht“, „Verbunden …“), bleibt gewöhnlicher Text | Testbereit | `Notice` mit `meldung` in `ui.tsx`, an 28 Stellen gesetzt; Prüfung Vorlesen, Schritte 3 und 6 |
+| J11.5 Das aufgeklappte Gespräch klappt zu, sobald die Markierung mit der Tab-Taste aus Gespräch und Leiste hinaus auf die Seite wandert. Ein Mausklick auf die Seite, Tippen dort und ein kurzer Wechsel in ein anderes Fenster lassen es offen | Testbereit | `Leiste` in `AppFrame.tsx`; Prüfung Vorlesen, Schritt 4 |
+| J11.6 Alles Anklickbare ist in allen zwölf Räumen mindestens 24 Pixel hoch (vorher 14 bis 22 an rund einem Dutzend Arten von Stellen) | Testbereit | `.griff`, `summary` und die Regel für Kästchen in `globals.css`; Haken an einer Aufgabe in `TasksView.tsx`; Prüfung Vorlesen, Schritt 5; Regeltest `test/regeln/klickflaechen.test.ts` |
+| J11.7 Handprüfung „Vorlesen“ | Testbereit, **nur im Browser der Sandbox, ohne Vorleseprogramm** | `test/hand/vorlesen-rauch.ts` (Port 3129, 6 Schritte); jetzt 27 Handprüfungen |
+| J11.8 Wer tippt, während JARVIS nach einer Antwort den Raum wechselt, verliert keinen Buchstaben mehr; die Eingabetaste schickt auch in diesem Augenblick ab, und zwar das, was im Feld steht | Testbereit | `useDraft` und `Composer` in `Console.tsx`; Prüfung Bedienung, neuer Schritt 6 (fünf Versuche mit verschieden schnellem Tippen, fünf mit der Eingabetaste gleich nach der Antwort) |
+
+**Die Funde im Einzelnen.**
+
+| Fund | vorher | jetzt |
+|---|---|---|
+| Antwort von JARVIS | Die Zeile über der Leiste hatte den festen Namen „Ganzes Gespräch zeigen“. Ein Vorleseprogramm las nur den und nie, was JARVIS geantwortet hat; angesagt wurde eine Antwort nur im aufgeklappten Gespräch | Der Name ist der Inhalt, und jede fertige Antwort wird angesagt (J11.2, J11.3) |
+| Meldungen nach einem Klick | standen stumm da; wer nicht hinsieht, erfuhr nicht, ob gespeichert wurde | als Meldung ausgezeichnet (J11.4) |
+| Scheiben und Leiste | lagen außerhalb jedes Bereichs; mit „zum nächsten Bereich springen“ waren sie nicht zu finden | zwei benannte Bereiche (J11.1) |
+| Aufgeklapptes Gespräch | verdeckte, was dahinter mit der Tab-Taste markiert wurde (J10, Grenze 7) | klappt zu, wenn die Markierung hinauswandert (J11.5) |
+| Klickflächen | Haken an einer Aufgabe 19 Pixel; Verweise wie „öffnen ›“ 14, Überschriften der Scheiben 16, „Ansicht öffnen“ und alles zum Aufklappen 18, Zähler in „Heute“ und die Abschnitte der Einstellungen 21, „JARVIS“ 22; Kästchen zum Ankreuzen 13 bis 15 in zu niedrigen Zeilen | überall mindestens 24 (J11.6) |
+| **Alter Fehler, durch die neue Prüfung gefunden** | Die Prüfung Vorlesen scheiterte in 3 von 4 Läufen an einer Stelle, an der sie gleich nach einer Antwort die nächste Frage tippt. Nachgestellt und gemessen: Tippt man genau in dem Augenblick, in dem JARVIS nach „Meine Termine“ in den Raum Kalender wechselt, ging **in 6 von 12 Versuchen ein Buchstabe verloren** („ie wird das Wetter“). Ursache, mit einer Sonde im Feld gemessen: Der Browser meldet den Buchstaben, bei React kommt er in diesem Augenblick (rund 40 Millisekunden, während der neue Raum fertig wird) nicht an, und das nächste Zeichnen setzt das Feld auf den Stand davor zurück. Der Fehler ist älter als J11 (seit dem Raumwechsel mit Überblendung, E2). **Dasselbe galt für die Eingabetaste:** In diesem Augenblick gedrückt, kam auch sie bei React nicht an; im Feld stand dann die Frage mit einem Zeilenumbruch dahinter, und nichts wurde abgeschickt (so scheiterte die Prüfung Vorlesen nach der ersten Korrektur noch in 4 von 6 Läufen) | Das Feld hört Buchstaben und Eingabetaste vom Browser selbst, an React vorbei, stellt nach jedem Zeichnen wieder her, was zuletzt getippt wurde, und schickt ab, was im Feld steht. Danach **0 von 33 Versuchen** mit verlorenem Buchstaben (18 im Messlauf, 15 in drei Läufen der Prüfung); mit der Eingabetaste die Prüfung Vorlesen 6 von 6 und Bedienung 3 von 3 (J11.8) |
+| Beim eigenen Durchsehen | Dieselben Worte zweimal („Notiert.“) wären nur einmal angesagt worden; „Ganzes Gespräch zeigen“ wäre zweimal vorgelesen worden (als Name und als Beschreibung); ein Mausklick in ein Feld der Seite klappte das Gespräch zu | behoben, jeweils zuerst in der Prüfung rot gesehen |
+
+**Eigene Entscheidungen:** (1) In J10 war vorgemerkt, das aufgeklappte Gespräch zu einem eigenen Fenster zu
+machen, das die Markierung festhält. Stattdessen klappt es zu, wenn die Markierung hinauswandert: Es ist kein
+Dialog, man soll daneben weiterarbeiten können, und Escape schließt es wie bisher. (2) Was JARVIS hörbar selbst
+spricht, wird nicht auch noch angesagt; sonst redeten zwei Stimmen durcheinander. Bleibt seine Stimme stumm (der
+Browser hat keine oder darf noch keinen Ton abspielen), sagt das Vorleseprogramm an, nach zwei Sekunden
+Wartezeit, in denen JARVIS beginnen könnte. Am Mac spricht JARVIS im Normalfall jede Antwort selbst; einen
+Schalter „JARVIS ohne Stimme“ gibt es bisher nicht.
+(3) Eine Notiz ist ab Werk gewöhnlicher Text; nur das Ergebnis eines Klicks ist eine Meldung (ein Hinweis aus dem
+Code-Review: Andersherum würde jede künftige Notiz, die schon beim Betreten dasteht, das Vorlesen unterbrechen,
+und eine Notiz mit einer Zahl darin würde bei jeder Änderung neu vorgelesen). (4) Der kleine Hinweis „Ganzes
+Gespräch zeigen“ beim Überfahren der Zeile mit der Maus entfällt; der Pfeil am Rand der Zeile bleibt. (5) Die
+Klickflächen wachsen durch unsichtbaren Rand, nicht durch größere Schrift; das Aussehen bleibt. Sichtbar größer
+sind nur der Haken an einer Aufgabe (19 auf 24 Pixel) und Zeilen mit einem Kästchen (bis 3 Pixel höher).
+Nachgemessen in zehn Räumen vor und nach der Änderung: sieben unverändert, „Agenten“ höchstens 2 Pixel,
+„Aufgaben“ 6, „Einstellungen“ 9 (aufaddiert über die ganze lange Seite). (6) 24 Pixel sind das Mindestmaß der
+Richtlinie für barrierefreie Seiten (WCAG 2.2, 2.5.8), nicht die 44 Pixel für Fingerbedienung.
+
+**Grenzen:** (1) **Kein Vorleseprogramm lief mit.** Geprüft ist, was der Browser einem Vorleseprogramm übergibt
+(Namen, Rollen, Bereiche, Stellen für Ansagen), nicht, was VoiceOver daraus macht. Bekannt uneinheitlich ist, ob
+VoiceOver in Safari eine Meldung ansagt, die samt ihrer Auszeichnung erst nach dem Klick erscheint. (2) Darf
+JARVIS das Mikrofon nicht benutzen, zeigt die Zeile über der Leiste dauerhaft diesen Hinweis und nicht die Antwort
+(schon vor J11 so); angesagt wird die Antwort trotzdem. Vorgemerkt. (3) Hält man JARVIS mitten im Sprechen an oder
+fällt die Stimme mitten in einer Antwort aus, gilt die Antwort als gehört; der Rest wird nicht angesagt. (4) In dem
+Augenblick, in dem JARVIS zu hören ist, gilt alles bis dahin als gehört, auch eine stille Meldung von kurz davor.
+(5) Nicht im Browser geprüft, nur durch Regeltests oder gar nicht: mehrere Antworten hintereinander und die
+Vorbereitung hinter einer gesprochenen Erinnerung (Regeltests); dass die Ansage auch wartet, während das Mikrofon
+offen ist; dass nach „Neues Gespräch“ nichts Altes mehr in der Ansage steht; die Wolkenstimme (ElevenLabs) als
+„zu hören“. (6) Der Verweis in der Tabelle der offenen Positionen im Trading-Raum kommt in der Prüfung nicht vor
+(die Testdaten haben keine offene Position); die Verweise der Kandidaten daneben schon. (7) Die Klickflächen sind
+bei 1280 × 800 gemessen, nicht im schmalen Fenster. (8) Farbkontraste sind in diesem Schritt nicht gemessen.
+(9) Eine Scheibe, die in sich rollt, lässt sich weiter nicht mit der Tastatur rollen (J10, Grenze 9). (10) Warum
+React den getippten Buchstaben beim Raumwechsel nicht annimmt, ist nicht geklärt, nur gemessen und umgangen; die
+erste Korrektur (nur den Stand nachziehen) half nicht (weiter 6 von 12), die zweite nur halb (4 von 12), erst
+die dritte ganz; für die Eingabetaste brauchte es danach eine vierte. Im Feld „Neues Thema“ im Raum Intel und in anderen Feldern der Räume ist dasselbe denkbar; dort
+wechselt der Raum aber nicht, während man tippt. Eingabe über eine Eingabehilfe (Akzente, Emoji-Auswahl) ist mit
+der Korrektur nicht ausprobiert.
+
+### Testergebnisse Schritt J11 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1063 Tests: 1063 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 15: 11 zur Ansage, 4 zu den Klickflächen). Am Mac wären es rechnerisch 1061 (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 27 Handprüfungen bestanden**, in drei Teilen gestartet (13, 10 und 4; zusammen rund 11 Minuten). Vorlesen 55 Sekunden, Bedienung 68 |
+| Prüfung Vorlesen, erste Läufe | mehrfach fehlgeschlagen. Echte Funde: Tabelle „Funde“. Aus der Prüfung selbst: Sie verlangte im Namen der Zeile ein Wort, das dort nicht stehen muss; die Ansage kam nie, weil JARVIS im Browser der Sandbox drei Sekunden lang „spricht“, ohne dass etwas zu hören ist (daraus wurde das Zeichen „wirklich zu hören“); meine erste Fassung der größeren Klickflächen nahm einem Verweis seinen Abstand nach oben |
+| Gegenproben, erster Durchgang (16 absichtlich eingebaute Fehler, je ein eigener Bau) | **15 von 16 entdeckt**, jede an der gemeinten Stelle. Nicht entdeckt: der Verweis in der Tabelle der offenen Positionen im Trading-Raum (kommt in den Testdaten nicht vor; Grenze 6) |
+| Gegenproben, zweiter Durchgang (nach dem Code-Review: 9 im Browser, 7 an den Regeltests) | Alle 16 fielen auf, die 7 an den Regeltests an der gemeinten Regel. Von den 9 im Browser aber **nur 5 an der gemeinten Stelle; 4 scheiterten früher**, an der Stelle, an der die Prüfung nach einer Antwort die nächste Frage tippt. Die 4 zählen so nicht. Dieselbe Stelle scheiterte auch ohne eingebauten Fehler (nächste Zeile) |
+| Die wacklige Stelle untersucht (Skill zur Fehlersuche: nachstellen, messen, dann erst ändern) | Kein Wackler der Prüfung, sondern der alte Fehler aus der Tabelle „Funde“. Gemessen: verlorener Buchstabe in **6 von 12** Versuchen; nach der ersten Korrektur weiter 6 von 12; nach der zweiten 4 von 12; nach der dritten **0 von 18**, dazu 15 Versuche in drei Läufen der Prüfung ohne Verlust. Danach scheiterte die Prüfung Vorlesen immer noch in **4 von 6** Läufen, jetzt an der Eingabetaste (im Feld stand „Meine Termine“ mit Zeilenumbruch). Nach der vierten Korrektur: Vorlesen **6 von 6**, Bedienung **3 von 3**; seither in allen Läufen bestanden (Sammellauf und vier Läufe ohne Fehler am Ende der Gegenproben) |
+| Gegenproben, dritter Durchgang (die 4 von oben wiederholt, 3 neue zum Tippen; die Eingabetaste war da noch nicht behoben) | 7 fielen auf, **4 an der gemeinten Stelle** (2 der wiederholten, 2 zum Tippen in der Prüfung Bedienung). **3 wieder an der wackligen Stelle** und so nicht gezählt |
+| Gegenproben, vierter und fünfter Durchgang (nach der Korrektur für die Eingabetaste) | Die 3 offenen und eine neue („die Eingabetaste schickt gar nicht mehr ab“): **4 von 4 an der gemeinten Stelle.** „Abgeschickt wird der Stand von React statt des Feldes“ fällt in der Prüfung Bedienung im ersten Lauf auf (Schritt 6); in der Prüfung Vorlesen nur in einem von zwei Läufen, dort ist es Zufall und kein Beleg |
+| Gegenproben zusammen | 36 verschiedene eingebaute Fehler (29 im Browser, 7 an den Regeltests); **35 an der gemeinten Stelle entdeckt**, einer nicht (Trading, Grenze 6) |
+| Neuer Schritt in der Prüfung Bedienung zuerst rot gesehen | Tippen beim Raumwechsel: rot mit dem Stand vor der Korrektur. Eingabetaste: Mit dem ersten Signal (der Raumwechsel beginnt) wurde der Schritt **nicht** rot; erst mit dem Signal „JARVIS setzt zum Sprechen an“ scheiterte er mit dem Stand vor der vierten Korrektur („Wie spät ist es“ mit Zeilenumbruch im Feld) und bestand danach |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Hinweise, alle nachgeprüft. **Acht eingearbeitet**, darunter: dieselben Worte zweimal wurden nur einmal angesagt; der Name der Zeile wäre doppelt vorgelesen worden; ein Mausklick in ein Feld der Seite klappte das Gespräch zu; jede Notiz war eine Meldung, auch was schon dastand (jetzt nur auf Wunsch der Stelle, Eigene Entscheidungen 3); die Regel für die Klickflächen überstimmte eigene Abstände (jetzt mit Regeltest). **Einer als Grenze vermerkt** (Grenze 3). **Einer mit einem Kommentar im Code beantwortet** (die Mindesthöhe am Haken ist nicht doppelt) |
+| Aussehen vorher und nachher verglichen (zehn Räume, Lage der Elemente gemessen) | sieben Räume unverändert; „Agenten“ höchstens 2 Pixel, „Aufgaben“ 6, „Einstellungen“ 9 Pixel über die ganze Seite |
+| Tests zuerst | Regeltests zuerst und rot gesehen: alle 11 zur Ansage, die 4 zu den Klickflächen. In der Handprüfung rot gesehen: fester Name der Zeile, keine Ansage, stumme Meldungen, Bereiche, Gespräch bleibt offen, Klickflächen, dieselben Worte zweimal, doppelter Name, Mausklick in ein Feld, Tippen und Eingabetaste beim Raumwechsel. Für die übrigen Stellen der Prüfung (etwa „was schon dasteht, ist keine Meldung“ und „nach dem Neuladen wird nichts Altes angesagt“) ist nicht festgehalten, ob sie zuerst rot waren; belegt sind sie durch die Gegenproben |
+| Sicherheitsprüfung (von Hand; der Skill dafür braucht den Stand bei GitHub) | Kein neuer Weg nach außen, keine neue Berechtigung, kein Schlüssel im Code, keine neue Abfrage an den Server. Die zwei neuen Lauscher hängen nur am eigenen Eingabefeld und lesen nur dessen Inhalt. Die Stelle für Ansagen bekommt Text als Text (kein HTML) und nur, was ohnehin im Gespräch steht. Die Stimme, die nur so tut, und das Zählen der Raumwechsel stehen nur in den Prüfungen |
+| Nicht geprüft | **der Mac**, **Safari**, ein **Vorleseprogramm** (VoiceOver; Prüfliste Teil X ist dafür der einzige echte Beleg), echte Dienste, die Wolkenstimme, Eingabehilfen, Klickflächen im schmalen Fenster, Farbkontraste |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(die Prüfungen fragen nur Nachbauten).
+
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -2145,9 +2241,15 @@ Danach wie geplant:
    Fehlschlag am Anfang nach Sekunden wieder. Die Scheibe „Termine heute“ fasst einen vollen Tag. Beim Gegenprüfen
    gefunden und abgestellt: Das Bauen verschluckte gelegentlich eine Änderung am Aussehen (nur für Prüfungen und
    einen späteren zentralen Betrieb von Belang; der Mac startet anders).
-   **Als Nächstes:** J11 (ein Vorleseprogramm im Blick: Überschriften und Bereiche der Räume der Reihe nach,
-   Meldungen, die angesagt werden; das aufgeklappte Gespräch als eigenes Fenster, in dem die Markierung bleibt;
-   dabei die kleinen Klickflächen). Danach: „lässt sich gerade nicht laden“ auch in den anderen Räumen. Unter Beobachtung bleibt der einmalige, nicht
-   wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die
+25. **J11: gebaut, Testbereit, ohne Vorleseprogramm geprüft** (Schritt J11 in Bereich J): Wer sich JARVIS
+   vorlesen lässt, hört jetzt, was JARVIS antwortet und ob ein Klick gelungen ist; Scheiben und Leiste sind
+   eigene Bereiche; das aufgeklappte Gespräch klappt zu, wenn die Markierung mit der Tab-Taste hinauswandert;
+   alles Anklickbare ist mindestens 24 Pixel hoch. Neue Handprüfung „Vorlesen“, jetzt 27 Prüfungen. Dabei einen
+   alten Fehler gefunden und behoben: Wer genau dann tippte oder die Eingabetaste drückte, wenn JARVIS den Raum
+   wechselte, verlor einen Buchstaben oder schickte nichts ab.
+   **Als Nächstes:** „lässt sich gerade nicht laden“ auch in den anderen Räumen (wie in „Heute“ seit J10). Dann
+   die Zeile über der Leiste, wenn das Mikrofon nicht erlaubt ist (sie zeigt dann den Hinweis statt der Antwort;
+   J11, Grenze 2). Als Frage an Benedikt vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter
+   Beobachtung bleibt der einmalige, nicht wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

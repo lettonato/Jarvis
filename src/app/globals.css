@@ -81,6 +81,23 @@ body {
   outline-offset: 2px;
 }
 
+/* Klickflächen sind mindestens 24 Pixel hoch, auch wenn die Schrift klein ist. Der unsichtbare Rand oben und
+   unten vergrößert nur die Fläche zum Treffen; der Abstand nach außen nimmt ihn wieder weg, damit keine Zeile
+   wächst und nichts verrutscht. (.griff für kleine Verweise und Knöpfe, summary für alles zum Aufklappen.)
+   Am selben Element darf deshalb kein eigener Abstand nach oben oder unten stehen (kein py-, my-, mt-, mb-):
+   Der gehört an ein Element außen herum. Ein Regeltest achtet darauf (test/regeln/klickflaechen.test.ts). */
+@layer components {
+  .griff,
+  summary {
+    padding-block: 6px;
+    margin-block: -6px;
+  }
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    min-height: 24px;
+  }
+}
+
 /* Das Feld für JARVIS zeigt den Rand an seinem ganzen dunklen Rahmen (Composer), nicht noch einmal innen als
    Rechteck im runden Rahmen. Die Regel muss hier stehen und nicht als Klasse am Feld, weil die Regel darüber
    sonst gewinnt. */

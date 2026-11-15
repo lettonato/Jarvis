@@ -142,6 +142,9 @@ export type VoiceState = {
   // Was gerade ankommt, noch bevor du fertig bist.
   interim: string;
   speaking: boolean;
+  // Beim Sprechen ist wirklich etwas zu hören: Der Mac hat einen Satz begonnen, oder ein Clip der Wolkenstimme läuft.
+  // (speaking allein heißt nur, dass JARVIS sprechen will; ein Browser ohne Stimme bleibt dabei stumm.)
+  hoerbar: boolean;
   // Die Spracherkennung läuft auf dem Mac selbst, nichts geht dafür ins Netz.
   local: boolean;
   error: string | null;
@@ -180,7 +183,7 @@ const pieces = (said: string) => sentences(said).flatMap((chunk) => stuecke(chun
 
 type CloudQueue = { add: (text: string) => void; stop: () => void };
 
-const QUIET: VoiceState = { listening: false, waiting: false, interim: "", speaking: false, local: false, error: null, hint: null };
+const QUIET: VoiceState = { listening: false, waiting: false, interim: "", speaking: false, hoerbar: false, local: false, error: null, hint: null };
 
 // Mikrofon und Stimme als kleine Maschine außerhalb von React; die Seite bekommt nur den Zustand.
 function createVoice(emit: (patch: Partial<VoiceState>) => void) {
@@ -202,6 +205,7 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
   // Sprachausgabe
   let speechRun = 0;
   let speakingText = "";
+  let audible = false;
   let lastSpoken = "";
   let spokeUntil = 0;
   let utterances: SpeechSynthesisUtterance[] = [];
@@ -482,12 +486,20 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
     command(true);
   }
 
+  // Jetzt ist JARVIS wirklich zu hören (ein Satz hat begonnen). Zählt nur, solange er noch spricht.
+  function laut() {
+    if (!speakingText || audible) return;
+    audible = true;
+    emit({ hoerbar: true });
+  }
+
   function ended(freshMic: boolean) {
     lastSpoken = speakingText;
     spokeUntil = Date.now();
     speakingText = "";
     utterances = [];
-    emit({ speaking: false });
+    audible = false;
+    emit({ speaking: false, hoerbar: false });
     // Damit JARVIS seine eigene Stimme nicht als Befehl nimmt, hört das Mikrofon danach neu an.
     if (freshMic && rec) fresh();
   }
@@ -543,7 +555,7 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
       el.onerror = () => finish("error");
       clipDone = () => finish("error");
       el.src = url;
-      el.play().catch((e: unknown) => finish((e as { name?: string } | null)?.name === "NotAllowedError" ? "blocked" : "error"));
+      el.play().then(laut, (e: unknown) => finish((e as { name?: string } | null)?.name === "NotAllowedError" ? "blocked" : "error"));
     });
   }
 
@@ -654,7 +666,9 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
       onDone?.();
     };
     speakingText = said;
-    emit({ speaking: true });
+    // Ein neuer Satz setzt an: Zu hören ist er erst, wenn er wirklich beginnt (auch wenn eben noch der vorige lief).
+    audible = false;
+    emit({ speaking: true, hoerbar: false });
     if (viaCloud) {
       const parts = pieces(said);
       let open = parts.length;
@@ -693,6 +707,7 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
       u.rate = 1.03;
       u.onstart = () => {
         started = true;
+        if (run === speechRun) laut();
       };
       u.onend = () => {
         if (i === chunks.length - 1) done();
@@ -753,6 +768,7 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
       u.rate = 1.03;
       u.onstart = () => {
         started = true;
+        if (live()) laut();
       };
       u.onend = () => {
         open = Math.max(0, open - 1);

@@ -95,7 +95,9 @@ export function RaumSeite({ ort, children }: { ort: string; children: ReactNode 
             {children}
           </div>
         </ScheibenOrt.Provider>
-        <div className="raum-scheiben" ref={setScheiben} />
+        {/* Ein eigener Bereich mit Namen: So findet ein Vorleseprogramm die Scheiben, und sie stehen nicht außerhalb
+            von allem. Leer ist er ausgeblendet (globals.css). */}
+        <aside className="raum-scheiben" aria-label="Auf einen Blick" ref={setScheiben} />
       </div>
     </ViewTransition>
   );
@@ -114,7 +116,7 @@ export function Scheibe({ titel, href, children }: { titel: string; href?: strin
     <section className="glas @container">
       <h2 className="mb-2.5 text-base font-bold">
         {href ? (
-          <RaumLink href={href} className="underline-offset-4 hover:underline">
+          <RaumLink href={href} className="griff underline-offset-4 hover:underline">
             {titel}
           </RaumLink>
         ) : (

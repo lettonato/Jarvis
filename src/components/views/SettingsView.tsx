@@ -170,7 +170,7 @@ export function SettingsView() {
         <>
           <nav aria-label="Abschnitte der Einstellungen" className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
             {abschnitte.map((a) => (
-              <a key={a.id} href={`#${a.id}`} className="font-medium text-see underline-offset-4 hover:underline focus-visible:underline">
+              <a key={a.id} href={`#${a.id}`} className="griff font-medium text-see underline-offset-4 hover:underline focus-visible:underline">
                 {a.kurz}
               </a>
             ))}
@@ -256,7 +256,7 @@ function NameForm() {
           Speichern
         </Button>
       </div>
-      {state && <Notice tone={state.tone}>{state.text}</Notice>}
+      {state && <Notice meldung tone={state.tone}>{state.text}</Notice>}
     </form>
   );
 }
@@ -327,7 +327,7 @@ function BrainSetup() {
           Schlüssel entfernen
         </Button>
       )}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
     </form>
   );
 }
@@ -387,7 +387,7 @@ function MemorySetup() {
             Noch einmal versuchen
           </Button>
         )}
-        {error && <Notice tone="error">{error}</Notice>}
+        {error && <Notice meldung tone="error">{error}</Notice>}
       </div>
     );
   }
@@ -430,7 +430,7 @@ function MemorySetup() {
             Alles vergessen
           </Button>
         ))}
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
     </div>
   );
 }
@@ -524,7 +524,7 @@ function CrawlerSetup() {
           Schlüssel entfernen
         </Button>
       )}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
     </div>
   );
 }
@@ -596,7 +596,7 @@ function CommoditySetup() {
           Schlüssel entfernen
         </Button>
       )}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
     </div>
   );
 }
@@ -654,7 +654,7 @@ function MitteilungenSetup() {
       <Button disabled={busy || !m.moeglich} onClick={() => send({ action: "macMitteilungProbe" })}>
         {busy ? "Einen Moment …" : "Mitteilung zur Probe zeigen"}
       </Button>
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
     </div>
   );
 }
@@ -718,7 +718,7 @@ function ApprovalSetup() {
         <li>· Verkäufe wie Stop-Loss und Gewinnmitnahme fragen nie nach, dort kostet Warten Geld.</li>
         <li>· {settings?.telegram.paired ? "Die Frage kommt auf dein gekoppeltes Handy." : "Ohne gekoppeltes Handy siehst du die Frage nur hier in JARVIS."}</li>
       </ul>
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
     </div>
   );
 }

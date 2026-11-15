@@ -77,7 +77,7 @@ export function TelegramSetup() {
         </>
       )}
       {tg.error && <Notice tone="error">{tg.error}</Notice>}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
       {tg.configured && (
         <p className="text-xs text-quiet">
           Bot-Schlüssel {tg.hint} ·{" "}

@@ -97,13 +97,21 @@ export function LinkButton({ href, children, icon }: { href: string; children: R
   );
 }
 
-export function Notice({ tone = "info", children }: { tone?: "info" | "error" | "ok"; children: ReactNode }) {
+// meldung: Die Notiz ist das Ergebnis eines Klicks (gespeichert, gescheitert). Nur dann ist sie als Meldung
+// ausgezeichnet, und ein Vorleseprogramm sagt sie an: einen Fehler sofort, alles andere, wenn es gerade nichts
+// anderes liest. Was schon dasteht, wenn der Raum aufgeht („Der Not-Aus steht“, „Verbunden …“), bleibt gewöhnlicher
+// Text: Es soll das Vorlesen nicht unterbrechen und nicht bei jeder Änderung einer Zahl neu vorgelesen werden.
+export function Notice({ tone = "info", meldung, children }: { tone?: "info" | "error" | "ok"; meldung?: boolean; children: ReactNode }) {
   const tones = {
     info: "border-gletscher text-stein",
     error: "border-rot text-down",
     ok: "border-up text-up",
   };
-  return <p className={`border-l-[3px] py-1 pl-3 text-sm ${tones[tone]}`}>{children}</p>;
+  return (
+    <p role={meldung ? (tone === "error" ? "alert" : "status") : undefined} className={`border-l-[3px] py-1 pl-3 text-sm ${tones[tone]}`}>
+      {children}
+    </p>
+  );
 }
 
 export const inputClass =

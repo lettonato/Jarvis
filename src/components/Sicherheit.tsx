@@ -157,7 +157,7 @@ export function SicherheitsZentrale() {
 
   return (
     <div className="space-y-5 text-sm">
-      {note && <Notice tone={note.tone === "ok" ? "ok" : "error"}>{note.text}</Notice>}
+      {note && <Notice meldung tone={note.tone === "ok" ? "ok" : "error"}>{note.text}</Notice>}
 
       <div className="space-y-2">
         <h3 className="text-xs font-bold text-stein">Not-Aus</h3>

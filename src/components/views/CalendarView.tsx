@@ -65,7 +65,7 @@ export function CalendarView() {
         </Panel>
       )}
 
-      {note && <Notice tone="info">{note}</Notice>}
+      {note && <Notice meldung tone="info">{note}</Notice>}
       {outlook?.fehler && <Notice tone="error">Outlook: {outlook.fehler}</Notice>}
       {outlook?.unvollstaendig && <Notice tone="error">{MICROSOFT_SATZ.zuViele}</Notice>}
       {outlook && !outlook.fehler && (
@@ -86,7 +86,7 @@ export function CalendarView() {
           ))}
           <p className="text-center text-xs text-quiet">
             Weiter voraus und zum Ändern oder Löschen:{" "}
-            <button type="button" onClick={() => open(addDays(today, AGENDA_DAYS))} className="underline hover:text-stein">
+            <button type="button" onClick={() => open(addDays(today, AGENDA_DAYS))} className="griff underline hover:text-stein">
               Kalender-App
             </button>
           </p>
@@ -193,8 +193,8 @@ function AddEvent({ calendar, today }: { calendar: CalendarSnapshot; today: stri
           <span className="ml-auto text-quiet">landet in {calendar.target ?? "deinem Standardkalender"}</span>
         </div>
         <p className="text-xs text-quiet">Oder sag: „Jarvis, trag morgen um 9 Uhr Zahnarzt ein.“</p>
-        {saved && <Notice tone="ok">{saved}</Notice>}
-        {error && <Notice tone="error">{error}</Notice>}
+        {saved && <Notice meldung tone="ok">{saved}</Notice>}
+        {error && <Notice meldung tone="error">{error}</Notice>}
       </form>
     </Panel>
   );

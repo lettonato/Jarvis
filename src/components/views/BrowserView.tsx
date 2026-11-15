@@ -118,7 +118,7 @@ export function BrowserView() {
         </Panel>
       )}
 
-      {(error || status?.error) && <Notice tone="error">{error ?? status?.error}</Notice>}
+      {(error || status?.error) && <Notice meldung={Boolean(error)} tone="error">{error ?? status?.error}</Notice>}
 
       {task && status ? (
         <>

@@ -87,7 +87,7 @@ export function IntelView() {
         </div>
       )}
 
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
       {zuWenig && !intel?.running && <Notice>{zuWenig}</Notice>}
       {intel?.error && !intel.running && <Notice tone="error">Letzter Versuch: {alsSatz(intel.error)}</Notice>}
       {intel?.running && <Running running={intel.running} now={now} />}
@@ -274,7 +274,7 @@ function Topics({ intel }: { intel: IntelSnapshot }) {
       </p>
       {message && (
         <div className="mt-2">
-          <Notice tone={message.tone}>{message.text}</Notice>
+          <Notice meldung tone={message.tone}>{message.text}</Notice>
         </div>
       )}
     </Panel>

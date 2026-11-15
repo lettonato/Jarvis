@@ -119,8 +119,8 @@ export function ProjectsView() {
       )}
 
       {!projekte && <p className="text-sm text-quiet">Lade Projekte …</p>}
-      {error && <Notice tone="error">{error}</Notice>}
-      {info && !error && <Notice tone="ok">{info}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
+      {info && !error && <Notice meldung tone="ok">{info}</Notice>}
 
       {neu && (
         <Panel>
