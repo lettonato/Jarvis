@@ -110,9 +110,15 @@ der Raum Dokumente gegen einen nachgebauten Claude: bestellen, Fortschritt, PDF,
 der Raum Kalender gegen einen nachgebauten Mac-Kalender: Zugriff erlauben, zwei Wochen Termine, eintragen, Kalender für neue Termine, ein Mac, der nicht speichert,
 das Gespräch, getippt, gegen einen nachgebauten Claude: feste Befehle, freie Fragen, Anhalten, eine Änderung erst nach dem Ja, Ausfall von Claude, neues Gespräch,
 das Lagebild im Raum Intel gegen ein nachgebautes Grok: Lagebild, Warnung an den Desk, gezielte Suche, Tagesbudget, eigene Themen, Ausfälle, Zurufe, gesperrter Agent,
-der Raum Post beim Lesen gegen ein nachgebautes Postfach: verbinden, Übersicht, öffnen, „Gelesen“, „Als Aufgabe“, mit JARVIS durchgehen, Ausfall). Aufruf steht jeweils oben in der Datei.
-Die vier letzten stellen für sich, den Server und den Browser eine Zeitzone ein, in der es gerade Mittag ist: Was „läuft“, „vorbei“ oder „heute noch“ ist, hängt an der Uhrzeit.
+der Raum Post beim Lesen gegen ein nachgebautes Postfach: verbinden, Übersicht, öffnen, „Gelesen“, „Als Aufgabe“, mit JARVIS durchgehen, Ausfall,
+der Raum „Heute“ mit allen Quellen zugleich: frischer Mac, langsamer Kalender, voller Tag, Not-Aus, Ausfälle von Postfach, Tresor und Kalender). Aufruf steht jeweils oben in der Datei.
+Die fünf letzten stellen für sich, den Server und den Browser eine Zeitzone ein, in der es gerade Mittag ist: Was „läuft“, „vorbei“ oder „heute noch“ ist, hängt an der Uhrzeit.
 Der nachgebaute Mac-Kalender (`test/mocks/osascript-mock.mjs`) wählt den Kalender für einen neuen Termin wie das echte Skript in `src/lib/server/calendar.ts` (genannter Kalender, Groß- und Kleinschreibung egal, sonst Standardkalender; ein ausdrücklich verlangter wird nie ersetzt; in einen schreibgeschützten wird nie eingetragen) und kann mit `speichern: "abgelehnt"` in seiner Datei nachstellen, dass die Kalender-App nicht speichert.
+Mit `wartezeit_ms` in seiner Datei lässt er sich mit der Antwort Zeit: So lässt sich prüfen, was eine Seite zeigt, solange der Kalender noch lädt.
+Nach „zurück“ im Browser hält die Seite den Raum, aus dem man kommt, unsichtbar bereit; eine Prüfung meint deshalb `main:visible`, nicht `main`.
+Eine Prüfung darf nicht an der Tageszeit hängen: Der Edelmetall-Agent liest von selbst, wenn eine seiner Uhrzeiten (ab Werk 07:30 und 17:30) höchstens zwei Stunden zurückliegt. Wer mit einem Schlüssel für Twelve Data prüft und Abfragen zählt, stellt die Uhrzeiten mit `ferneZeiten()` aus `test/helfer/uhrzeiten.ts` fern von jetzt.
+Sie darf auch nicht an der Länge einer Antwort hängen (die Prüfung Stimme füllt das Tageslimit deshalb selbst auf, statt sich auf die Länge des Briefings zu verlassen).
+Ein Befehl, der langsamer ist als gewollt, lässt sich im Browser mit `seite.route(…)` verzögern (Prüfung Gespräch: die Bestätigung eines Befehls kommt mitten ins Nachdenken).
 Der nachgebaute Claude (`test/mocks/claude-mock.ts`) und das nachgebaute Grok (`test/mocks/xai-mock.ts`) antworten mit `bedenkzeit(ms)` verzögert; so lässt sich prüfen, was eine Seite während der Arbeit zeigt.
 
 **Alle Handprüfungen mit einem Befehl** (Schritt J4):

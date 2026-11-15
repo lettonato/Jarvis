@@ -121,7 +121,7 @@ async function main() {
     await eintrag("Goldmarkt 2026").waitFor({ timeout: 90_000 });
     const text = await eintrag("Goldmarkt 2026").innerText();
     assert.match(text, /fertig/);
-    assert.match(text, /2 Abschnitte · 1 Quellen · 0 Suchen · PDF/);
+    assert.match(text, /2 Abschnitte · 1 Quelle · 0 Suchen · PDF/);
     assert.match(text, /Gold bleibt gefragt\.[\s\S]*Notenbanken kaufen weiter\.[\s\S]*Die Zinsen bestimmen den Kurs\./);
     const job = (await stand()).jobs[0];
     assert.ok(job.pdf && job.html, "PDF und Webseite sind abgelegt");

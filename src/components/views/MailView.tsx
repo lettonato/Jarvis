@@ -75,7 +75,8 @@ export function MailView() {
           <Scheibe titel="Auf einen Blick">
             <ul>
               <ScheibenZeile wert={mail?.importantUnread ?? 0}>Neue wichtige</ScheibenZeile>
-              <ScheibenZeile wert={mail?.unread ?? 0}>Ungelesen gesamt</ScheibenZeile>
+              {/* Die Zahl kommt vom Postfach und zählt alles, nicht nur die 14 Tage der Liste; darum heißt sie so. */}
+              <ScheibenZeile wert={mail?.unread ?? 0}>Ungelesen im ganzen Posteingang</ScheibenZeile>
               <ScheibenZeile wert={mail?.bulkUnread ?? 0}>Newsletter und Co.</ScheibenZeile>
             </ul>
           </Scheibe>

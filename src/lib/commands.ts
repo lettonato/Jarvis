@@ -527,7 +527,8 @@ const RULES: Rule[] = [
     run: (ctx) => {
       const hour = ctx.now.getHours();
       const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
-      const w = ctx.weather ? `Draußen hat es ${Math.round(ctx.weather.temperature)} Grad, ${ctx.weather.description}.` : "";
+      // Beispieldaten (keine Verbindung zum Wetterdienst) sagt JARVIS im Briefing nicht als Wetter an.
+      const w = ctx.weather?.source === "live" ? `Draußen hat es ${Math.round(ctx.weather.temperature)} Grad, ${ctx.weather.description}.` : "";
       const intro = [
         `${greeting}, ${ctx.name}.`,
         w,

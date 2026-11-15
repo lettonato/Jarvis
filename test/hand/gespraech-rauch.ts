@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { chromium } from "playwright-core";
+import { chromium, type Route } from "playwright-core";
 import { starteNext } from "../helfer/server";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
 import { starteClaudeMock } from "../mocks/claude-mock";
@@ -280,6 +280,66 @@ async function main() {
     assert.equal((await verlauf()).at(-1)!.text, "Dann erzähl mir bitte ausführlich die Geschichte der Stadt Traunstein", "von der angehaltenen Antwort bleibt auch keine leere Zeile stehen");
     claude.bedenkzeit(0);
     schritt("„Anhalten“ gilt sofort: Eine Frage, die noch nicht unterwegs ist, geht nicht mehr los; denkt Claude schon nach, erscheint seine Antwort nicht mehr");
+
+    // Zwei Sätze schneller hintereinander, als JARVIS losläuft (ein doppelter Klick, zwei Sätze der Spracheingabe):
+    // Beide werden in einem Zug abgeschickt, damit es nicht davon abhängt, wie schnell die Prüfung tippt.
+    const sageSchnell = (saetze: string[]) =>
+      feld.evaluate((f, liste) => {
+        const setze = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+        for (const satz of liste) {
+          setze.call(f, satz);
+          f.dispatchEvent(new Event("input", { bubbles: true }));
+          f.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+        }
+      }, saetze);
+    // Zwei verschiedene Fragen: Die neue löst die alte ab, Claude wird einmal gefragt, nicht zweimal nebeneinander.
+    claude.drehbuch([{ text: "Traunstein liegt an der Traun." }, { text: "Diese zweite Antwort darf es nicht geben." }]);
+    let vorDoppelt = anGehirn;
+    await sageSchnell(["Wo genau liegt denn eigentlich die Stadt Wasserburg am Inn", "Und wo genau liegt denn eigentlich die Stadt Traunstein"]);
+    assert.equal((await antwort()).text, "Traunstein liegt an der Traun.");
+    await pause(1500);
+    assert.equal(anGehirn - vorDoppelt, 1, "von zwei Fragen in einem Augenblick geht nur die letzte an das KI-Gehirn");
+    assert.equal(claude.anfragen.length, 1);
+    assert.match(JSON.stringify((claude.anfragen[0].messages as unknown[]).at(-1)), /Traunstein/);
+    assert.deepEqual((await verlauf()).slice(-3).map((z) => z.text), ["Wo genau liegt denn eigentlich die Stadt Wasserburg am Inn", "Und wo genau liegt denn eigentlich die Stadt Traunstein", "Traunstein liegt an der Traun."], "beide Fragen stehen im Gespräch, beantwortet ist die letzte");
+    assert.equal(await seite.getByText("Diese zweite Antwort darf es nicht geben.").count(), 0);
+    // Derselbe Satz zweimal (ein doppelter Klick): Er steht einmal da und wird einmal beantwortet.
+    claude.drehbuch([{ text: "Einmal reicht." }, { text: "Diese zweite Antwort darf es nicht geben." }]);
+    vorDoppelt = anGehirn;
+    const zeilenVorher = (await verlauf()).length;
+    await sageSchnell(["Sag mir bitte in einem Satz, ob das hier doppelt ankommt", "Sag mir bitte in einem Satz, ob das hier doppelt ankommt"]);
+    assert.equal((await antwort()).text, "Einmal reicht.");
+    await pause(1500);
+    assert.equal(anGehirn - vorDoppelt, 1, "ein doppelt abgeschickter Satz geht einmal an das KI-Gehirn");
+    assert.equal((await verlauf()).length, zeilenVorher + 2, "und steht einmal im Gespräch");
+    // Ein fester Befehl, gleich danach eine Frage: Der Befehl geht nicht verloren, die Frage wird beantwortet.
+    claude.drehbuch([{ text: "Die Milch ist notiert, und ja, es regnet." }]);
+    await sageSchnell(["Notiere Hafermilch kaufen", "Kannst du mir bitte noch sagen, ob es heute in Rosenheim regnet"]);
+    // (Die Bestätigung des Befehls kommt, sobald die Aufgabe gespeichert ist, also nach der zweiten Frage.)
+    await warte(async () => (await verlauf()).at(-1)?.text === "Die Milch ist notiert, und ja, es regnet.", "die Frage ist beantwortet", 20_000);
+    assert.deepEqual((await verlauf()).slice(-4).map((z) => z.text), ["Notiere Hafermilch kaufen", "Kannst du mir bitte noch sagen, ob es heute in Rosenheim regnet", "Notiert: Hafermilch kaufen.", "Die Milch ist notiert, und ja, es regnet."]);
+    await warte(() => readFileSync(EINGANG, "utf8").includes("Hafermilch kaufen"), "die Aufgabe steht im Tresor");
+    assert.equal(readFileSync(EINGANG, "utf8").split("Hafermilch kaufen").length - 1, 1, "genau einmal");
+    assert.equal(claude.anfragen.length, 1);
+    // Dasselbe, wenn der Befehl länger braucht, als die Frage wartet: Seine Bestätigung kommt mitten ins Nachdenken
+    // des KI-Gehirns. Sie steht dann still im Gespräch und bricht die Antwort auf die Frage nicht ab.
+    claude.drehbuch([{ text: "Nein, in Traunstein bleibt es heute trocken." }]);
+    claude.bedenkzeit(3000);
+    const langsam = async (route: Route) => {
+      if (route.request().method() === "POST") await pause(1200);
+      await route.continue();
+    };
+    await seite.route("**/api/aufgaben", langsam);
+    await sageSchnell(["Notiere Dübel besorgen", "Kannst du mir bitte noch sagen, ob es heute in Traunstein regnet"]);
+    await warte(async () => (await verlauf()).some((z) => z.text === "Notiert: Dübel besorgen."), "der Befehl ist bestätigt", 20_000);
+    assert.equal(await seite.getByText("Nein, in Traunstein bleibt es heute trocken.").count(), 0, "die Bestätigung kam, während das KI-Gehirn noch nachdachte");
+    assert.equal(await zustand.innerText(), "Denke nach …", "und die Seite zeigt weiter, dass JARVIS nachdenkt");
+    await warte(async () => (await verlauf()).some((z) => z.text === "Nein, in Traunstein bleibt es heute trocken."), "die Frage wird trotzdem beantwortet", 20_000);
+    await seite.unroute("**/api/aufgaben", langsam);
+    assert.deepEqual((await verlauf()).slice(-4).map((z) => z.text).sort(), ["Kannst du mir bitte noch sagen, ob es heute in Traunstein regnet", "Nein, in Traunstein bleibt es heute trocken.", "Notiere Dübel besorgen", "Notiert: Dübel besorgen."]);
+    assert.equal(claude.anfragen.length, 1);
+    assert.equal(readFileSync(EINGANG, "utf8").split("Dübel besorgen").length - 1, 1, "genau einmal notiert");
+    schritt("zwei Sätze in einem Augenblick: Die neue Frage löst die alte ab, ein doppelter Satz zählt einmal, ein fester Befehl davor geht nicht verloren");
 
     // Eine Änderung, die das Modell will, geschieht erst nach deinem Ja. Erst Nein, dann Ja.
     const notar = { werkzeug: "termin_eintragen", eingabe: { titel: "Notartermin", datum: addDays(heute, 2), uhrzeit: "10:00", dauer_minuten: 60, ort: "Rosenheim", kalender: "" } };

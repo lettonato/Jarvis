@@ -35,6 +35,12 @@ type OpenMeteo = {
   };
 };
 
+// Das Wetter jetzt in einem kurzen Satz, für den Kopf von „Heute“. Ohne Verbindung zum Wetterdienst liefert
+// getWeather Beispieldaten; die sind kein Wetter und stehen hier nicht.
+export function wetterKurz(w: WeatherSnapshot | null): string {
+  return w && w.source === "live" ? `${Math.round(w.temperature)}\u00a0°C, ${w.description} in ${w.place}.` : "";
+}
+
 // WMO-Wettercodes, wie Open-Meteo sie liefert.
 export function describeWeather(code: number): string {
   if (code === 0) return "klarer Himmel";

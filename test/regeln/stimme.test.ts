@@ -19,7 +19,7 @@ import {
   stuecke,
   tagesLimit,
 } from "../../src/lib/stimme";
-import { stopsSpeech } from "../../src/lib/voiceText";
+import { forSpeech, stopsSpeech } from "../../src/lib/voiceText";
 
 const voll = { apiKey: "sk_abcdefghijklmnopqrstuvwxyz1234", enabled: true, voiceId: "DeutscheStimme00001", voiceName: "Elke", heuteZeichen: 0, notaus: false };
 
@@ -116,6 +116,15 @@ describe("ElevenLabs-Stimme: Texte und Antworten", () => {
     const texte = [0, 401, 402, 404, 422, 429, 500].map(fehlerText);
     assert.equal(new Set(texte).size, texte.length);
     for (const t of texte) assert.match(t, /ElevenLabs/);
+  });
+});
+
+describe("Vorlesen: Zeichen, die eine Stimme nicht sicher liest", () => {
+  test("ein Minuszeichen vor einer Zahl wird als „minus“ gesprochen, damit aus einem Verlust kein Gewinn wird", () => {
+    assert.equal(forSpeech("Ethereum steht bei 3.310,00 €, −0,7 % in 24 Stunden."), "Ethereum steht bei 3.310,00 €, minus 0,7 % in 24 Stunden.");
+    assert.equal(forSpeech("Silber-Fonds SLV: −3,3 % zum Vortag"), "Silber-Fonds SLV: minus 3,3 % zum Vortag");
+    // Ein Bindestrich im Wort und ein Plus bleiben, wie sie sind.
+    assert.equal(forSpeech("Der Silber-Fonds liegt +0,3 % vorn."), "Der Silber-Fonds liegt +0,3 % vorn.");
   });
 });
 

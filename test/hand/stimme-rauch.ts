@@ -146,8 +146,14 @@ async function main() {
     el.fehler([]);
     const limit = await fetch(`${BASIS}/api/einstellungen`, { method: "POST", headers: { ...kopf, "x-jarvis": "1" }, body: JSON.stringify({ action: "elevenlabsPrefs", tagesZeichen: 500 }) });
     assert.equal(limit.status, 200);
-    const voll = await fetch(`${BASIS}/api/stimme`, { method: "POST", headers: { ...kopf, "x-jarvis": "1" }, body: JSON.stringify({ text: "x".repeat(450) }) });
-    assert.ok([200, 429].includes(voll.status));
+    // Wie viel bis hierher gesprochen wurde, hängt von den Antworten ab (etwa von der Länge des Briefings). Die
+    // Prüfung füllt deshalb genau bis zum Limit auf, statt sich darauf zu verlassen, dass es schon überschritten ist.
+    const verbraucht = ((await (await fetch(`${BASIS}/api/stimme`)).json()) as { status: { heuteZeichen: number } }).status.heuteZeichen;
+    console.log(`Bis zum Limit gesprochen: ${verbraucht} Zeichen`);
+    if (verbraucht < 500) {
+      const voll = await fetch(`${BASIS}/api/stimme`, { method: "POST", headers: { ...kopf, "x-jarvis": "1" }, body: JSON.stringify({ text: "x".repeat(500 - verbraucht) }) });
+      assert.equal(voll.status, 200, "was noch ins Limit passt, wird gesprochen");
+    }
     const dann = await fetch(`${BASIS}/api/stimme`, { method: "POST", headers: { ...kopf, "x-jarvis": "1" }, body: JSON.stringify({ text: "y".repeat(450) }) });
     assert.equal(dann.status, 429);
     const lage = await (await fetch(`${BASIS}/api/stimme?liste=1`)).text();

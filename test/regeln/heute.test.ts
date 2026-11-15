@@ -3,15 +3,16 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import type { CalendarEvent, CalendarSnapshot } from "../../src/lib/calendar";
+import { outlookLuecke, type CalendarEvent, type CalendarSnapshot } from "../../src/lib/calendar";
 import { decide, type CommandContext } from "../../src/lib/commands";
 import type { DocsSnapshot } from "../../src/lib/documents";
-import { tageslage, type TagesDaten } from "../../src/lib/heute";
+import { kopfSatz, luecken, tageslage, tagesSatz, wartetLeer, type Luecken, type TagesDaten } from "../../src/lib/heute";
 import type { IntelSnapshot } from "../../src/lib/intel";
 import type { MailItem, MailSnapshot } from "../../src/lib/mail";
 import type { DeskSnapshot } from "../../src/lib/paper";
 import type { ProjektKarte, ProjekteSnapshot } from "../../src/lib/projekte";
 import type { Task, TasksSnapshot } from "../../src/lib/tasks";
+import { wetterKurz, type WeatherSnapshot } from "../../src/lib/weather";
 
 const JETZT = new Date(2026, 10, 13, 10, 0);
 const um = (stunde: number, minute = 0, tag = 13) => new Date(2026, 10, tag, stunde, minute).getTime();
@@ -233,6 +234,121 @@ describe("Tagesübersicht: was auf dich wartet", () => {
   test("dieselben Daten ergeben dieselbe Übersicht", () => {
     const daten: TagesDaten = { ...nichts, calendar: kalender([ereignis("a", "Früh", um(8))]), tasks: aufgaben([aufgabe("heute", "2026-11-13")]), projekte: projekte([projekt("Bald", { naechsteFrist: { text: "X", faellig: "2026-11-14" } })], 1) };
     assert.deepEqual(tageslage(daten, JETZT), tageslage(structuredClone(daten), new Date(JETZT)));
+  });
+});
+
+describe("Tagesübersicht: Was JARVIS gerade nicht weiß, ist nicht „nichts“", () => {
+  const alles: TagesDaten = { ...nichts, calendar: kalender([]), tasks: aufgaben([]), mail: post([]), projekte: projekte([]) };
+  const KEINE: Luecken = { kalender: null, outlook: null, aufgaben: null, post: null, projekte: null };
+  const laedt = (text: string) => ({ art: "laedt" as const, text });
+  const fehlt = (text: string) => ({ art: "fehlt" as const, text });
+  const gestoert = (text: string) => ({ art: "gestoert" as const, text });
+
+  test("ist alles gelesen, gibt es keine Lücke, und ein leerer Tag heißt auch so", () => {
+    assert.deepEqual(luecken(alles), KEINE);
+    assert.equal(kopfSatz(tageslage(alles, JETZT), luecken(alles)), "Heute steht kein Termin an");
+    assert.equal(tagesSatz(tageslage(alles, JETZT), luecken(alles)), "Sonst liegt heute nichts an.");
+    assert.equal(wartetLeer(luecken(alles), true), "Nichts wartet auf dich.");
+  });
+
+  test("solange etwas noch lädt, behauptet die Seite nichts darüber", () => {
+    const l = luecken(nichts);
+    assert.deepEqual(l, { kalender: laedt("Der Kalender lädt noch."), outlook: null, aufgaben: laedt("Die Aufgaben laden noch."), post: laedt("Das Postfach lädt noch."), projekte: laedt("Die Projekte laden noch.") });
+    assert.equal(kopfSatz(tageslage(nichts, JETZT), l), "Der Kalender lädt noch");
+    assert.equal(tagesSatz(tageslage(nichts, JETZT), l), "Der Rest des Tages lädt noch.");
+    assert.equal(wartetLeer(l, true), "Lädt noch, was auf dich wartet.");
+    // Das Übrige, aus dem die Liste entsteht (Freigaben und Not-Aus, Desk, Intel, Dokumente), gehört dazu:
+    // Solange es fehlt, ist „nichts wartet“ nicht sicher.
+    assert.equal(wartetLeer(luecken(alles), false), "Lädt noch, was auf dich wartet.");
+    // Lädt nur noch der Kalender, steht der Rest schon da.
+    const fast = { ...alles, calendar: null, tasks: aufgaben([aufgabe("Bauamt anrufen", "2026-11-13")]) };
+    assert.equal(tagesSatz(tageslage(fast, JETZT), luecken(fast)), "Eine Aufgabe ist heute fällig.");
+  });
+
+  test("Kalender: nicht verbunden, nicht am Mac, nicht erlaubt oder gestört steht da, statt „kein Termin“", () => {
+    const mit = (access: CalendarSnapshot["access"], extra: Partial<CalendarSnapshot> = {}) => ({ ...alles, calendar: { ...kalender([]), access, ...extra } });
+    assert.deepEqual(luecken(mit("offen")).kalender, fehlt("Der Kalender ist noch nicht verbunden."));
+    assert.deepEqual(luecken(mit("kein-mac")).kalender, fehlt("Den Kalender gibt es nur auf dem Mac."));
+    // Ein Fehler geht vorbei; was der Mac dazu meldet, steht nicht in der Übersicht.
+    const fehler = mit("fehler", { error: "osascript: Zeitüberschreitung <b>" });
+    assert.deepEqual(luecken(fehler).kalender, gestoert("Der Kalender lässt sich gerade nicht lesen."));
+    assert.equal(kopfSatz(tageslage(fehler, JETZT), luecken(fehler)), "Der Kalender lässt sich gerade nicht lesen");
+    // Eine fehlende Erlaubnis geht nicht von selbst vorbei: Das steht da, ohne „gerade“.
+    for (const access of ["verweigert", "nur-schreiben"] as const) {
+      assert.deepEqual(luecken(mit(access)).kalender, gestoert("JARVIS darf den Kalender nicht lesen."), access);
+      assert.equal(kopfSatz(tageslage(mit(access), JETZT), luecken(mit(access))), "JARVIS darf den Kalender nicht lesen", access);
+    }
+    // Gibt es einen Termin, steht er im Kopf; dann braucht es dort keinen Satz über Lücken.
+    const voll = { ...alles, calendar: kalender([ereignis("a", "Abnahme", um(14))]) };
+    assert.equal(kopfSatz(tageslage(voll, JETZT), luecken(voll)), "Abnahme");
+    const vorbei = { ...alles, calendar: kalender([ereignis("a", "Frühbesprechung", um(8))]) };
+    assert.equal(kopfSatz(tageslage(vorbei, JETZT), luecken(vorbei)), "Für heute ist kein Termin mehr offen");
+  });
+
+  test("fehlen Outlook-Termine, steht das bei den Terminen, und „kein Termin“ wird nicht behauptet", () => {
+    const mit = (outlook: CalendarSnapshot["outlook"]) => ({ ...alles, calendar: { ...kalender([]), outlook } });
+    const aus = mit({ konto: "b@example.com", extern: false, fehler: "Microsoft antwortet nicht" });
+    assert.equal(luecken(aus).kalender, null);
+    // Derselbe Satz wie im Raum Kalender und im Gespräch.
+    assert.deepEqual(luecken(aus).outlook, gestoert(outlookLuecke(aus.calendar)));
+    assert.equal(kopfSatz(tageslage(aus, JETZT), luecken(aus)), "Die Termine aus Outlook fehlen gerade");
+    // Auch wenn Outlook mehr Termine hat, als JARVIS auf einmal liest, ist „kein Termin“ nicht sicher.
+    const zuViele = mit({ konto: "b@example.com", extern: false, unvollstaendig: true });
+    assert.deepEqual(luecken(zuViele).outlook, gestoert("Aus Outlook fehlen gerade Termine: Es sind mehr, als ich auf einmal lese."));
+    assert.doesNotMatch(kopfSatz(tageslage(zuViele, JETZT), luecken(zuViele)), /kein Termin/);
+    // Ohne Lücke bei Outlook steht auch keine da.
+    assert.equal(luecken(mit({ konto: "b@example.com", extern: false })).outlook, null);
+  });
+
+  test("Aufgaben und Post: nicht verbunden, unlesbar oder ausgefallen", () => {
+    const ohne = { ...alles, tasks: { configured: false, tasks: [], doneToday: 0 } as TasksSnapshot, mail: { configured: false } as MailSnapshot };
+    assert.deepEqual(luecken(ohne).aufgaben, fehlt("Obsidian ist noch nicht verbunden."));
+    assert.deepEqual(luecken(ohne).post, fehlt("Das Postfach ist noch nicht verbunden."));
+    assert.equal(tagesSatz(tageslage(ohne, JETZT), luecken(ohne)), "Aufgaben und Post sind noch nicht verbunden.");
+    assert.equal(wartetLeer(luecken(ohne), true), "Nichts wartet auf dich.", "was nicht verbunden ist, kann auch nicht warten");
+
+    const kaputt = { ...alles, tasks: { ...aufgaben([]), error: "EACCES" } as TasksSnapshot, mail: { ...post([]), error: "Der Mail-Server antwortet nicht." } };
+    assert.deepEqual(luecken(kaputt).aufgaben, gestoert("Der Obsidian-Tresor lässt sich gerade nicht lesen."));
+    assert.deepEqual(luecken(kaputt).post, gestoert("Das Postfach antwortet nicht."));
+    assert.equal(tagesSatz(tageslage(kaputt, JETZT), luecken(kaputt)), "Die Aufgaben lassen sich gerade nicht lesen, das Postfach antwortet nicht.");
+    // Es zählt die Art der Lücke, nicht ihr Wortlaut.
+    assert.equal(wartetLeer({ ...KEINE, post: gestoert("Anders gesagt.") }, true), "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.");
+    assert.equal(wartetLeer({ ...KEINE, aufgaben: gestoert("Anders gesagt.") }, true), "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.");
+    assert.equal(wartetLeer({ ...KEINE, projekte: laedt("Anders gesagt.") }, true), "Lädt noch, was auf dich wartet.");
+    assert.equal(wartetLeer({ ...KEINE, kalender: gestoert("Der Kalender lässt sich gerade nicht lesen.") }, true), "Nichts wartet auf dich.", "Termine stehen nicht unter „Wartet auf dich“");
+    assert.equal(tagesSatz(tageslage(alles, JETZT), { ...KEINE, post: gestoert("Anders gesagt.") }), "Das Postfach antwortet nicht.");
+    assert.equal(tagesSatz(tageslage(alles, JETZT), { ...KEINE, aufgaben: laedt("Anders gesagt.") }), "Der Rest des Tages lädt noch.");
+
+    // Nur das Postfach fehlt: Was bekannt ist, steht da, die Lücke dahinter.
+    const halb = { ...alles, tasks: aufgaben([aufgabe("Bauamt anrufen", "2026-11-13")]), mail: { ...post([]), error: "x" } };
+    assert.equal(tagesSatz(tageslage(halb, JETZT), luecken(halb)), "Eine Aufgabe ist heute fällig, das Postfach antwortet nicht.");
+  });
+
+  test("der Satz zum Tag zählt wie bisher, wenn alles da ist", () => {
+    const d = { ...alles, tasks: aufgaben([aufgabe("A", "2026-11-13"), aufgabe("B", "2026-11-13"), aufgabe("C", "2026-11-10")]), mail: post([mailItem(1, "Angebot"), mailItem(2, "Abnahme")]) };
+    assert.equal(tagesSatz(tageslage(d, JETZT), luecken(d)), "2 Aufgaben sind heute fällig, eine ist überfällig, 2 wichtige Mails sind neu.");
+  });
+});
+
+describe("Wetter: Beispieldaten sind kein Wetter", () => {
+  const wetter = (source: WeatherSnapshot["source"]): WeatherSnapshot => ({ source, place: "Deggendorf", temperature: 11.4, feelsLike: 9, humidity: 78, windKmh: 14, description: "teils bewölkt", days: [] });
+  const ctx: CommandContext = { name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null, calendar: null, intel: null, now: JETZT, session: null };
+
+  test("echtes Wetter steht in einem kurzen Satz da", () => {
+    assert.equal(wetterKurz(wetter("live")), "11\u00a0°C, teils bewölkt in Deggendorf.");
+    assert.match(decide("Briefing", { ...ctx, weather: wetter("live") }, false)?.reply ?? "", /^Guten Morgen, Benedikt\. Draußen hat es 11 Grad, teils bewölkt\. /);
+  });
+
+  test("ohne Verbindung zum Wetterdienst steht kein erfundenes Wetter da, weder in „Heute“ noch im Briefing", () => {
+    assert.equal(wetterKurz(wetter("demo")), "");
+    assert.equal(wetterKurz(null), "");
+    const briefing = decide("Briefing", { ...ctx, weather: wetter("demo") }, false)?.reply ?? "";
+    assert.match(briefing, /^Guten Morgen, Benedikt\. /);
+    assert.doesNotMatch(briefing, /Draußen hat es|11 Grad/);
+  });
+
+  test("wer ausdrücklich nach dem Wetter fragt, erfährt, dass es Beispieldaten sind", () => {
+    assert.match(decide("Wetter", { ...ctx, weather: wetter("demo") }, false)?.reply ?? "", /Achtung, das sind Beispieldaten, ich habe gerade keine Verbindung\.$/);
   });
 });
 

@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 100 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T und U und die Punkte M11 bis M13 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 110 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U und V und die Punkte M11 bis M13 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -297,6 +297,20 @@ Wenn du das nicht möchtest, lass U1 bis U3 aus. U4 bis U6 kosten nichts.
 | U4 | Raum „Post“ öffnen und eine Mail anklicken, die du noch nicht gelesen hast | Der Text der Mail steht da, ohne Signatur. In deinem Mailprogramm ist die Mail danach **weiterhin ungelesen** |
 | U5 | Im Raum „Post“ auf „Mit JARVIS durchgehen“ klicken (den Knopf gibt es nur mit neuen wichtigen Mails). Auf die Frage „vorlesen“ antworten, danach „gelesen“ | JARVIS liest die Mail einmal vor. Auf „gelesen“ sagt er „Als gelesen markiert.“ und geht zur nächsten; in deinem Mailprogramm ist genau diese Mail jetzt gelesen |
 | U6 | WLAN am Mac ausschalten, im Raum „Post“ auf „Neu laden“ klicken, danach das WLAN wieder einschalten und noch einmal „Neu laden“ | Ohne WLAN: ein Satz wie „Der Mail-Server antwortet nicht. Ist das Internet da?“ und darunter „Was im Postfach liegt, weiß JARVIS gerade nicht.“, **nicht** „Keine wichtigen Mails“. Mit WLAN stehen die Mails wieder da |
+
+## V. „Heute“ und Kleinigkeiten (Schritt J9, neu)
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| V1 | JARVIS beenden, neu starten und sofort den Raum „Heute“ ansehen, an einem Tag mit Terminen | In den ersten Sekunden steht unter „Heute“ höchstens „Der Kalender lädt noch“, nie „Heute steht kein Termin an“. Danach erscheint dein nächster oder laufender Termin. Schreib mir bitte, wie lange das Laden etwa dauert |
+| V2 | WLAN am Mac ausschalten, die Seite neu laden (⌘R), „Heute“ ansehen und „Briefing“ eintippen. Danach WLAN wieder an und noch einmal neu laden | Ohne WLAN: Oben in „Heute“ steht kein Wetter, und das Briefing nennt keines (vorher: erfundene 11 Grad). Mit WLAN steht das echte Wetter wieder da |
+| V3 | Noch ohne WLAN: Raum „Post“, „Neu laden“, dann zurück zu „Heute“ | In „Heute“ steht bei Post „Das Postfach antwortet nicht.“, und der Satz unter dem Termin endet mit „…, das Postfach antwortet nicht.“ Es stehen keine Mails von vorhin da |
+| V4 | Während ein Termin läuft, den Raum „Kalender“ öffnen | Oben bei „Auf einen Blick“ steht „Läuft seit“ mit der Uhrzeit des Beginns, nicht „Als Nächstes“ |
+| V5 | Raum „Post“: die mittlere Zahl mit deinem Mailprogramm vergleichen | „Ungelesen im ganzen Posteingang“ ist dieselbe Zahl, die dein Mailprogramm am Posteingang zeigt |
+| V6 | Eine Frage eintippen und zweimal sehr schnell hintereinander die Eingabetaste drücken; danach zwei verschiedene kurze Fragen so schnell wie möglich nacheinander abschicken | Die doppelte Frage steht einmal im Gespräch und wird einmal beantwortet. Von den zwei verschiedenen wird die letzte beantwortet (wenn du schneller warst als etwa eine Drittelsekunde; sonst bricht die zweite die erste ab) |
+| V7 | Kurz nacheinander abschicken: „Notiere Testeintrag“ und gleich danach eine längere Frage (zum Beispiel „Was weißt du über den Watzmann und seine Geschichte“) | „Notiert: Testeintrag.“ steht im Gespräch, wird aber nicht gesprochen. „Denke nach …“ bleibt stehen, bis die Antwort auf die Frage kommt, und die Antwort wird ganz gesprochen. Den Testeintrag danach im Raum Aufgaben wieder löschen |
+| V8 | Nur wenn du magst: Systemeinstellungen → Datenschutz & Sicherheit → Kalender, dort dem Terminal den Zugriff nehmen; JARVIS neu starten und „Heute“ ansehen. Danach den Zugriff wieder geben | Unter „Heute“ und an der Scheibe „Termine heute“ steht „JARVIS darf den Kalender nicht lesen“, nicht „kein Termin“. Nach dem Zurückgeben stehen die Termine wieder da |
+| V9 | Wenn ein Kurs im Minus steht: „Marktübersicht“ sagen oder eintippen, mit eingeschalteter Stimme | Die Stimme sagt „minus“ vor der Zahl. Schreib mir bitte, falls sie es doppelt sagt oder weglässt |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

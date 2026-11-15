@@ -3,6 +3,7 @@
 // unverschlüsselt über das Netz geht. Kein echtes Postfach wird berührt.
 
 import assert from "node:assert/strict";
+import net from "node:net";
 import { after, before, beforeEach, describe, test } from "node:test";
 import { starteClaudeMock, werkzeugErgebnisse, type ClaudeMock } from "../mocks/claude-mock";
 import { beispielPost, MOCK_POST_ADRESSE, MOCK_POST_PASSWORT, starteImapMock, type ImapMock } from "../mocks/imap-mock";
@@ -164,6 +165,39 @@ describe("Post: wenn etwas nicht klappt", () => {
   test("Server nicht erreichbar: verständlicher Satz statt Fehlercode", async () => {
     const snap = await post.readMail(fach({ port: 9 }), { force: true });
     assert.match(snap.error ?? "", /antwortet nicht/);
+  });
+
+  test("ist ein Abruf gescheitert, taucht der alte Stand nicht wieder auf", async () => {
+    assert.ok((await frisch()).items.length > 0);
+    // Das Postfach fällt aus; „Neu laden“ merkt es.
+    assert.match((await post.readMail(fach({ port: 9 }), { force: true })).error ?? "", /antwortet nicht/);
+    // Die nächste gewöhnliche Abfrage (eine andere Seite, das Briefing) darf nicht wieder die Mails von vorhin zeigen.
+    const danach = await post.readMail(fach({ port: 9 }));
+    assert.match(danach.error ?? "", /antwortet nicht/);
+    assert.deepEqual(danach.items, []);
+    // Geht es wieder, steht der Posteingang wieder da.
+    const wieder = await post.readMail(fach());
+    assert.equal(wieder.error, undefined);
+    assert.ok(wieder.items.length > 0);
+  });
+
+  test("scheitert ein alter Abruf erst, nachdem ein neuerer gelungen ist, bleibt der neue Stand stehen", async () => {
+    // Ein Server, der die Verbindung annimmt und nach einem Augenblick wortlos schließt (ein hängendes Netz).
+    const lahm = net.createServer((s) => void setTimeout(() => s.destroy(), 600));
+    await new Promise<void>((r) => lahm.listen(0, "127.0.0.1", r));
+    try {
+      const alt = post.readMail(fach({ port: (lahm.address() as net.AddressInfo).port }), { force: true });
+      const neu = await frisch();
+      assert.ok(neu.items.length > 0);
+      assert.match((await alt).error ?? "", /./, "der alte Abruf ist gescheitert");
+      const vorher = mock.verbindungen();
+      const danach = await post.readMail(fach());
+      assert.equal(danach.error, undefined);
+      assert.deepEqual(danach.items.map((m) => m.uid), neu.items.map((m) => m.uid));
+      assert.equal(mock.verbindungen(), vorher, "der gelungene Stand gilt weiter, das Postfach wird nicht noch einmal gefragt");
+    } finally {
+      await new Promise((r) => lahm.close(r));
+    }
   });
 
   test("Postfach prüfen meldet die Zahl der ungelesenen Mails", async () => {

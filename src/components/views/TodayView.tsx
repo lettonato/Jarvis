@@ -8,13 +8,14 @@ import { Abschnitt, PageHeader, Panel } from "../ui";
 import { clock } from "@/lib/calendar";
 import { spokenDue } from "@/lib/dates";
 import { ZUSTAND_LABEL, type AgentenSnapshot } from "@/lib/agenten";
-import { formatPct } from "@/lib/format";
-import { tageslage, type Tageslage } from "@/lib/heute";
-import { marktlage, ohnePunkt } from "@/lib/marktlage";
+import { formatPct, ohnePunkt } from "@/lib/format";
+import { kopfSatz, luecken, mehrzahl, tageslage, tagesSatz, terminImKopf, wartetLeer } from "@/lib/heute";
+import { marktlage } from "@/lib/marktlage";
 import { MOOD_LABEL } from "@/lib/intel";
 import type { SicherheitsLage } from "@/lib/sicherheit";
-import { dateOf, TRESOR_UNLESBAR } from "@/lib/tasks";
+import { dateOf } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
+import { wetterKurz } from "@/lib/weather";
 import { usePolling } from "@/lib/usePolling";
 
 // Heute: der Eingangsraum. An der Wand steht groß, was als Nächstes kommt, darunter, was auf dich wartet, und
@@ -24,22 +25,6 @@ import { usePolling } from "@/lib/usePolling";
 const DATUM = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 
 const leer = "text-[0.95rem] text-quiet";
-const mehrzahl = (n: number, eins: string, viele: string) => (n === 1 ? eins : `${n} ${viele}`);
-
-// Der Satz unter dem großen Wort: der Rest des Tages in Zahlen, aus denselben Daten wie die Listen darunter.
-function tagesSatz(heute: Tageslage, wichtigePost: number): string {
-  const teile: string[] = [];
-  const ueberfaellig = heute.aufgaben.ueberfaellig.length;
-  const faellig = heute.aufgaben.heute.length;
-  if (faellig) teile.push(`${mehrzahl(faellig, "Eine Aufgabe ist", "Aufgaben sind")} heute fällig`);
-  if (ueberfaellig) teile.push(`${mehrzahl(ueberfaellig, "eine ist", "sind")} überfällig`);
-  if (wichtigePost) teile.push(mehrzahl(wichtigePost, "eine wichtige Mail ist neu", "wichtige Mails sind neu"));
-  // Unlesbare Aufgaben sind unbekannt, nicht „nichts“.
-  if (heute.aufgabenUnlesbar) teile.push("die Aufgaben lassen sich gerade nicht lesen");
-  if (!teile.length) return "Sonst liegt heute nichts an.";
-  const satz = teile.join(", ");
-  return `${satz[0].toUpperCase()}${satz.slice(1)}.`;
-}
 
 function Liste({ titel, href, zahl, children }: { titel: string; href: string; zahl?: string; children: ReactNode }) {
   return (
@@ -63,6 +48,8 @@ export function TodayView() {
   const { data: agenten } = usePolling<AgentenSnapshot>("/api/agenten", 15_000);
   if (!now) return <main className="text-quiet">Lade den Tag …</main>;
 
+  // Was noch lädt, nicht verbunden ist oder gerade nicht antwortet: Dazu behauptet der Raum nichts (heute.ts).
+  const fehlt = luecken({ calendar, tasks, mail, projekte });
   const heute = tageslage({ calendar, tasks, mail, projekte, desk, intel, documents, freigabenOffen: sicherheit?.freigaben.filter((f) => f.zustand === "offen").length ?? 0, notaus: sicherheit?.zustand.notaus.an ?? false }, now);
   const stunde = now.getHours();
   const gruss = stunde < 11 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend";
@@ -71,12 +58,14 @@ export function TodayView() {
   // Lücken in den Daten zeigt der Raum Intel. Beispielkurse und veraltete Kurse heißen aber auch hier so.
   const maerkte = marktlage({ market, metalle, desk, intel });
   const auffaellig = maerkte.auffaellig.filter((a) => a.art !== "warnung" && a.art !== "daten");
-  const wichtigePost = mail?.configured && !mail.error ? mail.importantUnread : 0;
-  const wetter = weather ? ` ${Math.round(weather.temperature)}\u00a0°C, ${weather.description} in ${weather.place}.` : "";
+  const wichtigePost = heute.postNeu;
+  const kurz = wetterKurz(weather);
+  const wetter = kurz ? ` ${kurz}` : "";
 
   // Das große Wort: läuft gerade ein Termin, steht er dort; sonst die Uhrzeit des nächsten; sonst der Tag selbst.
-  const laeuft = heute.termine.find((t) => t.laeuft && !t.ganztags);
-  const dran = laeuft ?? heute.naechster;
+  const imKopf = terminImKopf(heute);
+  const dran = imKopf?.termin ?? null;
+  const laeuft = Boolean(imKopf?.laeuft);
   const zeile = dran ? `${DATUM.format(now)}. ${laeuft ? "Läuft gerade, seit:" : "Als Nächstes:"}` : `${gruss}, ${name}. ${DATUM.format(now)}.${wetter}`;
   const faellig = [...heute.aufgaben.ueberfaellig, ...heute.aufgaben.heute];
 
@@ -86,7 +75,7 @@ export function TodayView() {
         title="Heute"
         subtitle={zeile}
         gross={dran ? clock(dran.start) : undefined}
-        satz={dran ? dran.titel : heute.termine.length ? "Für heute ist kein Termin mehr offen" : "Heute steht kein Termin an"}
+        satz={kopfSatz(heute, fehlt)}
       />
       <div className="-mt-4 max-w-[36rem] text-[1.05rem] leading-relaxed text-stein">
         {dran?.ort && <p>{dran.ort}</p>}
@@ -100,7 +89,7 @@ export function TodayView() {
           </p>
         ))}
         <p>
-          {tagesSatz(heute, wichtigePost)}
+          {tagesSatz(heute, fehlt)}
           {dran ? wetter : ""}
         </p>
       </div>
@@ -108,7 +97,7 @@ export function TodayView() {
       <Panel glow={heute.brauchtDich.some((h) => h.dringend)}>
         <Abschnitt>Wartet auf dich</Abschnitt>
         {heute.brauchtDich.length === 0 ? (
-          <p className={`mt-2 ${leer}`}>Nichts wartet auf dich.</p>
+          <p className={`mt-2 ${leer}`}>{wartetLeer(fehlt, Boolean(sicherheit && desk && intel && documents))}</p>
         ) : (
           <ul className="mt-1">
             {heute.brauchtDich.map((h, i) => (
@@ -126,10 +115,8 @@ export function TodayView() {
 
       <div className="grid gap-x-8 gap-y-8 xl:grid-cols-3">
         <Liste titel="Aufgaben" href="/aufgaben" zahl={faellig.length ? mehrzahl(faellig.length, "Eine fällig", "fällig") : undefined}>
-          {tasks && !tasks.configured ? (
-            <p className={leer}>Obsidian ist noch nicht verbunden.</p>
-          ) : heute.aufgabenUnlesbar ? (
-            <p className="text-[0.95rem] text-down">{TRESOR_UNLESBAR}</p>
+          {fehlt.aufgaben ? (
+            <p className={fehlt.aufgaben.art === "gestoert" ? "text-[0.95rem] text-down" : leer}>{fehlt.aufgaben.text}</p>
           ) : faellig.length === 0 ? (
             <p className={leer}>Heute ist nichts fällig.</p>
           ) : (
@@ -146,10 +133,8 @@ export function TodayView() {
         </Liste>
 
         <Liste titel="Post" href="/post" zahl={wichtigePost ? mehrzahl(wichtigePost, "Eine wichtige", "wichtige") : undefined}>
-          {mail && !mail.configured ? (
-            <p className={leer}>Das Postfach ist noch nicht verbunden.</p>
-          ) : mail?.error ? (
-            <p className="text-[0.95rem] text-down">Das Postfach antwortet nicht.</p>
+          {fehlt.post ? (
+            <p className={fehlt.post.art === "gestoert" ? "text-[0.95rem] text-down" : leer}>{fehlt.post.text}</p>
           ) : heute.post.length === 0 ? (
             <p className={leer}>Keine neuen wichtigen Mails.</p>
           ) : (
@@ -165,7 +150,9 @@ export function TodayView() {
         </Liste>
 
         <Liste titel="Projekte" href="/projekte" zahl={projekte ? `${projekte.projekte.filter((p) => p.status === "aktiv").length} aktiv` : undefined}>
-          {projekte && projekte.projekte.length === 0 ? (
+          {fehlt.projekte ? (
+            <p className={leer}>{fehlt.projekte.text}</p>
+          ) : projekte && projekte.projekte.length === 0 ? (
             <p className={leer}>Noch kein Projekt angelegt.</p>
           ) : heute.projekte.length === 0 ? (
             <p className={leer}>In den nächsten drei Tagen ist in keinem Projekt etwas fällig.</p>
@@ -184,10 +171,10 @@ export function TodayView() {
 
       <Scheiben>
         <Scheibe titel="Termine heute" href="/kalender">
-          {calendar && calendar.access !== "ok" ? (
-            <p className="text-[0.95rem] opacity-80">{calendar.access === "kein-mac" ? "Den Kalender gibt es nur auf dem Mac." : "Der Kalender ist noch nicht verbunden."}</p>
+          {fehlt.kalender ? (
+            <p className="text-[0.95rem] opacity-80">{fehlt.kalender.text}</p>
           ) : heute.termine.length === 0 ? (
-            <p className="text-[0.95rem] opacity-80">Kein Termin.</p>
+            <p className="text-[0.95rem] opacity-80">{fehlt.outlook ? "Im Kalender am Mac steht kein Termin." : "Kein Termin."}</p>
           ) : (
             <ul>
               {heute.termine.slice(0, 6).map((t) => (
@@ -197,6 +184,7 @@ export function TodayView() {
               ))}
             </ul>
           )}
+          {fehlt.outlook && <p className="mt-2 text-sm opacity-75">{fehlt.outlook.text}</p>}
           {heute.termineMorgen > 0 && <p className="mt-2 text-sm opacity-75">Morgen: {mehrzahl(heute.termineMorgen, "ein Termin", "Termine")}</p>}
         </Scheibe>
 

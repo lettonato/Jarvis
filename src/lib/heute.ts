@@ -1,6 +1,7 @@
-import { eventsOn, type CalendarEvent, type CalendarSnapshot } from "./calendar";
+import { eventsOn, outlookLuecke, type CalendarEvent, type CalendarSnapshot } from "./calendar";
 import { addDays, isoDate } from "./dates";
 import type { DocsSnapshot } from "./documents";
+import { ohnePunkt } from "./format";
 import type { IntelSnapshot } from "./intel";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
@@ -42,6 +43,8 @@ export type Tageslage = {
   aufgabenUnlesbar: boolean;
   projekte: ProjektHinweis[];
   post: MailItem[];
+  // Wie viele neue wichtige Mails es sind (post zeigt höchstens fünf davon).
+  postNeu: number;
 };
 
 export type TagesDaten = {
@@ -57,7 +60,7 @@ export type TagesDaten = {
   notaus: boolean;
 };
 
-const mehrzahl = (n: number, eins: string, viele: string) => `${n === 1 ? eins : `${n} ${viele}`}`;
+export const mehrzahl = (n: number, eins: string, viele: string) => `${n === 1 ? eins : `${n} ${viele}`}`;
 
 function termin(e: CalendarEvent, jetzt: number, projekte: ProjektKarte[]): TagesTermin {
   return {
@@ -164,5 +167,88 @@ export function tageslage(d: TagesDaten, now: Date): Tageslage {
     aufgabenUnlesbar: aufgabenUnlesbar(d.tasks),
     projekte: projektHinweise,
     post: post.slice(0, 5),
+    postNeu: post.length,
   };
+}
+
+// ---------- Was JARVIS gerade nicht weiß ----------
+
+// Eine Quelle, die noch lädt, nicht verbunden ist oder gerade nicht antwortet, ist unbekannt, nicht leer. Die
+// Übersicht sagt dann das, statt „kein Termin“, „nichts fällig“ oder „nichts wartet“ zu behaupten.
+// art: laedt (gleich ist es da), fehlt (nicht eingerichtet; dort kann auch nichts warten), gestoert (eingerichtet,
+// aber nicht lesbar). Was die Seite daraus folgert, hängt an der Art, nicht am Wortlaut.
+export type Luecke = { art: "laedt" | "fehlt" | "gestoert"; text: string };
+// Je Quelle, warum sie gerade fehlt, oder null, wenn sie gelesen ist.
+export type Luecken = { kalender: Luecke | null; outlook: Luecke | null; aufgaben: Luecke | null; post: Luecke | null; projekte: Luecke | null };
+
+const laedt = (text: string): Luecke => ({ art: "laedt", text });
+const fehlt = (text: string): Luecke => ({ art: "fehlt", text });
+const gestoert = (text: string): Luecke => ({ art: "gestoert", text });
+
+function kalenderLuecke(k: CalendarSnapshot | null): Luecke | null {
+  if (!k) return laedt("Der Kalender lädt noch.");
+  if (k.access === "ok") return null;
+  if (k.access === "offen") return fehlt("Der Kalender ist noch nicht verbunden.");
+  if (k.access === "kein-mac") return fehlt("Den Kalender gibt es nur auf dem Mac.");
+  // Eine fehlende Erlaubnis geht nicht von selbst vorbei; wie sie zu geben ist, steht im Raum Kalender.
+  if (k.access === "verweigert" || k.access === "nur-schreiben") return gestoert("JARVIS darf den Kalender nicht lesen.");
+  return gestoert("Der Kalender lässt sich gerade nicht lesen.");
+}
+
+export function luecken(d: Pick<TagesDaten, "calendar" | "tasks" | "mail" | "projekte">): Luecken {
+  const k = d.calendar;
+  // Outlook: derselbe Satz wie im Raum Kalender und im Gespräch, auch wenn nur ein Teil der Termine fehlt.
+  const outlook = k?.access === "ok" ? outlookLuecke(k) : "";
+  return {
+    kalender: kalenderLuecke(k),
+    outlook: outlook ? gestoert(outlook) : null,
+    aufgaben: !d.tasks ? laedt("Die Aufgaben laden noch.") : !d.tasks.configured ? fehlt("Obsidian ist noch nicht verbunden.") : aufgabenUnlesbar(d.tasks) ? gestoert(TRESOR_UNLESBAR) : null,
+    post: !d.mail ? laedt("Das Postfach lädt noch.") : !d.mail.configured ? fehlt("Das Postfach ist noch nicht verbunden.") : d.mail.error ? gestoert("Das Postfach antwortet nicht.") : null,
+    projekte: !d.projekte ? laedt("Die Projekte laden noch.") : null,
+  };
+}
+
+// Der Termin, der im Kopf der Übersicht steht: der laufende, sonst der nächste.
+export function terminImKopf(lage: Tageslage): { termin: TagesTermin; laeuft: boolean } | null {
+  const laeuft = lage.termine.find((t) => t.laeuft && !t.ganztags);
+  const termin = laeuft ?? lage.naechster;
+  return termin ? { termin, laeuft: Boolean(laeuft) } : null;
+}
+
+// Der Satz unter der großen Uhrzeit: der Termin; ohne Termin, was über den Kalender bekannt ist.
+export function kopfSatz(lage: Tageslage, l: Luecken): string {
+  const dran = terminImKopf(lage);
+  if (dran) return dran.termin.titel;
+  const luecke = l.kalender ?? l.outlook;
+  if (luecke) return ohnePunkt(luecke.text);
+  return lage.termine.length ? "Für heute ist kein Termin mehr offen" : "Heute steht kein Termin an";
+}
+
+// Der Rest des Tages in einem Satz, aus denselben Daten wie die Listen darunter.
+export function tagesSatz(lage: Tageslage, l: Luecken): string {
+  const teile: string[] = [];
+  const ueberfaellig = lage.aufgaben.ueberfaellig.length;
+  const faellig = lage.aufgaben.heute.length;
+  if (faellig) teile.push(`${mehrzahl(faellig, "Eine Aufgabe ist", "Aufgaben sind")} heute fällig`);
+  if (ueberfaellig) teile.push(`${mehrzahl(ueberfaellig, "eine ist", "sind")} überfällig`);
+  if (lage.postNeu) teile.push(mehrzahl(lage.postNeu, "eine wichtige Mail ist neu", "wichtige Mails sind neu"));
+  if (l.aufgaben?.art === "gestoert") teile.push("die Aufgaben lassen sich gerade nicht lesen");
+  if (l.post?.art === "gestoert") teile.push("das Postfach antwortet nicht");
+  if (teile.length) {
+    const satz = teile.join(", ");
+    return `${satz[0].toUpperCase()}${satz.slice(1)}.`;
+  }
+  if (l.aufgaben?.art === "laedt" || l.post?.art === "laedt") return "Der Rest des Tages lädt noch.";
+  if (l.aufgaben?.art === "fehlt" && l.post?.art === "fehlt") return "Aufgaben und Post sind noch nicht verbunden.";
+  return "Sonst liegt heute nichts an.";
+}
+
+// Was unter „Wartet auf dich“ steht, wenn die Liste leer ist. restDa: Auch das Übrige, aus dem die Liste
+// entsteht, ist gelesen (Freigaben und Not-Aus, Spielgeld-Desk, Intel, Dokumente). Termine stehen dort nicht,
+// der Kalender zählt hier also nicht.
+export function wartetLeer(l: Luecken, restDa: boolean): string {
+  const quellen = [l.aufgaben, l.post, l.projekte];
+  if (!restDa || quellen.some((q) => q?.art === "laedt")) return "Lädt noch, was auf dich wartet.";
+  if (quellen.some((q) => q?.art === "gestoert")) return "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.";
+  return "Nichts wartet auf dich.";
 }

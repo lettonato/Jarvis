@@ -26,6 +26,8 @@ const lies = () => {
 if (args[0] === "-l") {
   const modus = args[4];
   const stand = lies();
+  // „wartezeit_ms“ stellt einen Mac nach, der sich mit dem Kalender Zeit lässt (am echten dauert es oft Sekunden).
+  if (stand.wartezeit_ms > 0) await new Promise((r) => setTimeout(r, stand.wartezeit_ms));
   if (stand.zugriff !== "ok") {
     process.stdout.write(JSON.stringify({ zugriff: stand.zugriff, kalender: [], events: [] }));
     process.exit(0);

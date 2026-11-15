@@ -106,6 +106,7 @@ export async function readMail(config: MailConfig | undefined, { force = false }
   if (!config) return { configured: false, ...empty };
   const key = `${config.user}@${config.host}`;
   if (!force && cache && cache.key === key && Date.now() - cache.at < CACHE_MS) return cache.data;
+  const vorher = cache;
   try {
     const data = await withInbox(config, async (c) => {
       const status = await c.status("INBOX", { unseen: true });
@@ -132,6 +133,10 @@ export async function readMail(config: MailConfig | undefined, { force = false }
     cache = { key, at: Date.now(), data };
     return data;
   } catch (e) {
+    // Der gemerkte Stand von vorhin gilt nicht mehr: Sonst zeigte die nächste gewöhnliche Abfrage (eine andere
+    // Seite, das Briefing) noch eine Minute lang Mails, obwohl JARVIS schon weiß, dass das Postfach nicht antwortet.
+    // Ist inzwischen ein neuerer Abruf gelungen, bleibt dessen Stand stehen.
+    if (cache === vorher && cache?.key === key) cache = null;
     return { configured: true, account: config.user, ...empty, error: explainMailError(e) };
   }
 }

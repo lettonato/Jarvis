@@ -158,8 +158,8 @@ async function main() {
     const wichtig = raum.locator("section").filter({ has: seite.getByRole("heading", { name: /^Wichtig/ }) });
     const newsletter = raum.locator("section").filter({ has: seite.locator("summary") });
     const reihen = async (bereich = wichtig) => bereich.locator("ul > li").evaluateAll((li) => li.map((e) => (e.querySelector("button") as HTMLElement).innerText.split("\n").map((t) => t.trim()).filter(Boolean)));
-    // „Ungelesen gesamt“ zählt den ganzen Posteingang, also auch die ungelesene Mail von vor drei Wochen.
-    assert.deepEqual(await blick(), { "Neue wichtige": "2", "Ungelesen gesamt": "6", "Newsletter und Co.": "3" });
+    // Die mittlere Zahl zählt den ganzen Posteingang, also auch die ungelesene Mail von vor drei Wochen; so heißt sie auch.
+    assert.deepEqual(await blick(), { "Neue wichtige": "2", "Ungelesen im ganzen Posteingang": "6", "Newsletter und Co.": "3" });
     assert.deepEqual(await reihen(), [
       ["Petra Bauer", uhr(2), "Angebot für den Stahlbau"],
       ['<img src=x onerror="window.__eingeschleust=1">', uhr(3), "Dringend <b>fett</b>"],
@@ -205,7 +205,7 @@ async function main() {
     // ---------- „Gelesen“ trifft genau diese eine Mail ----------
     await zeile("Dringend").getByRole("button", { name: "Gelesen" }).click();
     await warte(async () => (await blick())["Neue wichtige"] === "1", "die Zahlen stimmen sofort");
-    assert.deepEqual(await blick(), { "Neue wichtige": "1", "Ungelesen gesamt": "5", "Newsletter und Co.": "3" });
+    assert.deepEqual(await blick(), { "Neue wichtige": "1", "Ungelesen im ganzen Posteingang": "5", "Newsletter und Co.": "3" });
     assert.deepEqual(gesetzt(), ["UID STORE 108 +FLAGS (\\Seen)"]);
     assert.deepEqual(imap.mails.filter((m) => m.gelesen).map((m) => m.uid).sort(), [104, 106, 108]);
     assert.equal(await raum.getByText("Dringend").count(), 0, "gelesen und nicht markiert: Die Mail steht nicht mehr in der Liste");
@@ -233,7 +233,7 @@ async function main() {
     await raum.getByRole("button", { name: "Neu laden" }).click();
     await zeile("Termin für die Abnahme").waitFor();
     assert.deepEqual((await reihen()).map((r) => r[0]), ["Sabine Köhler", "Petra Bauer", "Jürgen Müller"]);
-    assert.deepEqual(await blick(), { "Neue wichtige": "2", "Ungelesen gesamt": "6", "Newsletter und Co.": "3" });
+    assert.deepEqual(await blick(), { "Neue wichtige": "2", "Ungelesen im ganzen Posteingang": "6", "Newsletter und Co.": "3" });
     schritt("„Neu laden“ holt eine neue Mail sofort");
 
     // ---------- Mit JARVIS durchgehen ----------

@@ -101,13 +101,15 @@ function Summary({ calendar, now, today }: { calendar: CalendarSnapshot; now: Da
   let week = 0;
   for (let i = 0; i < 7; i++) week += eventsOn(calendar.events, addDays(today, i)).length;
   const next = nextEvent(calendar.events, now.getTime());
+  // Hat der nächste Termin schon angefangen, steht da nicht „Als Nächstes 11:30“, wenn es halb eins ist.
+  const laeuft = Boolean(next && next.start <= now.getTime());
   return (
     <Scheiben>
       <Scheibe titel="Auf einen Blick">
         <ul>
           <ScheibenZeile wert={rest.length}>Heute noch</ScheibenZeile>
           <ScheibenZeile wert={week}>Nächste 7 Tage</ScheibenZeile>
-          <ScheibenZeile wert={next ? clock(next.start) : "–"}>Als Nächstes</ScheibenZeile>
+          <ScheibenZeile wert={next ? clock(next.start) : "–"}>{laeuft ? "Läuft seit" : "Als Nächstes"}</ScheibenZeile>
         </ul>
         <p className="mt-1.5 text-sm leading-snug opacity-80">{next ? `${shortDue(isoDate(new Date(next.start)), today)}: ${next.title}` : "Nichts geplant."}</p>
       </Scheibe>

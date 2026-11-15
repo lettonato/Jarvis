@@ -153,7 +153,7 @@ async function main() {
 
     // Die nächsten zwei Wochen: heute mit vergangenem, laufendem und kommendem Termin, freie Tage als „frei“.
     await seite.getByText("3 Kalender aus der Kalender-App auf deinem Mac").waitFor();
-    assert.deepEqual(await blick(), { "Heute noch": "2", "Nächste 7 Tage": "5", "Als Nächstes": "11:30" });
+    assert.deepEqual(await blick(), { "Heute noch": "2", "Nächste 7 Tage": "5", "Läuft seit": "11:30" });
     await scheibe.getByText("heute: Baustellentermin Halle").waitFor();
     // („läuft“ ist ein Schildchen direkt hinter dem Titel, deshalb ohne Leerzeichen.)
     assert.deepEqual(await zeilen(0), ["08:00–09:00 Frühbesprechung Arbeit", "11:30–13:30 Baustellentermin Halleläuft Rosenheim Arbeit", "16:00–17:00 Steuerberater Privat"]);

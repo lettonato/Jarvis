@@ -7,6 +7,7 @@ import { useJarvis } from "../JarvisProvider";
 import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { BASE_TOPICS, budgetHinweis, MAX_TOPICS, MOOD_LABEL, themaDazu, TYPICAL_INTEL_COST_USD, type IntelItem, type IntelReport, type IntelSnapshot } from "@/lib/intel";
+import { alsSatz } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 
 // Intel: das Lagebild aus Nachrichten und X, das Grok für dich liest. Oben die Lage und eine Warnung an
@@ -88,7 +89,7 @@ export function IntelView() {
 
       {error && <Notice tone="error">{error}</Notice>}
       {zuWenig && !intel?.running && <Notice>{zuWenig}</Notice>}
-      {intel?.error && !intel.running && <Notice tone="error">Letzter Versuch: {intel.error}</Notice>}
+      {intel?.error && !intel.running && <Notice tone="error">Letzter Versuch: {alsSatz(intel.error)}</Notice>}
       {intel?.running && <Running running={intel.running} now={now} />}
 
       {intel?.configured && report && (

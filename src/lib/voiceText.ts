@@ -45,6 +45,8 @@ export function forSpeech(text: string): string {
     .replace(/\$(?=[A-Za-z])/g, "")
     .replace(/\s*[·•|]\s*/g, ", ")
     .replace(/\s*(→|->)\s*/g, ", dann ")
+    // Ein Minuszeichen vor einer Zahl ausschreiben: Liest eine Stimme es nicht mit, wird aus einem Verlust ein Gewinn.
+    .replace(/−(?=\d)/g, "minus ")
     .replace(/\p{Extended_Pictographic}\uFE0F?/gu, "")
     .replace(/\s+/g, " ")
     .trim();

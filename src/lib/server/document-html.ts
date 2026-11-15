@@ -1,5 +1,6 @@
 import type { DocChart, DocSection, DocTable, Dokument } from "../documents";
 import { hostLabel, safeUrl } from "../documents";
+import { anzahl } from "../format";
 
 // Setzt ein Dokument des Analysten als Seite zum Drucken: A4, hell, ruhig, wie ein Bericht einer Bank.
 // Aus derselben Seite macht Chrome das PDF. Alles, was von Claude kommt, wird hier zu reinem Text; Links
@@ -283,7 +284,7 @@ export function renderDocument(doc: Dokument, meta: RenderMeta): string {
 <p class="eyebrow">JARVIS · Analyse</p>
 <h1>${esc(doc.titel)}</h1>
 ${doc.untertitel ? `<p class="subtitle">${esc(doc.untertitel)}</p>` : ""}
-<p class="meta">${esc(date)} · ${doc.abschnitte.length} Abschnitte · ${sources} Quellen · recherchiert im Web mit Claude</p>
+<p class="meta">${esc(date)} · ${anzahl(doc.abschnitte.length, "Abschnitt", "Abschnitte")} · ${anzahl(sources, "Quelle", "Quellen")} · recherchiert im Web mit Claude</p>
 </header>
 <aside class="summary"><h2>Das Wichtigste in Kürze</h2><ul>${doc.kernaussagen.map((k) => `<li>${inline(k, sources)}</li>`).join("")}</ul></aside>
 ${toc}

@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import type { AvatarState } from "@/lib/avatar";
 import { ApiError, getJson, postJson, postStream } from "@/lib/api";
+import { alsSatz } from "@/lib/format";
 import { fahrtArten } from "@/lib/raeume";
 import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type MemoryStand, type Source } from "@/lib/brain";
 import { erinnerungsSatz, fuerGespraech, type CalendarSnapshot } from "@/lib/calendar";
@@ -329,28 +330,34 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     [speak, listen],
   );
 
+  // still: Der Befehl wurde von einem neueren Satz überholt (siehe handle). Er wird ausgeführt und steht im
+  // Gespräch, aber er spricht nicht, hört nicht zu und nimmt „Denke nach …“ nicht weg: Das alles gehört schon
+  // dem neueren Satz, und wer jetzt spräche, bräche dessen Antwort ab.
   const execute = useCallback(
-    async (d: Decision) => {
+    async (d: Decision, still = false) => {
+      const sag = (text: string) => {
+        if (!still) speakThenMaybeListen(text);
+      };
       let said = "";
       if (d.effect) {
         try {
           said = (await run(d.effect)) ?? "";
         } catch (e) {
-          setThinking(false);
+          if (!still) setThinking(false);
           const message = e instanceof Error ? e.message : String(e);
           addTurn("jarvis", message);
-          speakThenMaybeListen(message);
+          sag(message);
           return;
         }
       }
-      setThinking(false);
+      if (!still) setThinking(false);
       if (d.session !== undefined) setSession(d.session);
       if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: fahrtArten(place.current, d.navigate) });
       const first = [d.reply, said].filter(Boolean).join(" ");
       // Der vorgelesene Text einer Mail stammt immer von Dritten.
       if (first) addTurn("jarvis", first, said && d.effect?.type === "readMail" ? { fremd: true } : {});
       if (d.after) addTurn("jarvis", d.after);
-      speakThenMaybeListen([first, d.after].filter(Boolean).join(" "));
+      sag([first, d.after].filter(Boolean).join(" "));
     },
     [run, addTurn, setSession, router, speakThenMaybeListen],
   );
@@ -485,12 +492,24 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     [context, addTurn, updateTurn, speakStream, listen, router, setSession, setTasks, setMail, setDesk, setCalendar, setIntel, setMemoryData, setDocuments, setProjekte],
   );
 
-  // Sätze, die abgeschickt, aber noch nicht in Arbeit sind.
-  const pending = useRef(new Set<ReturnType<typeof setTimeout>>());
+  // Sätze, die abgeschickt, aber noch nicht in Arbeit sind: die Uhr, die sie startet, und der Satz dazu.
+  const pending = useRef(new Map<ReturnType<typeof setTimeout>, string>());
   const handle = useCallback(
     (text: string, fromVoice: boolean) => {
       const clean = text.trim();
       if (!clean) return;
+      // Kommt ein Satz, während der davor noch wartet (ein doppelter Klick, zwei Sätze der Spracheingabe):
+      // Derselbe Satz noch einmal zählt nicht. Sonst geht der wartende nicht verloren und nicht doppelt los: Ein
+      // fester Befehl wird jetzt gleich ausgeführt (still: Er steht im Gespräch, gesprochen wird die Antwort auf den
+      // neuen Satz), eine Frage an das KI-Gehirn entfällt, die neue löst sie ab.
+      const wartende = [...pending.current];
+      if (wartende.some(([, satz]) => satz === clean)) return;
+      pending.current.clear();
+      for (const [uhr, satz] of wartende) {
+        clearTimeout(uhr);
+        const vorher = decide(satz, context(), brain.current);
+        if (vorher) void execute(vorher, true);
+      }
       byVoice.current = fromVoice;
       // Eine neue Frage beendet die alte Antwort.
       brainAbort.current?.abort();
@@ -508,7 +527,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         if (decision) execute(decision);
         else askBrain(clean, earlier);
       }, 350);
-      pending.current.add(wartet);
+      pending.current.set(wartet, clean);
     },
     [addTurn, execute, context, askBrain],
   );
@@ -530,7 +549,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const stop = useCallback(() => {
     // Auch was gerade erst abgeschickt wurde und noch nicht unterwegs ist: Es geht nicht mehr los.
     if (pending.current.size) {
-      pending.current.forEach(clearTimeout);
+      for (const uhr of pending.current.keys()) clearTimeout(uhr);
       pending.current.clear();
       setThinking(false);
     }
@@ -605,7 +624,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     announce.current = null;
     const result = asked.focus ? intel.search : intel.report;
     const done = result && Date.parse(result.at) >= Date.parse(asked.since) - 1000;
-    const text = done ? (asked.focus ? searchSentence(result) : intelSentence(intel, new Date())) : `Das hat nicht geklappt. ${intel.error ?? "Grok hat nicht geantwortet."}`;
+    const text = done ? (asked.focus ? searchSentence(result) : intelSentence(intel, new Date())) : `Das hat nicht geklappt. ${alsSatz(intel.error ?? "Grok hat nicht geantwortet.")}`;
     addTurn("jarvis", text);
     speak(text);
   }, [intel, addTurn, speak]);

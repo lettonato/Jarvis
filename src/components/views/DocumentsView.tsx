@@ -5,6 +5,7 @@ import { useJarvis } from "../JarvisProvider";
 import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { DOC_LIMITS, PHASE_LABEL, PHASE_SHORT, plainPoint, type DocJob, type DocsSnapshot } from "@/lib/documents";
+import { anzahl } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 
 // Dokumente: Oben, was der Analyst gerade schreibt (mit Abbrechen), darunter ein Auftrag von Hand und
@@ -217,7 +218,7 @@ function Item({ job, now, onAction }: { job: DocJob; now: Date | null; onAction:
       {job.state === "fertig" && (
         <>
           <p className="mt-0.5 text-xs text-quiet">
-            {job.sections} Abschnitte · {job.sources} Quellen · {job.searches} Suchen · {job.pdf ? "PDF" : "Webseite"}
+            {anzahl(job.sections, "Abschnitt", "Abschnitte")} · {anzahl(job.sources, "Quelle", "Quellen")} · {anzahl(job.searches, "Suche", "Suchen")} · {job.pdf ? "PDF" : "Webseite"}
           </p>
           {job.points.length > 0 && (
             <ul className="mt-2 space-y-1 text-sm text-schiefer/85">

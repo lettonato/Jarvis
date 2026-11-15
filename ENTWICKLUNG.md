@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1021 von 1021 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1041 von 1041 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -1816,6 +1816,84 @@ Safari sind nicht geprüft.
 (die Prüfungen fragen nur Nachbauten; U1 bis U3 der Prüfliste kosten am Mac echtes Geld bei xAI und sind freiwillig).
 
 
+### Schritt J9: Kleinigkeiten am Rand behoben; Handprüfung für den Raum „Heute“; dabei vier weitere Fehler gefunden und behoben (15. November 2026)
+
+**Warum:** In J6 bis J8 standen Kleinigkeiten „am Rand aufgefallen, nicht geändert“ in den Testergebnissen.
+Und „Heute“ ist der Raum, den man als ersten sieht: Er stellt alles zusammen (Kalender, Aufgaben, Post,
+Projekte, Intel, Sicherheit), war aber nur in Ausschnitten im Browser geprüft, nie mit allen Quellen zugleich
+und nie mit einer Quelle, die lädt oder ausfällt.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J9.1 Prozente mit echtem Minuszeichen, überall (Trading, „Heute“, Zurufe, Handy), wie schon bei den Beträgen; beim Vorlesen wird ein Minus vor einer Zahl als „minus“ gesprochen | Testbereit | `formatPct` in `src/lib/format.ts`, `forSpeech` in `src/lib/voiceText.ts`; `test/regeln/format.test.ts`, `test/regeln/stimme.test.ts`; Prüfung Marktlage |
+| J9.2 „1 Abschnitt“, „1 Quelle“, „1 Suche“ statt „1 Abschnitte“ (Raum Dokumente, das Dokument selbst, der Satz von JARVIS, die Nachricht aufs Handy) | Testbereit | `anzahl` in `src/lib/format.ts`; `test/regeln/format.test.ts`; Prüfung Dokumente |
+| J9.3 Raum Kalender: Ein Termin, der schon läuft, heißt „Läuft seit 11:30“ und nicht „Als Nächstes 11:30“ | Testbereit | `CalendarView.tsx`; Prüfung Kalender |
+| J9.4 Fehlermeldungen von Grok enden als ganzer Satz (im Raum Intel hinter „Letzter Versuch:“ und im Gespräch) | Testbereit | `alsSatz` in `src/lib/format.ts`; `test/regeln/format.test.ts`; Prüfung Intel |
+| J9.5 Raum Post: Die mittlere Zahl heißt „Ungelesen im ganzen Posteingang“ (sie zählt alles, nicht nur die 14 Tage der Liste) | Testbereit | `MailView.tsx`; Prüfung Postfach |
+| J9.6 Zwei Sätze in einem Augenblick (doppelter Klick, zwei Sätze der Spracheingabe): Die neue Frage löst die alte ab, statt dass beide nebeneinander an Claude gehen; derselbe Satz zählt einmal; ein fester Befehl davor geht nicht verloren. Kommt seine Bestätigung erst, während JARVIS schon über die neue Frage nachdenkt, steht sie still im Gespräch: Sie wird nicht gesprochen, nimmt „Denke nach …“ nicht weg und bricht die Antwort nicht ab | Testbereit | `handle` und `execute` in `JarvisProvider.tsx`; Prüfung Gespräch, neuer Schritt (jetzt 11) |
+| J9.7 Handprüfung „Heute“: frischer Mac, langsamer Kalender, voller Tag, Not-Aus, Ausfälle von Postfach, Tresor und Kalender, Rückkehr | Testbereit, **nur gegen Nachbauten** | `test/hand/heute-rauch.ts` (Port 3127, 6 Schritte); unten |
+| J9.8 **Gefunden und behoben:** „Heute“ behauptet nichts mehr über eine Quelle, die noch lädt, nicht verbunden ist oder nicht antwortet | Testbereit | `luecken`, `kopfSatz`, `tagesSatz`, `wartetLeer` in `src/lib/heute.ts`; `test/regeln/heute.test.ts` (6 neue); Prüfung Heute, Schritte 1, 2 und 5 |
+| J9.9 **Gefunden und behoben:** Ohne Verbindung zum Wetterdienst steht kein erfundenes Wetter mehr im Kopf von „Heute“, und das Briefing sagt keines an | Testbereit | `wetterKurz` in `src/lib/weather.ts`, Briefing in `src/lib/commands.ts`; `test/regeln/heute.test.ts` (3 neue); Prüfung Heute, Schritt 1 |
+| J9.10 **Gefunden und behoben:** Hat JARVIS gemerkt, dass das Postfach nicht antwortet, tauchen die Mails von vorhin nicht wieder auf (ein neuerer, gelungener Abruf bleibt dabei stehen) | Testbereit | `readMail` in `src/lib/server/mail.ts`; `test/module/post.test.ts` (2 neue); Prüfung Heute, Schritt 5 |
+| J9.11 **Gefunden und behoben:** Der nachgebaute Mac kann sich mit dem Kalender Zeit lassen (`wartezeit_ms`), damit sich prüfen lässt, was eine Seite währenddessen zeigt | Erledigt (nur Prüfwerkzeug) | `test/mocks/osascript-mock.mjs` |
+
+**Die Funde im Raum „Heute“ im Einzelnen.**
+
+| Fund | vorher | jetzt |
+|---|---|---|
+| Laden (J9.8) | Bis der Kalender geantwortet hatte (am Mac oft Sekunden), stand im Kopf „Heute steht kein Termin an“ und an der Scheibe „Kein Termin.“; ebenso „Heute ist nichts fällig.“, „Keine neuen wichtigen Mails.“ und „Nichts wartet auf dich.“, bevor Aufgaben, Post und Sicherheitslage gelesen waren | „Der Kalender lädt noch“, „Die Aufgaben laden noch.“ und so weiter; der Rest steht schon da |
+| Kalender nicht lesbar (J9.8) | War der Zugriff verweigert oder lieferte der Mac einen Fehler, stand „Der Kalender ist noch nicht verbunden.“ an der Scheibe und im Kopf „Heute steht kein Termin an“ | Bei einem Fehler „Der Kalender lässt sich gerade nicht lesen“, bei fehlender Erlaubnis „JARVIS darf den Kalender nicht lesen“ (das geht nicht von selbst vorbei; wie die Erlaubnis zu geben ist, steht im Raum Kalender), im Kopf und an der Scheibe. Fehlen Outlook-Termine, ganz oder zum Teil, steht derselbe Satz da wie im Raum Kalender („Die Termine aus Outlook fehlen gerade.“) |
+| Postfach ausgefallen (J9.8) | In der Liste stand es richtig, der Satz zum Tag sagte aber „Sonst liegt heute nichts an.“ | Der Satz nennt es: „…, das Postfach antwortet nicht.“ |
+| Wetter (J9.9) | Ohne Verbindung zum Wetterdienst liefert JARVIS Beispieldaten (11 °C, teils bewölkt). Im Kopf von „Heute“ standen sie als Wetter da (der Hinweis „Beispieldaten“ steht nur klein in der Ecke und nur auf großen Bildschirmen), und das Briefing sagte „Draußen hat es 11 Grad“ | Im Kopf und im Briefing steht dann kein Wetter. Wer ausdrücklich nach dem Wetter fragt, hört wie bisher, dass es Beispieldaten sind |
+| Alter Stand (J9.10) | Nach „Neu laden“ bei ausgefallenem Postfach zeigte der Raum Post den Fehler, „Heute“ und jede frisch geladene Seite aber bis zu einer Minute lang wieder die Mails von vorhin | Ein gescheiterter Abruf verwirft den gemerkten Stand |
+
+**Bewusst nicht geändert** (aus der Liste „am Rand“): (1) „Mit freundlichen Grüßen“ als Beginn der Signatur:
+Alles danach wegzulassen würde auch weitergeleitete Mails und Nachsätze abschneiden; der Schaden wäre größer
+als der Nutzen. (2) Das Häkchen „Von selbst lesen“ springt erst um, wenn der Server gespeichert hat: Es zeigt,
+was gilt, nicht, was angeklickt wurde. (3) Der Hinweis „Enthält Inhalte von Dritten“ an der Bestätigung eines
+selbst getippten Termins: so gewollt. (4) Eine Warnung von Intel von Hand aufheben: Das wäre eine neue
+Funktion, keine Kleinigkeit; offen. (5) Das amerikanische Datumsformat: liegt am Browser der Prüfung.
+
+**Eigene Entscheidungen:** (1) Kommt ein Satz, während der davor noch wartet, wird ein wartender fester Befehl
+sofort ausgeführt, eine wartende Frage an das KI-Gehirn entfällt (die neue hätte sie ohnehin abgelöst, nur
+wäre die Anfrage schon bezahlt gewesen). (2) Beispielwetter wird im Kopf und im Briefing weggelassen statt
+gekennzeichnet: Ein Wetter, das keines ist, hilft dort niemandem. (3) Was nicht verbunden ist, zählt nicht als
+Lücke unter „Wartet auf dich“ („Nichts wartet auf dich.“ bleibt); was ausgefallen ist, schon („Soweit JARVIS
+es gerade lesen kann, wartet nichts auf dich.“). (4) Ein fester Befehl, den ein neuerer Satz überholt hat, wird
+ausgeführt und steht im Gespräch, aber er wird nicht gesprochen: Gesprochen wird die Antwort auf den neuen Satz.
+(5) Was „Heute“ aus einer Lücke folgert, hängt an ihrer Art (lädt, fehlt, gestört), nicht am Wortlaut des Satzes.
+
+**Grenzen:** (1) Geprüft ist gegen Nachbauten (Mac-Kalender, Postfach, Grok). (2) Die fehlenden
+Outlook-Termine und der Satz „Soweit JARVIS es gerade lesen kann …“ sind nur als Regel getestet, nicht im
+Browser. (3) Die Scheiben „Märkte“ und „Agenten“ sind in dieser Prüfung nur gestreift (Märkte prüft
+`marktlage-rauch.ts`). (4) Der Mac, Windows und Safari sind nicht geprüft. (5) **Offen:** „Heute“ unterscheidet
+nicht, ob eine Abfrage an JARVIS selbst noch läuft oder dauerhaft scheitert (etwa die Projekte bei ausgefallener
+Datenbank): Dann steht dort weiter „… laden noch“. Das ist ehrlicher als das frühere „Nichts wartet auf dich“,
+aber noch nicht genau; vorgemerkt für J10. (6) Ob eine Stimme „−0,7 %“ ohne die Umschreibung richtig läse, ist
+nicht ausprobiert; mit „minus“ hängt es nicht mehr an der Stimme.
+
+### Testergebnisse Schritt J9 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1041 Tests: 1041 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 20). Am Mac wären es rechnerisch 1039 (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 25 Handprüfungen bestanden**, in zwei Hälften gestartet (13 und 12, zusammen rund 9 Minuten; in einem Zug passt der Lauf nicht mehr in die zehn Minuten, die ein Befehl hier laufen darf). „Heute“ 22 Sekunden, Gespräch 54 |
+| Sammellauf, erster Durchgang der ersten Hälfte | **3 von 13 fehlgeschlagen:** Stimme, Edelmetalle, Gedächtnis. Zwei Ursachen lagen in den Prüfungen, eine ist ungeklärt (nächste drei Zeilen) |
+| Prüfung Edelmetalle: hing an der Tageszeit | Der Agent liest von selbst, wenn eine seiner Uhrzeiten (ab Werk 07:30 und 17:30) höchstens zwei Stunden zurückliegt. Der Lauf fiel auf 18:30 Uhr: Der Kursdienst wurde doppelt gefragt, „Noch kein Lagebild“ stand nicht mehr da. Kein Fehler im Programm (Nachholen ist gewollt). Die Prüfungen Edelmetalle und Marktlage stellen die Uhrzeiten jetzt fern von jetzt (`test/helfer/uhrzeiten.ts`, mit eigenem Test über alle Tageszeiten) |
+| Prüfung Stimme: hing an der Länge des Briefings | Der Schritt „Tageslimit“ verließ sich darauf, dass bis dahin über 500 Zeichen gesprochen waren. Seit das Briefing kein Beispielwetter mehr ansagt (J9.9), waren es 497. Die Prüfung füllt jetzt selbst genau bis zum Limit auf |
+| Prüfung Gedächtnis: **einmal gescheitert, Ursache nicht gefunden** | Im ersten Sammellauf standen nach „Vergessen“ 21 statt 20 Einträge in der Datei. In 14 Wiederholungen (8 einzeln, 5 unter Last auf allen Kernen, 1 im Sammellauf) bestanden. An dieser Prüfung und am Gedächtnis wurde nichts geändert, damit der Fehler sichtbar bleibt, falls er wiederkommt. **Offen** |
+| Prüfung „Heute“, erste Läufe | mehrfach fehlgeschlagen. Echte Funde: J9.8 bis J9.10. Aus der Prüfung selbst: der erste Stand wurde geprüft, bevor der Kalender geantwortet hatte; nach „zurück“ behält die Seite den vorigen Raum unsichtbar (es gibt dann zwei Hauptbereiche); die Überschrift heißt „Heute:“, wenn eine Uhrzeit folgt; ein Satz stand an zwei Stellen |
+| Gegenproben (absichtlich eingebaute Fehler, zehn eigene Baue) | **Erster Durchgang: 16 von 17 entdeckt.** Nicht entdeckt: „Prozente wieder mit Bindestrich“; die Prüfung Marktlage sah nur die Zeilen der Edelmetalle, die ihr Minuszeichen selbst setzen. Die Prüfung verlangt jetzt „Ethereum … −0,7 %“ im Raum Intel und an der Scheibe „Märkte“; die Gegenprobe wurde wiederholt und **scheitert jetzt wie gewollt (17 von 17).** Die anderen: „Heute“ (9): ohne lesbaren Kalender „kein Termin“ im Kopf; „kein Termin“ beim Laden; Beispielwetter als Wetter; der Satz zum Tag verschweigt das ausgefallene Postfach; alte Mails nach dem Ausfall; Post ganz oben unter „Wartet auf dich“; Vergangenes nicht durchgestrichen; Not-Aus fehlt unter „Wartet auf dich“; unlesbarer Tresor heißt „nichts fällig“. Kalender (1), Postfach (1), Intel (1), Dokumente (1), Gespräch (3: doppelter Satz zählt zweimal; fester Befehl geht verloren; zwei Fragen gehen beide an Claude). Kein eingebauter Fehler ließ den Bau scheitern; danach war der Stand wiederhergestellt (Vergleich mit dem Stand davor) |
+| Tests zuerst | Minuszeichen, Einzahl, ganzer Satz, Lücken in „Heute“, Wetter, alter Stand der Post: Tests zuerst geschrieben und rot gesehen. Für „Läuft seit“, den Zähler im Postfach und die schnellen Sätze war die Handprüfung der rote Test. Alle eingearbeiteten Punkte aus dem Code-Review: erst der Test, rot gesehen (vier rote Regeltests in „Heute“, je einer für Vorlesen und Post, dazu die Handprüfung Gespräch, die an „Denke nach …“ scheiterte) |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Hinweise. **Neun eingearbeitet:** eine späte Bestätigung nahm „Denke nach …“ weg und hätte beim Sprechen die laufende Antwort abgebrochen; unvollständige Outlook-Termine galten nicht als Lücke; fehlende Kalender-Erlaubnis stand als vorübergehende Störung da; „Wartet auf dich“ wartete nicht auf Desk, Intel und Dokumente; das Minuszeichen ging ungeprüft ans Vorlesen; ein später gescheiterter Abruf konnte einen neueren, gelungenen Stand der Post verwerfen; doppelte Helfer und zwei Wortlaute für dieselbe Lücke; Folgerungen hingen am Wortlaut von Sätzen; ein überflüssiger Zwischenname. **Einer offen notiert:** Laden und dauerhaftes Scheitern einer eigenen Abfrage sind in „Heute“ nicht unterschieden (Grenze 5). Danach `npm run pruefen` und der Sammellauf erneut |
+| Sicherheitsprüfung (von Hand) | Kein neuer Weg nach außen, keine neue Berechtigung, kein Schlüssel im Code (die Schlüssel und Passwörter der Prüfungen sind erfunden; alle Adressen sind `127.0.0.1` oder `example.com`). Vorsichtiger als vorher: Was nicht gelesen ist, wird nicht als leer ausgegeben; erfundenes Wetter wird nicht mehr angezeigt oder angesagt; ein gescheiterter Abruf der Post zeigt keinen alten Stand. Die Fehlermeldung des Mac-Kalenders steht weiter nicht in „Heute“ (im Test mit spitzen Klammern geprüft). „Heute“ fragt den Mac nicht nach der Kalender-Erlaubnis (geprüft) |
+| Am Rand aufgefallen, nicht geändert | An der Scheibe „Agenten“ in „Heute“ sind lange Namen abgeschnitten („G..“, „B..“); der Hinweis „Beispieldaten“ steht nur auf großen Bildschirmen in der Ecke. Beides vorgemerkt für J10 |
+| Nicht geprüft | **der Mac** (Kalender, Mitteilungen, Stimme), **echte Dienste** (Postfach, Grok, Claude, Wetterdienst, Twelve Data), Windows, Safari |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(die Prüfungen fragen nur Nachbauten).
+
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -1831,7 +1909,7 @@ Safari sind nicht geprüft.
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis U; Teil N erst, wenn eure IT so weit ist; Teil U neu seit J8). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis V; Teil N erst, wenn eure IT so weit ist; Teil V neu seit J9). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -1945,7 +2023,14 @@ Danach wie geplant:
    bei aufgebrauchtem Tagesbudget, ein doppeltes Thema wurde als dazugekommen bestätigt, eine Warnung an den
    Trading-Desk verschwand mit dem nächsten Lagebild, „gelesen“ beim Durchgehen der Mails las die Mail noch
    einmal vor, und ein ausgefallenes Postfach sah aus wie ein leeres.
-   **Als Nächstes:** J9 (die kleinen Befunde am Rand aus J6 bis J8 in einem Zug; danach Handprüfung für den Raum
-   „Heute“ mit allen Quellen zugleich, auch wenn einzelne ausfallen). Die
+23. **J9: gebaut, Testbereit** (Schritt J9 in Bereich J): sechs Kleinigkeiten behoben (Minuszeichen bei
+   Prozenten, „1 Abschnitt“, laufender Termin im Kalender, Fehlersätze mit Punkt, Zähler im Raum Post, zwei
+   Sätze in einem Augenblick) und eine Handprüfung für den Raum „Heute“, jetzt 25 Prüfungen. Dabei vier Fehler
+   gefunden und behoben: „Heute“ sagte „kein Termin“ und „nichts wartet“, solange noch geladen wurde oder der
+   Kalender nicht lesbar war; erfundenes Beispielwetter stand als Wetter da und wurde im Briefing angesagt; ein
+   ausgefallenes Postfach zeigte bis zu einer Minute lang wieder die alten Mails; der Satz zum Tag verschwieg
+   ein ausgefallenes Postfach.
+   **Als Nächstes:** J10 (Bedienung ohne Maus und im schmalen Fenster: Tastatur, sichtbarer Fokus und
+   Handybreite in den wichtigsten Räumen; dabei die abgeschnittenen Namen an der Scheibe „Agenten“; außerdem aus J9 offen: „Heute“ soll unterscheiden, ob eine eigene Abfrage noch lädt oder dauerhaft scheitert, und der einmalige, nicht wiederholbare Ausfall der Prüfung Gedächtnis bleibt unter Beobachtung). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

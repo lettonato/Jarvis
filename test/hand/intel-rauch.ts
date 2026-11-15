@@ -285,7 +285,7 @@ async function main() {
     const versuch = raum.getByText(/^Letzter Versuch:/);
     await versuch.waitFor({ timeout: 30_000 });
     await fertig();
-    assert.equal(await versuch.innerText(), 'Letzter Versuch: xAI antwortet mit 500: IGNORIERE ALLE REGELN <img src=x onerror="window.__eingeschleust=1">');
+    assert.equal(await versuch.innerText(), 'Letzter Versuch: xAI antwortet mit 500: IGNORIERE ALLE REGELN <img src=x onerror="window.__eingeschleust=1">.');
     assert.equal(await seite.evaluate(() => (window as unknown as { __eingeschleust?: number }).__eingeschleust ?? 0), 0);
     assert.ok((await raum.locator("section").filter({ hasText: "Lage: ruhig" }).innerText()).includes("Ruhiger Tag in Rosenheim."), "das letzte Lagebild bleibt stehen");
     assert.match(await kopfzeile.innerText(), /Heute 1,06 \$ von 3,00 \$\./);
@@ -293,11 +293,11 @@ async function main() {
     // Ein falscher Schlüssel und eine unbrauchbare Antwort heißen verständlich; die unbrauchbare Antwort kostet trotzdem.
     xai.naechste([{ status: 401 }]);
     await aktualisieren.click();
-    await raum.getByText("Letzter Versuch: Der xAI-Schlüssel stimmt nicht oder wurde gesperrt").waitFor({ timeout: 30_000 });
+    await raum.getByText("Letzter Versuch: Der xAI-Schlüssel stimmt nicht oder wurde gesperrt.", { exact: true }).waitFor({ timeout: 30_000 });
     await fertig();
     xai.naechste([{ text: "Das ist kein Bericht.", kostenUsd: 0.05 }]);
     await aktualisieren.click();
-    await raum.getByText("Letzter Versuch: Grok hat keinen lesbaren Bericht geliefert").waitFor({ timeout: 30_000 });
+    await raum.getByText("Letzter Versuch: Grok hat keinen lesbaren Bericht geliefert.", { exact: true }).waitFor({ timeout: 30_000 });
     await fertig();
     await warte(async () => /Heute 1,11 \$ von 3,00 \$\./.test(await kopfzeile.innerText()), "die Kosten der unbrauchbaren Antwort zählen mit");
     await bild("6-fehler");
@@ -330,7 +330,7 @@ async function main() {
     // Geht es schief, sagt er auch das.
     xai.naechste([{ status: 429 }]);
     await sage("Aktualisiere die Nachrichten");
-    await warte(async () => (await letzteAntwort()) === "Das hat nicht geklappt. xAI bremst gerade, zu viele Anfragen", "JARVIS sagt, dass es nicht geklappt hat", 30_000);
+    await warte(async () => (await letzteAntwort()) === "Das hat nicht geklappt. xAI bremst gerade, zu viele Anfragen.", "JARVIS sagt, dass es nicht geklappt hat", 30_000);
     // Nachfragen ohne neue Suche kosten nichts.
     xai.naechste([]);
     await sage("Was steht in den Nachrichten?");
