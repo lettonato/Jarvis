@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 110 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U und V und die Punkte M11 bis M13 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 120 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V und W und die Punkte M11 bis M13 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -311,6 +311,22 @@ Wenn du das nicht möchtest, lass U1 bis U3 aus. U4 bis U6 kosten nichts.
 | V7 | Kurz nacheinander abschicken: „Notiere Testeintrag“ und gleich danach eine längere Frage (zum Beispiel „Was weißt du über den Watzmann und seine Geschichte“) | „Notiert: Testeintrag.“ steht im Gespräch, wird aber nicht gesprochen. „Denke nach …“ bleibt stehen, bis die Antwort auf die Frage kommt, und die Antwort wird ganz gesprochen. Den Testeintrag danach im Raum Aufgaben wieder löschen |
 | V8 | Nur wenn du magst: Systemeinstellungen → Datenschutz & Sicherheit → Kalender, dort dem Terminal den Zugriff nehmen; JARVIS neu starten und „Heute“ ansehen. Danach den Zugriff wieder geben | Unter „Heute“ und an der Scheibe „Termine heute“ steht „JARVIS darf den Kalender nicht lesen“, nicht „kein Termin“. Nach dem Zurückgeben stehen die Termine wieder da |
 | V9 | Wenn ein Kurs im Minus steht: „Marktübersicht“ sagen oder eintippen, mit eingeschalteter Stimme | Die Stimme sagt „minus“ vor der Zahl. Schreib mir bitte, falls sie es doppelt sagt oder weglässt |
+
+## W. Ohne Maus und im schmalen Fenster (Schritt J10, neu)
+
+In Safari markiert die Tab-Taste ab Werk nur Felder. Für diesen Teil entweder Chrome nehmen oder einmal
+einschalten: Systemeinstellungen → Tastatur → „Tastaturnavigation“.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| W1 | Raum „Aufgaben“ (mit mehr Aufgaben, als auf den Bildschirm passen): die Maus weglegen und mit der Tab-Taste durch die ganze Seite gehen | Was markiert ist, hat einen blaugrünen Rand und ist immer zu sehen; nichts verschwindet hinter der Leiste unten. Am Ende kommst du zu den Räumen und ins Feld für JARVIS; beim Feld steht der Rand um den ganzen dunklen Rahmen (ein Rand, nicht zwei ineinander) |
+| W2 | Raum „Agenten“: mit der Tab-Taste auf „Feste Grenzen“ gehen und die Leertaste drücken | Die Grenzen klappen auf. Das Mikrofon geht dabei nicht an |
+| W3 | Mit der Tab-Taste auf „Mehr“ in der Leiste, Eingabetaste, dann Pfeil nach unten und nach oben, dann Escape | Das Menü geht auf, die Pfeile wandern durch die Räume, Escape schließt es, und „Mehr“ ist wieder markiert |
+| W4 | Das Fenster von JARVIS so schmal ziehen, wie es geht, und einen Satz tippen | Im Feld ist Platz zum Tippen, kein Raum lässt sich seitlich verschieben. Der Name „JARVIS“ fehlt dann in der Leiste; alle Räume stehen unter „Räume“ |
+| W5 | Im schmalen Fenster die Zeile über der Leiste mit der Tab-Taste ansteuern, Eingabetaste, dann Escape | Das Gespräch klappt auf und heißt „Gespräch“ (nicht „G“); Escape klappt es wieder zu |
+| W6 | Raum „Heute“ in voller Breite ansehen, am besten an einem Tag mit mehreren Terminen | An den drei Scheiben rechts ist kein Name abgeschnitten. Bei den Terminen steht die Uhrzeit vorn, der Name läuft dahinter weiter und unter ihr durch. Sind es so viele, dass die Scheibe nicht reicht, lässt sie sich rollen; nichts ragt unter den Boden. Schreib mir bitte, wenn dir das so nicht gefällt |
+| W7 | Das Gespräch aufklappen, JARVIS etwas Längeres fragen und Escape drücken, während er antwortet oder spricht; danach noch einmal Escape | Das erste Escape unterbricht JARVIS, das Gespräch bleibt offen. Das zweite klappt es zu |
+| W8 | Nur wenn es sich ergibt: JARVIS starten, während das WLAN noch nicht da ist oder der Mac gerade aufwacht, und „Heute“ ansehen | Steht irgendwo „… lässt sich gerade nicht laden“, verschwindet das nach einigen Sekunden von selbst, ohne Neuladen |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

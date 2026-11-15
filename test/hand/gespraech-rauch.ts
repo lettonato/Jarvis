@@ -12,6 +12,7 @@ import path from "node:path";
 import { chromium, type Route } from "playwright-core";
 import { starteNext } from "../helfer/server";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
+import { mittagsZone } from "../helfer/uhrzeiten";
 import { starteClaudeMock } from "../mocks/claude-mock";
 
 const PORT = 3124;
@@ -28,8 +29,7 @@ const schritt = (text: string) => console.log(`  in Ordnung: ${text}`);
 
 // Was JARVIS zum Kalender sagt, hängt an der Uhrzeit („heute noch“). Wie in kalender-rauch.ts bekommen Prüfung,
 // Server und Browser eine Zeitzone, in der es gerade zwischen 12 und 13 Uhr ist.
-const versatz = 12 - new Date().getUTCHours();
-const ZONE = `Etc/GMT${versatz >= 0 ? "-" : "+"}${Math.abs(versatz)}`;
+const ZONE = mittagsZone();
 process.env.TZ = ZONE;
 
 type Termin = { title: string; start: number; end: number; allDay: boolean; location: string; calendar: string };

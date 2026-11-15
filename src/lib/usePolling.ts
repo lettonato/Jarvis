@@ -2,7 +2,9 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { getJson } from "./api";
-import { abonniere, ladeNeu, setze, stand } from "./geteilt";
+import { abonniere, bild, ladeNeu, setze, type Bild } from "./geteilt";
+
+const LEER: Bild = { stand: null, gescheitert: false };
 
 // Lädt eine JARVIS-Schnittstelle sofort und danach in festen Abständen neu.
 // `reload` lädt sofort, `set` übernimmt eine Antwort, die eine Änderung schon mitgebracht hat.
@@ -11,12 +13,15 @@ import { abonniere, ladeNeu, setze, stand } from "./geteilt";
 // Regeln dazu stehen in geteilt.ts. Ist die letzte Stelle weg, wird der Stand vergessen und später frisch geladen.
 export function usePolling<T>(url: string, intervalMs: number) {
   const subscribe = useCallback((hoerer: () => void) => abonniere(url, intervalMs, hoerer, getJson), [url, intervalMs]);
-  const data = useSyncExternalStore(
+  // Eine Anmeldung für beides: den Stand und die Auskunft, dass die Schnittstelle noch nie geantwortet hat und der
+  // letzte Versuch gescheitert ist (failed; nicht bloß „lädt noch“).
+  const { stand, gescheitert } = useSyncExternalStore(
     subscribe,
-    () => stand(url) as T | null,
-    () => null,
+    () => bild(url),
+    () => LEER,
   );
+  const [data, failed] = [stand as T | null, gescheitert];
   const reload = useCallback((query = "") => ladeNeu(url, query), [url]);
   const set = useCallback((wert: T) => setze(url, wert), [url]);
-  return { data, reload, set };
+  return { data, failed, reload, set };
 }

@@ -111,7 +111,7 @@ export function Scheiben({ children }: { children: ReactNode }) {
 // Die Schrift folgt der Tönung des Glases (hell vor dunkler Aussicht), deshalb stehen hier keine festen Textfarben.
 export function Scheibe({ titel, href, children }: { titel: string; href?: string; children: ReactNode }) {
   return (
-    <section className="glas">
+    <section className="glas @container">
       <h2 className="mb-2.5 text-base font-bold">
         {href ? (
           <RaumLink href={href} className="underline-offset-4 hover:underline">
@@ -129,10 +129,19 @@ export function Scheibe({ titel, href, children }: { titel: string; href?: strin
 // Eine Zeile in einer Scheibe: links das Was, rechts der Wert.
 export function ScheibenZeile({ vorn, children, wert, stark }: { vorn?: ReactNode; children: ReactNode; wert?: ReactNode; stark?: boolean }) {
   return (
-    <li className={`flex items-baseline gap-3 py-1 text-[1.05rem] leading-snug ${stark ? "font-bold" : "font-medium"}`}>
-      {vorn !== undefined && <span className="w-12 shrink-0 opacity-75">{vorn}</span>}
-      <span className="min-w-0 flex-1 truncate">{children}</span>
-      {wert !== undefined && <span className="shrink-0 text-[0.95rem] font-bold">{wert}</span>}
+    // Nichts wird abgeschnitten: Ein langer Name bricht um, und passt der Wert nicht mehr daneben (schmale Scheibe,
+    // langer Zustand wie „nicht eingerichtet“), rückt er rechtsbündig in die nächste Zeile.
+    // In einer schmalen Scheibe (die drei nebeneinander in „Heute“) steht der Name nicht in einer Spalte neben
+    // der Uhrzeit, sondern läuft hinter ihr weiter und unter ihr durch: Für eine Spalte bleiben dort nur rund
+    // zehn Buchstaben, und ein Termin bräuchte fünf Zeilen.
+    <li className={`flex flex-wrap items-baseline gap-x-3 py-1 text-[1.05rem] leading-snug ${vorn !== undefined ? "@max-[13rem]:block" : ""} ${stark ? "font-bold" : "font-medium"}`}>
+      {vorn !== undefined && <span className="w-12 shrink-0 opacity-75 @max-[13rem]:mr-1">{vorn}</span>}
+      {/* Das Leerzeichen zählt nur, wenn der Name hinter der Uhrzeit weiterläuft: Sonst läse ein Vorleseprogramm
+          (und wer den Text kopiert) „08:00Frühbesprechung“. */}{" "}
+      {/* Neben einer Uhrzeit füllt der Name den Rest der Zeile und bricht dort um. Ohne Uhrzeit ist er so breit wie
+          sein Text; nur dann rückt ein Wert, der nicht mehr daneben passt, in die nächste Zeile. */}
+      <span className={`min-w-0 hyphens-auto break-words ${vorn !== undefined ? "flex-1" : "grow"}`}>{children}</span>
+      {wert !== undefined && <span className="ml-auto shrink-0 text-[0.95rem] font-bold">{wert}</span>}
     </li>
   );
 }

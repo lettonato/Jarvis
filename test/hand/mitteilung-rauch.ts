@@ -10,6 +10,7 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 import { starteNext } from "../helfer/server";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
+import { mittagsZone } from "../helfer/uhrzeiten";
 
 const PORT = 3115;
 const BASIS = `http://127.0.0.1:${PORT}`;
@@ -21,8 +22,7 @@ const schritt = (text: string) => console.log(`  in Ordnung: ${text}`);
 
 // Hinweise kommen nur zwischen 9 und 18 Uhr. Damit die Prüfung zu jeder Tageszeit läuft, bekommt der Server
 // eine Zeitzone, in der es gerade Mittag ist.
-const versatz = 12 - new Date().getUTCHours();
-const ZONE = `Etc/GMT${versatz >= 0 ? "-" : "+"}${Math.abs(versatz)}`;
+const ZONE = mittagsZone();
 
 type Datei = { name: string; mitteilungen?: { hinweise?: boolean }; telegram?: unknown };
 const gespeichert = () => JSON.parse(readFileSync(path.join(ordner, "config.json"), "utf8")) as Datei;

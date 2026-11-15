@@ -196,7 +196,9 @@ export function Composer({ inputRef, draft, setDraft, big = false, vorn }: { inp
         e.preventDefault();
         send();
       }}
-      className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[1.75rem] bg-schiefer p-1.5 text-kalk"
+      // Das Feld selbst zeigt keinen Rand; ist es mit der Tastatur markiert, zeigt ihn der ganze Rahmen.
+      data-fokusrahmen
+      className="flex min-w-0 flex-1 items-end gap-1.5 rounded-[1.75rem] bg-schiefer p-1.5 text-kalk has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-gletscher"
     >
       {vorn}
       <MicButton big={big} />

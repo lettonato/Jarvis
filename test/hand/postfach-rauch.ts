@@ -11,6 +11,7 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 import { starteNext } from "../helfer/server";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
+import { mittagsZone } from "../helfer/uhrzeiten";
 import { beispielPost, MOCK_POST_ADRESSE, MOCK_POST_PASSWORT, starteImapMock } from "../mocks/imap-mock";
 
 const PORT = 3126;
@@ -24,8 +25,7 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Mails von heute zeigen die Uhrzeit, ältere den Wochentag. Damit die Prüfung zu jeder Tageszeit dasselbe sieht
 // (und nie über Mitternacht läuft), bekommen sie, der Server und der Browser eine Zeitzone, in der es Mittag ist.
-const versatz = 12 - new Date().getUTCHours();
-const ZONE = `Etc/GMT${versatz >= 0 ? "-" : "+"}${Math.abs(versatz)}`;
+const ZONE = mittagsZone();
 process.env.TZ = ZONE;
 
 async function warte(bedingung: () => boolean | Promise<boolean>, was: string, ms = 20_000) {

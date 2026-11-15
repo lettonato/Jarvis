@@ -11,6 +11,7 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
+import { mittagsZone } from "../helfer/uhrzeiten";
 import { starteXaiMock } from "../mocks/xai-mock";
 
 const PORT = 3125;
@@ -24,8 +25,7 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Intel liest nur tagsüber von selbst, und die Seite schreibt „heute 12:07“ und „bis 18:07 Uhr“. Damit die Prüfung
 // zu jeder Tageszeit dasselbe sieht, bekommen sie, der Server und der Browser eine Zeitzone, in der es Mittag ist.
 // Läuft die Prüfung über eine volle Stunde hinweg, wird aus 12 Uhr 13 Uhr: Die Uhrzeiten unten lassen beide Stunden zu.
-const versatz = 12 - new Date().getUTCHours();
-const ZONE = `Etc/GMT${versatz >= 0 ? "-" : "+"}${Math.abs(versatz)}`;
+const ZONE = mittagsZone();
 process.env.TZ = ZONE;
 
 async function warte(bedingung: () => boolean | Promise<boolean>, was: string, ms = 20_000) {

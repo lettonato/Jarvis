@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import type { Ausfall } from "@/lib/heute";
 import type { AvatarState } from "@/lib/avatar";
 import { ApiError, getJson, postJson, postStream } from "@/lib/api";
 import { alsSatz } from "@/lib/format";
@@ -32,6 +33,10 @@ import type { WeatherSnapshot } from "@/lib/weather";
 // fremd: Für diese Antwort hat JARVIS Text von Dritten gelesen; der Server fragt danach bei Änderungen nach.
 export type Turn = { id: number; who: "du" | "jarvis"; text: string; live?: boolean; status?: string; sources?: Source[]; fremd?: boolean };
 
+// Alles, was die Leertaste selbst bedient, wenn es markiert ist.
+const BEDIENBAR = 'input, textarea, select, button, a, summary, label, [contenteditable=true], [role=button], [role=menuitem], [role=checkbox], [role=switch], [role=tab], [tabindex]:not([tabindex="-1"])';
+
+
 type Jarvis = {
   name: string;
   market: MarketSnapshot | null;
@@ -48,6 +53,8 @@ type Jarvis = {
   // Der Spielgeld-Desk: Kontostand, Positionen, Protokoll.
   desk: DeskSnapshot | null;
   setDesk: (d: DeskSnapshot) => void;
+  // Welche Abfragen an JARVIS selbst von Anfang an scheitern: Dort steht dann nicht „lädt noch“.
+  ausfall: Ausfall;
   // Der Apple-Kalender auf dem Mac.
   calendar: CalendarSnapshot | null;
   setCalendar: (c: CalendarSnapshot) => void;
@@ -158,17 +165,22 @@ function speakable(text: string): string {
 export function JarvisProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: market } = usePolling<MarketSnapshot>("/api/market", 30_000);
+  const { data: market, failed: marketAus } = usePolling<MarketSnapshot>("/api/market", 30_000);
   const { data: weather } = usePolling<WeatherSnapshot>("/api/weather", 10 * 60_000);
-  const { data: tasks, reload: reloadTasks, set: setTasks } = usePolling<TasksSnapshot>("/api/aufgaben", 60_000);
-  const { data: mail, reload: loadMail, set: setMail } = usePolling<MailSnapshot>("/api/post", 2 * 60_000);
+  const { data: tasks, failed: tasksAus, reload: reloadTasks, set: setTasks } = usePolling<TasksSnapshot>("/api/aufgaben", 60_000);
+  const { data: mail, failed: mailAus, reload: loadMail, set: setMail } = usePolling<MailSnapshot>("/api/post", 2 * 60_000);
   const { data: settings, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
-  const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 10_000);
-  const { data: calendar, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
-  const { data: intel, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
+  const { data: desk, failed: deskAus, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 10_000);
+  const { data: calendar, failed: calendarAus, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
+  const { data: intel, failed: intelAus, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
   const { data: metalle } = usePolling<MetalleSnapshot>("/api/metalle", 300_000);
-  const { data: documents, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
-  const { data: projekte, set: setProjekte } = usePolling<ProjekteSnapshot>("/api/projekte", 60_000);
+  const { data: documents, failed: documentsAus, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
+  const { data: projekte, failed: projekteAus, set: setProjekte } = usePolling<ProjekteSnapshot>("/api/projekte", 60_000);
+  // Je Abfrage: Sie hat noch nie geantwortet, und der letzte Versuch ist gescheitert (usePolling, failed).
+  const ausfall = useMemo<Ausfall>(
+    () => ({ calendar: calendarAus, tasks: tasksAus, mail: mailAus, projekte: projekteAus, desk: deskAus, intel: intelAus, documents: documentsAus, market: marketAus }),
+    [calendarAus, tasksAus, mailAus, projekteAus, deskAus, intelAus, documentsAus, marketAus],
+  );
   const { data: memoryData, reload: loadMemory, set: setMemoryData } = usePolling<MemoryStand>("/api/gedaechtnis", 10 * 60_000);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
@@ -566,9 +578,11 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const typing = target?.closest("input, textarea, select, button, a, [contenteditable=true]");
+      // Die Leertaste gehört dem, was markiert ist (Feld, Knopf, Verweis, Aufklapper). Nur wenn nichts markiert
+      // ist, schaltet sie das Mikrofon.
+      const bedient = target?.closest(BEDIENBAR);
       if (e.key === "Escape") stop();
-      if (e.code !== "Space" || typing || e.repeat || !canListen) return;
+      if (e.code !== "Space" || bedient || e.repeat || !canListen) return;
       e.preventDefault();
       toggle();
     };
@@ -669,6 +683,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setSettings,
       desk,
       setDesk,
+      ausfall,
       calendar,
       setCalendar,
       reloadCalendar: () => loadCalendar("?force=1"),
@@ -708,6 +723,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setSettings,
       desk,
       setDesk,
+      ausfall,
       calendar,
       setCalendar,
       loadCalendar,

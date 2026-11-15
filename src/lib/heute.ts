@@ -185,8 +185,13 @@ const laedt = (text: string): Luecke => ({ art: "laedt", text });
 const fehlt = (text: string): Luecke => ({ art: "fehlt", text });
 const gestoert = (text: string): Luecke => ({ art: "gestoert", text });
 
-function kalenderLuecke(k: CalendarSnapshot | null): Luecke | null {
-  if (!k) return laedt("Der Kalender lädt noch.");
+// Welche eigenen Abfragen von Anfang an scheitern (JARVIS selbst antwortet dort nicht): Das ist nicht „lädt noch“.
+// Eine Liste für alle: JarvisProvider füllt sie, „Heute“ liest sie.
+export type Ausfall = Record<"calendar" | "tasks" | "mail" | "projekte" | "desk" | "intel" | "documents" | "market", boolean>;
+export type Ausfaelle = Partial<Ausfall>;
+
+function kalenderLuecke(k: CalendarSnapshot | null, aus: boolean): Luecke | null {
+  if (!k) return aus ? gestoert("Der Kalender lässt sich gerade nicht laden.") : laedt("Der Kalender lädt noch.");
   if (k.access === "ok") return null;
   if (k.access === "offen") return fehlt("Der Kalender ist noch nicht verbunden.");
   if (k.access === "kein-mac") return fehlt("Den Kalender gibt es nur auf dem Mac.");
@@ -195,16 +200,16 @@ function kalenderLuecke(k: CalendarSnapshot | null): Luecke | null {
   return gestoert("Der Kalender lässt sich gerade nicht lesen.");
 }
 
-export function luecken(d: Pick<TagesDaten, "calendar" | "tasks" | "mail" | "projekte">): Luecken {
+export function luecken(d: Pick<TagesDaten, "calendar" | "tasks" | "mail" | "projekte">, aus: Ausfaelle = {}): Luecken {
   const k = d.calendar;
   // Outlook: derselbe Satz wie im Raum Kalender und im Gespräch, auch wenn nur ein Teil der Termine fehlt.
   const outlook = k?.access === "ok" ? outlookLuecke(k) : "";
   return {
-    kalender: kalenderLuecke(k),
+    kalender: kalenderLuecke(k, aus.calendar === true),
     outlook: outlook ? gestoert(outlook) : null,
-    aufgaben: !d.tasks ? laedt("Die Aufgaben laden noch.") : !d.tasks.configured ? fehlt("Obsidian ist noch nicht verbunden.") : aufgabenUnlesbar(d.tasks) ? gestoert(TRESOR_UNLESBAR) : null,
-    post: !d.mail ? laedt("Das Postfach lädt noch.") : !d.mail.configured ? fehlt("Das Postfach ist noch nicht verbunden.") : d.mail.error ? gestoert("Das Postfach antwortet nicht.") : null,
-    projekte: !d.projekte ? laedt("Die Projekte laden noch.") : null,
+    aufgaben: !d.tasks ? (aus.tasks ? gestoert("Die Aufgaben lassen sich gerade nicht laden.") : laedt("Die Aufgaben laden noch.")) : !d.tasks.configured ? fehlt("Obsidian ist noch nicht verbunden.") : aufgabenUnlesbar(d.tasks) ? gestoert(TRESOR_UNLESBAR) : null,
+    post: !d.mail ? (aus.mail ? gestoert("Das Postfach lässt sich gerade nicht laden.") : laedt("Das Postfach lädt noch.")) : !d.mail.configured ? fehlt("Das Postfach ist noch nicht verbunden.") : d.mail.error ? gestoert("Das Postfach antwortet nicht.") : null,
+    projekte: !d.projekte ? (aus.projekte ? gestoert("Die Projekte lassen sich gerade nicht laden.") : laedt("Die Projekte laden noch.")) : null,
   };
 }
 
@@ -243,12 +248,21 @@ export function tagesSatz(lage: Tageslage, l: Luecken): string {
   return "Sonst liegt heute nichts an.";
 }
 
-// Was unter „Wartet auf dich“ steht, wenn die Liste leer ist. restDa: Auch das Übrige, aus dem die Liste
-// entsteht, ist gelesen (Freigaben und Not-Aus, Spielgeld-Desk, Intel, Dokumente). Termine stehen dort nicht,
-// der Kalender zählt hier also nicht.
-export function wartetLeer(l: Luecken, restDa: boolean): string {
+// Was unter „Wartet auf dich“ steht, wenn die Liste leer ist. rest: der Stand des Übrigen, aus dem die Liste
+// entsteht (Freigaben und Not-Aus, Spielgeld-Desk, Intel, Dokumente): gelesen, lädt noch oder antwortet nicht.
+// Termine stehen dort nicht, der Kalender zählt hier also nicht.
+export type RestStand = "da" | "laedt" | "gestoert";
+
+// Der Stand des Übrigen aus den einzelnen Abfragen: [gelesen, von Anfang an gescheitert] je Abfrage.
+export function restStand(abfragen: [da: boolean, gescheitert: boolean][]): RestStand {
+  const offen = abfragen.filter(([da]) => !da);
+  if (offen.length === 0) return "da";
+  return offen.every(([, aus]) => aus) ? "gestoert" : "laedt";
+}
+
+export function wartetLeer(l: Luecken, rest: RestStand): string {
   const quellen = [l.aufgaben, l.post, l.projekte];
-  if (!restDa || quellen.some((q) => q?.art === "laedt")) return "Lädt noch, was auf dich wartet.";
-  if (quellen.some((q) => q?.art === "gestoert")) return "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.";
+  if (rest === "laedt" || quellen.some((q) => q?.art === "laedt")) return "Lädt noch, was auf dich wartet.";
+  if (rest === "gestoert" || quellen.some((q) => q?.art === "gestoert")) return "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.";
   return "Nichts wartet auf dich.";
 }

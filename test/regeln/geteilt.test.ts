@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, mock, test } from "node:test";
-import { abonniere, ladeNeu, setze, stand } from "../../src/lib/geteilt";
+import { abonniere, bild, gescheitert, ladeNeu, setze, stand } from "../../src/lib/geteilt";
 
 let abrufe: string[] = [];
 let antwort: unknown = { n: 1 };
@@ -100,6 +100,106 @@ describe("Geteilte Abfrage", () => {
     await vor(1_000);
     assert.deepEqual(stand("/e"), { n: 3 });
     ab();
+  });
+
+  test("antwortet die Schnittstelle von Anfang an nicht, ist das bekannt und nicht bloß „lädt noch“", async () => {
+    kaputt = true;
+    let meldungen = 0;
+    const ab = abonniere("/f", 4_000, () => meldungen++, lade);
+    assert.equal(gescheitert("/f"), false, "vor der ersten Antwort lädt sie noch");
+    await vor(0);
+    assert.equal(stand("/f"), null);
+    assert.equal(gescheitert("/f"), true);
+    assert.equal(meldungen, 1, "die Stellen erfahren davon");
+    await vor(4_000);
+    assert.equal(meldungen, 1, "ein weiterer Fehlschlag ist nichts Neues");
+    // Sobald sie antwortet, ist der Stand da.
+    kaputt = false;
+    await vor(4_000);
+    assert.deepEqual(stand("/f"), { n: 1 });
+    assert.equal(gescheitert("/f"), false);
+    // Fällt sie später aus, bleibt der letzte Stand stehen; das ist kein „nie geladen“.
+    kaputt = true;
+    await vor(4_000);
+    assert.deepEqual(stand("/f"), { n: 1 });
+    assert.equal(gescheitert("/f"), false);
+    ab();
+    assert.equal(gescheitert("/f"), false, "ohne Abonnenten ist nichts gemerkt");
+  });
+
+  test("solange noch nie etwas kam, wartet der nächste Versuch nicht den ganzen Takt: nach 5, dann 15, dann 45 Sekunden", async () => {
+    kaputt = true;
+    const ab = abonniere("/versuche", 300_000, () => {}, lade);
+    await vor(0);
+    assert.equal(abrufe.length, 1);
+    await vor(4_999);
+    assert.equal(abrufe.length, 1);
+    await vor(1);
+    assert.equal(abrufe.length, 2, "nach 5 Sekunden");
+    await vor(15_000);
+    assert.equal(abrufe.length, 3, "dann nach 15");
+    await vor(44_999);
+    assert.equal(abrufe.length, 3);
+    // Antwortet sie jetzt, ist der Stand nach 65 Sekunden da und nicht erst nach fünf Minuten.
+    kaputt = false;
+    await vor(1);
+    assert.equal(abrufe.length, 4, "dann nach 45");
+    assert.deepEqual(stand("/versuche"), { n: 1 });
+    assert.equal(gescheitert("/versuche"), false);
+    // Danach gilt wieder nur der Takt, auch wenn sie später ausfällt (der Stand bleibt dann stehen).
+    kaputt = true;
+    await vor(234_999);
+    assert.equal(abrufe.length, 4, "bis zum Takt (fünf Minuten nach dem Anmelden) kein weiterer Versuch");
+    await vor(1);
+    assert.equal(abrufe.length, 5);
+    await vor(60_000);
+    assert.equal(abrufe.length, 5, "ein Ausfall mit vorhandenem Stand löst keine schnellen Versuche aus");
+    ab();
+  });
+
+  test("die schnellen Versuche werden nie dichter als der Takt und enden mit der letzten Stelle", async () => {
+    kaputt = true;
+    const ab = abonniere("/dicht", 4_000, () => {}, lade);
+    await vor(0);
+    await vor(12_000);
+    // Takt 4 s: Der erste schnelle Versuch käme nach 5 s, also später als der Takt ohnehin fragt. Es bleibt bei
+    // 0, 4, 8 und 12 Sekunden.
+    assert.equal(abrufe.length, 4);
+    ab();
+    // Mit langem Takt steht ein schneller Versuch aus; geht die letzte Stelle, findet er nicht mehr statt.
+    const ab2 = abonniere("/dicht", 300_000, () => {}, lade);
+    await vor(0);
+    assert.equal(abrufe.length, 5);
+    ab2();
+    await vor(120_000);
+    assert.equal(abrufe.length, 5, "ohne Abonnenten kein Versuch mehr");
+  });
+
+  test("Stand und Ausfall kommen als ein Bild, das dasselbe bleibt, solange sich nichts ändert", async () => {
+    const leer = bild("/bild");
+    assert.deepEqual(leer, { stand: null, gescheitert: false });
+    assert.equal(bild("/gibt-es-nicht"), leer, "ohne Abfrage immer dasselbe leere Bild");
+    let meldungen = 0;
+    const ab = abonniere("/bild", 4_000, () => meldungen++, lade);
+    await vor(0);
+    const erstes = bild("/bild");
+    assert.deepEqual(erstes, { stand: { n: 1 }, gescheitert: false });
+    await vor(4_000);
+    assert.equal(bild("/bild"), erstes, "gleiche Antwort: dasselbe Bild (sonst zeichnete React endlos neu)");
+    antwort = { n: 2 };
+    await vor(4_000);
+    assert.notEqual(bild("/bild"), erstes);
+    assert.deepEqual(bild("/bild"), { stand: { n: 2 }, gescheitert: false });
+    setze("/bild", { n: 9 });
+    assert.deepEqual(bild("/bild"), { stand: { n: 9 }, gescheitert: false });
+    ab();
+    assert.equal(bild("/bild"), leer);
+    // Von Anfang an nicht erreichbar: Das Bild sagt es.
+    kaputt = true;
+    const ab2 = abonniere("/bild", 4_000, () => {}, lade);
+    await vor(0);
+    assert.deepEqual(bild("/bild"), { stand: null, gescheitert: true });
+    ab2();
   });
 
   test("eine Abfrage, die schon unterwegs war, überschreibt keinen neueren Stand", async () => {

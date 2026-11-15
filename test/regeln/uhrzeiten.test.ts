@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { faelligerTermin, NACHHOL_FENSTER_MS, saeubereZeiten } from "../../src/lib/zeitplan";
-import { ferneZeiten } from "../helfer/uhrzeiten";
+import { ferneZeiten, mittagsZone } from "../helfer/uhrzeiten";
 
 describe("Prüfwerkzeug: Uhrzeiten fern von jetzt", () => {
   test("zu jeder Tageszeit ist keine der beiden Uhrzeiten fällig, auch nicht eine Stunde später", () => {
@@ -21,5 +21,16 @@ describe("Prüfwerkzeug: Uhrzeiten fern von jetzt", () => {
 
   test("die Uhrzeiten ab Werk wären dagegen kurz nach 17:30 fällig (deshalb gibt es den Helfer)", () => {
     assert.notEqual(faelligerTermin(["07:30", "17:30"], new Date(2026, 10, 15, 18, 30), null, NACHHOL_FENSTER_MS), null);
+  });
+});
+
+describe("Prüfwerkzeug: eine Zeitzone, in der es gerade Mittag ist", () => {
+  test("zu jeder Stunde des Tages nennt sie eine gültige Zone, in der die Uhr 12 zeigt", () => {
+    for (let stunde = 0; stunde < 24; stunde++) {
+      const now = new Date(Date.UTC(2026, 10, 15, stunde, 40));
+      const zone = mittagsZone(now);
+      assert.match(zone, /^Etc\/GMT[+-]\d{1,2}$/);
+      assert.equal(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: zone }).format(now), "12", `${stunde} Uhr UTC: ${zone}`);
+    }
   });
 });

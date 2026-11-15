@@ -12,6 +12,7 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 import { starteNext } from "../helfer/server";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
+import { mittagsZone } from "../helfer/uhrzeiten";
 
 const PORT = 3123;
 const BASIS = `http://127.0.0.1:${PORT}`;
@@ -25,8 +26,7 @@ const schritt = (text: string) => console.log(`  in Ordnung: ${text}`);
 // „Läuft gerade“, „vorbei“ und „kommt noch“ hängen an der Uhrzeit. Damit die Prüfung zu jeder Tageszeit dasselbe
 // sieht (und nie über Mitternacht läuft), bekommen diese Prüfung, der Server und der Browser eine Zeitzone, in
 // der es gerade zwischen 12 und 13 Uhr ist.
-const versatz = 12 - new Date().getUTCHours();
-const ZONE = `Etc/GMT${versatz >= 0 ? "-" : "+"}${Math.abs(versatz)}`;
+const ZONE = mittagsZone();
 process.env.TZ = ZONE;
 
 type Termin = { id: string; title: string; start: number; end: number; allDay: boolean; location: string; calendar: string };

@@ -6,7 +6,7 @@ import { describe, test } from "node:test";
 import { outlookLuecke, type CalendarEvent, type CalendarSnapshot } from "../../src/lib/calendar";
 import { decide, type CommandContext } from "../../src/lib/commands";
 import type { DocsSnapshot } from "../../src/lib/documents";
-import { kopfSatz, luecken, tageslage, tagesSatz, wartetLeer, type Luecken, type TagesDaten } from "../../src/lib/heute";
+import { kopfSatz, luecken, restStand, tageslage, tagesSatz, wartetLeer, type Luecken, type TagesDaten } from "../../src/lib/heute";
 import type { IntelSnapshot } from "../../src/lib/intel";
 import type { MailItem, MailSnapshot } from "../../src/lib/mail";
 import type { DeskSnapshot } from "../../src/lib/paper";
@@ -248,7 +248,7 @@ describe("Tagesübersicht: Was JARVIS gerade nicht weiß, ist nicht „nichts“
     assert.deepEqual(luecken(alles), KEINE);
     assert.equal(kopfSatz(tageslage(alles, JETZT), luecken(alles)), "Heute steht kein Termin an");
     assert.equal(tagesSatz(tageslage(alles, JETZT), luecken(alles)), "Sonst liegt heute nichts an.");
-    assert.equal(wartetLeer(luecken(alles), true), "Nichts wartet auf dich.");
+    assert.equal(wartetLeer(luecken(alles), "da"), "Nichts wartet auf dich.");
   });
 
   test("solange etwas noch lädt, behauptet die Seite nichts darüber", () => {
@@ -256,10 +256,10 @@ describe("Tagesübersicht: Was JARVIS gerade nicht weiß, ist nicht „nichts“
     assert.deepEqual(l, { kalender: laedt("Der Kalender lädt noch."), outlook: null, aufgaben: laedt("Die Aufgaben laden noch."), post: laedt("Das Postfach lädt noch."), projekte: laedt("Die Projekte laden noch.") });
     assert.equal(kopfSatz(tageslage(nichts, JETZT), l), "Der Kalender lädt noch");
     assert.equal(tagesSatz(tageslage(nichts, JETZT), l), "Der Rest des Tages lädt noch.");
-    assert.equal(wartetLeer(l, true), "Lädt noch, was auf dich wartet.");
+    assert.equal(wartetLeer(l, "da"), "Lädt noch, was auf dich wartet.");
     // Das Übrige, aus dem die Liste entsteht (Freigaben und Not-Aus, Desk, Intel, Dokumente), gehört dazu:
     // Solange es fehlt, ist „nichts wartet“ nicht sicher.
-    assert.equal(wartetLeer(luecken(alles), false), "Lädt noch, was auf dich wartet.");
+    assert.equal(wartetLeer(luecken(alles), "laedt"), "Lädt noch, was auf dich wartet.");
     // Lädt nur noch der Kalender, steht der Rest schon da.
     const fast = { ...alles, calendar: null, tasks: aufgaben([aufgabe("Bauamt anrufen", "2026-11-13")]) };
     assert.equal(tagesSatz(tageslage(fast, JETZT), luecken(fast)), "Eine Aufgabe ist heute fällig.");
@@ -305,23 +305,52 @@ describe("Tagesübersicht: Was JARVIS gerade nicht weiß, ist nicht „nichts“
     assert.deepEqual(luecken(ohne).aufgaben, fehlt("Obsidian ist noch nicht verbunden."));
     assert.deepEqual(luecken(ohne).post, fehlt("Das Postfach ist noch nicht verbunden."));
     assert.equal(tagesSatz(tageslage(ohne, JETZT), luecken(ohne)), "Aufgaben und Post sind noch nicht verbunden.");
-    assert.equal(wartetLeer(luecken(ohne), true), "Nichts wartet auf dich.", "was nicht verbunden ist, kann auch nicht warten");
+    assert.equal(wartetLeer(luecken(ohne), "da"), "Nichts wartet auf dich.", "was nicht verbunden ist, kann auch nicht warten");
 
     const kaputt = { ...alles, tasks: { ...aufgaben([]), error: "EACCES" } as TasksSnapshot, mail: { ...post([]), error: "Der Mail-Server antwortet nicht." } };
     assert.deepEqual(luecken(kaputt).aufgaben, gestoert("Der Obsidian-Tresor lässt sich gerade nicht lesen."));
     assert.deepEqual(luecken(kaputt).post, gestoert("Das Postfach antwortet nicht."));
     assert.equal(tagesSatz(tageslage(kaputt, JETZT), luecken(kaputt)), "Die Aufgaben lassen sich gerade nicht lesen, das Postfach antwortet nicht.");
     // Es zählt die Art der Lücke, nicht ihr Wortlaut.
-    assert.equal(wartetLeer({ ...KEINE, post: gestoert("Anders gesagt.") }, true), "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.");
-    assert.equal(wartetLeer({ ...KEINE, aufgaben: gestoert("Anders gesagt.") }, true), "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.");
-    assert.equal(wartetLeer({ ...KEINE, projekte: laedt("Anders gesagt.") }, true), "Lädt noch, was auf dich wartet.");
-    assert.equal(wartetLeer({ ...KEINE, kalender: gestoert("Der Kalender lässt sich gerade nicht lesen.") }, true), "Nichts wartet auf dich.", "Termine stehen nicht unter „Wartet auf dich“");
+    assert.equal(wartetLeer({ ...KEINE, post: gestoert("Anders gesagt.") }, "da"), "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.");
+    assert.equal(wartetLeer({ ...KEINE, aufgaben: gestoert("Anders gesagt.") }, "da"), "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.");
+    assert.equal(wartetLeer({ ...KEINE, projekte: laedt("Anders gesagt.") }, "da"), "Lädt noch, was auf dich wartet.");
+    assert.equal(wartetLeer({ ...KEINE, kalender: gestoert("Der Kalender lässt sich gerade nicht lesen.") }, "da"), "Nichts wartet auf dich.", "Termine stehen nicht unter „Wartet auf dich“");
     assert.equal(tagesSatz(tageslage(alles, JETZT), { ...KEINE, post: gestoert("Anders gesagt.") }), "Das Postfach antwortet nicht.");
     assert.equal(tagesSatz(tageslage(alles, JETZT), { ...KEINE, aufgaben: laedt("Anders gesagt.") }), "Der Rest des Tages lädt noch.");
 
     // Nur das Postfach fehlt: Was bekannt ist, steht da, die Lücke dahinter.
     const halb = { ...alles, tasks: aufgaben([aufgabe("Bauamt anrufen", "2026-11-13")]), mail: { ...post([]), error: "x" } };
     assert.equal(tagesSatz(tageslage(halb, JETZT), luecken(halb)), "Eine Aufgabe ist heute fällig, das Postfach antwortet nicht.");
+  });
+
+  test("antwortet JARVIS selbst nicht (eine eigene Abfrage scheitert von Anfang an), heißt das nicht „lädt noch“", () => {
+    const aus = { calendar: true, tasks: true, mail: true, projekte: true };
+    const l = luecken(nichts, aus);
+    assert.deepEqual(l, {
+      kalender: gestoert("Der Kalender lässt sich gerade nicht laden."),
+      outlook: null,
+      aufgaben: gestoert("Die Aufgaben lassen sich gerade nicht laden."),
+      post: gestoert("Das Postfach lässt sich gerade nicht laden."),
+      projekte: gestoert("Die Projekte lassen sich gerade nicht laden."),
+    });
+    assert.equal(kopfSatz(tageslage(nichts, JETZT), l), "Der Kalender lässt sich gerade nicht laden");
+    assert.equal(wartetLeer(l, "da"), "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.");
+    // Nur eine Quelle fällt aus: Die anderen stehen normal da.
+    const nurProjekte = luecken({ ...alles, projekte: null }, { projekte: true });
+    assert.deepEqual(nurProjekte, { ...KEINE, projekte: gestoert("Die Projekte lassen sich gerade nicht laden.") });
+    // Ist der Stand da, zählt ein gemeldeter Ausfall nicht (die Seite zeigt, was sie hat).
+    assert.deepEqual(luecken(alles, aus), KEINE);
+    // Das Übrige (Freigaben, Desk, Intel, Dokumente): lädt es noch, wartet die Seite; ist es ausgefallen, sagt sie das.
+    assert.equal(wartetLeer(KEINE, "laedt"), "Lädt noch, was auf dich wartet.");
+    assert.equal(wartetLeer(KEINE, "gestoert"), "Soweit JARVIS es gerade lesen kann, wartet nichts auf dich.");
+    assert.equal(wartetLeer({ ...KEINE, projekte: laedt("x") }, "gestoert"), "Lädt noch, was auf dich wartet.", "solange noch etwas lädt, wartet die Seite");
+    // Aus den einzelnen Abfragen: alles gelesen; etwas lädt noch; alles, was fehlt, ist ausgefallen.
+    assert.equal(restStand([[true, false], [true, false]]), "da");
+    assert.equal(restStand([[true, false], [false, false]]), "laedt");
+    assert.equal(restStand([[false, true], [false, false]]), "laedt");
+    assert.equal(restStand([[true, false], [false, true]]), "gestoert");
+    assert.equal(restStand([]), "da");
   });
 
   test("der Satz zum Tag zählt wie bisher, wenn alles da ist", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ApprovalBar, openApprovals } from "./Approvals";
 import { Chips, Composer, HandsFreeSwitch, Messages, NewConversation, sessionLabel, useDraft, useStateLabel } from "./Console";
 import { Icon } from "./icons";
@@ -60,17 +60,60 @@ function Zahl({ marke }: { marke?: Marke }) {
 
 function Mehr({ hier, marken }: { hier: Raum; marken: Record<string, Marke | undefined> }) {
   const [offen, setOffen] = useState(false);
+  // Mit einer Pfeiltaste geöffnet: Die Markierung springt gleich auf den ersten oder letzten Eintrag.
+  const [start, setStart] = useState<"erster" | "letzter" | null>(null);
+  const knopf = useRef<HTMLButtonElement>(null);
+  const liste = useRef<HTMLUListElement>(null);
   const hinten = RAEUME.findIndex((r) => r.href === hier.href) >= BREIT;
+  // Die Einträge, die bei dieser Breite zu sehen sind (die übrigen stehen schon in der Leiste).
+  const eintraege = () => [...(liste.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])].filter((e) => e.offsetParent !== null);
+  useEffect(() => {
+    if (!offen || !start) return;
+    const e = eintraege();
+    (start === "erster" ? e[0] : e.at(-1))?.focus();
+  }, [offen, start]);
+  const schliesse = () => {
+    setOffen(false);
+    setStart(null);
+  };
+  // Bedienung mit der Tastatur wie bei jedem Menü: Pfeile, Pos1 und Ende wandern, Escape schließt und setzt die
+  // Markierung zurück auf den Knopf.
+  const taste = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      if (!offen) return;
+      // Nur das Menü schließen; JARVIS redet weiter (Escape unterbricht ihn sonst).
+      e.stopPropagation();
+      schliesse();
+      knopf.current?.focus();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+    if (!offen) {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+      setStart(e.key === "ArrowDown" ? "erster" : "letzter");
+      setOffen(true);
+      return;
+    }
+    e.preventDefault();
+    const alle = eintraege();
+    if (alle.length === 0) return;
+    const jetzt = alle.indexOf(document.activeElement as HTMLElement);
+    const ziel = e.key === "Home" ? 0 : e.key === "End" ? alle.length - 1 : e.key === "ArrowDown" ? (jetzt + 1) % alle.length : (jetzt <= 0 ? alle.length : jetzt) - 1;
+    alle[ziel].focus();
+  };
   return (
     <div
       className="relative"
+      onKeyDown={taste}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) setOffen(false);
+        if (!e.currentTarget.contains(e.relatedTarget)) schliesse();
       }}
     >
       <button
+        ref={knopf}
         type="button"
-        onClick={() => setOffen(!offen)}
+        onClick={() => (offen ? schliesse() : setOffen(true))}
         aria-expanded={offen}
         aria-haspopup="menu"
         className={`flex items-center gap-1 text-[1.05rem] transition-colors hover:text-schiefer ${hinten ? "font-bold text-schiefer" : "font-medium text-quiet"}`}
@@ -80,7 +123,7 @@ function Mehr({ hier, marken }: { hier: Raum; marken: Record<string, Marke | und
         <Icon name="hoch" className={`h-4 w-4 transition-transform ${offen ? "" : "rotate-180"}`} />
       </button>
       {offen && (
-        <ul role="menu" className="absolute bottom-full left-1/2 mb-5 min-w-[13rem] -translate-x-1/2 animate-[jarvis-sheet_220ms_var(--weich)] rounded-md bg-white/95 p-2 shadow-[0_24px_50px_-18px_rgba(20,34,40,0.5)] backdrop-blur-xl">
+        <ul ref={liste} role="menu" aria-label="Räume" className="absolute bottom-full left-1/2 mb-5 max-h-[calc(100dvh-8rem)] min-w-[13rem] -translate-x-1/2 overflow-y-auto max-sm:left-0 max-sm:translate-x-0 animate-[jarvis-sheet_220ms_var(--weich)] rounded-md bg-white/95 p-2 shadow-[0_24px_50px_-18px_rgba(20,34,40,0.5)] backdrop-blur-xl">
           {RAEUME.map((r, i) => (
             <li key={r.href} role="none" className={imMenue(i)}>
               <RaumLink
@@ -129,6 +172,7 @@ function Antwortzeile({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label="Ganzes Gespräch zeigen"
+      data-antwortzeile
       className="pointer-events-auto flex w-[min(46rem,100%)] animate-[jarvis-sheet_260ms_var(--weich)] items-center gap-3 rounded-[1.1rem] bg-white/90 px-4 py-2.5 text-left text-[0.95rem] leading-snug text-schiefer shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl"
     >
       <span className="min-w-0 flex-1">
@@ -141,16 +185,36 @@ function Antwortzeile({ onOpen }: { onOpen: () => void }) {
 }
 
 function Gespraech({ onClose, onFill }: { onClose: () => void; onFill: (text: string) => void }) {
-  const { session } = useJarvis();
+  const { session, state } = useJarvis();
+  const flaeche = useRef<HTMLElement>(null);
+  // Die Zeile, die das Gespräch aufgeklappt hat, gibt es jetzt nicht mehr. Stand die Markierung dort (Tastatur),
+  // steht sie jetzt im Gespräch, damit die Tab-Taste hier weitergeht und nicht am Anfang der Seite.
+  useEffect(() => {
+    if (document.activeElement === document.body) flaeche.current?.focus();
+  }, []);
   return (
     <section
+      ref={flaeche}
+      tabIndex={-1}
       aria-label="Gespräch"
-      className="pointer-events-auto w-[min(46rem,100%)] animate-[jarvis-sheet_260ms_var(--weich)] rounded-2xl bg-white/95 px-5 pb-4 pt-3 shadow-[0_30px_60px_-20px_rgba(12,28,40,0.5)] backdrop-blur-xl"
+      onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        // Arbeitet JARVIS gerade (hört zu, denkt nach, spricht), gilt Escape ihm: Es unterbricht ihn (das macht
+        // JarvisProvider), und das Gespräch bleibt stehen, denn man liest gerade darin. Sonst klappt Escape nur zu
+        // und erreicht JARVIS nicht, wie beim Menü der Räume.
+        if (state !== "idle") return;
+        e.stopPropagation();
+        onClose();
+      }}
+      className="pointer-events-auto w-[min(46rem,100%)] animate-[jarvis-sheet_260ms_var(--weich)] rounded-2xl bg-white/95 px-5 pb-4 pt-3 shadow-[0_30px_60px_-20px_rgba(12,28,40,0.5)] backdrop-blur-xl focus:outline-none"
     >
-      <div className="flex items-center gap-2 border-b border-schiefer/15 pb-2">
+      {/* Im schmalen Fenster stehen Überschrift und „zuklappen“ oben, die beiden Schalter darunter. */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-schiefer/15 pb-2">
         <h2 className="min-w-0 flex-1 truncate text-base font-bold">{sessionLabel(session) ?? "Gespräch"}</h2>
-        <NewConversation />
-        <HandsFreeSwitch />
+        <div className="flex items-center gap-2 max-sm:order-3 max-sm:basis-full">
+          <NewConversation />
+          <HandsFreeSwitch />
+        </div>
         <button type="button" onClick={onClose} aria-label="Gespräch zuklappen" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-quiet hover:bg-schiefer/5 hover:text-schiefer">
           <Icon name="runter" className="h-4 w-4" />
         </button>
@@ -174,14 +238,24 @@ function Leiste() {
   const [offen, setOffen] = useState(false);
   // Im Raum „Gespräch“ steht der Verlauf an der Wand; die Leiste zeigt ihn dort nicht noch einmal.
   const imGespraech = hier.href === "/fokus";
+  const dock = useRef<HTMLDivElement>(null);
+  // Nach dem Zuklappen steht die Markierung wieder auf der Zeile, die das Gespräch aufklappt (sie entsteht erst
+  // mit dem nächsten Bild neu). Gibt es die Zeile nicht (nach „Neues Gespräch“ ist nichts mehr zu zeigen), steht
+  // sie im Feld für JARVIS; sonst begänne die Tab-Taste wieder oben auf der Seite.
+  const schliesse = () => {
+    setOffen(false);
+    requestAnimationFrame(() => (dock.current?.querySelector<HTMLElement>("[data-antwortzeile]") ?? dock.current?.querySelector<HTMLElement>("textarea"))?.focus());
+  };
   return (
     <div
+      ref={dock}
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex flex-col items-center gap-3 px-3"
       style={{ viewTransitionName: "jarvis-dock", paddingBottom: "max(10px, calc((var(--boden) - 4.25rem) / 2))" }}
     >
-      {!imGespraech && (offen ? <Gespraech onClose={() => setOffen(false)} onFill={fill} /> : <Antwortzeile onOpen={() => setOffen(true)} />)}
-      <div className="pointer-events-auto flex h-[4.25rem] max-w-full items-center gap-[clamp(0.9rem,1.7vw,2.2rem)] rounded-full bg-white/85 pl-[clamp(1rem,1.8vw,2rem)] pr-2 shadow-[0_24px_50px_-18px_rgba(20,34,40,0.4),0_0_0_1px_rgba(31,42,46,0.06)] backdrop-blur-xl">
-        <RaumLink href="/fokus" aria-label="Gespräch mit JARVIS" className="text-[1.45rem] font-extrabold leading-none text-schiefer [font-stretch:66%]">
+      {!imGespraech && (offen ? <Gespraech onClose={schliesse} onFill={fill} /> : <Antwortzeile onOpen={() => setOffen(true)} />)}
+      <div className="pointer-events-auto flex h-[4.25rem] max-w-full max-sm:w-full items-center gap-[clamp(0.9rem,1.7vw,2.2rem)] rounded-full bg-white/85 pl-[clamp(1rem,1.8vw,2rem)] pr-2 shadow-[0_24px_50px_-18px_rgba(20,34,40,0.4),0_0_0_1px_rgba(31,42,46,0.06)] backdrop-blur-xl">
+        {/* Im schmalen Fenster weicht der Name dem Feld zum Tippen; der Raum „Gespräch“ steht dann unter „Räume“. */}
+        <RaumLink href="/fokus" aria-label="Gespräch mit JARVIS" className="text-[1.45rem] font-extrabold leading-none text-schiefer [font-stretch:66%] max-sm:hidden">
           JARVIS
         </RaumLink>
         <nav aria-label="Räume" className="flex items-center gap-[clamp(0.9rem,1.7vw,2.2rem)] whitespace-nowrap">
@@ -198,7 +272,7 @@ function Leiste() {
           ))}
           <Mehr key={pathname} hier={hier} marken={marken} />
         </nav>
-        <div className="w-[clamp(13rem,23vw,24rem)] min-w-0 shrink">
+        <div className="w-[clamp(13rem,23vw,24rem)] min-w-0 shrink max-sm:w-auto max-sm:flex-1">
           <Composer
             inputRef={inputRef}
             draft={draft}

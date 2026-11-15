@@ -4,8 +4,17 @@
 
 type Lader = (url: string) => Promise<unknown>;
 
+// Was eine Stelle sieht: der Stand und ob die Schnittstelle (noch nie da und zuletzt gescheitert) nicht antwortet.
+// Dasselbe Objekt, solange sich nichts ändert; so braucht der Haken in usePolling.ts nur eine Anmeldung.
+export type Bild = { stand: unknown | null; gescheitert: boolean };
+const LEER: Bild = { stand: null, gescheitert: false };
+
 type Quelle = {
+  bild: Bild;
   stand: unknown | null;
+  // Es gibt noch keinen Stand, und die letzte Abfrage ist gescheitert: Die Schnittstelle antwortet nicht. Das ist
+  // etwas anderes als „lädt noch“, und eine Seite soll es sagen können.
+  gescheitert: boolean;
   // Jede abonnierende Stelle mit ihrem Wunschtakt und dem, was sie bei einer Änderung aufruft.
   abos: Map<symbol, { ms: number; hoerer: () => void }>;
   timer: ReturnType<typeof setInterval> | null;
@@ -16,11 +25,14 @@ type Quelle = {
   // Zählt die gestarteten Abfragen und merkt, welche zuletzt galt: Eine ältere Antwort überschreibt nie eine neuere.
   gestartet: number;
   gilt: number;
+  // Fehlschläge in Folge, solange es noch keinen Stand gibt: bestimmt, wann der nächste schnelle Versuch kommt.
+  fehlversuche: number;
 };
 
 const quellen = new Map<string, Quelle>();
 
 function melde(q: Quelle) {
+  q.bild = { stand: q.stand, gescheitert: q.gescheitert };
   for (const a of [...q.abos.values()]) a.hoerer();
 }
 
@@ -34,12 +46,27 @@ async function hole(url: string, q: Quelle, zusatz = ""): Promise<void> {
     // veraltet: Sonst tauchte etwa eine eben erledigte Freigabe für ein paar Sekunden wieder auf.
     if (nummer < q.gilt) return;
     q.gilt = nummer;
+    q.gescheitert = false;
+    q.fehlversuche = 0;
     // Hat sich nichts geändert, bleibt alles stehen: Sonst zeichnet jede Abfrage die ganze Seite neu.
     if (q.stand !== null && JSON.stringify(q.stand) === JSON.stringify(next)) return;
     q.stand = next;
     melde(q);
   } catch {
-    // Beim nächsten Durchlauf erneut versuchen.
+    // Ein vorhandener Stand bleibt stehen; der nächste Durchlauf versucht es wieder.
+    if (quellen.get(url) !== q || q.stand !== null || nummer < q.gilt) return;
+    // Gab es noch nie einen Stand, wartet der nächste Versuch nicht den ganzen Takt ab (bei den Terminen wären
+    // das fünf Minuten „lässt sich gerade nicht laden“ nach einem einzigen Stolperer beim Start): nach 5, dann
+    // 15, dann 45 Sekunden und so fort, aber nie dichter als der Takt.
+    const pause = 5_000 * 3 ** q.fehlversuche++;
+    if (pause < q.takt) {
+      if (q.erst) clearTimeout(q.erst);
+      q.erst = setTimeout(() => void hole(url, q), pause);
+    }
+    // Die Stellen erfahren (einmal), dass die Schnittstelle nicht antwortet.
+    if (q.gescheitert) return;
+    q.gescheitert = true;
+    melde(q);
   }
 }
 
@@ -62,7 +89,7 @@ export function abonniere(url: string, ms: number, hoerer: () => void, lade: Lad
   let q = quellen.get(url);
   const erste = !q;
   if (!q) {
-    q = { stand: null, abos: new Map(), timer: null, erst: null, takt: 0, lade, gestartet: 0, gilt: 0 };
+    q = { bild: LEER, stand: null, gescheitert: false, abos: new Map(), timer: null, erst: null, takt: 0, lade, gestartet: 0, gilt: 0, fehlversuche: 0 };
     quellen.set(url, q);
   }
   const id = Symbol(url);
@@ -82,11 +109,19 @@ export function abonniere(url: string, ms: number, hoerer: () => void, lade: Lad
 
 export const stand = (url: string): unknown | null => quellen.get(url)?.stand ?? null;
 
+// Stand und Ausfall zusammen, für den Haken in usePolling.ts.
+export const bild = (url: string): Bild => quellen.get(url)?.bild ?? LEER;
+
+// Die Schnittstelle hat noch nie geantwortet, und der letzte Versuch ist gescheitert.
+export const gescheitert = (url: string): boolean => quellen.get(url)?.gescheitert ?? false;
+
 // Übernimmt einen Stand, den eine Änderung schon mitgebracht hat, für alle Stellen.
 export function setze(url: string, wert: unknown): void {
   const q = quellen.get(url);
   if (!q) return;
   q.stand = wert;
+  q.gescheitert = false;
+  q.fehlversuche = 0;
   // Alles, was jetzt noch unterwegs ist, wurde vor diesem Stand gestartet und gilt nicht mehr.
   q.gilt = q.gestartet + 1;
   q.gestartet = q.gilt;

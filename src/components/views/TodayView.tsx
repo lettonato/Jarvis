@@ -9,7 +9,7 @@ import { clock } from "@/lib/calendar";
 import { spokenDue } from "@/lib/dates";
 import { ZUSTAND_LABEL, type AgentenSnapshot } from "@/lib/agenten";
 import { formatPct, ohnePunkt } from "@/lib/format";
-import { kopfSatz, luecken, mehrzahl, tageslage, tagesSatz, terminImKopf, wartetLeer } from "@/lib/heute";
+import { kopfSatz, luecken, mehrzahl, restStand, tageslage, tagesSatz, terminImKopf, wartetLeer } from "@/lib/heute";
 import { marktlage } from "@/lib/marktlage";
 import { MOOD_LABEL } from "@/lib/intel";
 import type { SicherheitsLage } from "@/lib/sicherheit";
@@ -41,15 +41,22 @@ function Liste({ titel, href, zahl, children }: { titel: string; href: string; z
 }
 
 export function TodayView() {
-  const { name, calendar, tasks, mail, projekte, desk, intel, documents, market, weather, metalle } = useJarvis();
+  const { name, calendar, tasks, mail, projekte, desk, intel, documents, market, weather, metalle, ausfall } = useJarvis();
   const now = useNow();
   // Dieselbe Abfrage wie die Hinweisleiste: kein zweiter Abruf, und ein Klick dort gilt hier sofort.
-  const { data: sicherheit } = usePolling<SicherheitsLage>("/api/sicherheit", 10_000);
-  const { data: agenten } = usePolling<AgentenSnapshot>("/api/agenten", 15_000);
+  const { data: sicherheit, failed: sicherheitAus } = usePolling<SicherheitsLage>("/api/sicherheit", 10_000);
+  const { data: agenten, failed: agentenAus } = usePolling<AgentenSnapshot>("/api/agenten", 15_000);
   if (!now) return <main className="text-quiet">Lade den Tag …</main>;
 
   // Was noch lädt, nicht verbunden ist oder gerade nicht antwortet: Dazu behauptet der Raum nichts (heute.ts).
-  const fehlt = luecken({ calendar, tasks, mail, projekte });
+  const fehlt = luecken({ calendar, tasks, mail, projekte }, ausfall);
+  // Das Übrige, aus dem „Wartet auf dich“ entsteht: gelesen, lädt noch oder antwortet nicht.
+  const rest = restStand([
+    [Boolean(sicherheit), sicherheitAus],
+    [Boolean(desk), ausfall.desk],
+    [Boolean(intel), ausfall.intel],
+    [Boolean(documents), ausfall.documents],
+  ]);
   const heute = tageslage({ calendar, tasks, mail, projekte, desk, intel, documents, freigabenOffen: sicherheit?.freigaben.filter((f) => f.zustand === "offen").length ?? 0, notaus: sicherheit?.zustand.notaus.an ?? false }, now);
   const stunde = now.getHours();
   const gruss = stunde < 11 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend";
@@ -97,7 +104,7 @@ export function TodayView() {
       <Panel glow={heute.brauchtDich.some((h) => h.dringend)}>
         <Abschnitt>Wartet auf dich</Abschnitt>
         {heute.brauchtDich.length === 0 ? (
-          <p className={`mt-2 ${leer}`}>{wartetLeer(fehlt, Boolean(sicherheit && desk && intel && documents))}</p>
+          <p className={`mt-2 ${leer}`}>{wartetLeer(fehlt, rest)}</p>
         ) : (
           <ul className="mt-1">
             {heute.brauchtDich.map((h, i) => (
@@ -202,7 +209,12 @@ export function TodayView() {
             ))}
             {desk && desk.status !== "aus" && <ScheibenZeile wert={formatPct(desk.dayPnlPct)}>Spielgeld-Desk</ScheibenZeile>}
           </ul>
-          {majors.length === 0 && !maerkte.metalle && (!desk || desk.status === "aus") && <p className="text-[0.95rem] opacity-80">Noch keine Kurse.</p>}
+          {/* Antwortet die Abfrage der Kurse selbst nicht, steht das da; „Noch keine Kurse“ wäre dann falsch. */}
+          {!market && ausfall.market ? (
+            <p className="text-[0.95rem] opacity-80">Die Krypto-Kurse lassen sich gerade nicht laden.</p>
+          ) : (
+            majors.length === 0 && !maerkte.metalle && (!desk || desk.status === "aus") && <p className="text-[0.95rem] opacity-80">Noch keine Kurse.</p>
+          )}
           {auffaellig.length > 0 && (
             <p className="mt-2 text-sm">
               Auffällig: {ohnePunkt(auffaellig[0].text)}
@@ -216,7 +228,7 @@ export function TodayView() {
 
         <Scheibe titel="Agenten" href="/agenten">
           {!agenten ? (
-            <p className="text-[0.95rem] opacity-80">Die Agenten melden sich …</p>
+            <p className="text-[0.95rem] opacity-80">{agentenAus ? "Die Agenten lassen sich gerade nicht laden." : "Die Agenten melden sich …"}</p>
           ) : (
             <ul>
               {agenten.agenten.map((a) => (

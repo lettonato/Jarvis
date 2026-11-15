@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1041 von 1041 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1048 von 1048 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -1894,6 +1894,115 @@ nicht ausprobiert; mit „minus“ hängt es nicht mehr an der Stimme.
 (die Prüfungen fragen nur Nachbauten).
 
 
+### Schritt J10: JARVIS ohne Maus und im schmalen Fenster; „Heute“ unterscheidet Laden und Ausfall (15. November 2026)
+
+**Warum:** Bisher war jede Prüfung mit der Maus und in voller Breite gelaufen. Wer mit der Tastatur arbeitet
+oder JARVIS in einem schmalen Fenster neben anderen Programmen offen hat, kam nie vor. Dazu zwei offene Punkte
+aus J9: abgeschnittene Namen an den Scheiben in „Heute“ und der Unterschied zwischen „lädt noch“ und „antwortet
+nicht“.
+
+**Bestandsaufnahme zuerst:** Ein Messlauf durch alle elf Räume in zwei Breiten (390 und 1280 Pixel): seitliches
+Überlaufen, abgeschnittener Text, Weg der Tab-Taste (wo landet die Markierung, ist sie zu sehen), Bedienbares
+ohne Namen. Ergebnis: Kein Raum läuft seitlich über, alles Bedienbare hat einen Namen und ist mit der Tab-Taste
+erreichbar. Sieben Dinge hakten (Tabelle unten).
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J10.1 Was mit der Tab-Taste markiert wird, rollt nicht mehr hinter die Zeile, in der JARVIS antwortet, und nicht hinter die Leiste (breit und schmal, auch in Räumen ohne Scheiben) | Testbereit | `scroll-padding` an `.raum-wand` und `.raum` in `src/app/globals.css`, im schmalen Fenster der Platz unter dem Text (`.raum:not(:has(.raum-scheiben > *)) .raum-wand`); Prüfung Bedienung, Schritte 1 und 4 |
+| J10.2 Die Leertaste bedient, was markiert ist (etwa „Feste Grenzen“ aufklappen); das Mikrofon schaltet sie nur, wenn nichts markiert ist | Testbereit | `BEDIENBAR` in `JarvisProvider.tsx`; Prüfung Bedienung, Schritt 2 |
+| J10.3 Das Menü der Räume („Mehr“, schmal „Räume“) geht mit der Tastatur: Pfeiltasten, Pos1, Ende; Escape schließt es und markiert wieder den Knopf; Pfeil nach unten oder oben öffnet es | Testbereit | `Mehr` in `AppFrame.tsx`; Prüfung Bedienung, Schritte 3 und 4 |
+| J10.4 Schmales Fenster: Im Feld für JARVIS ist Platz zum Tippen (125 statt rund 40 Pixel bei 390 Breite); der Name „JARVIS“ weicht dort, der Raum „Gespräch“ steht unter „Räume“; das Menü bleibt im Fenster | Testbereit | `Leiste` und `Mehr` in `AppFrame.tsx`; Prüfung Bedienung, Schritt 4 |
+| J10.5 Das Feld für JARVIS zeigt den Rand an seinem ganzen dunklen Rahmen, wenn es mit der Tastatur markiert ist (vorher: ein Rechteck innen im runden Rahmen, blaugrün auf fast Schwarz) | Testbereit | `Composer` in `Console.tsx`, Regel `[data-fokusrahmen] textarea:focus-visible` in `globals.css`; Prüfung Bedienung, Schritte 1 und 4 |
+| J10.6 Aufgeklapptes Gespräch: Die Markierung steht nach dem Aufklappen im Gespräch; Escape klappt es zu und markiert wieder die Zeile über der Leiste (gibt es die nicht mehr, das Feld für JARVIS); arbeitet JARVIS gerade, unterbricht das erste Escape ihn und das Gespräch bleibt stehen; im schmalen Fenster heißt es nicht mehr „G“ | Testbereit; der Fall „Zeile gibt es nicht mehr“ **nicht im Browser geprüft** (dort steht immer der Hinweis zum Mikrofon in der Zeile) | `Gespraech` und `Leiste` in `AppFrame.tsx`; Prüfung Bedienung, Schritt 4 |
+| J10.7 Scheiben (in jedem Raum): Kein Name ist mehr abgeschnitten. Ein langer Name bricht um (mit Trennstrich), ein Wert, der nicht mehr daneben passt, rückt in die nächste Zeile. In den schmalen Scheiben von „Heute“ läuft der Name eines Termins hinter der Uhrzeit weiter und unter ihr durch (drei statt fünf Zeilen). Passt eine Scheibe trotzdem nicht in die Höhe, rollt sie in sich, statt unter den Boden zu ragen | Testbereit | `ScheibenZeile` und `Scheibe` in `Raum.tsx`, `.raum-scheiben > *` in `globals.css`; Prüfung Bedienung, Schritt 5 (sechs Termine mit langen Namen, auch bei 1280 × 700) |
+| J10.8 „Heute“: Antwortet JARVIS an einer Stelle selbst nicht (eine eigene Abfrage scheitert von Anfang an), steht dort „… lassen sich gerade nicht laden“ statt endlos „… laden noch“, auch an den Scheiben „Agenten“ und „Märkte“; „Wartet auf dich“ sagt dann „Soweit JARVIS es gerade lesen kann …“. Solange noch nie etwas kam, versucht JARVIS es nach 5, 15, 45 Sekunden wieder und nicht erst mit dem nächsten Takt (bei den Terminen fünf Minuten) | Testbereit | `gescheitert`, `bild` und die schnellen Versuche in `src/lib/geteilt.ts`, `failed` in `usePolling.ts`, `luecken` und `restStand` in `src/lib/heute.ts`; `test/regeln/geteilt.test.ts`, `test/regeln/heute.test.ts`; Prüfung Heute, neuer Schritt 7 |
+| J10.9 Handprüfung „Bedienung“ | Testbereit, **nur im Browser der Sandbox** | `test/hand/bedienung-rauch.ts` (Port 3128, 5 Schritte); jetzt 26 Handprüfungen |
+| J10.10 Das Bauen (`next build`) übernimmt jede Änderung am Aussehen: Der Zwischenspeicher des Bauens ist aus | Testbereit | `turbopackFileSystemCacheForBuild: false` in `next.config.ts`; Regeltest in `test/regeln/handpruefungen.test.ts`; Messung siehe unten |
+
+**Die Funde im Einzelnen.**
+
+| Fund | vorher | jetzt |
+|---|---|---|
+| Markierung hinter der Leiste (J10.1) | Beim Durchgehen mit der Tab-Taste lag jede dritte bis vierte Stelle hinter der Antwortzeile über der Leiste (gemessen: 2 bis 11 je Raum); man tippte blind | Die Seite rollt so, dass das Markierte darüber steht |
+| Leertaste (J10.2) | Auf einem Aufklapper („Feste Grenzen“) startete die Leertaste das Mikrofon, und aufgeklappt wurde nichts | Sie klappt auf |
+| Menü der Räume (J10.3) | Escape schloss es nicht (es unterbrach nur JARVIS), Pfeiltasten taten nichts | wie jedes Menü |
+| Schmales Fenster (J10.4) | Vom Feld für JARVIS blieben rund 40 Pixel („Sag „“) | 125 Pixel |
+| Rand am Feld für JARVIS (J10.5) | Der Rand stand als Rechteck innen im runden, dunklen Rahmen (blaugrün auf fast Schwarz, Kontrast gerechnet 3,1 zu 1) | Der Rand steht um den ganzen Rahmen, auf der hellen Leiste (gerechnet 4,0 zu 1), und nur dort. Zuerst hatte ich das Feld für randlos gehalten; siehe Testergebnisse |
+| Gespräch (J10.6) | Nach dem Aufklappen mit der Tastatur war die Markierung weg (die Tab-Taste begann wieder oben auf der Seite); im schmalen Fenster stand als Überschrift „G“ | siehe oben |
+| Scheiben (J10.7) | „Bespre…“, „Browser-A…“, „I..“ neben „nicht eingerichtet“ | ganze Namen |
+
+**Fund beim Gegenprüfen: Das Bauen verschluckte gelegentlich eine Änderung am Aussehen.** Zwei Gegenproben
+widersprachen sich (ein eingebauter Fehler an `globals.css` blieb unentdeckt, der nächste scheiterte an der
+Stelle des vorigen). Nachgemessen: `globals.css` abwechselnd in zwei Fassungen geschrieben, jedes Mal gebaut und in
+`.next/static` nachgesehen, welche Fassung dort steht.
+
+| Messung | Ergebnis |
+|---|---|
+| `next build` wie bisher (mit Zwischenspeicher `.next/cache/turbopack`), 6 Mal | 5 richtig, **1 Mal der alte Stand** (Exit 0, keine Meldung); in einem ersten Versuch von Hand 2 von 4 falsch |
+| dasselbe mit 3 Sekunden Pause vor dem Bauen, 6 Mal | 5 richtig, **1 Mal der alte Stand** (an der Eile liegt es also nicht) |
+| Zwischenspeicher vor jedem Bauen gelöscht, 6 Mal | 6 richtig, je 13 Sekunden |
+| mit der neuen Einstellung (Zwischenspeicher aus), 12 Mal | 12 richtig, je 11 bis 12 Sekunden (vorher 5 bis 6) |
+| `next dev` (so startet JARVIS am Mac): Datei geändert, während JARVIS aus war, dann gestartet; 21 Mal | 21 richtig |
+
+Warum der Zwischenspeicher die Änderung manchmal nicht bemerkt, ist **nicht geklärt** (ein Fehler in Next oder im
+Baustein für Tailwind liegt nahe; gesucht habe ich dort nicht). Geändert ist deshalb nur, was sich messen ließ: Das
+Bauen läuft ohne ihn. **Folgen:** (1) Der Mac ist nach dieser Messung nicht betroffen; dort wird nicht gebaut. Bewiesen
+ist das mit 21 Versuchen nicht, nur sehr wahrscheinlich (bei einer Fehlerquote wie beim Bauen wären 21 Treffer in
+Folge ein Zufall von rund 2 %). (2) Betroffen sein konnten die Handprüfungen und die Gegenproben, wenn zwischen zwei
+Läufen nur `globals.css` geändert wurde. Bei den früheren Gegenproben, deren Skripte noch vorliegen (33), kam das
+nicht vor; die Gegenproben dieses Schrittes sind mit dem verlässlichen Bauen wiederholt. (3) Ein späterer zentraler
+Betrieb würde bauen; für ihn gilt die Einstellung gleich mit.
+
+**Eigene Entscheidungen:** (1) Escape im Menü schließt nur das Menü und unterbricht JARVIS dabei nicht. (2) Im
+schmalen Fenster verschwindet der Name „JARVIS“ aus der Leiste; der Platz gehört dem Feld. (3) Ist das Gespräch
+aufgeklappt und steht die Markierung darin, gilt Escape zuerst JARVIS, wenn er gerade arbeitet (zuhört, nachdenkt,
+spricht): Es unterbricht ihn, und das Gespräch bleibt stehen. Arbeitet er nicht, klappt Escape das Gespräch zu.
+Steht die Markierung im Feld für JARVIS, unterbricht Escape wie bisher nur JARVIS. (4) Ein Stand, der schon da ist, bleibt bei einem späteren Ausfall stehen und gilt
+nicht als „nicht ladbar“ (wie bisher; nur „noch nie geantwortet“ ist neu). (5) Scheitert ein älterer Abruf, während
+ein neuerer schon unterwegs ist, steht für diesen Augenblick „lässt sich gerade nicht laden“ da; der neuere
+berichtigt es, sobald er ankommt (ein Hinweis aus dem Code-Review, bewusst so gelassen: Würde auf den neueren
+gewartet, bliebe eine Stelle, die im Takt von zehn Sekunden gefragt wird und nie antwortet, für immer bei „lädt
+noch“).
+
+**Grenzen:** (1) Geprüft ist im Chromium der Sandbox; Safari und der Mac sind nicht geprüft (Safari markiert mit
+der Tab-Taste ab Werk nur Felder, nicht Knöpfe und Verweise: Systemeinstellungen → Tastatur → Tastaturnavigation).
+(2) Kleine Klickflächen (einige Verweise sind nur 14 bis 21 Pixel hoch) sind nicht geändert. (3) Ein Vorleseprogramm
+(VoiceOver) ist nicht ausprobiert; geprüft ist nur, dass alles Bedienbare einen Namen hat. (4) Die Silbentrennung
+an den Scheiben macht der Browser; an anderen Rechnern kann sie anders ausfallen (abgeschnitten wird in keinem Fall).
+(5) Die Breiten zwischen 390 und 1280 sind nur an zwei Stellen gemessen. (6) Das Bauen dauert jetzt rund 12 statt
+6 Sekunden; die Ursache im Zwischenspeicher ist nicht gefunden, nur umgangen. (7) Ist das Gespräch aufgeklappt,
+verdeckt es, was dahinter mit der Tab-Taste markiert wird (es ist viel höher als die Zeile, für die der Platz
+bemessen ist); Escape klappt es zu. Vorgemerkt für J11. (8) „Lässt sich gerade nicht laden“ steht nur in „Heute“.
+Die anderen Räume (Aufgaben, Post, Projekte, Agenten …) schreiben bei einem Ausfall von Anfang an weiter „lädt“.
+Vorgemerkt. (9) Eine Scheibe, die in sich rollt, lässt sich mit der Tastatur allein nicht rollen (mit Maus,
+Trackpad und Finger schon); alle Termine stehen im Raum Kalender, in den ihre Überschrift führt. (10) Bei
+1280 × 700 mit sechs langen Terminen liegt das Ende der Scheibe hinter der Zeile, in der JARVIS antwortet, wenn
+dort gerade etwas steht.
+
+### Testergebnisse Schritt J10 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1048 Tests: 1048 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 7). Am Mac wären es rechnerisch 1046 (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 26 Handprüfungen bestanden**, in drei Teilen gestartet (13, 10 und 3; zusammen rund 10 Minuten). Bedienung 48 Sekunden, „Heute“ 27 |
+| Prüfung Bedienung, erste Läufe | mehrfach fehlgeschlagen. Echte Funde: J10.1 bis J10.7. Aus der Prüfung selbst: ein Datumsfeld hat mehrere Haltepunkte; die Schwelle für das Feld war zu streng (130 statt gemessener 125 Pixel); das Menü ragte nach meiner eigenen Änderung links aus dem Fenster; meine erste Fassung für die Scheiben brach Namen Buchstabe für Buchstabe um |
+| Gegenproben, erster Durchgang (absichtlich eingebaute Fehler, zehn eigene Baue) | **10 von 12 entdeckt.** Nicht entdeckt: (a) „das Feld für JARVIS zeigt keinen Rand“ und (b) „Markiertes rollt im schmalen Fenster wieder hinter die Leiste“ |
+| Lücke (a): mein Fund war falsch | Das Feld hatte schon vorher einen Rand, nur innen im dunklen Rahmen (die Klasse, die ihn abschalten sollte, verliert gegen die Regel in `globals.css`). Nach meiner Änderung standen **zwei Ränder ineinander**. Jetzt steht einer, um den ganzen Rahmen; die Prüfung verlangt genau das (außen ja, innen nein) |
+| Lücke (b): die Prüfung prüfte nichts | Nach dem Wechsel in den Raum über das Menü begann der Gang mit der Tab-Taste in der Leiste und war nach **3 Stellen** zu Ende; die lange Liste kam nie dran. Der Gang beginnt jetzt am Anfang der Seite, erkennt sein Ende am Element und nicht am Namen, und die Prüfung verlangt, dass alle 14 Aufgaben erreicht wurden |
+| Gegenproben wiederholt | Zuerst mit widersprüchlichem Ergebnis; Ursache war das Bauen (Fund oben, J10.10). Mit dem verlässlichen Bauen: **4 von 4 entdeckt** (die zwei Lücken, der neue Fehler „zwei Ränder“ und noch einmal „hinter der Antwortzeile“), jede an der gemeinten Stelle. Die übrigen neun aus dem ersten Durchgang sind nicht wiederholt; die Zeilen, an denen sie scheiterten, sind unverändert |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Hinweise, alle nachgeprüft. **Acht eingearbeitet:** (1) Escape im aufgeklappten Gespräch brach eine laufende Antwort ab; (2) **die Scheibe „Termine heute“ ragte an einem Tag mit sechs langen Terminen unter den Boden** (nachgemessen: bei 1280 × 700 um 272 Pixel, bei 1440 × 800 um 148, bei 1920 × 1000 passte sie; vor J10 war dort abgeschnitten worden, es war also meine eigene Verschlechterung); (3) Räume ohne Scheiben hatten im schmalen Fenster unten keinen Platz über der Leiste; (5) nach einem einzigen Fehlschlag am Anfang stand „lässt sich gerade nicht laden“ bis zum nächsten Takt da; (6) nach „Neues Gespräch“ ging die Markierung beim Zuklappen verloren; (8, zum Teil) die Scheiben „Agenten“ und „Märkte“ in „Heute“ sagten bei einem Ausfall weiter „melden sich“ und „Noch keine Kurse“; (9) jede Abfrage meldete sich doppelt an, und die Liste der Ausfälle stand zweimal im Code; (10) die Prüfung der Leertaste sah auf irgendeine Statuszeile, und der Block für die Mittags-Zeitzone stand in sieben Prüfungen. **Einer bewusst nicht** (4, siehe Eigene Entscheidungen 5). **Zwei als Grenze vermerkt** (7 und der Rest von 8, siehe Grenzen 7 und 8) |
+| Gegenproben zu den Änderungen aus dem Review | **8 von 8 entdeckt.** Eine („kein schneller neuer Versuch“) scheiterte zuerst an einer anderen, wackligen Stelle der Prüfung „Heute“ und zählt so nicht; allein wiederholt scheiterte sie zweimal an der gemeinten Stelle (Schritt 7) |
+| Fund durch eine vorhandene Prüfung | Die Prüfung „Heute“ las nach dem Umbau der Scheibe „08:00Frühbesprechung“: Zwischen Uhrzeit und Name stand kein Leerzeichen, nur ein Abstand. Ein Vorleseprogramm hätte es so vorgelesen. Behoben |
+| Wacklige Stellen in den Prüfungen | (a) Bedienung scheiterte ohne eingebauten Fehler in 2 von 3 Läufen: Die Prüfung drückte die nächste Taste, bevor die Markierung nach dem Zuklappen zurück war. Sie wartet jetzt darauf; danach 4 von 4 und der Sammellauf bestanden. (b) „Heute“ suchte einen Satz, der für einen Augenblick an zwei Stellen stehen kann. (c) Meine Zählung für „die Leertaste startet nicht das Mikrofon“ war zweimal falsch (sie zählte das Lauschen auf „Jarvis“ mit, das die Seite bei jedem Tastendruck neu versucht); geprüft wird jetzt der angezeigte Zustand, mit Gegenstück (ohne Markierung schaltet die Leertaste auf „Ich höre zu“) |
+| Tests zuerst | Regeltests zuerst und rot gesehen: nie antwortende Schnittstelle, Ausfälle in „Heute“, schnelle Versuche (5, 15, 45 Sekunden), ein Bild für Stand und Ausfall, Bauen ohne Zwischenspeicher, Mittags-Zeitzone. In der Handprüfung rot gesehen: die sieben ersten Funde, die zwei Ränder, der Gang durch nur 3 Stellen. **Nicht zuerst rot gesehen**, sondern nachträglich durch Gegenproben belegt: Escape während JARVIS arbeitet, Raum ohne Scheiben, hohe Scheibe, Name hinter der Uhrzeit, Scheiben „Agenten“ und „Märkte“ |
+| Sicherheitsprüfung (von Hand) | Kein neuer Weg nach außen, keine neue Berechtigung, kein Schlüssel im Code. Die schnellen Versuche gehen nur an JARVIS selbst (`127.0.0.1`), höchstens einer je Fehlschlag, nie dichter als der Takt, und nur solange noch nie etwas kam. `seite.route` (Abfragen verzögern oder abbrechen) steht nur in den Prüfungen. Das Bauen ohne Zwischenspeicher ändert nichts am Ergebnis, nur an der Dauer |
+| Am Rand aufgefallen, nicht geändert | Die Silbentrennung im Chromium der Sandbox trennt manches falsch („Gewer-bepark“); am Mac trennt der dortige Browser. Ob JARVIS eine Notiz noch schreibt, wenn man ihn mit Escape mitten im Befehl unterbricht, ist nicht untersucht |
+| Nicht geprüft | **der Mac**, **Safari**, ein **Vorleseprogramm** (VoiceOver), echte Dienste, Windows, Fensterbreiten zwischen 390 und 1280 außer den gemessenen |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(die Prüfungen fragen nur Nachbauten).
+
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -1909,7 +2018,7 @@ nicht ausprobiert; mit „minus“ hängt es nicht mehr an der Stimme.
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis V; Teil N erst, wenn eure IT so weit ist; Teil V neu seit J9). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis W; Teil N erst, wenn eure IT so weit ist; Teil W neu seit J10). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -2030,7 +2139,15 @@ Danach wie geplant:
    Kalender nicht lesbar war; erfundenes Beispielwetter stand als Wetter da und wurde im Briefing angesagt; ein
    ausgefallenes Postfach zeigte bis zu einer Minute lang wieder die alten Mails; der Satz zum Tag verschwieg
    ein ausgefallenes Postfach.
-   **Als Nächstes:** J10 (Bedienung ohne Maus und im schmalen Fenster: Tastatur, sichtbarer Fokus und
-   Handybreite in den wichtigsten Räumen; dabei die abgeschnittenen Namen an der Scheibe „Agenten“; außerdem aus J9 offen: „Heute“ soll unterscheiden, ob eine eigene Abfrage noch lädt oder dauerhaft scheitert, und der einmalige, nicht wiederholbare Ausfall der Prüfung Gedächtnis bleibt unter Beobachtung). Die
+24. **J10: gebaut, Testbereit** (Schritt J10 in Bereich J): JARVIS lässt sich ohne Maus bedienen und im schmalen
+   Fenster benutzen (sieben Funde behoben, neue Handprüfung „Bedienung“, jetzt 26 Prüfungen); „Heute“
+   unterscheidet, ob eine Quelle noch lädt oder JARVIS dort nicht antwortet, und versucht es nach einem
+   Fehlschlag am Anfang nach Sekunden wieder. Die Scheibe „Termine heute“ fasst einen vollen Tag. Beim Gegenprüfen
+   gefunden und abgestellt: Das Bauen verschluckte gelegentlich eine Änderung am Aussehen (nur für Prüfungen und
+   einen späteren zentralen Betrieb von Belang; der Mac startet anders).
+   **Als Nächstes:** J11 (ein Vorleseprogramm im Blick: Überschriften und Bereiche der Räume der Reihe nach,
+   Meldungen, die angesagt werden; das aufgeklappte Gespräch als eigenes Fenster, in dem die Markierung bleibt;
+   dabei die kleinen Klickflächen). Danach: „lässt sich gerade nicht laden“ auch in den anderen Räumen. Unter Beobachtung bleibt der einmalige, nicht
+   wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

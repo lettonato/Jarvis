@@ -53,6 +53,8 @@
 :root {
   /* Höhe des Bodens, Breite des Fensters, Abstand der Schrift vom linken Rand. */
   --boden: clamp(100px, 15vh, 168px);
+  /* So hoch ragt die Zeile, in der JARVIS antwortet, über den Boden in die Wand (zwei Zeilen Text und Abstand). */
+  --ueber-leiste: 7rem;
   --fenster: 30vw;
   --rand: clamp(20px, 5.8vw, 112px);
   --weich: cubic-bezier(0.16, 1, 0.3, 1);
@@ -77,6 +79,13 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-gletscher);
   outline-offset: 2px;
+}
+
+/* Das Feld für JARVIS zeigt den Rand an seinem ganzen dunklen Rahmen (Composer), nicht noch einmal innen als
+   Rechteck im runden Rahmen. Die Regel muss hier stehen und nicht als Klasse am Feld, weil die Regel darüber
+   sonst gewinnt. */
+[data-fokusrahmen] textarea:focus-visible {
+  outline: none;
 }
 
 ::selection {
@@ -211,7 +220,10 @@ body {
   width: calc(100% - var(--fenster));
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: clamp(28px, 7.5vh, 96px) clamp(20px, 3.4vw, 64px) 104px var(--rand);
+  /* Wer mit der Tab-Taste durch die Seite geht: Was markiert ist, rollt nicht hinter die Zeile, in der JARVIS
+     antwortet (sie steht über der Leiste und ragt in die Wand), und nicht hinter die Hinweise oben. */
+  scroll-padding: 5.5rem 0 var(--ueber-leiste);
+  padding: clamp(28px, 7.5vh, 96px) clamp(20px, 3.4vw, 64px) calc(var(--ueber-leiste) + 8px) var(--rand);
   mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent);
   scrollbar-width: thin;
   scrollbar-color: rgb(31 42 46 / 0.25) transparent;
@@ -238,22 +250,34 @@ body {
   pointer-events: auto;
   flex: 1 1 0;
   min-width: 0;
+  /* Passt eine Scheibe nicht in die Höhe (ein voller Tag mit langen Namen), rollt sie in sich. Sonst ragte sie
+     unter den Boden, und was dort steht, wäre nicht zu erreichen. */
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .raum-scheiben > :nth-child(2) {
   margin-top: 13vh;
+  max-height: calc(100% - 13vh);
 }
 .raum-scheiben > :nth-child(3) {
   margin-top: 4vh;
+  max-height: calc(100% - 4vh);
 }
 .raum:not([data-fenster="weit"]) .raum-scheiben {
   flex-direction: column;
   align-items: stretch;
   gap: 2.4vh;
   padding: 8vh 1.6vw 0;
+  /* Stehen die Scheiben untereinander, rollt der ganze Stapel. */
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .raum:not([data-fenster="weit"]) .raum-scheiben > * {
   flex: none;
   margin-top: 0;
+  max-height: none;
+  overflow: visible;
 }
 
 .glas {
@@ -325,6 +349,8 @@ body {
   .raum[data-fenster] {
     --fenster: 0px;
     overflow-y: auto;
+    /* Hier rollt der ganze Raum, und die Leiste liegt darüber: Markiertes bleibt über ihr und der Antwortzeile. */
+    scroll-padding: 5.5rem 0 calc(var(--boden) + var(--ueber-leiste));
   }
   .raum-fenster,
   .raum-spiegel,
@@ -349,12 +375,19 @@ body {
     flex-direction: column;
     align-items: stretch;
     gap: 14px;
-    padding: 0 20px calc(var(--boden) + 40px) var(--rand);
+    padding: 0 20px calc(var(--boden) + var(--ueber-leiste) + 8px) var(--rand);
     overflow: visible;
   }
   .raum-scheiben > * {
     flex: none;
     margin-top: 0 !important;
+    max-height: none !important;
+    overflow: visible;
+  }
+  /* Ein Raum ohne Scheiben endet mit dem Text an der Wand: Dann braucht der den Platz über der Leiste, damit auch
+     das Letzte auf der Seite über sie rollen kann. */
+  .raum:not(:has(.raum-scheiben > *)) .raum-wand {
+    padding-bottom: calc(var(--boden) + var(--ueber-leiste) + 8px);
   }
   .glas,
   .raum[data-licht="abend"] .glas {

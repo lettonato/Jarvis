@@ -12,6 +12,16 @@ const ORDNER = path.join(process.cwd(), "test", "hand");
 const pruefung = (name: string) => HANDPRUEFUNGEN.find((p) => p.name === name)!;
 const json = (daten: unknown) => `Vorgeplänkel\n${JSON.stringify(daten, null, 1)}\n`;
 
+describe("Handprüfungen: der gebaute Stand ist der Stand der Dateien", () => {
+  // Gemessen in Schritt J10: Mit dem Zwischenspeicher des Bauens (.next/cache/turbopack) übernahm `next build`
+  // eine Änderung nur an globals.css etwa jedes sechste Mal nicht (Exit 0, aber der alte Stand in .next/static).
+  // Eine Prüfung lief dann gegen ein anderes Aussehen, als in den Dateien steht. Ohne ihn: 12 von 12 richtig.
+  test("gebaut wird ohne den Zwischenspeicher, der Änderungen am Aussehen gelegentlich verschluckt", async () => {
+    const { default: config } = await import("../../next.config");
+    assert.equal(config.experimental?.turbopackFileSystemCacheForBuild, false);
+  });
+});
+
 describe("Handprüfungen: was zum Sammellauf gehört", () => {
   test("jede Datei test/hand/*-rauch.ts steht in der Liste, und jede Datei der Liste gibt es", () => {
     const dateien = readdirSync(ORDNER).filter((d) => d.endsWith("-rauch.ts")).sort();

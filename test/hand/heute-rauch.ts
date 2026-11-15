@@ -8,9 +8,10 @@
 import assert from "node:assert/strict";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { chromium } from "playwright-core";
+import { chromium, type Route } from "playwright-core";
 import { starteNext } from "../helfer/server";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
+import { mittagsZone } from "../helfer/uhrzeiten";
 import { beispielPost, MOCK_POST_ADRESSE, MOCK_POST_PASSWORT, starteImapMock } from "../mocks/imap-mock";
 import { starteXaiMock } from "../mocks/xai-mock";
 
@@ -29,8 +30,7 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // „Läuft gerade“, „vorbei“ und „heute fällig“ hängen an der Uhrzeit. Damit die Prüfung zu jeder Tageszeit dasselbe
 // sieht (und nie über Mitternacht läuft), bekommen sie, der Server und der Browser eine Zeitzone, in der es Mittag ist.
-const versatz = 12 - new Date().getUTCHours();
-const ZONE = `Etc/GMT${versatz >= 0 ? "-" : "+"}${Math.abs(versatz)}`;
+const ZONE = mittagsZone();
 process.env.TZ = ZONE;
 
 async function warte(bedingung: () => boolean | Promise<boolean>, was: string, ms = 20_000) {
@@ -191,7 +191,8 @@ async function main() {
     assert.deepEqual(projekte.slice(0, 4), ["3 aktiv", "Hallenneubau", "Eine Aufgabe ist überfällig: Statik prüfen lassen, seit 2 Tagen überfällig", "Messe"]);
     assert.match(projekte[4], /^Stand buchen, /);
     assert.equal(projekte.length, 5, "ein Projekt ohne Frist steht nicht in „Heute“");
-    assert.deepEqual(await scheibe("Termine heute"), ["ganz", "Geburtstag Anna", "08:00", "Frühbesprechung", "11:30", "Baustellentermin Hallenneubau", "16:00", "Steuerberater", "Morgen: ein Termin"]);
+    // In der schmalen Scheibe läuft der Name hinter der Uhrzeit weiter (seit J10): eine Zeile, mit Leerzeichen dazwischen.
+    assert.deepEqual(await scheibe("Termine heute"), ["ganz Geburtstag Anna", "08:00 Frühbesprechung", "11:30 Baustellentermin Hallenneubau", "16:00 Steuerberater", "Morgen: ein Termin"]);
     assert.equal(await seite.locator("section.glas").getByText("Frühbesprechung").evaluate((e) => getComputedStyle(e).textDecorationLine), "line-through", "was vorbei ist, ist durchgestrichen");
     assert.deepEqual((await scheibe("Agenten")).slice(0, 2), ["Gespräch (Claude)", "nicht eingerichtet"]);
     assert.ok((await scheibe("Märkte")).includes("Lage laut Intel: angespannt"));
@@ -223,7 +224,9 @@ async function main() {
     // („Neu laden“ im Raum Post merkt den Ausfall; danach gilt er für jede Seite, auch für eine frisch geladene.)
     assert.match(String((await hole("/api/post?force=1")).error), /antwortet nicht/);
     await oeffne();
-    await raum.getByText("Das Postfach antwortet nicht.", { exact: true }).waitFor();
+    // (Der erste Treffer genügt: Zeigt sich der Ausfall der Post einen Augenblick vor den anderen, steht derselbe
+    // Satz kurz auch im Kopf, und die Suche fände zwei Stellen.)
+    await raum.getByText("Das Postfach antwortet nicht.", { exact: true }).first().waitFor();
     assert.deepEqual(await teil("Post"), ["Öffnen", "Das Postfach antwortet nicht."]);
     assert.deepEqual((await kopf()).at(-1), "2 Aufgaben sind heute fällig, eine ist überfällig, das Postfach antwortet nicht.");
     assert.deepEqual(await wartet(), WARTET.slice(0, 3));
@@ -274,6 +277,34 @@ async function main() {
     assert.deepEqual(await wartet(), WARTET.slice(0, 3));
     assert.deepEqual(modi().filter((m) => m !== "lesen"), [], "„Heute“ hat den Mac nie um Erlaubnis gefragt und nichts eingetragen");
     schritt("kommen Tresor und Kalender zurück, steht der Tag wieder da");
+
+    // Antwortet JARVIS selbst an einer Stelle nicht (hier kommt die Abfrage der Projekte nie an), steht das da.
+    // „Lädt noch“ wäre falsch, denn es kommt nichts mehr.
+    const sperre = (route: Route) => route.abort();
+    await seite.route("**/api/projekte", sperre);
+    await seite.route("**/api/agenten", sperre);
+    await seite.route("**/api/market", sperre);
+    await seite.goto(`${BASIS}/heute`);
+    await raum.getByText("Die Projekte lassen sich gerade nicht laden.").waitFor({ timeout: 30_000 });
+    assert.deepEqual(await teil("Projekte"), ["Öffnen", "Die Projekte lassen sich gerade nicht laden."]);
+    assert.doesNotMatch(await alles(), /Die Projekte laden noch|Noch kein Projekt angelegt/);
+    // Was noch geht, steht da; nur der Hinweis aus den Projekten fehlt.
+    await raum.getByText("Eine Aufgabe ist überfällig.").first().waitFor();
+    assert.deepEqual(await wartet(), WARTET.slice(0, 2));
+    // Dasselbe an den Scheiben: Die Agenten „melden sich“ nicht ewig, und bei den Märkten steht, was fehlt.
+    assert.deepEqual(await scheibe("Agenten"), ["Die Agenten lassen sich gerade nicht laden.", "Der Desk handelt nur mit Spielgeld."]);
+    const maerkteAus = await scheibe("Märkte");
+    assert.ok(maerkteAus.includes("Die Krypto-Kurse lassen sich gerade nicht laden."), maerkteAus.join(" | "));
+    assert.ok(!maerkteAus.includes("Noch keine Kurse."), "„Noch keine Kurse“ wäre hier falsch");
+    // Kommt die Stelle zurück, steht sie nach wenigen Sekunden wieder da und nicht erst mit dem nächsten Takt
+    // (bei den Projekten eine Minute): Solange noch nie etwas kam, versucht JARVIS es nach 5 und 15 Sekunden wieder.
+    await seite.unroute("**/api/projekte", sperre);
+    await seite.unroute("**/api/agenten", sperre);
+    await seite.unroute("**/api/market", sperre);
+    await raum.getByText("Die Projekte lassen sich gerade nicht laden.").waitFor({ state: "detached", timeout: 25_000 });
+    await seite.locator("section.glas").getByText("Die Agenten lassen sich gerade nicht laden.").waitFor({ state: "detached", timeout: 25_000 });
+    assert.doesNotMatch((await scheibe("Märkte")).join("\n"), /lassen sich gerade nicht laden/);
+    schritt("antwortet JARVIS an einer Stelle selbst nicht, steht das da, statt „lädt noch“; kommt sie zurück, steht sie nach Sekunden wieder da");
 
     await browser.close();
     assert.deepEqual(fehler, [], "keine Fehler in der Seite");
