@@ -38,6 +38,9 @@ const projekt = (name: string, extra: Partial<ProjektKarte> = {}): ProjektKarte 
   ueberfaellig: 0,
   naechsteFrist: null,
   risiken: 0,
+  risikenUeberfaellig: 0,
+  risikoFrist: null,
+  risikenAlt: null,
   letzteEntscheidung: null,
   naechsterSchritt: null,
   textVonDritten: false,
@@ -107,6 +110,88 @@ describe("Tagesübersicht: Aufgaben, Post und Projekte", () => {
     assert.deepEqual(lage.projekte.map((p) => [p.name, p.dringend]), [["Brennt", true], ["Heute", true], ["Bald", false]]);
     assert.equal(lage.projekte[0].grund, "2 Aufgaben sind überfällig: Statik prüfen, seit 3 Tagen überfällig");
     assert.equal(lage.projekte[1].grund, "Vertrag unterschreiben, heute fällig");
+  });
+});
+
+// Offene Risiken in der Projektüberwachung (Schritt C4.2). Ein Risiko mit Frist zählt wie eine Frist; eines, das
+// lange unverändert offen ist, kommt nur am Montag zur Sprache, nicht jeden Tag.
+describe("Tagesübersicht: offene Risiken", () => {
+  const MONTAG = new Date(2026, 10, 16, 10, 0);
+  const eines = (extra: Partial<ProjektKarte>, wann = JETZT) => tageslage({ ...nichts, projekte: projekte([projekt("Halle", extra)]) }, wann).projekte;
+
+  test("ein Risiko über der Frist ist dringend und steht mit Text und Verzug da", () => {
+    assert.deepEqual(eines({ risiken: 1, risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit Stahl", faellig: "2026-11-10" } }), [
+      { id: "p-Halle", name: "Halle", grund: "Ein Risiko ist über der Frist: Lieferzeit Stahl, seit 3 Tagen überfällig", dringend: true, vertraulich: false },
+    ]);
+    assert.equal(eines({ risikenUeberfaellig: 2, risikoFrist: { text: "Lieferzeit Stahl", faellig: "2026-11-12" } })[0].grund, "2 Risiken sind über der Frist: Lieferzeit Stahl, seit gestern überfällig");
+  });
+
+  test("Frist heute ist dringend, bis in drei Tagen fällt auf, danach nicht", () => {
+    assert.deepEqual(eines({ risikoFrist: { text: "Genehmigung", faellig: "2026-11-13" } }).map((h) => [h.grund, h.dringend]), [["Risiko: Genehmigung, heute fällig", true]]);
+    assert.deepEqual(eines({ risikoFrist: { text: "Genehmigung", faellig: "2026-11-16" } }).map((h) => [h.grund, h.dringend]), [["Risiko: Genehmigung, fällig am 16. November", false]]);
+    assert.deepEqual(eines({ risikoFrist: { text: "Genehmigung", faellig: "2026-11-17" } }), []);
+  });
+
+  test("ein dringendes Risiko steht auch unter dem, was auf dich wartet", () => {
+    const lage = tageslage({ ...nichts, projekte: projekte([projekt("Halle", { risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit Stahl", faellig: "2026-11-10" } })]) }, JETZT);
+    assert.deepEqual(lage.brauchtDich, [{ art: "projekt", text: "Halle: Ein Risiko ist über der Frist: Lieferzeit Stahl, seit 3 Tagen überfällig", href: "/projekte", dringend: true }]);
+  });
+
+  test("Aufgaben und Risiken zusammen: Überfällige Aufgaben stehen vorn, das Risiko fällt nicht unter den Tisch", () => {
+    const aufgabeAlt = { ueberfaellig: 1, naechsteFrist: { text: "Statik prüfen", faellig: "2026-11-10" } };
+    assert.equal(eines({ ...aufgabeAlt, risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-01" } })[0].grund, "Eine Aufgabe ist überfällig: Statik prüfen, seit 3 Tagen überfällig; außerdem ist ein Risiko über der Frist");
+    assert.equal(eines({ ...aufgabeAlt, risikenUeberfaellig: 3, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-01" } })[0].grund, "Eine Aufgabe ist überfällig: Statik prüfen, seit 3 Tagen überfällig; außerdem sind 3 Risiken über der Frist");
+    assert.equal(eines({ ...aufgabeAlt, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-13" } })[0].grund, "Eine Aufgabe ist überfällig: Statik prüfen, seit 3 Tagen überfällig; außerdem ist heute ein Risiko fällig");
+    assert.equal(eines({ ...aufgabeAlt, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-14" } })[0].grund, "Eine Aufgabe ist überfällig: Statik prüfen, seit 3 Tagen überfällig", "ein Risiko von morgen ist nicht dringend");
+  });
+
+  test("ist ein Risiko über der Frist und heute eine Aufgabe fällig, steht beides da", () => {
+    const h = eines({ risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-11" }, naechsteFrist: { text: "Vertrag", faellig: "2026-11-13" } })[0];
+    assert.equal(h.grund, "Ein Risiko ist über der Frist: Lieferzeit, seit 2 Tagen überfällig; außerdem ist heute eine Aufgabe fällig");
+    assert.equal(eines({ risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-11" }, naechsteFrist: { text: "Vertrag", faellig: "2026-11-14" } })[0].grund, "Ein Risiko ist über der Frist: Lieferzeit, seit 2 Tagen überfällig");
+  });
+
+  test("ohne Überfälliges zählt die frühere Frist; bei Gleichstand die Aufgabe, und was heute fällig ist, wird genannt", () => {
+    const risikoHeute = { text: "Genehmigung", faellig: "2026-11-13" };
+    assert.deepEqual(eines({ naechsteFrist: { text: "Vertrag", faellig: "2026-11-15" }, risikoFrist: risikoHeute }).map((h) => [h.grund, h.dringend]), [["Risiko: Genehmigung, heute fällig", true]]);
+    assert.deepEqual(eines({ naechsteFrist: { text: "Vertrag", faellig: "2026-11-13" }, risikoFrist: risikoHeute }).map((h) => [h.grund, h.dringend]), [["Vertrag, heute fällig; außerdem ist heute ein Risiko fällig", true]]);
+    assert.deepEqual(eines({ naechsteFrist: { text: "Vertrag", faellig: "2026-11-14" }, risikoFrist: { text: "Genehmigung", faellig: "2026-11-14" } }).map((h) => [h.grund, h.dringend]), [["Vertrag, morgen fällig", false]]);
+    assert.deepEqual(eines({ naechsteFrist: { text: "Vertrag", faellig: "2026-12-20" }, risikoFrist: { text: "Genehmigung", faellig: "2026-11-15" } }).map((h) => h.grund), ["Risiko: Genehmigung, fällig am 15. November"]);
+  });
+
+  test("ein lange unverändertes Risiko kommt nur am Montag zur Sprache und ist nie dringend", () => {
+    const alt = { risiken: 1, risikenAlt: { anzahl: 1, text: "Schlüsselperson fällt aus", tage: 16 } };
+    assert.deepEqual(eines(alt), [], "an einem Freitag steht nichts da");
+    assert.deepEqual(eines({ risiken: 1, risikenAlt: { anzahl: 1, text: "Schlüsselperson fällt aus", tage: 19 } }, MONTAG), [
+      { id: "p-Halle", name: "Halle", grund: "Ein Risiko ist seit 19 Tagen unverändert offen: Schlüsselperson fällt aus", dringend: false, vertraulich: false },
+    ]);
+    for (let tag = 17; tag <= 22; tag++) assert.deepEqual(eines(alt, new Date(2026, 10, tag, 10, 0)), [], `am ${tag}.11. steht nichts da`);
+    assert.equal(eines(alt, new Date(2026, 10, 23, 10, 0)).length, 1, "am Montag darauf wieder");
+    assert.equal(tageslage({ ...nichts, projekte: projekte([projekt("Halle", alt)]) }, MONTAG).brauchtDich.length, 0, "nicht unter dem, was dringend wartet");
+  });
+
+  test("mehrere alte Risiken stehen in einem Satz, mit dem ältesten", () => {
+    assert.equal(eines({ risikenAlt: { anzahl: 3, text: "Schlüsselperson fällt aus", tage: 40 } }, MONTAG)[0].grund, "3 Risiken sind seit mindestens 14 Tagen unverändert offen, das älteste seit 40 Tagen: Schlüsselperson fällt aus");
+  });
+
+  test("hat das Projekt am Montag schon einen anderen Anlass, steht das alte Risiko als Nachsatz dabei; an anderen Tagen nicht", () => {
+    const alt = { anzahl: 1, text: "Schlüsselperson fällt aus", tage: 19 };
+    const frist = { naechsteFrist: { text: "Vertrag", faellig: "2026-11-17" } };
+    assert.deepEqual(eines({ risikenAlt: alt, ...frist }, MONTAG).map((h) => [h.grund, h.dringend]), [["Vertrag, morgen fällig; außerdem ist ein Risiko seit 19 Tagen unverändert offen", false]]);
+    assert.deepEqual(eines({ risikenAlt: alt, ...frist }, new Date(2026, 10, 14, 10, 0)).map((h) => h.grund), ["Vertrag, fällig am 17. November"], "am Samstag ohne Nachsatz");
+    // Gerade ein Projekt, in dem ständig etwas überfällig ist, darf die Erinnerung nicht für immer verlieren.
+    const brennt = { ueberfaellig: 1, naechsteFrist: { text: "Statik prüfen", faellig: "2026-11-10" }, risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-01" } };
+    assert.equal(
+      eines({ ...brennt, risikenAlt: { anzahl: 3, text: "Schlüsselperson fällt aus", tage: 60 } }, MONTAG)[0].grund,
+      "Eine Aufgabe ist überfällig: Statik prüfen, seit 6 Tagen überfällig; außerdem ist ein Risiko über der Frist; außerdem sind 3 Risiken seit mindestens 14 Tagen unverändert offen",
+    );
+    assert.equal(eines({ risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-13" }, risikenAlt: alt }, MONTAG)[0].grund, "Ein Risiko ist über der Frist: Lieferzeit, seit 3 Tagen überfällig; außerdem ist ein Risiko seit 19 Tagen unverändert offen");
+    assert.equal(eines({ risikoFrist: { text: "Genehmigung", faellig: "2026-11-16" }, risikenAlt: alt }, MONTAG)[0].grund, "Risiko: Genehmigung, heute fällig; außerdem ist ein Risiko seit 19 Tagen unverändert offen");
+  });
+
+  test("pausierte Projekte melden nichts, auch am Montag nicht", () => {
+    const alt = { anzahl: 1, text: "Schlüsselperson fällt aus", tage: 19 };
+    assert.deepEqual(eines({ risikenAlt: alt, status: "pausiert", risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-01" } }, MONTAG), []);
   });
 });
 

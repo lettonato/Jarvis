@@ -84,7 +84,7 @@ export async function uebersicht(jetzt = new Date()): Promise<ProjekteSnapshot> 
   const heute = isoDate(jetzt);
   const rang = { aktiv: 0, pausiert: 1, abgeschlossen: 2 };
   return {
-    projekte: projekte.map((p) => karteVon(p, eintraege, heute)).sort((a, b) => rang[a.status] - rang[b.status] || b.ueberfaellig - a.ueberfaellig || a.name.localeCompare(b.name, "de")),
+    projekte: projekte.map((p) => karteVon(p, eintraege, heute)).sort((a, b) => rang[a.status] - rang[b.status] || b.ueberfaellig + b.risikenUeberfaellig - (a.ueberfaellig + a.risikenUeberfaellig) || a.name.localeCompare(b.name, "de")),
     vorschlaege: mitBisher(vorschlaege, eintraege),
     ablage: s.ort,
     ...(s.art === "datenbank" ? { ablageArt: "datenbank" as const } : {}),

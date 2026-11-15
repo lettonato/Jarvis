@@ -771,12 +771,12 @@ export async function think(
     betaTool({
       name: "projekte_lesen",
       description:
-        "Liest die Übersicht des Projektgedächtnisses: alle Projekte mit Status, Verantwortlichen, Fortschritt (nur wenn jemand eine Zahl genannt hat), offenen Aufgaben, nächster Frist, Risiken, letzter Entscheidung und nächstem Schritt. Enthält nur, was bestätigt ist. Kostet nichts.",
+        "Liest die Übersicht des Projektgedächtnisses: alle Projekte mit Status, Verantwortlichen, Fortschritt (nur wenn jemand eine Zahl genannt hat), offenen Aufgaben, nächster Frist, Risiken (wie viele offen sind, wie viele über der Frist, das Risiko mit der nächsten Frist, und Risiken ohne Frist, die seit mindestens 14 Tagen unverändert offen sind, mit dem ältesten), letzter Entscheidung und nächstem Schritt. Enthält nur, was bestätigt ist. Kostet nichts.",
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       run: async () => {
         const snap = await uebersicht(now);
         const offen = snap.projekte.filter((p) => !p.vertraulich);
-        // Die Karte zeigt auch Text aus Einträgen (Frist, Entscheidung, nächster Schritt), nicht nur das Projekt selbst.
+        // Die Karte zeigt auch Text aus Einträgen (Frist, Entscheidung, nächster Schritt, Risiko mit Frist, ältestes unverändertes Risiko), nicht nur das Projekt selbst.
         if (offen.some((p) => p.textVonDritten)) markiereFremd();
         return JSON.stringify({
           heute: today,
@@ -1116,6 +1116,9 @@ const projektZeile = (p: ProjektKarte) => ({
   ueberfaellig: p.ueberfaellig,
   naechste_frist: p.naechsteFrist,
   offene_risiken: p.risiken,
+  risiken_ueber_frist: p.risikenUeberfaellig,
+  naechste_risiko_frist: p.risikoFrist,
+  lange_unveraenderte_risiken: p.risikenAlt,
   letzte_entscheidung: p.letzteEntscheidung,
   naechster_schritt: p.naechsterSchritt,
   zuletzt_geaendert: p.geaendertAm.slice(0, 10),

@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 870 von 870 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 900 von 900 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -444,7 +444,8 @@ Einzelheiten: [docs/jarvis-2.0/07-projektgedaechtnis.md](docs/jarvis-2.0/07-proj
 | C2.3 Das Gespräch läuft mit beschädigtem Gedächtnis weiter und weiß davon | Testbereit | `brain.ts`; derselbe Test |
 | C2.4 Persönliches Gedächtnis in der Datenbank (dieselbe Speicherschnittstelle wie die Projekte) | **Offen, bewusst nicht gebaut** | Dieses Gedächtnis gehört zu einer Person. In einer gemeinsamen Datenbank braucht es erst die Anmeldung je Person (Schritt I2), sonst läse jeder das Gedächtnis des anderen |
 | C3 Mails und Besprechungsnotizen von selbst Projekten zuordnen und Vorschläge machen | Offen | braucht die Freigabe, Mailinhalte dafür auszuwerten |
-| C4 Projektüberwachung (Überfälliges und nahe Fristen von selbst melden) | Testbereit im Morgenbriefing, im Tagesabschluss, in „Heute“ und als Hinweis am Tag | Schritte G1 und G2; offen: offene Risiken |
+| C4 Projektüberwachung (Überfälliges und nahe Fristen von selbst melden) | Testbereit im Morgenbriefing, im Tagesabschluss, in „Heute“ und als Hinweis am Tag | Schritte G1 und G2 |
+| C4.2 Offene Risiken in der Projektüberwachung: Risiken mit Frist zählen wie Fristen, lange unveränderte Risiken kommen montags zur Sprache | Testbereit in „Heute“, im Morgenbriefing, im Tagesabschluss, in „Projekte“ und im Gespräch; die Hinweise am Tag bleiben bewusst bei Aufgaben | Schritt C4.2 unten; `karteVon`, `risikoUnveraendert`, `projektHinweis`; im Browser geprüft (`test/hand/risiken-rauch.ts`) |
 | C5 PostgreSQL-Umsetzung der Speicherschnittstelle | Testbereit (gegen PostgreSQL 16 in der Sandbox, nicht in Azure) | Schritt I1 in Bereich I; `pg-speicher.ts`, `test/hand/postgres-rauch.ts` |
 
 ### Testergebnisse Schritt C1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
@@ -509,6 +510,51 @@ Schritt J3). Die Datei ist nicht verschlüsselt.
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen; eines weniger (verlorene oder
 still überschriebene Einträge im Gedächtnis). **Neue laufende Kosten:** keine.
+
+### Schritt C4.2: offene Risiken in der Projektüberwachung (14. und 15. November 2026)
+
+**Warum:** Die Projektüberwachung kannte nur Aufgaben. Ein Risiko stand als Zahl auf der Kachel und in der
+Vorbereitung auf eine Besprechung, sonst nirgends: Lief die Frist eines Risikos ab oder blieb es wochenlang
+liegen, sagte JARVIS nichts. Am Risiko selbst ändert sich nichts; es hat wie bisher einen Text, wahlweise einen
+Zuständigen und eine Frist, und es lässt sich abhaken.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| C4.2a Ein offenes Risiko mit Frist zählt wie eine Frist: über der Frist oder heute fällig ist dringend („Wartet auf dich“), bis in drei Tagen fällt es auf | Testbereit | `projektHinweis` in `src/lib/heute.ts` |
+| C4.2b Ein Projekt hat weiter einen Grund. Überfällige Aufgaben stehen vorn; ist daneben ein Risiko über der Frist oder heute fällig (oder umgekehrt heute eine Aufgabe), steht es als Nachsatz dabei, damit Dringendes nie unter den Tisch fällt | Testbereit | „…; außerdem ist ein Risiko über der Frist“ |
+| C4.2c Ein offenes Risiko ohne Frist, das seit 14 Tagen niemand angefasst hat (bestätigt oder zuletzt korrigiert), kommt einmal in der Woche zur Sprache, am Montag: in „Heute“ und im Morgenbriefing, nie als dringend. Hat das Projekt schon einen anderen Grund, steht es als Nachsatz dabei | Testbereit | `RISIKO_REGELN`, `risikoUnveraendert` |
+| C4.2d Der Tagesabschluss nennt Risiken über der Frist und die Frist von morgen; je Projekt eine Zeile | Testbereit | `tagesabschluss` |
+| C4.2e „Projekte“ zeigt es jeden Tag: rote Marke „Risiko über der Frist“ auf der Kachel, das Risiko mit der nächsten Frist, „seit … Tagen unverändert“ auf der Kachel und am Eintrag in der Akte, eine Zeile „Risiken über der Frist“ in der Scheibe „Auf einen Blick“; Projekte mit Risiken über der Frist stehen in der Übersicht vorn | Testbereit | `ProjectsView.tsx` |
+| C4.2f Das Gespräch weiß dasselbe wie die Kachel (`projekte_lesen`: wie viele Risiken über der Frist, nächste Frist, lange unveränderte) | Testbereit, nur gegen nachgebauten Claude | `projektZeile` |
+| C4.2g Für jeden dieser Texte gelten die Regeln der Routinen weiter: Vertrauliche Projekte nie beim Namen, über Telegram Namen und Inhalte nur mit dem Schalter. Stammt der Text eines Risikos von Dritten (aus einer Mail), gilt ein Gespräch, in dem er vorkommt, als fremd beeinflusst | Testbereit | `routinen.test.ts`, `herkunft.test.ts` |
+
+**Eigene Entscheidungen (Benedikt hat sie noch nicht gesehen):** (1) 14 Tage und Montag sind von mir gewählt
+und stehen an einer Stelle (`RISIKO_REGELN`). (2) „Angefasst“ heißt: bestätigt oder irgendwie korrigiert. Auch
+eine kleine Korrektur stellt die Uhr zurück. (3) Die Hinweise am Tag (Handy und Mitteilung am Mac) bleiben bei
+Aufgaben; ein Risiko über der Frist meldet sich im Morgenbriefing, im Tagesabschluss und in „Heute“, aber nicht
+zwischendurch. Grund: höchstens drei Hinweise am Tag, und die sollen für Aufgaben bleiben. (4) Haben eine
+Aufgabe und ein Risiko dieselbe Frist in den nächsten Tagen, steht nur die Aufgabe da; das Risiko kommt am Tag
+selbst dazu.
+
+**Grenzen:** Die Erinnerung am Montag hat kein Gedächtnis. Läuft JARVIS am Montag nicht (Mac aus, Feiertag),
+entfällt sie in dieser Woche; auf der Kachel und in der Akte steht das Alter jeden Tag. JARVIS bewertet kein
+Risiko (wie wahrscheinlich, wie teuer); er zählt nur Fristen und Tage.
+
+### Testergebnisse Schritt C4.2 (14. und 15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **900 Tests: 900 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 30: Regeln der Karte 10 in `projekt-risiken.test.ts`, „Heute“ 10, Briefing und Tagesabschluss 4, Herkunft 1, Projektgedächtnis mit Speicher und nachgebautem Claude 5) |
+| Tests zuerst | Alle Regeln und alle Befunde der Durchsicht standen zuerst als Test da und liefen rot (erste Runde: 23 rote Tests, nach der Durchsicht noch einmal 5) |
+| Gegenproben | Erste Runde: 45 absichtlich eingebaute Fehler, 44 bemerkt. Der eine nicht bemerkte war kein Fehler, sondern eine überflüssige Bedingung im Code; sie ist entfernt. Zweite Runde für die Stellen, die nach der Durchsicht neu sind: 13 eingebaute Fehler, 13 bemerkt. Darunter: Schwelle 13 oder 15 statt 14 Tage, Dienstag statt Montag, erledigte oder zurückgezogene Risiken zählen mit, Korrektur stellt die Uhr nicht zurück, heute fällig gilt schon als über der Frist, Risiko fällt hinter einer überfälligen Aufgabe weg, altes Risiko jeden Tag oder dringend, pausierte Projekte melden sich, Projekt doppelt im Tagesabschluss, Risikotext aus einer Mail macht das Gespräch nicht fremd, altes Risiko verliert „vertraulich“ |
+| `npx next build` | erfolgreich, mit den vier bekannten Warnungen |
+| Handprüfung `risiken-rauch` (Chromium, gebauter Server, an einem Sonntag) | alle Schritte in Ordnung, zweimal hintereinander: „Heute“ zeigt das Risiko über der Frist unter „Wartet auf dich“ und bei der Messe die Aufgabe von heute mit dem Nachsatz zum Risiko; das pausierte Projekt meldet nichts; das 20 Tage alte Risiko steht nicht in „Heute“ (kein Montag), aber auf der Kachel und in der Akte; Korrigieren nimmt den Zusatz „unverändert“ weg; Abhaken nimmt die rote Marke weg, und „Heute“ meldet das Risiko nicht mehr; keine Fehler in der Seite |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde. Eingearbeitet: Im Tagesabschluss konnte ein Projekt zweimal stehen (einmal mit Dringendem, einmal mit dem Risiko von morgen); ein lange unverändertes Risiko wäre in einem Projekt, das ständig einen anderen Anlass hat, nie zur Sprache gekommen (jetzt montags als Nachsatz); die Übersicht sortierte Projekte mit Risiken über der Frist nicht nach vorn, und „Auf einen Blick“ zählte sie nicht; das Gespräch bekam die lange unveränderten Risiken nicht, obwohl die Kachel sie zeigt; die Tage wurden an zwei Stellen gerechnet (jetzt nur in `dates.ts`). Bewusst nicht geändert, siehe „Eigene Entscheidungen“ und „Grenzen“: Hinweise am Tag bleiben bei Aufgaben; bei gleicher Frist in den nächsten Tagen steht nur die Aufgabe da; die Erinnerung am Montag holt nichts nach; jede Korrektur stellt die Uhr zurück. Ebenfalls nicht geändert: Aufgaben und Risiken in eine gemeinsame Liste von Fristen umzubauen wäre ein eigener Umbau |
+| Sicherheitsprüfung (von Hand) | Kein neuer Weg nach außen. Der Text eines Risikos aus einem vertraulichen Projekt steht weder im Briefing noch im Tagesabschluss noch im gesprochenen Satz, und das Modell bekommt vertrauliche Projekte weiter gar nicht (Tests). Über Telegram stehen Risiken ohne den Schalter nur als Zahl da. Stammt ein Risikotext aus einer Mail, gilt das Gespräch als fremd beeinflusst, sobald er auf der Kachel steht oder in einem Satz von JARVIS vorkommt |
+| Dabei bemerkt | Die Handprüfung prüfte beim ersten Lauf zu früh (der neue Text stand erst im Eingabefeld); die Prüfung wartet jetzt, bis das Formular zu ist. Am Programm war nichts falsch. Zwei neue Tests hingen zunächst am echten Datum; sie rechnen jetzt von heute aus oder mit Fristen weit weg |
+| Nicht geprüft | echter Mac und Safari; ein echtes Claude-Modell (ob es von sich aus über Risiken spricht); der Montag im Browser (die Regel ist mit gestelltem Datum geprüft, die Handprüfung lief an einem Sonntag); das Morgenbriefing mit Risiken über echtes Telegram |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
 ## Bereich D – Microsoft 365
 
@@ -1453,6 +1499,9 @@ Danach wie geplant:
 14. **G3.5: gebaut, Testbereit, nur gegen das nachgebaute Postfach** (Schritt G3.5 in Bereich G): Zitat der
    ursprünglichen Mail und „Allen antworten“, beides nur auf deinen Haken am Mac. Anhänge gehen erst mit dem
    Entwurf im Postfach (Frage 13).
-   **Als Nächstes:** C4 (offene Risiken in die Projektüberwachung aufnehmen). Die
+15. **C4.2: gebaut, Testbereit** (Schritt C4.2 in Bereich C): Offene Risiken gehören zur Projektüberwachung.
+   Ein Risiko mit Frist zählt wie eine Frist, ein lange unverändertes kommt montags zur Sprache.
+   **Als Nächstes:** E4 (Finanz- und Marktübersicht aus dem, was JARVIS schon hat: Spielgeld-Desk, Edelmetalle,
+   Intel; ohne neue Datenquellen). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

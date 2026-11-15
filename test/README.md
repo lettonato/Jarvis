@@ -13,6 +13,9 @@ npm run pruefen     # Lint, Typprüfung und Tests
   je Agent). `zeitplan.test.ts` prüft die Regeln des gemeinsamen Zeitplans (fällig, nachholen, auch über
   Mitternacht), `metalle.test.ts` die Rechnung des Edelmetall-Agenten mit von Hand gerechneten Zahlen (Trend,
   Hoch und Tief, Fonds statt Feinunze). `modelle.test.ts` prüft die Modellwahl und die Preisrechnung gegen Zahlen aus der Preisliste.
+  `projekt-risiken.test.ts` prüft, was die Karte eines Projekts über offene Risiken weiß (über der Frist,
+  nächste Frist, lange unverändert, Text von Dritten); wie das in „Heute“, im Briefing und im Tagesabschluss
+  ankommt, steht in `heute.test.ts` und `routinen.test.ts`.
   `claude-zugang.test.ts` prüft, dass nur `src/lib/server/claude.ts` eine Verbindung zu Claude aufbaut und
   jede Rolle ihre Wartezeit und Wiederholungen behält.
   `geteilt.test.ts` prüft die geteilten Abfragen der Oberfläche (eine Abfrage für mehrere Stellen, keine
@@ -93,7 +96,8 @@ normale Tests.
 (Netzschleuse, Browser-Agent, PDF, Ansichten „Heute“ und „Projekte“, Schalter für den Tagesabschluss, Agentensteuerung,
 Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“, Einstellungen speichern mit vielen Änderungen zur selben Zeit,
 Hinweise als Mitteilung am Mac vom Schalter bis zur Mitteilung des laufenden Servers,
-das persönliche Gedächtnis mit beschädigter Datei und Beiseitelegen über die Einstellungen). Aufruf steht jeweils oben in der Datei.
+das persönliche Gedächtnis mit beschädigter Datei und Beiseitelegen über die Einstellungen,
+offene Risiken in „Heute“ und „Projekte“). Aufruf steht jeweils oben in der Datei.
 
 `test/hand/postgres-rauch.ts` braucht kein Chrome, aber ein installiertes PostgreSQL (die Programme `initdb`
 und `pg_ctl`; gesucht in `JARVIS_PG_BIN` und an den üblichen Orten). Es startet ein eigenes, leeres PostgreSQL

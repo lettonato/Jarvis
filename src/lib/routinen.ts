@@ -83,9 +83,16 @@ export function tagesabschluss(d: TagesDaten, now: Date): Abschluss {
   const lesbar = d.calendar?.access === "ok";
   const stumm = !d.calendar || d.calendar.access === "offen" || d.calendar.access === "kein-mac";
   const offen = d.tasks?.configured ? d.tasks.tasks : [];
+  // Je Projekt eine Zeile: die Aufgabe von morgen, sonst das Risiko, dessen Frist morgen abläuft. Ein Projekt,
+  // das schon mit etwas Dringendem dasteht (projekteOffen), kommt nicht ein zweites Mal.
+  const projekteOffen = lage.projekte.filter((h) => h.dringend);
+  const schonDa = new Set(projekteOffen.map((h) => h.id));
   const fristenMorgen = (d.projekte?.projekte ?? [])
-    .filter((p) => p.status === "aktiv" && p.ueberfaellig === 0 && p.naechsteFrist?.faellig === morgen)
-    .map((p) => ({ id: p.id, name: p.name, grund: `${p.naechsteFrist!.text}, ${fristText(morgen, lage.datum)}`, dringend: false, vertraulich: p.vertraulich }));
+    .filter((p) => p.status === "aktiv" && !schonDa.has(p.id))
+    .flatMap((p): ProjektHinweis[] => {
+      const grund = p.naechsteFrist?.faellig === morgen ? p.naechsteFrist.text : p.risikoFrist?.faellig === morgen ? `Risiko: ${p.risikoFrist.text}` : null;
+      return grund === null ? [] : [{ id: p.id, name: p.name, grund: `${grund}, ${fristText(morgen, lage.datum)}`, dringend: false, vertraulich: p.vertraulich }];
+    });
   return {
     datum: lage.datum,
     erledigt: d.tasks?.configured ? d.tasks.doneToday : 0,
@@ -97,7 +104,7 @@ export function tagesabschluss(d: TagesDaten, now: Date): Abschluss {
     kalenderProblem: lesbar || stumm ? null : accessProblem(d.calendar),
     aufgabenMorgen: offen.filter((t) => dateOf(t) === morgen),
     fristenMorgen,
-    projekteOffen: lage.projekte.filter((h) => h.dringend),
+    projekteOffen,
     vorschlaege: d.projekte?.vorschlaege.length ?? 0,
     wartet: lage.brauchtDich.filter((h) => h.art === "notaus" || h.art === "freigabe" || h.art === "rueckfrage" || h.art === "warnung").map((h) => h.text),
   };

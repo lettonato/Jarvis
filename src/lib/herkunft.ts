@@ -36,7 +36,7 @@ export function fremdeTexte(q: FremdQuellen): string[] {
     ...ausBericht(q.intel?.report),
     ...ausBericht(q.intel?.search),
     q.intel?.warning?.text,
-    ...(q.projekte?.projekte ?? []).filter((p) => p.textVonDritten).flatMap((p) => [p.name, p.naechsteFrist?.text, p.naechsterSchritt, p.letzteEntscheidung?.text]),
+    ...(q.projekte?.projekte ?? []).filter((p) => p.textVonDritten).flatMap((p) => [p.name, p.naechsteFrist?.text, p.naechsterSchritt, p.letzteEntscheidung?.text, p.risikoFrist?.text, p.risikenAlt?.text]),
     ...(q.desk?.positions ?? []).flatMap((p) => [p.symbol, p.name]),
     ...(q.market?.scan?.candidates ?? []).flatMap((c) => [c.symbol, c.name]),
   ];

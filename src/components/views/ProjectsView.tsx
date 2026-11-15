@@ -15,6 +15,8 @@ import {
   GRENZEN,
   QUELLE_LABEL,
   quelleText,
+  RISIKO_REGELN,
+  risikoUnveraendert,
   STATUS_LABEL,
   vorbereitung,
   type Eintrag,
@@ -109,6 +111,7 @@ export function ProjectsView() {
               <ScheibenZeile wert={liste.filter((p) => p.status === "aktiv").length}>Aktive Projekte</ScheibenZeile>
               <ScheibenZeile wert={liste.reduce((n, p) => n + p.offeneAufgaben, 0)}>Offene Aufgaben</ScheibenZeile>
               <ScheibenZeile wert={liste.reduce((n, p) => n + p.ueberfaellig, 0)}>Überfällig</ScheibenZeile>
+              <ScheibenZeile wert={liste.reduce((n, p) => n + p.risikenUeberfaellig, 0)}>Risiken über der Frist</ScheibenZeile>
               <ScheibenZeile wert={vorschlaege.length}>Warten auf dein Ja</ScheibenZeile>
             </ul>
           </Scheibe>
@@ -181,6 +184,7 @@ function ProjektKachel({ p, heute, aktiv, onOpen }: { p: ProjektKarte; heute: st
         <span className={`${chip} ${p.status === "aktiv" ? CHIP.gut : CHIP.ruhig}`}>{STATUS_LABEL[p.status]}</span>
         {p.vertraulich && <span className={`${chip} ${CHIP.warn}`}>vertraulich</span>}
         {p.ueberfaellig > 0 && <span className={`${chip} ${CHIP.rot}`}>{p.ueberfaellig} überfällig</span>}
+        {p.risikenUeberfaellig > 0 && <span className={`${chip} ${CHIP.rot}`}>{p.risikenUeberfaellig === 1 ? "Risiko" : `${p.risikenUeberfaellig} Risiken`} über der Frist</span>}
       </div>
       <h2 className="mt-2 text-base font-bold text-schiefer">{p.name}</h2>
       {p.verantwortliche.length > 0 && <p className="text-xs text-quiet">{p.verantwortliche.join(", ")}</p>}
@@ -196,6 +200,8 @@ function ProjektKachel({ p, heute, aktiv, onOpen }: { p: ProjektKarte; heute: st
         {p.offeneAufgaben} offene {p.offeneAufgaben === 1 ? "Aufgabe" : "Aufgaben"}
         {p.risiken > 0 ? ` · ${p.risiken} ${p.risiken === 1 ? "Risiko" : "Risiken"}` : ""}
         {p.naechsteFrist && heute ? ` · nächste Frist: ${p.naechsteFrist.text.slice(0, 50)}, ${fristText(p.naechsteFrist.faellig, heute)}` : ""}
+        {p.risikoFrist && heute ? ` · Risiko: ${p.risikoFrist.text.slice(0, 50)}, ${fristText(p.risikoFrist.faellig, heute)}` : ""}
+        {p.risikenAlt ? ` · ${p.risikenAlt.anzahl === 1 ? `ein Risiko seit ${p.risikenAlt.tage} Tagen unverändert` : `${p.risikenAlt.anzahl} Risiken lange unverändert, das älteste seit ${p.risikenAlt.tage} Tagen`}` : ""}
       </p>
       {p.naechsterSchritt && <p className="mt-1 text-xs text-quiet">Nächster Schritt: {p.naechsterSchritt}</p>}
       {p.eintraege === 0 && <p className="mt-1 text-xs text-quiet">Noch nichts festgehalten.</p>}
@@ -389,10 +395,13 @@ function EintragZeile({ e, heute, busy, act }: { e: Eintrag; heute: string | nul
   const [modus, setModus] = useState<"korrigieren" | "zurueckziehen" | null>(null);
   const [grund, setGrund] = useState("");
   const abhakbar = ABHAKBAR.includes(e.art);
+  // Ein offenes Risiko ohne Frist, das lange niemand angefasst hat, sagt das dazu (dieselbe Regel wie in „Heute“).
+  const alt = heute ? risikoUnveraendert(e, heute) : null;
   const meta = [
     e.zustaendig && `Zuständig: ${e.zustaendig}`,
     e.faellig && (heute && !e.erledigt ? fristText(e.faellig, heute) : `Frist ${tag(e.faellig)}`),
     e.datum && `vom ${tag(e.datum)}`,
+    alt !== null && alt >= RISIKO_REGELN.altTage && `seit ${alt} Tagen unverändert`,
     quelleText(e.quelle),
     `bestätigt am ${tag(e.bestaetigtAm)}`,
   ].filter(Boolean);

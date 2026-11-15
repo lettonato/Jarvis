@@ -197,6 +197,45 @@ describe("Projektgedächtnis: nur ein Mensch am Mac trägt ein", () => {
   });
 });
 
+describe("Projektgedächtnis: Risiken in der Übersicht", () => {
+  test("Risiken mit Frist und lange unveränderte Risiken stehen auf der Karte; Abhaken und Korrigieren wirken sofort", async () => {
+    const frueher = new Date(2026, 9, 20, 10, 0);
+    const projekt = await p.legeProjektAn({ name: "Hallenneubau" }, "mac", frueher);
+    const frist = await p.trageEin(projekt.id, { art: "risiko", text: "Lieferzeit Stahl", faellig: "2026-11-10" }, "mac", frueher);
+    const alt = await p.trageEin(projekt.id, { art: "risiko", text: "Schlüsselperson fällt aus" }, "mac", frueher);
+    await p.trageEin(projekt.id, { art: "risiko", text: "Frisch erkannt" }, "mac", JETZT);
+    let karte = (await p.uebersicht(JETZT)).projekte[0];
+    assert.equal(karte.risiken, 3);
+    assert.equal(karte.risikenUeberfaellig, 1);
+    assert.deepEqual(karte.risikoFrist, { text: "Lieferzeit Stahl", faellig: "2026-11-10" });
+    assert.deepEqual(karte.risikenAlt, { anzahl: 1, text: "Schlüsselperson fällt aus", tage: 24 });
+    assert.equal(karte.ueberfaellig, 0, "ein Risiko ist keine überfällige Aufgabe");
+    assert.equal(karte.naechsteFrist, null);
+
+    await p.korrigiere(frist.id, { erledigt: true }, "geklärt", "mac", JETZT);
+    await p.korrigiere(alt.id, { text: "Schlüsselperson fällt aus, Vertretung fehlt" }, "neu bewertet", "mac", JETZT);
+    karte = (await p.uebersicht(JETZT)).projekte[0];
+    assert.equal(karte.risiken, 2);
+    assert.equal(karte.risikenUeberfaellig, 0);
+    assert.equal(karte.risikoFrist, null);
+    assert.equal(karte.risikenAlt, null, "die Korrektur von heute stellt die Uhr zurück");
+  });
+
+  test("in der Übersicht steht ein Projekt mit einem Risiko über der Frist vor einem ruhigen", async () => {
+    await p.legeProjektAn({ name: "Altbau" }, "mac", JETZT);
+    const z = await p.legeProjektAn({ name: "Zentrallager" }, "mac", JETZT);
+    assert.deepEqual((await p.uebersicht(JETZT)).projekte.map((k) => k.name), ["Altbau", "Zentrallager"], "sonst nach Namen");
+    await p.trageEin(z.id, { art: "risiko", text: "Lieferzeit Stahl", faellig: "2026-11-10" }, "mac", JETZT);
+    assert.deepEqual((await p.uebersicht(JETZT)).projekte.map((k) => k.name), ["Zentrallager", "Altbau"]);
+  });
+
+  test("die Hinweise am Tag bleiben bei Aufgaben: Ein Risiko über der Frist löst dort nichts aus", async () => {
+    const projekt = await p.legeProjektAn({ name: "Hallenneubau" }, "mac", JETZT);
+    await p.trageEin(projekt.id, { art: "risiko", text: "Lieferzeit Stahl", faellig: "2026-11-10" }, "mac", JETZT);
+    assert.deepEqual(await p.faelligeAufgaben(JETZT), []);
+  });
+});
+
 describe("Projektgedächtnis: JARVIS schlägt nur vor", () => {
   const vorschlag = { projekt: "Hallenneubau", beschreibung: "Neue Halle am Standort Süd", quelle_art: "gespraech", quelle_hinweis: "Besprechung am 12.11.", eintraege: [{ art: "entscheidung", text: "Bauantrag geht bis Ende November raus", datum: "2026-11-12" }, { art: "aufgabe", text: "Bauantrag fertigstellen", zustaendig: "Thomas", faellig: "2026-11-30" }] };
 
@@ -558,6 +597,43 @@ describe("Projektgedächtnis: das Gehirn liest Bestätigtes und schlägt vor", (
     const reply = await brain.think(cfg(), "sk-test", frage("Was steht in den Projekten an?"));
     assert.match(werkzeugErgebnisse(claude.anfragen[1]).at(-1)!.content, /Rechnung des Statikers/);
     assert.equal(reply.fremd, true);
+  });
+
+  test("projekte_lesen: nennt Risiken über der Frist; stammt das Risiko aus einer Mail, gilt das Gespräch als fremd", async () => {
+    const projekt = await p.legeProjektAn({ name: "Hallenneubau" }, "mac", JETZT);
+    // Das Gespräch rechnet mit dem echten Tag: Fristen weit in der Zukunft und weit in der Vergangenheit, damit
+    // der Test an jedem Tag dasselbe prüft.
+    await p.trageEin(projekt.id, { art: "risiko", text: "Genehmigung verzögert sich", faellig: "2099-12-31" }, "mac", JETZT);
+    claude.drehbuch([{ werkzeug: "projekte_lesen", eingabe: {} }, { text: "Ein Risiko hat eine Frist." }]);
+    const eigen = await brain.think(cfg(), "sk-test", frage("Gibt es Risiken?"));
+    const karte = JSON.parse(werkzeugErgebnisse(claude.anfragen[1]).at(-1)!.content).projekte[0];
+    assert.equal(karte.offene_risiken, 1);
+    assert.equal(karte.risiken_ueber_frist, 0);
+    assert.deepEqual(karte.naechste_risiko_frist, { text: "Genehmigung verzögert sich", faellig: "2099-12-31" });
+    assert.equal(karte.lange_unveraenderte_risiken, null);
+    assert.equal(eigen.fremd, undefined, "ein selbst eingetragenes Risiko macht nichts fremd");
+
+    const [v] = (await p.schlageVor({ projekt: "Hallenneubau", quelle_art: "mail", eintraege: [{ art: "risiko", text: "Lieferant droht mit Lieferstopp", faellig: "2020-01-01" }] }, { kanal: "mac", fremd: true })).angelegt;
+    await p.entscheide(v.id, true, "mac");
+    claude.drehbuch([{ werkzeug: "projekte_lesen", eingabe: {} }, { text: "Ein Risiko ist über der Frist." }]);
+    const reply = await brain.think(cfg(), "sk-test", frage("Gibt es Risiken?"));
+    const danach = JSON.parse(werkzeugErgebnisse(claude.anfragen[1]).at(-1)!.content).projekte[0];
+    assert.equal(danach.risiken_ueber_frist, 1);
+    assert.equal(danach.naechste_risiko_frist.text, "Lieferant droht mit Lieferstopp");
+    assert.equal(reply.fremd, true);
+  });
+
+  test("projekte_lesen: nennt auch Risiken, die lange unverändert offen sind (was die Karte zeigt, liest auch das Modell)", async () => {
+    // Das Gespräch rechnet mit dem echten Tag, deshalb zählt der Test von heute zurück.
+    const frueher = new Date();
+    frueher.setDate(frueher.getDate() - 20);
+    frueher.setHours(12, 0, 0, 0);
+    const projekt = await p.legeProjektAn({ name: "Hallenneubau" }, "mac", frueher);
+    await p.trageEin(projekt.id, { art: "risiko", text: "Schlüsselperson fällt aus" }, "mac", frueher);
+    claude.drehbuch([{ werkzeug: "projekte_lesen", eingabe: {} }, { text: "Ein Risiko ist lange offen." }]);
+    await brain.think(cfg(), "sk-test", frage("Welches Risiko ist schon lange offen?"));
+    const karte = JSON.parse(werkzeugErgebnisse(claude.anfragen[1]).at(-1)!.content).projekte[0];
+    assert.deepEqual(karte.lange_unveraenderte_risiken, { anzahl: 1, text: "Schlüsselperson fällt aus", tage: 20 });
   });
 
   test("projekte_lesen: ein Eintrag von Dritten, der nicht in der Übersicht steht, macht das Gespräch nicht fremd", async () => {

@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 70 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P und Q und die Punkte M11 bis M13 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 75 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q und R und die Punkte M11 bis M13 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -238,6 +238,17 @@ neue Stand nichts.
 | Q1 | Einstellungen → Gedächtnis öffnen | Deine bisherigen Einträge stehen alle noch da. Steht dort stattdessen „Die Datei des Gedächtnisses ist beschädigt“, klick **nichts** an und schick mir ein Bildschirmfoto |
 | Q2 | Dort selbst etwas eintragen („Merken“), dann bei diesem Eintrag „Vergessen“ klicken | Der Eintrag erscheint und verschwindet wieder; die anderen bleiben |
 | Q3 | Im Gespräch: „Merk dir, dass ich montags in München bin, und dass meine Steuerberaterin Frau Huber heißt“ und beide Freigaben mit Ja bestätigen | Unter Einstellungen → Gedächtnis stehen danach beide Einträge |
+
+## R. Offene Risiken in der Projektüberwachung (Schritt C4.2, neu)
+
+JARVIS achtet jetzt auch auf Risiken, nicht nur auf Aufgaben. Ein Risiko mit Frist zählt wie eine Frist. Ein
+Risiko ohne Frist, das seit 14 Tagen niemand angefasst hat, kommt einmal in der Woche zur Sprache, am Montag.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| R1 | Im Testprojekt ein Risiko eintragen, als Frist das Datum von gestern | Auf der Kachel des Projekts steht rot „Risiko über der Frist“. Unter „Heute“ steht bei „Wartet auf dich“ das Projekt mit „Ein Risiko ist über der Frist: …, seit gestern überfällig“ |
+| R2 | In der Akte das Risiko abhaken | Die rote Marke und der Eintrag unter „Heute“ verschwinden |
+| R3 | Ein zweites Risiko ohne Frist eintragen und nichts weiter tun | Unter „Heute“ steht dazu nichts (auch am Montag nicht, weil es neu ist). Erst nach 14 Tagen steht in der Akte am Risiko „seit 14 Tagen unverändert“, und am Montag darauf steht es im Morgenbriefing und unter „Heute“. Das kannst du erst in zwei Wochen sehen; schreib mir dann bitte, ob es gekommen ist |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

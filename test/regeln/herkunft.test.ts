@@ -63,6 +63,16 @@ describe("Herkunft: Text von Dritten in eigenen Antworten", () => {
     assert.equal(enthaeltFremdes(satz, { ...leer, projekte: projekte(karte({ naechsteFrist: frist, textVonDritten: true })) }), true, "Eintrag aus einer Mail");
   });
 
+  test("auch der Text eines Risikos zählt, wenn die Karte Text von Dritten trägt", () => {
+    const frist = { text: "Lieferant kündigt Verzug an", faellig: "2026-11-10" };
+    const alt = { anzahl: 1, text: "Zulassung könnte sich verzögern", tage: 20 };
+    const satzFrist = "Im Projekt Hallenneubau: Ein Risiko ist über der Frist: Lieferant kündigt Verzug an, seit 3 Tagen überfällig.";
+    const satzAlt = "Im Projekt Hallenneubau: Ein Risiko ist seit 20 Tagen unverändert offen: Zulassung könnte sich verzögern.";
+    assert.equal(enthaeltFremdes(satzFrist, { ...leer, projekte: projekte(karte({ name: "Anderes", risikoFrist: frist, risikenAlt: null })) }), false, "eigener Eintrag");
+    assert.equal(enthaeltFremdes(satzFrist, { ...leer, projekte: projekte(karte({ name: "Anderes", risikoFrist: frist, risikenAlt: null, textVonDritten: true })) }), true);
+    assert.equal(enthaeltFremdes(satzAlt, { ...leer, projekte: projekte(karte({ name: "Anderes", risikoFrist: null, risikenAlt: alt, textVonDritten: true })) }), true);
+  });
+
   test("sehr kurze Texte (unter vier Zeichen) lösen nichts aus", () => {
     const kurz = { ...mail, items: [{ ...mail.items[0], from: "Al", subject: "Re" }] } as MailSnapshot;
     assert.equal(enthaeltFremdes("Alle Regeln gelten weiter. Alles klar.", { ...leer, mail: kurz }), false);

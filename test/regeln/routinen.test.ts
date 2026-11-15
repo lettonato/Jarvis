@@ -35,6 +35,9 @@ const projekt = (name: string, extra: Partial<ProjektKarte> = {}): ProjektKarte 
   ueberfaellig: 0,
   naechsteFrist: null,
   risiken: 0,
+  risikenUeberfaellig: 0,
+  risikoFrist: null,
+  risikenAlt: null,
   letzteEntscheidung: null,
   naechsterSchritt: null,
   textVonDritten: false,
@@ -170,6 +173,76 @@ describe("Tagesabschluss", () => {
     const briefing = decide("Briefing", ctx, true);
     assert.match(briefing!.reply, /Im Projekt Hallenneubau: /, "das Briefing am Mac nennt die Projekte");
     assert.ok(ohneGeheimes(briefing!.reply), briefing!.reply);
+  });
+});
+
+// Offene Risiken (Schritt C4.2) laufen durch dieselben Texte wie Aufgaben. Geprüft wird wieder vor allem, was
+// nicht hinausgeht: der Wortlaut eines Risikos aus einem vertraulichen Projekt nie, und über Telegram nur Zahlen,
+// solange der Schalter aus ist.
+describe("Offene Risiken im Briefing und im Tagesabschluss", () => {
+  const MONTAG_FRUEH = new Date(2026, 10, 16, 7, 30);
+  const LIEFER = projekt("Hallenneubau", { risiken: 1, risikenUeberfaellig: 1, risikoFrist: { text: "Lieferzeit Stahl", faellig: "2026-11-10" } });
+  const GEHEIM = projekt("Adler", { vertraulich: true, risiken: 1, risikenUeberfaellig: 1, risikoFrist: { text: "Kaufpreis platzt", faellig: "2026-11-11" } });
+  const MORGEN = projekt("Messe", { risiken: 1, risikoFrist: { text: "Standfläche wird knapp", faellig: "2026-11-14" } });
+  const ALT = projekt("Website", { risiken: 1, risikenAlt: { anzahl: 1, text: "Agentur überlastet", tage: 19 } });
+  const ALT_GEHEIM = projekt("Adler", { vertraulich: true, risiken: 1, risikenAlt: { anzahl: 1, text: "Kaufpreis platzt", tage: 30 } });
+
+  test("im Briefing steht ein Risiko über der Frist beim Namen nur mit Schalter; aus einem vertraulichen Projekt nie", () => {
+    const lage = tageslage({ ...nichts, projekte: projekte([LIEFER, GEHEIM, MORGEN]) }, ABEND);
+    const namen = projekteAbsatz(lage, 0, true);
+    assert.match(namen, /• Hallenneubau: Ein Risiko ist über der Frist: Lieferzeit Stahl, seit 3 Tagen überfällig/);
+    assert.match(namen, /• Messe: Risiko: Standfläche wird knapp, morgen fällig/);
+    assert.match(namen, /• ein vertrauliches Projekt: Einzelheiten nur am Mac/);
+    assert.ok(ohneGeheimes(namen), namen);
+    const zahlen = projekteAbsatz(lage, 0, false);
+    assert.equal(zahlen, "Projekte: 3 brauchen dich, 2 davon dringend. Einzelheiten am Mac unter „Heute“.");
+    const gesprochen = projektSatz(lage, 0);
+    assert.match(gesprochen, /Im Projekt Hallenneubau: Ein Risiko ist über der Frist: Lieferzeit Stahl, seit 3 Tagen überfällig\./);
+    assert.ok(ohneGeheimes(gesprochen), gesprochen);
+  });
+
+  test("lange unveränderte Risiken stehen nur im Briefing vom Montag", () => {
+    const basis = { name: "Benedikt", weather: null, calendar: null, mail: null, tasks: null, intel: null, desk: null, projekte: projekte([ALT, ALT_GEHEIM]), projektNamen: true };
+    const freitag = briefingMessage({ ...basis, now: new Date(2026, 10, 13, 7, 30) });
+    assert.ok(!/Risik|Website|Projekte/.test(freitag), freitag);
+    const montag = briefingMessage({ ...basis, now: MONTAG_FRUEH });
+    assert.match(montag, /• Website: Ein Risiko ist seit 19 Tagen unverändert offen: Agentur überlastet/);
+    assert.match(montag, /• ein vertrauliches Projekt: Einzelheiten nur am Mac/);
+    assert.ok(ohneGeheimes(montag), montag);
+    const ohneNamen = briefingMessage({ ...basis, projektNamen: false, now: MONTAG_FRUEH });
+    assert.match(ohneNamen, /Projekte: 2 brauchen dich\. Einzelheiten am Mac unter „Heute“\./);
+    assert.ok(!/Website|Agentur|Risik/.test(ohneNamen) && ohneGeheimes(ohneNamen), ohneNamen);
+  });
+
+  test("der Tagesabschluss nennt Risiken über der Frist und die Frist von morgen, lange unveränderte nicht", () => {
+    const a = tagesabschluss({ ...nichts, projekte: projekte([LIEFER, GEHEIM, MORGEN, ALT]) }, new Date(2026, 10, 16, 18, 0));
+    assert.deepEqual(a.projekteOffen.map((h) => h.name).sort(), ["Adler", "Hallenneubau"]);
+    assert.deepEqual(a.fristenMorgen, [], "am 16. ist die Frist vom 14. nicht mehr „morgen“");
+    const freitag = tagesabschluss({ ...nichts, projekte: projekte([LIEFER, GEHEIM, MORGEN, ALT]) }, ABEND);
+    assert.deepEqual(freitag.fristenMorgen, [{ id: "p-Messe", name: "Messe", grund: "Risiko: Standfläche wird knapp, morgen fällig", dringend: false, vertraulich: false }]);
+    const text = abschlussNachricht(freitag, { name: "Benedikt", namen: true });
+    assert.match(text, /Projekte:\n• Hallenneubau: Ein Risiko ist über der Frist: Lieferzeit Stahl, seit 3 Tagen überfällig\n• Messe: Risiko: Standfläche wird knapp, morgen fällig\n• ein vertrauliches Projekt: Einzelheiten nur am Mac/);
+    assert.ok(ohneGeheimes(text) && !text.includes("Agentur"), text);
+    const zahlen = abschlussNachricht(freitag, { name: "Benedikt", namen: false });
+    assert.match(zahlen, /Projekte: 2 haben Überfälliges oder eine Frist von heute, bei einem ist morgen etwas fällig\./);
+    assert.ok(!/Lieferzeit|Standfläche|Hallenneubau|Messe/.test(zahlen) && ohneGeheimes(zahlen), zahlen);
+  });
+
+  test("ist morgen eine Aufgabe und ein Risiko fällig, steht das Projekt einmal da, mit der Aufgabe", () => {
+    const beides = projekt("Messe", { naechsteFrist: { text: "Stand buchen", faellig: "2026-11-14" }, risikoFrist: { text: "Standfläche wird knapp", faellig: "2026-11-14" } });
+    assert.deepEqual(tagesabschluss({ ...nichts, projekte: projekte([beides]) }, ABEND).fristenMorgen.map((h) => h.grund), ["Stand buchen, morgen fällig"]);
+    // Steht das Projekt schon mit etwas Dringendem da, kommt es nicht ein zweites Mal mit dem Risiko von morgen.
+    const brennt = projekt("Halle", { ueberfaellig: 1, naechsteFrist: { text: "Statik prüfen", faellig: "2026-11-10" }, risikoFrist: { text: "Lieferzeit", faellig: "2026-11-14" } });
+    const heuteUndMorgen = projekt("Portal", { naechsteFrist: { text: "Angebot", faellig: "2026-11-13" }, risikoFrist: { text: "Agentur", faellig: "2026-11-14" } });
+    const a = tagesabschluss({ ...nichts, projekte: projekte([brennt, heuteUndMorgen, MORGEN]) }, ABEND);
+    assert.deepEqual(a.projekteOffen.map((h) => h.name).sort(), ["Halle", "Portal"]);
+    assert.deepEqual(a.fristenMorgen.map((h) => h.name), ["Messe"]);
+    const text = abschlussNachricht(a, { name: "Benedikt", namen: true });
+    assert.equal(text.match(/• Halle:/g)?.length, 1, text);
+    assert.equal(text.match(/• Portal:/g)?.length, 1, text);
+    assert.match(abschlussNachricht(a, { name: "Benedikt", namen: false }), /Projekte: 2 haben Überfälliges oder eine Frist von heute, bei einem ist morgen etwas fällig\./);
+    const pausiert = projekt("Ruht", { status: "pausiert", risikoFrist: { text: "Egal", faellig: "2026-11-14" } });
+    assert.deepEqual(tagesabschluss({ ...nichts, projekte: projekte([pausiert]) }, ABEND).fristenMorgen, []);
   });
 });
 

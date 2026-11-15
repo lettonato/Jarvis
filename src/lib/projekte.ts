@@ -6,6 +6,8 @@
 // vorschlagen. Jeder Eintrag trägt seine Quelle und Zeitstempel, jede Korrektur bleibt im Verlauf sichtbar,
 // und zurückgezogene Einträge werden nicht gelöscht, sondern als zurückgezogen geführt.
 
+import { daysBetween, isoDate } from "./dates";
+
 export type ProjektStatus = "aktiv" | "pausiert" | "abgeschlossen";
 export const STATUS_LABEL: Record<ProjektStatus, string> = { aktiv: "Aktiv", pausiert: "Pausiert", abgeschlossen: "Abgeschlossen" };
 
@@ -84,11 +86,17 @@ export type ProjektKarte = Projekt & {
   ueberfaellig: number;
   naechsteFrist: { text: string; faellig: string } | null;
   risiken: number;
+  // Offene Risiken mit Frist: wie viele über der Frist sind und welche Frist als Nächste kommt (die früheste).
+  risikenUeberfaellig: number;
+  risikoFrist: { text: string; faellig: string } | null;
+  // Offene Risiken ohne Frist, die lange niemand angefasst hat (RISIKO_REGELN.altTage): ihre Zahl, dazu Text und
+  // Alter in Tagen vom ältesten. null: keines.
+  risikenAlt: { anzahl: number; text: string; tage: number } | null;
   letzteEntscheidung: { text: string; datum: string } | null;
   naechsterSchritt: string | null;
   eintraege: number;
   // Stammt einer der Texte auf dieser Karte (Projekt selbst, nächste Frist, letzte Entscheidung, nächster
-  // Schritt) von Dritten? Dann gilt ein Gespräch, das die Karte liest, als fremd beeinflusst.
+  // Schritt, das Risiko mit der nächsten Frist, das älteste unveränderte Risiko) von Dritten? Dann gilt ein Gespräch, das die Karte liest, als fremd beeinflusst.
   textVonDritten: boolean;
 };
 
@@ -157,21 +165,45 @@ export function projekteImText<P extends Pick<Projekt, "name" | "stichworte">>(p
   return projekte.filter((p) => [p.name, ...p.stichworte].some((n) => schluessel(n).length >= 3 && t.includes(` ${schluessel(n)} `)));
 }
 
-const tage = (a: string, b: string) => Math.round((Date.parse(`${a}T00:00:00`) - Date.parse(`${b}T00:00:00`)) / 86_400_000);
+// Kalendertage von b bis a (an einer Stelle gerechnet: src/lib/dates.ts).
+const tage = (a: string, b: string) => daysBetween(b, a);
+
+// Offene Risiken in der Projektüberwachung. Ein Risiko mit Frist zählt wie eine Frist: über der Frist oder heute
+// fällig ist dringend. Eines ohne Frist fällt auf, wenn es seit altTage Tagen niemand mehr angefasst hat; daran
+// erinnert JARVIS einmal in der Woche (wochentag wie bei Date.getDay: 1 ist Montag), nicht jeden Tag.
+export const RISIKO_REGELN = { altTage: 14, wochentag: 1 };
+
+// Seit wie vielen Tagen ein offenes Risiko ohne Frist unverändert ist: seit es bestätigt oder zuletzt korrigiert
+// wurde. null: kein offenes Risiko ohne Frist (oder der Zeitstempel ist nicht lesbar).
+export function risikoUnveraendert(e: Pick<Eintrag, "art" | "erledigt" | "faellig" | "zurueckgezogen" | "bestaetigtAm" | "geaendertAm">, heute: string): number | null {
+  if (e.art !== "risiko" || e.erledigt || e.faellig || e.zurueckgezogen) return null;
+  const zuletzt = new Date(e.geaendertAm ?? e.bestaetigtAm);
+  if (Number.isNaN(zuletzt.getTime())) return null;
+  return Math.max(0, tage(heute, isoDate(zuletzt)));
+}
 
 export function karteVon(projekt: Projekt, eintraege: Eintrag[], heute: string): ProjektKarte {
   const gueltig = eintraege.filter((e) => e.projektId === projekt.id && !e.zurueckgezogen);
   const offen = gueltig.filter((e) => e.art === "aufgabe" && !e.erledigt);
   const mitFrist = offen.filter((e) => e.faellig).sort((a, b) => a.faellig!.localeCompare(b.faellig!));
+  const risiken = gueltig.filter((e) => e.art === "risiko" && !e.erledigt);
+  const risikenMitFrist = risiken.filter((e) => e.faellig).sort((a, b) => a.faellig!.localeCompare(b.faellig!) || a.id.localeCompare(b.id));
+  const alte = risiken
+    .map((e) => ({ e, tage: risikoUnveraendert(e, heute) ?? -1 }))
+    .filter((x) => x.tage >= RISIKO_REGELN.altTage)
+    .sort((a, b) => b.tage - a.tage || a.e.id.localeCompare(b.e.id));
   const entscheidungen = gueltig.filter((e) => e.art === "entscheidung").sort((a, b) => (b.datum ?? b.erstelltAm).localeCompare(a.datum ?? a.erstelltAm));
   const schritte = gueltig.filter((e) => e.art === "naechster_schritt" && !e.erledigt).sort((a, b) => b.erstelltAm.localeCompare(a.erstelltAm));
   return {
     ...projekt,
-    textVonDritten: projekt.quelle.fremd || [mitFrist[0], entscheidungen[0], schritte[0]].some((e) => e?.quelle.fremd === true),
+    textVonDritten: projekt.quelle.fremd || [mitFrist[0], entscheidungen[0], schritte[0], risikenMitFrist[0], alte[0]?.e].some((e) => e?.quelle.fremd === true),
     offeneAufgaben: offen.length,
     ueberfaellig: mitFrist.filter((e) => e.faellig! < heute).length,
     naechsteFrist: mitFrist[0] ? { text: mitFrist[0].text, faellig: mitFrist[0].faellig! } : null,
-    risiken: gueltig.filter((e) => e.art === "risiko" && !e.erledigt).length,
+    risiken: risiken.length,
+    risikenUeberfaellig: risikenMitFrist.filter((e) => e.faellig! < heute).length,
+    risikoFrist: risikenMitFrist[0] ? { text: risikenMitFrist[0].text, faellig: risikenMitFrist[0].faellig! } : null,
+    risikenAlt: alte[0] ? { anzahl: alte.length, text: alte[0].e.text, tage: alte[0].tage } : null,
     letzteEntscheidung: entscheidungen[0] ? { text: entscheidungen[0].text, datum: entscheidungen[0].datum ?? entscheidungen[0].erstelltAm.slice(0, 10) } : null,
     naechsterSchritt: schritte[0]?.text ?? null,
     eintraege: gueltig.length,

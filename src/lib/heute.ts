@@ -4,7 +4,7 @@ import type { DocsSnapshot } from "./documents";
 import type { IntelSnapshot } from "./intel";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
-import { fristText, projekteImText, type ProjektKarte, type ProjekteSnapshot } from "./projekte";
+import { fristText, projekteImText, RISIKO_REGELN, type ProjektKarte, type ProjekteSnapshot } from "./projekte";
 import { dateOf, sortTasks, type Task, type TasksSnapshot } from "./tasks";
 
 // Die Tagesübersicht: was heute ansteht und was auf dich wartet, aus allem, was JARVIS ohnehin schon kennt
@@ -72,14 +72,40 @@ function termin(e: CalendarEvent, jetzt: number, projekte: ProjektKarte[]): Tage
 }
 
 // Warum ein Projekt heute auffällt. Überfälliges zuerst, dann was heute oder in den nächsten drei Tagen fällig ist.
-function projektHinweis(p: ProjektKarte, heute: string): ProjektHinweis | null {
+// Offene Risiken mit Frist zählen wie Aufgaben mit Frist. Ein Projekt hat immer nur einen Grund; ist daneben
+// noch etwas dringend (ein Risiko über der Frist, heute etwas fällig), steht es als Nachsatz dabei.
+// risikoTag: An diesem Tag (Montag) kommen auch Risiken zur Sprache, die lange unverändert offen sind: als
+// eigener Grund, wenn sonst nichts ansteht, sonst als Nachsatz. Sie machen ein Projekt nie dringend.
+function projektHinweis(p: ProjektKarte, heute: string, risikoTag: boolean): ProjektHinweis | null {
   if (p.status !== "aktiv") return null;
+  const alt = risikoTag ? p.risikenAlt : null;
+  const dazuAlt = !alt ? "" : alt.anzahl === 1 ? `; außerdem ist ein Risiko seit ${alt.tage} Tagen unverändert offen` : `; außerdem sind ${alt.anzahl} Risiken seit mindestens ${RISIKO_REGELN.altTage} Tagen unverändert offen`;
+  const aus = (grund: string, dringend: boolean): ProjektHinweis => ({ id: p.id, name: p.name, grund: `${grund}${dazuAlt}`, dringend, vertraulich: p.vertraulich });
+  const dazuRisiko =
+    p.risikenUeberfaellig > 0
+      ? `; außerdem ${p.risikenUeberfaellig === 1 ? "ist ein Risiko" : `sind ${p.risikenUeberfaellig} Risiken`} über der Frist`
+      : p.risikoFrist?.faellig === heute
+        ? "; außerdem ist heute ein Risiko fällig"
+        : "";
   if (p.ueberfaellig > 0) {
     const was = p.naechsteFrist && p.naechsteFrist.faellig < heute ? `: ${p.naechsteFrist.text}, ${fristText(p.naechsteFrist.faellig, heute)}` : "";
-    return { id: p.id, name: p.name, grund: `${mehrzahl(p.ueberfaellig, "Eine Aufgabe ist", "Aufgaben sind")} überfällig${was}`, dringend: true, vertraulich: p.vertraulich };
+    return aus(`${mehrzahl(p.ueberfaellig, "Eine Aufgabe ist", "Aufgaben sind")} überfällig${was}${dazuRisiko}`, true);
   }
-  if (p.naechsteFrist && p.naechsteFrist.faellig <= addDays(heute, 3)) {
-    return { id: p.id, name: p.name, grund: `${p.naechsteFrist.text}, ${fristText(p.naechsteFrist.faellig, heute)}`, dringend: p.naechsteFrist.faellig === heute, vertraulich: p.vertraulich };
+  if (p.risikenUeberfaellig > 0) {
+    const was = p.risikoFrist && p.risikoFrist.faellig < heute ? `: ${p.risikoFrist.text}, ${fristText(p.risikoFrist.faellig, heute)}` : "";
+    const dazuAufgabe = p.naechsteFrist?.faellig === heute ? "; außerdem ist heute eine Aufgabe fällig" : "";
+    return aus(`${mehrzahl(p.risikenUeberfaellig, "Ein Risiko ist", "Risiken sind")} über der Frist${was}${dazuAufgabe}`, true);
+  }
+  const grenze = addDays(heute, 3);
+  const aufgabe = p.naechsteFrist && p.naechsteFrist.faellig <= grenze ? p.naechsteFrist : null;
+  const risiko = p.risikoFrist && p.risikoFrist.faellig <= grenze ? p.risikoFrist : null;
+  // Bei gleicher Frist steht die Aufgabe da. Der Nachsatz kann hier nur „heute ein Risiko fällig“ sein, und
+  // dann ist auch die Aufgabe von heute (ein früheres Risiko hätte den Vortritt).
+  if (aufgabe && (!risiko || aufgabe.faellig <= risiko.faellig)) return aus(`${aufgabe.text}, ${fristText(aufgabe.faellig, heute)}${dazuRisiko}`, aufgabe.faellig === heute);
+  if (risiko) return aus(`Risiko: ${risiko.text}, ${fristText(risiko.faellig, heute)}`, risiko.faellig === heute);
+  if (alt) {
+    const grund = alt.anzahl === 1 ? `Ein Risiko ist seit ${alt.tage} Tagen unverändert offen: ${alt.text}` : `${alt.anzahl} Risiken sind seit mindestens ${RISIKO_REGELN.altTage} Tagen unverändert offen, das älteste seit ${alt.tage} Tagen: ${alt.text}`;
+    return { id: p.id, name: p.name, grund, dringend: false, vertraulich: p.vertraulich };
   }
   return null;
 }
@@ -104,7 +130,7 @@ export function tageslage(d: TagesDaten, now: Date): Tageslage {
   const dieseWoche = mitDatum.filter((t) => dateOf(t)! > heute && dateOf(t)! <= addDays(heute, 7)).length;
 
   const projektHinweise = projekte
-    .map((p) => projektHinweis(p, heute))
+    .map((p) => projektHinweis(p, heute, now.getDay() === RISIKO_REGELN.wochentag))
     .filter((h): h is ProjektHinweis => h !== null)
     .sort((a, b) => Number(b.dringend) - Number(a.dringend) || a.name.localeCompare(b.name, "de"));
 
