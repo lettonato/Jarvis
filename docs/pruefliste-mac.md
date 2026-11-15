@@ -250,7 +250,7 @@ Risiko ohne Frist, das seit 14 Tagen niemand angefasst hat, kommt einmal in der 
 | R2 | In der Akte das Risiko abhaken | Die rote Marke und der Eintrag unter „Heute“ verschwinden |
 | R3 | Ein zweites Risiko ohne Frist eintragen und nichts weiter tun | Unter „Heute“ steht dazu nichts (auch am Montag nicht, weil es neu ist). Erst nach 14 Tagen steht in der Akte am Risiko „seit 14 Tagen unverändert“, und am Montag darauf steht es im Morgenbriefing und unter „Heute“. Das kannst du erst in zwei Wochen sehen; schreib mir dann bitte, ob es gekommen ist |
 
-## S. Marktlage auf einen Blick (Schritt E4.1, neu)
+## S. Marktlage auf einen Blick (Schritte E4.1 und G4.1, neu)
 
 Im Raum Intel steht jetzt ganz oben das Feld „Marktlage“: Krypto, Gold und Silber und das Spielgeld-Konto
 nebeneinander, darüber, was auffällt. JARVIS rechnet das selbst aus den Kursen, die er schon hat, ohne KI.
@@ -263,6 +263,8 @@ Es ist keine Prognose und keine Anlageberatung.
 | S3 | Ansehen, was über den Gruppen steht | Entweder „Nichts Auffälliges“ oder eine kurze Liste, zum Beispiel „Bitcoin: +6 % in 24 Stunden“ oder „Gold steht am Hoch der letzten 21 Handelstage“. Ein Klick auf eine Zeile führt zu den Einzelheiten |
 | S4 | Unten eintippen oder sagen: „Marktübersicht“ | JARVIS antwortet in zwei, drei Sätzen mit denselben Zahlen und öffnet den Raum Intel. Läuft der Desk, nennt er ihn „Spielgeld-Konto“ |
 | S5 | Den Raum „Heute“ öffnen | In der Scheibe „Märkte“ stehen auch Gold und Silber |
+| S6 | An den nächsten Tagen auf das Morgenbriefing und den Tagesabschluss am Handy achten | An ruhigen Tagen steht dort nichts zum Markt. Hat sich Bitcoin, Ethereum oder Solana in 24 Stunden um 5 % oder mehr bewegt (oder Gold oder Silber am selben Tag um 2 %), steht ein Absatz „Märkte“ mit je einer Zeile dabei. Steht dort „Kryptokurse: gerade keine Verbindung“, hat dein Mac den Kursdienst nicht erreicht. Schreib mir bitte, wenn du den Absatz das erste Mal siehst, und ob die Zahl zu dem passt, was im Raum Intel steht |
+| S7 | An so einem Tag am Mac „Briefing“ sagen | JARVIS sagt nach den Nachrichten einen Satz „An den Märkten fällt auf: …“. Hör bitte hin, ob die Stimme die Prozente verständlich vorliest (zum Beispiel „minus sieben Prozent“), und schreib mir, wenn nicht |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

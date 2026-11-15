@@ -10,6 +10,7 @@ import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from "node
 import path from "node:path";
 import { after, before, beforeEach, describe, test } from "node:test";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
+import { starteMarktMock, type MarktMock } from "../mocks/markt-mock";
 import { starteTelegramMock, type TelegramMock } from "../mocks/telegram-mock";
 
 const ordner = sichereUmgebung("hinweise");
@@ -28,6 +29,9 @@ const um = (stunde: number, minute = 0, tag = 13) => new Date(2026, 10, tag, stu
 const EINGETRAGEN = um(6, 0, 9);
 
 let tg: TelegramMock;
+let markt: MarktMock;
+let metalle: typeof import("../../src/lib/server/metalle");
+let kurse: typeof import("../../src/lib/market");
 let aufgaben: typeof import("../../src/lib/server/zeitplan-aufgaben");
 let plan: typeof import("../../src/lib/server/zeitplan");
 let hinweise: typeof import("../../src/lib/server/hinweise");
@@ -69,10 +73,15 @@ async function fuelle() {
 before(async () => {
   tg = await starteTelegramMock();
   process.env.TELEGRAM_API_URL = tg.url;
+  // Die großen Kryptokurse kommen vom nachgebauten CoinGecko; alles andere am Markt bleibt abgeschaltet.
+  markt = await starteMarktMock();
+  process.env.COINGECKO_URL = markt.url;
   aufgaben = await import("../../src/lib/server/zeitplan-aufgaben");
   plan = await import("../../src/lib/server/zeitplan");
   hinweise = await import("../../src/lib/server/hinweise");
   telegram = await import("../../src/lib/server/telegram");
+  metalle = await import("../../src/lib/server/metalle");
+  kurse = await import("../../src/lib/market");
   config = await import("../../src/lib/server/config");
   p = await import("../../src/lib/server/projekte/projekte");
   sp = await import("../../src/lib/server/projekte/speicher");
@@ -83,12 +92,15 @@ before(async () => {
 
 after(async () => {
   await tg.stop();
+  await markt.stop();
 });
 
 beforeEach(async () => {
   await plan.zeitplanGeschrieben();
   await hinweise.hinweiseGeschrieben();
-  for (const name of ["zeitplan.json", "hinweise.json", "projekte.json"]) rmSync(path.join(ordner, name), { force: true });
+  await metalle.metalleGeschrieben();
+  metalle.vergissMetalle();
+  for (const name of ["zeitplan.json", "hinweise.json", "projekte.json", "metalle.json"]) rmSync(path.join(ordner, name), { force: true });
   rmSync(path.join(vault, "Aufgaben.md"), { force: true });
   rmSync(MAC_LOG, { force: true });
   delete process.env.JARVIS_MAC_MITTEILUNG;
@@ -102,6 +114,10 @@ beforeEach(async () => {
   await kalender.readCalendar({ force: true });
   for (const k of Object.keys(tg.fehler)) delete tg.fehler[k];
   tg.leeren();
+  markt.majors = { bitcoin: -1.2, ethereum: 0.4, solana: 2.1 };
+  markt.aus = {};
+  markt.leeren();
+  kurse.vergissMarkt();
   const z = await zustand.leseZustand();
   if (z.notaus.an) await zustand.notausAus(sicherheit.NOTAUS_BESTAETIGUNG, "mac");
 });
@@ -226,6 +242,37 @@ describe("Hinweise am Tag: die Obergrenze", () => {
     await aufgaben.zeitplanJetzt(um(10, 31));
     assert.equal(texte().length, 2);
     assert.match(texte()[1], /Überfällig:\n• Hallenneubau: Brandschutz nachreichen, seit gestern überfällig$/);
+  });
+
+  test("Morgenbriefing und Tagesabschluss nennen starke Bewegungen am Markt; an einem ruhigen Tag steht dazu nichts da, ohne Verbindung genau das", async () => {
+    await stelleEin({ briefing: "07:30", abschluss: "18:00" });
+    markt.majors = { bitcoin: 7.5, ethereum: -0.4, solana: -5 };
+    // Der Stand, den der Edelmetall-Agent zuletzt gelesen hat: Gold hat sich stark bewegt, Silber nicht.
+    const lage = (id: string, name: string, tag: number) => ({ id, name, art: "spot", bezeichnung: name, einheit: "Feinunze", symbol: "X", kurs: 100, kursVom: "2026-11-13", aenderung: { tag, woche: 0, monat: 0 }, hoch: 120, tief: 80, abstandHochPct: -16.7, schwankungPct: 1, trend: null });
+    writeFileSync(path.join(ordner, "metalle.json"), JSON.stringify({ bericht: { erstelltAm: um(7, 30).toISOString(), quelle: "Test", metalle: [lage("gold", "Gold", 2.4), lage("silber", "Silber", 0.3)], verhaeltnis: null, fehlend: [] }, letzterVersuch: um(7, 30).toISOString(), fehler: null }));
+    metalle.vergissMetalle();
+    const absatz = "Märkte:\n• Bitcoin: +7,5 % in 24 Stunden\n• Solana: −5 % in 24 Stunden\n• Gold: +2,4 % zum Vortag";
+    await aufgaben.zeitplanJetzt(um(7, 31));
+    assert.ok(texte()[0].includes(`\n\n${absatz}`) && !texte()[0].includes(`${absatz}\n•`), texte()[0]);
+    await aufgaben.zeitplanJetzt(um(18, 1));
+    assert.ok(texte()[1].startsWith("Feierabend, Benedikt.") && texte()[1].includes(`\n\n${absatz}`) && !texte()[1].includes(`${absatz}\n•`), texte()[1]);
+    rmSync(path.join(ordner, "metalle.json"));
+    metalle.vergissMetalle();
+    assert.ok(markt.anfragen.every((a) => a.startsWith("/api/v3/simple/price")), "gefragt werden nur die drei großen Kurse, nicht der Scanner");
+    assert.equal(markt.anfragen.length, 1, "kurz nacheinander reicht eine Abfrage für beide");
+
+    // Ein ruhiger Tag: kein Absatz. Fällt der Kursdienst aus, steht genau das da (Beispielkurse sind keine Bewegung).
+    markt.majors = { bitcoin: 4.9, ethereum: -0.4, solana: 1 };
+    kurse.vergissMarkt();
+    await aufgaben.zeitplanJetzt(um(7, 31, 14));
+    markt.majors = { bitcoin: 30, ethereum: 30, solana: 30 };
+    markt.aus = { coingecko: true };
+    kurse.vergissMarkt();
+    await aufgaben.zeitplanJetzt(um(18, 1, 14));
+    assert.equal(texte().length, 4);
+    assert.doesNotMatch(texte()[2], /Märkte/);
+    assert.match(texte()[3], /\n\nMärkte:\n• Kryptokurse: gerade keine Verbindung(\n\n|$)/, "fehlen die Kurse, steht das da statt nichts");
+    assert.doesNotMatch(texte()[3], /30 %|Bitcoin/);
   });
 
   test("dass jemand anderes im Verzug ist, sagt das Briefing nicht: Dieser Hinweis kommt trotzdem", async () => {

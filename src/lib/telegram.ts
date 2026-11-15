@@ -3,6 +3,9 @@ import { deskSentence } from "./commands";
 import { isoDate } from "./dates";
 import { intelBriefing, type IntelSnapshot } from "./intel";
 import { importantMails, type MailSnapshot } from "./mail";
+import type { MarketSnapshot } from "./market";
+import { kursLage, marktAbsatz } from "./marktlage";
+import type { MetalleSnapshot } from "./metalle";
 import type { DeskSnapshot } from "./paper";
 import type { ProjekteSnapshot } from "./projekte";
 import { projekteAbsatz } from "./routinen";
@@ -136,13 +139,16 @@ export type BriefingInput = {
   // Das Projektgedächtnis. projektNamen: ob Namen und Inhalte genannt werden dürfen (Schalter „projekte“).
   projekte?: ProjekteSnapshot | null;
   projektNamen?: boolean;
+  // Die großen Kryptokurse und der Stand des Edelmetall-Agenten, für den Absatz „Märkte“.
+  market?: Pick<MarketSnapshot, "majors"> | null;
+  metalle?: MetalleSnapshot | null;
 };
 
 const DAY = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 const MAX_LINES = 5;
 
 // Das Briefing fürs Handy: kurze Absätze, Termine und Mails als Liste.
-export function briefingMessage({ name, now, weather, calendar, mail, tasks, intel, desk, projekte, projektNamen }: BriefingInput): string {
+export function briefingMessage({ name, now, weather, calendar, mail, tasks, intel, desk, projekte, projektNamen, market, metalle }: BriefingInput): string {
   const today = isoDate(now);
   const hour = now.getHours();
   const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
@@ -205,6 +211,9 @@ export function briefingMessage({ name, now, weather, calendar, mail, tasks, int
     if (absatz) parts.push(absatz);
   }
 
+  // Nur starke Bewegungen und Marken. Den Desk und die Warnung von Intel nennen die Sätze darunter selbst.
+  const maerkte = marktAbsatz(kursLage(market ?? null, metalle ?? null), today);
+  if (maerkte) parts.push(maerkte);
   const news = intelBriefing(intel, now);
   if (news) parts.push(news);
   const trading = deskSentence(desk, true);

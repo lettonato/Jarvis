@@ -229,14 +229,40 @@ export function marketSnapshot(maxAgeMs = 15_000): Promise<MarketSnapshot> {
   return last.data;
 }
 
+// Die drei großen Kurse. Kommt nichts, sind es Beispielkurse, und die heißen auch so. Wie der ganze Markt
+// höchstens alle 15 Sekunden neu geholt: Fragen Oberfläche, Desk und Briefing kurz nacheinander, reicht eine
+// Abfrage bei CoinGecko.
+let lastMajors: { at: number; data: Promise<MarketSnapshot["majors"]> } | null = null;
+
+function majors(maxAgeMs = 15_000): Promise<MarketSnapshot["majors"]> {
+  if (!lastMajors || Date.now() - lastMajors.at > maxAgeMs) {
+    lastMajors = {
+      at: Date.now(),
+      data: fetchMajors().then(
+        (quotes) => ({ source: "live" as const, quotes }),
+        () => ({ source: "demo" as const, quotes: DEMO_MAJORS }),
+      ),
+    };
+  }
+  return lastMajors.data;
+}
+
+// Nur die drei großen Kurse, ohne den Scanner: für Morgenbriefing und Tagesabschluss. Schlägt nie fehl.
+export async function majorsSnapshot(): Promise<Pick<MarketSnapshot, "majors">> {
+  return { majors: await majors() };
+}
+
+// Nur für Tests: vergisst die gemerkten Kurse, damit die nächste Abfrage neu holt.
+export function vergissMarkt() {
+  last = null;
+  lastMajors = null;
+}
+
 export async function getMarketSnapshot(): Promise<MarketSnapshot> {
-  const [majors, scan] = await Promise.allSettled([fetchMajors(), fetchCandidates()]);
+  const [grosse, scan] = await Promise.all([majors(), fetchCandidates().then((value) => ({ status: "fulfilled" as const, value }), () => ({ status: "rejected" as const }))]);
   return {
     fetchedAt: new Date().toISOString(),
-    majors:
-      majors.status === "fulfilled"
-        ? { source: "live", quotes: majors.value }
-        : { source: "demo", quotes: DEMO_MAJORS },
+    majors: grosse,
     scan:
       scan.status === "fulfilled"
         ? { source: "live", ...scan.value }

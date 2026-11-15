@@ -9,7 +9,8 @@ import { deskSentence, situation } from "../commands";
 import { isoDate } from "../dates";
 import { abschlussNachricht, istFaellig, tagesabschluss } from "../routinen";
 import { formatPct, formatUsd } from "../format";
-import { marketSnapshot } from "../market";
+import { majorsSnapshot, marketSnapshot } from "../market";
+import { kursLage, marktAbsatz } from "../marktlage";
 import { getWeather } from "../weather";
 import {
   briefingMessage,
@@ -29,6 +30,7 @@ import { kalenderStand, readCalendar } from "./calendar";
 import { aendereConfig, CONFIG_DIR, readConfig, type JarvisConfig, type TelegramConfig } from "./config";
 import { answerApproval, approvalStateOf, control, DeskError, deskSnapshot } from "./desk/engine";
 import { intelSnapshot } from "./intel";
+import { metalleSnapshot } from "./metalle";
 import { readMail } from "./mail";
 import { entscheideFreigabe, FreigabeFehler, freigabeZustand, offeneFreigaben } from "./gateway/freigaben";
 import { notausAktiv, notausAn } from "./gateway/zustand";
@@ -495,7 +497,7 @@ async function converse(token: string, chatId: number, text: string, config: Jar
 // ---------- Von selbst: Meldungen, Briefing, Erinnerungen ----------
 
 async function briefing(config: JarvisConfig, now: Date): Promise<string> {
-  const [weather, calendar, mail, tasks, intel, desk, projekte] = await Promise.all([
+  const [weather, calendar, mail, tasks, intel, desk, projekte, market, metalle] = await Promise.all([
     getWeather().catch(() => null),
     readCalendar().catch(() => null),
     config.mail ? readMail(config.mail).catch(() => null) : null,
@@ -503,13 +505,15 @@ async function briefing(config: JarvisConfig, now: Date): Promise<string> {
     intelSnapshot(now).catch(() => null),
     deskSnapshot(now).catch(() => null),
     uebersicht(now).catch(() => null),
+    majorsSnapshot(),
+    metalleSnapshot(now).catch(() => null),
   ]);
-  return briefingMessage({ name: config.name, now, weather, calendar, mail, tasks, intel, desk, projekte, projektNamen: prefsOf(config.telegram).projekte });
+  return briefingMessage({ name: config.name, now, weather, calendar, mail, tasks, intel, desk, projekte, projektNamen: prefsOf(config.telegram).projekte, market, metalle });
 }
 
 // Der Tagesabschluss: was heute offen blieb, was morgen kommt, was noch auf ein Ja oder Nein wartet.
 async function abschluss(config: JarvisConfig, now: Date): Promise<string> {
-  const [calendar, tasks, intel, desk, projekte, freigaben, notaus] = await Promise.all([
+  const [calendar, tasks, intel, desk, projekte, freigaben, notaus, market, metalle] = await Promise.all([
     readCalendar().catch(() => null),
     config.vaultPath ? readTasks(config.vaultPath).catch(() => null) : null,
     intelSnapshot(now).catch(() => null),
@@ -517,9 +521,13 @@ async function abschluss(config: JarvisConfig, now: Date): Promise<string> {
     uebersicht(now).catch(() => null),
     offeneFreigaben().catch(() => []),
     notausAktiv().catch(() => false),
+    majorsSnapshot(),
+    metalleSnapshot(now).catch(() => null),
   ]);
   const a = tagesabschluss({ calendar, tasks, mail: null, projekte, desk, intel, documents: null, freigabenOffen: freigaben.length, notaus }, now);
-  return abschlussNachricht(a, { name: config.name, namen: prefsOf(config.telegram).projekte, handel: deskSentence(desk, true) });
+  // Vom Markt nur starke Bewegungen und Marken; der Desk hat seinen eigenen Satz.
+  const maerkte = marktAbsatz(kursLage(market, metalle), isoDate(now));
+  return abschlussNachricht(a, { name: config.name, namen: prefsOf(config.telegram).projekte, handel: deskSentence(desk, true), maerkte });
 }
 
 // Rückfragen kommen immer, auch wenn Meldungen zu Trades abgeschaltet sind: Ohne dein Ja kauft der Desk nicht.

@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 929 von 929 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 938 von 938 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -933,7 +933,8 @@ KI-Gehirn). Über Telegram stehen Projektnamen und -inhalte nur, wenn der Schalt
 | G3.4 Entwurf im Ordner „Entwürfe“ des echten Postfachs ablegen | Blockiert | ändert das echte Postfach; braucht Benedikts Entscheidung (Frage 13) |
 | G3.5 Zitat der ursprünglichen Mail und „Allen antworten“, beides nur auf deinen Haken am Mac | Testbereit, **nur gegen das nachgebaute Postfach** | Schritt G3.5 unten; `zitatText`, `kopieEmpfaenger`, `mailZumEntwurf`; im Browser geprüft (`test/hand/post-rauch.ts`) |
 | G3.6 Anhänge an der Antwort | Blockiert | Ein Link ins Mailprogramm kann keine Anhänge tragen. Das geht erst mit dem Entwurf im Postfach (G3.4, Frage 13) |
-| G4 Marktüberwachung über Intel und Desk hinaus | Offen | kommt mit den Agenten (F) |
+| G4.1 Starke Bewegungen am Markt im Morgenbriefing und im Tagesabschluss (Handy und gesprochen am Mac) | Testbereit; nur gegen nachgebautes Telegram und nachgebautes CoinGecko | Schritt G4.1 unten; `marktAbsatz`, `marktHinweis` in `src/lib/marktlage.ts` |
+| G4.2 Marktüberwachung über Krypto und Edelmetalle hinaus (Aktien, Zinsen, Währungen) | Offen | neue Datenquellen, zum Teil bezahlt: braucht Benedikts Freigabe |
 
 ### Testergebnisse Schritt G1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -1203,6 +1204,47 @@ stand, bestimmt der Absender der Mail: Sieh die Adressen an, bevor du den Haken 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** „Allen antworten“ schickt deine Antwort an
 Adressen, die der Absender der Mail gewählt hat. Gemildert: nur auf deinen Haken, die Adressen stehen sichtbar
 dabei, höchstens zehn, nie durch das KI-Modell. **Neue laufende Kosten:** keine.
+
+### Schritt G4.1: starke Bewegungen am Markt im Morgenbriefing und im Tagesabschluss (15. November 2026)
+
+**Warum:** Die Marktlage (Schritt E4.1) sagt, was auffällt, aber nur, wenn man hinsieht oder fragt. Morgens und
+abends meldet sich JARVIS ohnehin; dort steht jetzt dabei, wenn sich ein Kurs stark bewegt hat. Dieselben
+Regeln, dieselben Schwellen, kein KI-Modell.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| G4.1a Morgenbriefing und Tagesabschluss aufs Handy bekommen den Absatz „Märkte“: je eine Zeile für Kurse über der Schwelle (Krypto 5 % in 24 Stunden, Gold und Silber 2 % zum Vortag) und für Gold oder Silber am Hoch oder Tief der letzten 21 Handelstage; höchstens fünf Zeilen, der Rest als Zahl | Testbereit, nur gegen nachgebautes Telegram | `marktAbsatz`, `briefingMessage`, `abschlussNachricht` |
+| G4.1b An einem ruhigen Tag steht nichts da. Beispielkurse gelten nie als Bewegung; kommen die Kryptokurse nicht, steht „Kryptokurse: gerade keine Verbindung“ da. Gold und Silber zählen nur mit einem Kurs von heute, je Metall: Die Bewegung vom Freitag steht nicht am Wochenende wieder da | Testbereit | `marktlage.test.ts`, `hinweise.test.ts` |
+| G4.1c Der Spielgeld-Desk und die Warnung von Intel stehen im Briefing wie bisher an eigener Stelle und nicht noch einmal im Absatz | Testbereit | wie oben |
+| G4.1d Gesprochen am Mac („Briefing“, „Tagesabschluss“): ein Satz „An den Märkten fällt auf: …“, höchstens drei Dinge; Kryptokurse nur, wenn der Mac sie in den letzten 15 Minuten geholt hat | Testbereit | `marktHinweis`, Regeln in `src/lib/commands.ts` |
+| G4.1e Dafür fragt JARVIS morgens und abends nur die drei großen Kryptokurse ab (ohne den Scanner, und höchstens einmal in 15 Sekunden, gemeinsam mit Oberfläche und Desk); die Edelmetalle kommen aus dem Stand, den der Edelmetall-Agent schon gelesen hat | Testbereit | `majorsSnapshot` in `src/lib/market.ts` |
+
+**Eigene Entscheidungen (Benedikt hat sie noch nicht gesehen):** (1) Es gibt keinen eigenen Schalter: Wer das
+Morgenbriefing hat, bekommt den Absatz, wenn etwas auffällt. Die Kurse sind öffentlich und nichts aus der
+Firma. (2) Zwischendurch meldet JARVIS nichts vom Markt; die höchstens drei Hinweise am Tag bleiben für
+Aufgaben. (3) Von den Lücken in den Daten steht nur eine im Briefing: dass die Kryptokurse fehlen. Veraltete
+Edelmetallkurse und ein gescheiterter Abruf stehen im Raum Intel. (4) Gold und Silber zählen nur mit einem Kurs
+von heute. Der Silber-Fonds handelt erst ab dem Nachmittag (US-Börse); er steht deshalb eher im Tagesabschluss
+als im Morgenbriefing.
+
+**Grenzen:** Gemeldet wird der Stand zur Zeit des Briefings, nicht der Verlauf des Tages: Ein Kurs, der mittags
+um 8 % fällt und abends wieder bei 3 % steht, kommt nicht vor. Die Edelmetalle sind so alt wie der letzte Lauf
+des Edelmetall-Agenten (morgens 7:30 Uhr und abends 17:30 Uhr, wenn er eingeschaltet ist).
+
+### Testergebnisse Schritt G4.1 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **938 Tests: 938 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 9: acht Regeltests in `marktlage.test.ts`, einer mit nachgebautem Telegram, CoinGecko und dem Stand des Edelmetall-Agenten in `hinweise.test.ts`) |
+| Tests zuerst | Erste Runde: Die Regeltests standen vor dem Code und liefen rot (7 rote Tests). Ehrlich zur zweiten Runde: Die Tests zu den Befunden der Durchsicht habe ich vor dem Code geschrieben, aber nicht rot laufen sehen, bevor der Code da war; der Beleg dort sind die Gegenproben |
+| Gegenproben | Erste Runde: 34 absichtlich eingebaute Fehler, 33 bemerkt; der eine war kein Fehler (der Absatz filtert den Desk ohnehin heraus, die Stelle ist doppelt abgesichert). Zweite Runde nach der Durchsicht: 20 eingebaute Fehler, 18 bemerkt; eine Lücke mit einem Test geschlossen und danach bemerkt, einer war von mir falsch gebaut und änderte nichts. Darunter: Desk, Warnung oder Datenlücken rutschen in den Absatz, sechs statt fünf Zeilen, der Rest wird verschwiegen, Absatz fehlt im Briefing oder im Abschluss, Edelmetalle mit altem Kurs zählen mit, der Ausfall der Kryptokurse wird verschwiegen oder gilt als echte Kurse, das Briefing holt den ganzen Markt samt Scanner, jede Abfrage holt neu, alte Kurse am Mac gelten als frisch |
+| `npx next build` | erfolgreich, mit den vier bekannten Warnungen. Danach die Handprüfung `marktlage-rauch` noch einmal (die Marktlage teilt sich den Code): alle Schritte in Ordnung |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde. Eingearbeitet: Eine Bewegung bei Gold oder Silber wäre bis zu vier Tage lang jeden Morgen und Abend wieder gemeldet worden, etwa die vom Freitag das ganze Wochenende (jetzt zählt nur ein Kurs von heute, je Metall); das Briefing fragte CoinGecko an der gemeinsamen Sperre von 15 Sekunden vorbei ein zweites Mal (jetzt eine Abfrage für Oberfläche, Desk und Briefing); fehlten die Kryptokurse, sah das Briefing aus wie an einem ruhigen Tag (jetzt steht „Kryptokurse: gerade keine Verbindung“ da); am Mac konnte ein stundenalter Kurs als Neuigkeit gesprochen werden (jetzt nur, wenn die Kurse höchstens 15 Minuten alt sind); zwei Minuszeichen in einer Liste (jetzt überall „−“ in der Marktlage); doppelter Code für Beispielkurse, eine Fehlerbehandlung, die nie greifen konnte, ein Kommentar an der falschen Stelle, dieselbe Zeile dreimal. Bewusst nicht geändert: Der Satz kommt auch bei „Hallo“ und „Guten Tag“, weil das am Mac schon immer das ganze Briefing auslöst; gesprochen heißt es weiter „Bitcoin: +6 % in 24 Stunden“ wie im Zuruf „Marktübersicht“ (wie die Stimme das liest, steht in der Prüfliste); der Tagesabschluss bekommt den Absatz fertig, das Briefing die Daten |
+| Sicherheitsprüfung (von Hand) | Ein neuer Abruf nach außen: Morgens und abends fragt JARVIS bei CoinGecko die drei großen Kurse ab, denselben Dienst und dieselbe Abfrage wie die Oberfläche; es geht nichts von dir hinaus. Aufs Handy gehen nur feste Namen (Bitcoin, Ethereum, Solana, Gold, Silber oder der Fonds) und Zahlen, kein Text von Dritten: Die Warnung von Intel und der Wortlaut einer Störung des Kursdienstes stehen nicht im Absatz (Tests). Der Desk bleibt Spielgeld und hat weiter seinen eigenen Satz |
+| Nicht geprüft | echtes Telegram, echtes CoinGecko und echtes Twelve Data; echter Mac; die gesprochene Fassung über die Stimme; eine Handprüfung im Browser gab es für diesen Schritt nicht, weil sich an der Oberfläche nichts ändert (der gesprochene Satz ist über die Regeln getestet) |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(CoinGecko ist für diese Abfrage kostenlos und wird schon benutzt).
 
 ## Bereich H – Sprache und Desktop
 
@@ -1551,7 +1593,8 @@ Danach wie geplant:
 16. **E4.1: gebaut, Testbereit** (Schritt E4.1 in Bereich E): Marktlage im Raum Intel, in „Heute“ und als
    Zuruf „Marktübersicht“: Krypto, Edelmetalle und Spielgeld-Desk auf einen Blick, mit dem, was auffällt.
    Ohne KI und ohne neue Datenquellen.
-   **Als Nächstes:** G4.1 (das Auffällige der Marktlage im Morgenbriefing und im Tagesabschluss, mit denselben
-   Regeln wie die anderen Routinen; weiter ohne neue Datenquellen). Die
+17. **G4.1: gebaut, Testbereit, nur gegen nachgebautes Telegram** (Schritt G4.1 in Bereich G): Starke
+   Bewegungen am Markt stehen im Morgenbriefing und im Tagesabschluss, am Handy und gesprochen am Mac.
+   **Als Nächstes:** J4 (alle Handprüfungen im Browser mit einem Befehl nacheinander laufen lassen, damit nach jedem Paket auch die älteren Räume noch einmal durchgeklickt werden). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

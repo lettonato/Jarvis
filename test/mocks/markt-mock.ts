@@ -62,7 +62,9 @@ export type MarktMock = {
   // Wird vor jeder Kursabfrage gerufen (n zählt ab 1), um den Markt mitten in einer Runde zu bewegen.
   vorKursen: ((adressen: string[], n: number) => void) | null;
   // Dienste ausfallen lassen.
-  aus: { dexscreener?: boolean; rugcheck?: boolean };
+  aus: { dexscreener?: boolean; rugcheck?: boolean; coingecko?: boolean };
+  // Veränderung in 24 Stunden in Prozent für Bitcoin, Ethereum und Solana bei CoinGecko.
+  majors: { bitcoin: number; ethereum: number; solana: number };
   leeren: () => void;
   stop: () => Promise<void>;
 };
@@ -114,7 +116,10 @@ export async function starteMarktMock(): Promise<MarktMock> {
       return json(res, 200, coins.filter((c) => adressen.includes(c.address) && !c.verschwunden).map(paar));
     }
     if (pfad === "/api/v2/networks/solana/trending_pools") return json(res, 200, { data: [] });
-    if (pfad === "/api/v3/simple/price") return json(res, 200, { bitcoin: { eur: 92_450, eur_24h_change: -1.2 }, ethereum: { eur: 3_310, eur_24h_change: 0.4 }, solana: { eur: 168, eur_24h_change: 2.1 } });
+    if (pfad === "/api/v3/simple/price") {
+      if (mock.aus.coingecko) return json(res, 503, { error: "aus" });
+      return json(res, 200, { bitcoin: { eur: 92_450, eur_24h_change: mock.majors.bitcoin }, ethereum: { eur: 3_310, eur_24h_change: mock.majors.ethereum }, solana: { eur: 168, eur_24h_change: mock.majors.solana } });
+    }
     const kette = /^\/v1\/tokens\/([^/]+)\/report$/.exec(pfad);
     if (kette) {
       const c = coins.find((x) => x.address === decodeURIComponent(kette[1]));
@@ -134,6 +139,7 @@ export async function starteMarktMock(): Promise<MarktMock> {
     kettenAbfragen: () => anfragen.map((p) => /^\/v1\/tokens\/([^/]+)\/report$/.exec(p)?.[1]).filter((x): x is string => Boolean(x)),
     vorKursen: null,
     aus: {},
+    majors: { bitcoin: -1.2, ethereum: 0.4, solana: 2.1 },
     leeren: () => {
       anfragen.length = 0;
       kursAbfragen = 0;

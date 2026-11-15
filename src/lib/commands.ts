@@ -4,7 +4,7 @@ import { formatEur, formatPct } from "./format";
 import { intelBriefing, intelSentence, itemsAbout, searchSentence, type IntelSnapshot } from "./intel";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { MarketSnapshot } from "./market";
-import { marktlage, marktSatz } from "./marktlage";
+import { kursLage, marktHinweis, marktlage, marktSatz } from "./marktlage";
 import type { MetalleSnapshot } from "./metalle";
 import { SAFETY, type DeskSnapshot } from "./paper";
 import type { ProjekteSnapshot } from "./projekte";
@@ -342,6 +342,15 @@ function newsAbout(ctx: CommandContext, topic: string, search: boolean): Decisio
 
 // ---------- Regeln ----------
 
+// Für Briefing und Tagesabschluss: nur starke Bewegungen und Marken am Markt, sonst nichts. Desk und Intel
+// haben dort ihre eigenen Sätze. Kryptokurse, die der Mac länger nicht neu geholt hat (Deckel zu, keine
+// Verbindung), sind keine Neuigkeit mehr und bleiben weg.
+const KURSE_FRISCH_MS = 15 * 60_000;
+function marktBewegung(ctx: CommandContext): string {
+  const frisch = ctx.market && ctx.now.getTime() - Date.parse(ctx.market.fetchedAt) <= KURSE_FRISCH_MS;
+  return marktHinweis(kursLage(frisch ? ctx.market : null, ctx.metalle ?? null), today(ctx));
+}
+
 // talk: Mit KI-Gehirn beantwortet Claude das besser, bei einer Frage („frage“) oder immer („immer“).
 type Rule = { match: RegExp; run: (ctx: CommandContext, text: string, original: string) => Decision; talk?: "frage" | "immer" };
 
@@ -491,7 +500,7 @@ const RULES: Rule[] = [
   {
     // Der Tagesabschluss: was offen blieb und was morgen kommt. Freigaben und Not-Aus zeigt die Ansicht „Heute“.
     match: /tagesabschluss|feierabend|tagesrückblick|was (ist|blieb) heute (offen|liegen)/,
-    run: (ctx) => ({ reply: abschlussSatz(tagesabschluss(tagesDaten(ctx), ctx.now), ctx.name), navigate: "/heute" }),
+    run: (ctx) => ({ reply: [abschlussSatz(tagesabschluss(tagesDaten(ctx), ctx.now), ctx.name), marktBewegung(ctx)].filter(Boolean).join(" "), navigate: "/heute" }),
   },
   {
     match: /guten morgen|guten tag|guten abend|\bhallo\b|\bhey\b|\bservus\b|briefing|was steht an|was gibt.{0,3} neues|\blage\b|lagebericht/,
@@ -504,6 +513,7 @@ const RULES: Rule[] = [
         w,
         briefingSentence(ctx.calendar ?? null, today(ctx)),
         intelBriefing(ctx.intel ?? null, ctx.now),
+        marktBewegung(ctx),
         mailSentence(ctx.mail),
         taskSentence(ctx.tasks, today(ctx)),
         projekteSentence(ctx),

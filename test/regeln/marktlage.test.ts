@@ -8,15 +8,18 @@ import { decide, type CommandContext } from "../../src/lib/commands";
 import { enthaeltFremdes } from "../../src/lib/herkunft";
 import type { IntelSnapshot } from "../../src/lib/intel";
 import type { MarketSnapshot } from "../../src/lib/market";
-import { MARKT_REGELN, marktlage, marktSatz, type MarktDaten } from "../../src/lib/marktlage";
+import { MARKT_REGELN, marktAbsatz, marktHinweis, marktlage, marktSatz, type MarktDaten } from "../../src/lib/marktlage";
+import { abschlussNachricht, tagesabschluss } from "../../src/lib/routinen";
+import { briefingMessage } from "../../src/lib/telegram";
 import type { MetallLage, MetalleSnapshot } from "../../src/lib/metalle";
 import type { DeskSnapshot } from "../../src/lib/paper";
 
 const JETZT = new Date(2026, 10, 13, 10, 0);
+const HEUTE = "2026-11-13";
 const nichts: MarktDaten = { market: null, metalle: null, desk: null, intel: null };
 
 const markt = (aenderungen: [number, number, number], source: "live" | "demo" = "live"): MarketSnapshot => ({
-  fetchedAt: "2026-11-13T09:00:00Z",
+  fetchedAt: new Date(JETZT.getTime() - 60_000).toISOString(),
   majors: {
     source,
     quotes: [
@@ -91,7 +94,7 @@ describe("Marktlage: was dasteht", () => {
 
   test("jede Zeile bringt ihre Veränderung als Text mit, so geschrieben wie im eigenen Raum", () => {
     const lage = marktlage({ market: markt([1.8, -0.7, 3.2]), metalle: metalle([metall({ aenderung: { tag: -3.26, woche: 0, monat: 0 } }), silberFonds({ aenderung: { tag: null, woche: null, monat: null } })]), desk: desk(), intel: null });
-    assert.deepEqual(lage.krypto?.zeilen.map((z) => z.aenderungText), ["+1,8 %", "-0,7 %", "+3,2 %"]);
+    assert.deepEqual(lage.krypto?.zeilen.map((z) => z.aenderungText), ["+1,8 %", "−0,7 %", "+3,2 %"]);
     assert.deepEqual(lage.metalle?.zeilen.map((z) => z.aenderungText), ["−3,3 %", ""], "wie in der Ansicht der Edelmetalle und im Auffälligen");
     assert.deepEqual(lage.desk?.zeilen.map((z) => z.aenderungText), ["+0,8 %", "+2,5 %", ""]);
   });
@@ -138,7 +141,7 @@ describe("Marktlage: was auffällt", () => {
 
   test("Krypto: ab 5 Prozent in 24 Stunden, nach oben wie nach unten; knapp darunter nicht", () => {
     assert.equal(MARKT_REGELN.kryptoPct, 5);
-    assert.deepEqual(texte({ market: markt([5, -6.25, 4.9]) }), ["Bitcoin: +5 % in 24 Stunden", "Ethereum: -6,3 % in 24 Stunden"]);
+    assert.deepEqual(texte({ market: markt([5, -6.25, 4.9]) }), ["Bitcoin: +5 % in 24 Stunden", "Ethereum: −6,3 % in 24 Stunden"]);
     assert.deepEqual(texte({ market: markt([4.99, -4.99, 0]) }), []);
   });
 
@@ -202,7 +205,7 @@ describe("Marktlage: was auffällt", () => {
 
   test("Spielgeld-Desk: ab 3 Prozent Minus am Tag, und wenn er nicht läuft", () => {
     assert.equal(MARKT_REGELN.deskTagPct, 3);
-    assert.deepEqual(texte({ desk: desk({ dayPnlPct: -3 }) }), ["Der Spielgeld-Desk liegt heute bei -3 %."]);
+    assert.deepEqual(texte({ desk: desk({ dayPnlPct: -3 }) }), ["Der Spielgeld-Desk liegt heute bei −3 %."]);
     assert.deepEqual(texte({ desk: desk({ dayPnlPct: -2.9 }) }), []);
     assert.deepEqual(texte({ desk: desk({ dayPnlPct: 9 }) }), [], "ein Plus ist keine Warnung");
     assert.deepEqual(texte({ desk: desk({ status: "pausiert" }) }), ["Der Spielgeld-Desk ist pausiert."]);
@@ -212,14 +215,14 @@ describe("Marktlage: was auffällt", () => {
 
   test("Spielgeld-Desk: Das Tageslimit meldet sich einmal, nicht noch als Minus des Tages", () => {
     assert.deepEqual(texte({ desk: desk({ status: "tageslimit", dayPnlPct: -8 }) }), ["Der Spielgeld-Desk hat sein Tageslimit erreicht und kauft heute nichts mehr."]);
-    assert.deepEqual(texte({ desk: desk({ status: "pausiert", dayPnlPct: -4 }) }), ["Der Spielgeld-Desk ist pausiert.", "Der Spielgeld-Desk liegt heute bei -4 %."]);
+    assert.deepEqual(texte({ desk: desk({ status: "pausiert", dayPnlPct: -4 }) }), ["Der Spielgeld-Desk ist pausiert.", "Der Spielgeld-Desk liegt heute bei −4 %."]);
   });
 
   test("die Warnung von Intel steht ganz vorn", () => {
     const lage = marktlage({ market: markt([8, 0, 0]), metalle: null, desk: desk({ dayPnlPct: -4 }), intel: intel({ warning: { text: "Börse X setzt Auszahlungen aus", at: "", until: "" } }) });
     assert.deepEqual(lage.auffaellig.map((a) => [a.art, a.text, a.href]), [
       ["warnung", "Intel bremst den Desk: Börse X setzt Auszahlungen aus", "/intel"],
-      ["desk", "Der Spielgeld-Desk liegt heute bei -4 %.", "/trading"],
+      ["desk", "Der Spielgeld-Desk liegt heute bei −4 %.", "/trading"],
       ["bewegung", "Bitcoin: +8 % in 24 Stunden", "/trading"],
     ]);
   });
@@ -231,7 +234,7 @@ describe("Marktlage als gesprochener Satz und als Zuruf", () => {
   test("der Satz nennt Krypto, Edelmetalle, den Desk als Spielgeld und das Auffällige", () => {
     assert.equal(
       marktSatz(marktlage(voll)),
-      "Krypto in 24 Stunden: Bitcoin +1,8 %, Ethereum -6,2 %, Solana +3,2 %. Edelmetalle: Gold 2.650,00 $ (+0,4 % zum Vortag), Silber-Fonds SLV 28,10 $ (+0,4 % zum Vortag). Das Spielgeld-Konto steht heute bei +0,8 %, seit dem Start bei +2,5 %. Auffällig: Ethereum: -6,2 % in 24 Stunden.",
+      "Krypto in 24 Stunden: Bitcoin +1,8 %, Ethereum −6,2 %, Solana +3,2 %. Edelmetalle: Gold 2.650,00 $ (+0,4 % zum Vortag), Silber-Fonds SLV 28,10 $ (+0,4 % zum Vortag). Das Spielgeld-Konto steht heute bei +0,8 %, seit dem Start bei +2,5 %. Auffällig: Ethereum: −6,2 % in 24 Stunden.",
     );
   });
 
@@ -248,14 +251,14 @@ describe("Marktlage als gesprochener Satz und als Zuruf", () => {
   });
 
   test("der Zuruf „Marktübersicht“ antwortet ohne KI und öffnet den Raum Intel", () => {
-    const ctx: CommandContext = { name: "Benedikt", market: voll.market, weather: null, tasks: null, mail: null, desk: voll.desk, calendar: null, intel: voll.intel, metalle: voll.metalle, now: JETZT, session: null };
+    const ctx: CommandContext = { name: "Benedikt", market: markt([1.8, -6.2, 3.2]), weather: null, tasks: null, mail: null, desk: voll.desk, calendar: null, intel: voll.intel, metalle: voll.metalle, now: JETZT, session: null };
     for (const zuruf of ["Marktübersicht", "Wie stehen die Märkte?", "Marktlage", "Finanzübersicht"]) {
       const d = decide(zuruf, ctx, true);
       assert.equal(d?.navigate, "/intel", zuruf);
       assert.equal(d?.reply, marktSatz(marktlage(voll)), zuruf);
     }
     const warnt = intel({ warning: { text: "Börse X setzt Auszahlungen aus", at: "", until: "" } });
-    assert.match(decide("Marktlage", { ...ctx, intel: warnt }, true)?.reply ?? "", /^Intel bremst den Desk: Börse X setzt Auszahlungen aus\. Krypto in 24 Stunden: .* Auffällig: Ethereum: -6,2 % in 24 Stunden\.$/);
+    assert.match(decide("Marktlage", { ...ctx, intel: warnt }, true)?.reply ?? "", /^Intel bremst den Desk: Börse X setzt Auszahlungen aus\. Krypto in 24 Stunden: .* Auffällig: Ethereum: −6,2 % in 24 Stunden\.$/);
     // Ein ganzer Satz geht mit KI-Gehirn wie überall an Claude, ohne KI-Gehirn antwortet die Regel.
     assert.equal(decide("Wie ist die Marktlage heute bei den Edelmetallen", ctx, true), null);
     assert.equal(decide("Wie ist die Marktlage heute bei den Edelmetallen", ctx, false)?.navigate, "/intel");
@@ -263,14 +266,14 @@ describe("Marktlage als gesprochener Satz und als Zuruf", () => {
   });
 
   test("andere Zurufe bleiben, wie sie waren", () => {
-    const ctx: CommandContext = { name: "Benedikt", market: voll.market, weather: null, tasks: null, mail: null, desk: voll.desk, calendar: null, intel: null, now: JETZT, session: null };
+    const ctx: CommandContext = { name: "Benedikt", market: markt([1.8, -6.2, 3.2]), weather: null, tasks: null, mail: null, desk: voll.desk, calendar: null, intel: null, now: JETZT, session: null };
     assert.match(decide("Wie steht Bitcoin?", ctx, false)?.reply ?? "", /^Bitcoin steht bei/);
     assert.match(decide("Wie läuft der Handel?", ctx, false)?.reply ?? "", /Spielgeld-Konto/);
     assert.notEqual(decide("Kryptomarkt scannen", ctx, false)?.navigate, "/intel");
   });
 
   test("die Marktlage greift nur beim eigenen Wort, nicht mitten in einem anderen oder bei Nachrichten", () => {
-    const ctx: CommandContext = { name: "Benedikt", market: voll.market, weather: null, tasks: null, mail: null, desk: voll.desk, calendar: null, intel: voll.intel, metalle: voll.metalle, now: JETZT, session: null };
+    const ctx: CommandContext = { name: "Benedikt", market: markt([1.8, -6.2, 3.2]), weather: null, tasks: null, mail: null, desk: voll.desk, calendar: null, intel: voll.intel, metalle: voll.metalle, now: JETZT, session: null };
     const satz = marktSatz(marktlage(voll));
     for (const zuruf of ["Nachrichten zur Marktlage", "News zur Marktlage", "Aktualisiere das Lagebild zur Marktlage", "Kryptomarktlage", "Arbeitsmarktlage", "Wohnungsmarktübersicht", "Meine Finanzlage", "Suche Marktüberblick Stahl"]) {
       assert.notEqual(decide(zuruf, ctx, false)?.reply, satz, zuruf);
@@ -291,5 +294,91 @@ describe("Marktlage als gesprochener Satz und als Zuruf", () => {
     const satz = marktSatz(marktlage({ ...nichts, market: markt([8, 0, 0]), intel: kurz }));
     assert.equal(satz, "Intel bremst den Desk: ETF gestoppt. Krypto in 24 Stunden: Bitcoin +8 %, Ethereum +0 %, Solana +0 %. Auffällig: Bitcoin: +8 % in 24 Stunden.");
     assert.equal(enthaeltFremdes(satz, { mail: null, desk: null, market: null, intel: kurz }), true);
+  });
+});
+
+describe("Marktlage im Morgenbriefing und im Tagesabschluss", () => {
+  const bewegt: MarktDaten = { market: markt([6, -0.7, 3.2]), metalle: metalle([metall({ kurs: 2790, abstandHochPct: (2790 / 2800 - 1) * 100 }), silberFonds({ aenderung: { tag: -3.26, woche: 0, monat: 0 } })]), desk: null, intel: null };
+  const absatz = "Märkte:\n• Bitcoin: +6 % in 24 Stunden\n• Silber-Fonds SLV: −3,3 % zum Vortag\n• Gold steht am Hoch der letzten 21 Handelstage";
+
+  test("der Absatz fürs Handy nennt nur starke Bewegungen und Marken, als Liste", () => {
+    assert.equal(marktAbsatz(marktlage(bewegt), HEUTE), absatz);
+    assert.equal(marktHinweis(marktlage(bewegt), HEUTE), "An den Märkten fällt auf: Bitcoin: +6 % in 24 Stunden; Silber-Fonds SLV: −3,3 % zum Vortag; Gold steht am Hoch der letzten 21 Handelstage.");
+  });
+
+  test("an einem ruhigen Tag steht nichts da", () => {
+    const ruhig = marktlage({ market: markt([1.8, -0.7, 3.2]), metalle: metalle([metall(), silberFonds()]), desk: desk(), intel: intel() });
+    assert.equal(marktAbsatz(ruhig, HEUTE), "");
+    assert.equal(marktHinweis(ruhig, HEUTE), "");
+    assert.equal(marktAbsatz(marktlage(nichts), HEUTE), "");
+  });
+
+  test("Desk, Warnung von Intel und Lücken in den Daten gehören nicht hinein: Die stehen im Briefing an eigener Stelle oder im Raum Intel", () => {
+    const lage = marktlage({
+      market: markt([12, -9, 0], "demo"),
+      metalle: metalle([metall({ kursVom: "2026-11-06", aenderung: { tag: 4, woche: 0, monat: 0 } })], { veraltet: true }),
+      desk: desk({ status: "pausiert", dayPnlPct: -6 }),
+      intel: intel({ warning: { text: "Börse X setzt Auszahlungen aus", at: "", until: "" } }),
+    });
+    assert.equal(lage.auffaellig.length, 5);
+    assert.equal(marktAbsatz(lage, HEUTE), "Märkte:\n• Kryptokurse: gerade keine Verbindung", "nur dass die Kryptokurse fehlen, damit Schweigen nicht nach einem ruhigen Tag aussieht");
+    assert.equal(marktHinweis(lage, HEUTE), "", "gesprochen am Mac nicht: Dort steht „Beispieldaten“ ohnehin im Bild");
+    const mitGold = marktlage({ ...nichts, market: markt([12, -9, 0], "demo"), metalle: metalle([metall({ aenderung: { tag: 2.4, woche: 0, monat: 0 } })]) });
+    assert.equal(marktAbsatz(mitGold, HEUTE), "Märkte:\n• Gold: +2,4 % zum Vortag\n• Kryptokurse: gerade keine Verbindung");
+    assert.equal(marktHinweis(mitGold, HEUTE), "An den Märkten fällt auf: Gold: +2,4 % zum Vortag.");
+  });
+
+  test("Edelmetalle zählen nur mit einem Kurs von heute: Die Bewegung vom Freitag steht nicht am Wochenende noch einmal da", () => {
+    const gestern = marktlage({ ...nichts, metalle: metalle([metall({ kursVom: "2026-11-12", kurs: 2790, abstandHochPct: (2790 / 2800 - 1) * 100, aenderung: { tag: 2.4, woche: 0, monat: 0 } })]) });
+    assert.equal(gestern.auffaellig.length, 2, "im Raum Intel steht beides weiter da, mit dem Datum der Kurse");
+    assert.equal(marktAbsatz(gestern, HEUTE), "");
+    assert.equal(marktHinweis(gestern, HEUTE), "");
+    assert.equal(marktAbsatz(gestern, "2026-11-12"), "Märkte:\n• Gold: +2,4 % zum Vortag\n• Gold steht am Hoch der letzten 21 Handelstage");
+    const gemischt = marktlage({ ...nichts, metalle: metalle([metall({ aenderung: { tag: 2.4, woche: 0, monat: 0 } }), silberFonds({ kursVom: "2026-11-12", aenderung: { tag: -3, woche: 0, monat: 0 } })]) });
+    assert.equal(marktAbsatz(gemischt, HEUTE), "Märkte:\n• Gold: +2,4 % zum Vortag", "je Metall, nicht nach dem jüngsten Kurs von allen");
+  });
+
+  test("höchstens fünf Zeilen, der Rest als Zahl", () => {
+    const viel = marktlage({ ...nichts, market: markt([6, -7, 8]), metalle: metalle([metall({ kurs: 2790, abstandHochPct: (2790 / 2800 - 1) * 100, aenderung: { tag: 2.5, woche: 0, monat: 0 } }), silberFonds({ kurs: 26.1, aenderung: { tag: -3, woche: 0, monat: 0 } })]) });
+    assert.equal(viel.auffaellig.length, 7);
+    assert.deepEqual(marktAbsatz(viel, HEUTE).split("\n").slice(-2), ["• Silber-Fonds SLV: −3,0 % zum Vortag", "• und 2 weitere"]);
+    assert.equal(marktAbsatz(viel, HEUTE).split("\n").length, 7);
+    const sechs = marktlage({ ...nichts, market: markt([6, -7, 8]), metalle: metalle([metall({ kurs: 2790, abstandHochPct: (2790 / 2800 - 1) * 100, aenderung: { tag: 2.5, woche: 0, monat: 0 } }), silberFonds({ aenderung: { tag: -3, woche: 0, monat: 0 } })]) });
+    assert.equal(marktAbsatz(sechs, HEUTE).split("\n").at(-1), "• und eines mehr");
+    assert.equal(marktHinweis(viel, HEUTE), "An den Märkten fällt auf: Bitcoin: +6 % in 24 Stunden; Ethereum: −7 % in 24 Stunden; Solana: +8 % in 24 Stunden; und 4 weitere.", "gesprochen höchstens drei");
+    assert.match(marktHinweis(marktlage({ ...nichts, market: markt([6, -7, 8]), metalle: metalle([metall({ aenderung: { tag: 2.5, woche: 0, monat: 0 } })]) }), HEUTE), /Solana: \+8 % in 24 Stunden; und eines mehr\.$/);
+  });
+
+  test("das Morgenbriefing fürs Handy bekommt den Absatz vor den Nachrichten; den Desk nennt es wie bisher selbst", () => {
+    const basis = { name: "Benedikt", now: JETZT, weather: null, calendar: null, mail: null, tasks: null, intel: null, desk: null };
+    assert.equal(briefingMessage({ ...basis, market: bewegt.market, metalle: bewegt.metalle }), `Guten Morgen, Benedikt. Heute ist Freitag, 13. November.\n\n${absatz}`);
+    assert.doesNotMatch(briefingMessage({ ...basis, market: markt([1, 1, 1]), metalle: null }), /Märkte/);
+    assert.doesNotMatch(briefingMessage(basis), /Märkte/, "ohne Kurse wie bisher");
+    const mitDesk = briefingMessage({ ...basis, market: bewegt.market, metalle: null, desk: desk({ status: "pausiert", dayPnlPct: -6 }) });
+    assert.match(mitDesk, /Märkte:\n• Bitcoin: \+6 % in 24 Stunden\n\n/);
+    assert.doesNotMatch(mitDesk, /Der Spielgeld-Desk ist pausiert\./, "kein zweiter Satz zum Desk aus der Marktlage");
+  });
+
+  test("der Tagesabschluss fürs Handy bekommt den Absatz vor dem Satz zum Spielgeld-Handel", () => {
+    const a = tagesabschluss({ calendar: null, tasks: null, mail: null, projekte: null, desk: null, intel: null, documents: null, freigabenOffen: 0, notaus: false }, JETZT);
+    const text = abschlussNachricht(a, { name: "Benedikt", namen: false, maerkte: absatz, handel: "Der Spielgeld-Handel steht bei plus 2 Prozent." });
+    assert.ok(text.endsWith(`\n\n${absatz}\n\nDer Spielgeld-Handel steht bei plus 2 Prozent.`), text);
+    assert.doesNotMatch(abschlussNachricht(a, { name: "Benedikt", namen: false, maerkte: "" }), /Märkte/);
+  });
+
+  test("gesprochen am Mac: Briefing und Tagesabschluss sagen es in einem Satz, an einem ruhigen Tag gar nicht", () => {
+    const ctx: CommandContext = { name: "Benedikt", market: markt([6, -0.7, 3.2]), weather: null, tasks: null, mail: null, desk: null, calendar: null, intel: null, metalle: bewegt.metalle, now: JETZT, session: null };
+    const satz = "An den Märkten fällt auf: Bitcoin: +6 % in 24 Stunden; Silber-Fonds SLV: −3,3 % zum Vortag; Gold steht am Hoch der letzten 21 Handelstage.";
+    assert.ok(decide("Briefing", ctx, false)?.reply.includes(` ${satz} `), decide("Briefing", ctx, false)?.reply);
+    assert.ok(decide("Tagesabschluss", ctx, false)?.reply.endsWith(` ${satz}`), decide("Tagesabschluss", ctx, false)?.reply);
+    const ruhig = { ...ctx, market: markt([1, 1, 1]), metalle: null };
+    assert.doesNotMatch(decide("Briefing", ruhig, false)?.reply ?? "", /Märkten/);
+    assert.doesNotMatch(decide("Tagesabschluss", ruhig, false)?.reply ?? "", /Märkten/);
+    // Hat der Mac die Kryptokurse länger nicht neu geholt (Deckel zu, keine Verbindung), nennt er sie nicht als Neuigkeit.
+    const alt = { ...ctx, market: { ...markt([6, -0.7, 3.2]), fetchedAt: new Date(JETZT.getTime() - 16 * 60_000).toISOString() } };
+    assert.doesNotMatch(decide("Briefing", alt, false)?.reply ?? "", /Bitcoin/);
+    assert.match(decide("Briefing", alt, false)?.reply ?? "", /An den Märkten fällt auf: Silber-Fonds SLV: −3,3 % zum Vortag; Gold steht am Hoch/);
+    const frisch = { ...ctx, market: { ...markt([6, -0.7, 3.2]), fetchedAt: new Date(JETZT.getTime() - 14 * 60_000).toISOString() } };
+    assert.match(decide("Briefing", frisch, false)?.reply ?? "", /An den Märkten fällt auf: Bitcoin: \+6 %/);
   });
 });

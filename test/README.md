@@ -18,7 +18,9 @@ npm run pruefen     # Lint, Typprüfung und Tests
   ankommt, steht in `heute.test.ts` und `routinen.test.ts`.
   `marktlage.test.ts` prüft die Marktlage (Krypto, Edelmetalle, Spielgeld-Desk): was dasteht, ab wann etwas
   auffällt, dass Beispielkurse und veraltete Kurse nie als Bewegung gelten, den gesprochenen Satz und den
-  Zuruf „Marktübersicht“.
+  Zuruf „Marktübersicht“, dazu den Absatz „Märkte“ in Morgenbriefing und Tagesabschluss (was hinein darf und
+  was nicht). Dass er wirklich aufs Handy geht, prüft `test/module/hinweise.test.ts` mit nachgebautem Telegram
+  und nachgebautem CoinGecko.
   `claude-zugang.test.ts` prüft, dass nur `src/lib/server/claude.ts` eine Verbindung zu Claude aufbaut und
   jede Rolle ihre Wartezeit und Wiederholungen behält.
   `geteilt.test.ts` prüft die geteilten Abfragen der Oberfläche (eine Abfrage für mehrere Stellen, keine

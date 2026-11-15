@@ -119,7 +119,8 @@ function liste<T>(dinge: T[], zeile: (x: T) => string): string {
 }
 
 // Der Tagesabschluss als Nachricht aufs Handy. handel: der Satz zum Spielgeld-Desk, falls er läuft.
-export function abschlussNachricht(a: Abschluss, o: { name: string; namen: boolean; handel?: string }): string {
+// maerkte: der Absatz zu starken Bewegungen am Markt (src/lib/marktlage.ts), leer an einem ruhigen Tag.
+export function abschlussNachricht(a: Abschluss, o: { name: string; namen: boolean; handel?: string; maerkte?: string }): string {
   const teileDerNachricht: string[] = [`Feierabend, ${o.name}. Dein Tag in Kürze:`];
 
   const erledigt = a.erledigt > 0 ? `${zahl(a.erledigt, "eine Aufgabe", "Aufgaben")} erledigt` : "";
@@ -162,6 +163,7 @@ export function abschlussNachricht(a: Abschluss, o: { name: string; namen: boole
   }
 
   if (a.wartet.length > 0) teileDerNachricht.push(`Wartet noch auf dich:\n${a.wartet.map((t) => `• ${t}`).join("\n")}`);
+  if (o.maerkte) teileDerNachricht.push(o.maerkte);
   if (o.handel) teileDerNachricht.push(o.handel);
   return teileDerNachricht.join("\n\n");
 }
