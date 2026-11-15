@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1005 von 1005 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1021 von 1021 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -1741,6 +1741,81 @@ das Mikrofon erst nach einem Klick freigeben (Safari).
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
+### Schritt J8: Handprüfungen für das Lagebild im Raum Intel und für das Lesen der Post; fünf Fehler gefunden und behoben (15. November 2026)
+
+**Warum:** Das Lagebild von Grok kostet bei jedem Klick Geld und bremst den Trading-Desk; der Raum Post zeigt
+fremde Texte und ändert etwas im Postfach („Gelesen“). Für beides gab es Tests der Regeln, aber keine Prüfung
+der ganzen Strecke im Browser. (`post-rauch.ts` prüft im Raum Post nur die Antwortentwürfe.)
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J8.1 Handprüfung Intel: ohne Schlüssel, Lagebild von Hand (Reihenfolge, Quellen, fremder Text), Warnung an den Trading-Desk, gezielte Suche, Tagesbudget, eigene Themen, Ausfälle von xAI, die Zurufe im Gespräch, „Von selbst lesen“, gesperrter Agent, Schutz der Schnittstelle | Testbereit, **nur gegen nachgebautes Grok; es floss kein Geld** | `test/hand/intel-rauch.ts` (Port 3125, 11 Schritte); unten |
+| J8.2 Handprüfung Post lesen: verbinden (auch mit falschem Passwort), Übersicht, Mail öffnen, „Gelesen“, „Als Aufgabe“, „Neu laden“, mit JARVIS durchgehen, gelöschte Mail, Ausfall des Postfachs, Schutz der Schnittstelle | Testbereit, **nur gegen ein nachgebautes Postfach** | `test/hand/postfach-rauch.ts` (Port 3126, 10 Schritte); unten |
+| J8.3 **Gefunden und behoben:** Reicht das Tagesbudget nicht mehr für ein Lagebild, sagt der Raum Intel das, statt nur die Knöpfe grau zu zeigen | Testbereit | `budgetHinweis` in `src/lib/intel.ts`, `IntelView.tsx`; `budgetReicht`; `test/regeln/intel-raum.test.ts` (5); Prüfung Intel, Schritt 6 |
+| J8.4 **Gefunden und behoben:** Ein Thema, das es schon gibt, wird nicht mehr als „kommt ins nächste Lagebild“ bestätigt | Testbereit | `themaDazu` in `src/lib/intel.ts`; `test/regeln/intel-raum.test.ts` (5); Prüfung Intel, Schritt 7 |
+| J8.5 **Gefunden und behoben:** Eine Warnung an den Trading-Desk gilt ihre sechs Stunden, auch wenn inzwischen ein neues Lagebild ohne Warnung kommt | Testbereit | `warnung` im Stand von Intel (`src/lib/server/intel.ts`); `test/module/intel.test.ts` (2 neue); Prüfung Intel, Schritt 7 |
+| J8.6 **Gefunden und behoben:** Beim Durchgehen der Mails markiert „gelesen“ die Mail als gelesen, statt sie noch einmal vorzulesen | Testbereit | Regel in `sessionCommand` (`src/lib/commands.ts`); `test/regeln/post-durchgehen.test.ts` (4); Prüfung Postfach, Schritt 8 |
+| J8.7 **Gefunden und behoben:** Fällt das Postfach aus, behauptet der Raum Post nicht mehr „Keine wichtigen Mails. Schön ruhig heute.“ | Testbereit | `MailView.tsx`; Prüfung Postfach, Schritt 10 |
+
+**Die Funde im Einzelnen.**
+
+| Fund | vorher | jetzt |
+|---|---|---|
+| Graue Knöpfe (J8.3) | Oben stand zum Beispiel „Heute 0,76 $ von 1,00 $“, und „Aktualisieren“ und „Suchen“ waren grau. Dass die übrigen 24 Cent nicht für ein Lagebild reichen (etwa 40 Cent), stand nirgends | Ein Satz nennt, was übrig ist, was nötig ist und dass ein höheres Tagesbudget sofort hilft |
+| Doppeltes Thema (J8.4) | Wer „bitcoin“ oder ein schon vorhandenes Thema eintrug, las „„bitcoin“ kommt ins nächste Lagebild.“, obwohl nichts dazukam | „„bitcoin“ gibt es schon.“ Bestätigt wird der Name, unter dem das Thema wirklich gespeichert ist (ohne Klammern, höchstens 40 Zeichen) |
+| Warnung (J8.5) | Seite und Handy sagten „Warnung bis 18:46 Uhr“ und „die nächsten 6 Stunden“. Kam vorher ein neues Lagebild ohne Warnung (ein Klick auf „Aktualisieren“ genügt), war die Warnung sofort weg, und der Desk kaufte wieder. Eine Warnung aus einer gezielten Suche blieb dagegen stehen | Die Warnung wird getrennt vom Lagebild gemerkt und gilt ihre sechs Stunden. Eine neue, andere Warnung löst sie ab. Intel bremst den Desk, er gibt ihn nicht frei |
+| „gelesen“ (J8.6) | JARVIS fragt „Vorlesen, Aufgabe, gelesen oder weiter?“. Wer „gelesen“ antwortete, bekam die Mail noch einmal vorgelesen, und im Postfach blieb sie ungelesen: Die Regel für „vorlesen“ suchte nach „lesen“ und fand es in „ge-lesen“ | „gelesen“ und „als gelesen markieren“ markieren genau diese Mail; „lesen“, „vorlesen“, „durchlesen“ lesen vor |
+| Ausfall (J8.7) | Antwortete der Mail-Server nicht, stand die Fehlermeldung da, darunter aber „Neue wichtige 0, Ungelesen gesamt 0“ und „Keine wichtigen Mails. Schön ruhig heute.“ | Es steht nur der Grund da und „Was im Postfach liegt, weiß JARVIS gerade nicht.“ „Heute“, das Briefing und die Zurufe hatten das schon richtig |
+
+**Eigene Entscheidungen:** (1) Die Warnung bleibt bestehen, auch wenn Grok sie im nächsten Lagebild nicht
+wiederholt (J8.5). Begründung: Die Zusage „bis … Uhr“ stand schon auf der Seite und auf dem Handy; ein
+Sprachmodell lässt eine Meldung auch einmal weg, ohne dass die Lage besser ist; und es geht nur um eine Bremse
+für Spielgeld. Wer die Bremse früher lösen will, kann das bisher nicht von Hand; das habe ich nicht gebaut.
+(2) Bei ausgefallenem Postfach zeigt der Raum nichts aus dem letzten gelungenen Abruf: Ein alter Stand, der wie
+ein frischer aussieht, wäre schlechter als eine ehrliche Lücke. (3) Der nachgebaute Grok bekam eine Bedenkzeit
+(`bedenkzeit(ms)`), damit sich prüfen lässt, was die Seite zeigt, während Grok liest.
+
+**Grenzen:** (1) Geprüft ist gegen Nachbauten. Was das echte Grok liefert, wie lange es braucht und was es
+kostet, ist damit nicht geprüft; ebenso wenig ein echtes Postfach (T-Online, Gmail, iCloud) mit seinen
+Eigenheiten. (2) „In Mail öffnen“ ist nur als Link geprüft; Apple Mail läuft nicht. (3) Das Lagebild, das Intel
+von selbst liest (morgens und am Nachmittag), ist im Browser nicht geprüft, nur in den Tests der Regeln;
+geprüft ist, dass das Öffnen des Raums und das Einschalten allein nichts kosten. (4) Der Mac, Windows und
+Safari sind nicht geprüft.
+
+**Aus dem Code-Review eingearbeitet (jeweils erst der Test, rot gesehen).**
+
+| Hinweis | Was daran stimmte | jetzt |
+|---|---|---|
+| „ungelesen“ | Nach der Korrektur J8.6 hätte „lass sie ungelesen“ oder „nicht als gelesen markieren“ die Mail als gelesen markiert, also das Gegenteil getan. Vorher wurde sie in dem Fall nur vorgelesen | „ungelesen“ und „nicht … gelesen“ fassen nichts an: „Bleibt ungelesen.“, weiter zur nächsten Mail |
+| „nachlesen“, „weiterlesen“, „vorgelesen“ | Diese Wörter lasen vor J8.6 vor und danach nicht mehr | lesen wieder vor |
+| Warnung aus einem Stand von früher | Die Korrektur J8.5 merkte sich nur Warnungen aus neuen Lagebildern. Eine Warnung, die beim Aktualisieren von JARVIS schon im alten Lagebild stand, wäre vom nächsten Lagebild weiter aufgehoben worden | Bevor ein Lagebild oder eine Suche abgelöst wird, wird ihre Warnung gemerkt |
+| „Übrig 0,40 $, nötig 0,40 $“ | Bei krummen Beträgen (übrig 0,397 $) rundete der neue Satz auf und widersprach sich | Der Rest wird auf den Cent abgerundet. Dazu eine Regel an einer Stelle (`budgetReicht`) für Server, Raum und Agenten-Übersicht, mit einem Millionstel Dollar Spielraum: Der Rechner rechnet 3 minus 2,60 eine Spur kleiner als 0,40 aus, das hätte vorher als „reicht nicht“ gegolten |
+| Rat zu einem höheren Tagesbudget | Bei 10 $ (mehr lässt sich nicht eintragen) riet der Satz trotzdem dazu | Am Höchstwert steht nur „Morgen geht es weiter.“ |
+| Zwei Rechnungen für dasselbe | Knöpfe und Hinweis rechneten getrennt; Seite und Server prüften ein neues Thema mit je eigenen Regeln | Die Knöpfe richten sich nach dem Hinweis; ein Test hält Seite und Server beim Thema zusammen (44 Fälle) |
+| Raum Post bei Ausfall | Die Sperre stand an vier Stellen, zwei Blöcke (Newsletter, Knopf „Mit JARVIS durchgehen“) waren nur zufällig leer | Eine benannte Bedingung (`lesbar`) für alles, was vom Inhalt des Postfachs lebt |
+| Nachgebautes Grok | Antworten mit Bedenkzeit liefen nach dem Stoppen weiter | Beim Stoppen werden sie verworfen; dass die Bedenkzeit bis zum Abstellen gilt, steht jetzt dabei |
+| Prüfung Intel und die volle Stunde | Startet die Prüfung kurz vor einer vollen Stunde, wird aus 12 Uhr 13 Uhr, und fünf Uhrzeit-Vergleiche wären fälschlich gescheitert | Die Vergleiche lassen beide Stunden zu |
+
+### Testergebnisse Schritt J8 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1021 Tests: 1021 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 16). Am Mac wären es rechnerisch 1019 (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 24 Handprüfungen bestanden**, Code 0, rund 8 Minuten (Intel 81 Sekunden, Postfach 15) |
+| Prüfung Intel, erste Läufe | mehrfach fehlgeschlagen. Echte Funde: graue Knöpfe ohne Erklärung (J8.3), doppeltes Thema bestätigt (J8.4), Warnung vorzeitig weg (J8.5). Aus der Prüfung selbst: Es gibt zwei Felder, die „Thema“ heißen; ein fester Hilfetext wurde mit der Laufanzeige verwechselt; ein Häkchen ändert sich erst, wenn der Server geantwortet hat; ein vergessener Rest im Text der Prüfung |
+| Prüfung Postfach, erste Läufe | fehlgeschlagen. Echte Funde: „gelesen“ las vor (J8.6), „Schön ruhig heute“ bei Ausfall (J8.7). Aus der Prüfung selbst: Ein fester Hinweis im Formular wurde für die Fehlermeldung gehalten; „Auf einen Blick“ steht außerhalb des Hauptbereichs |
+| Gegenproben (absichtlich eingebaute Fehler, je ein eigener Bau) | **14 von 14 entdeckt.** Intel (8): Tagesbudget nicht mehr durchgesetzt; kein Hinweis bei grauen Knöpfen; ein neues Lagebild hebt die Warnung auf; ein doppeltes Thema wird bestätigt; jede Adresse wird ein Link (auch `javascript:`); JARVIS sagt das fertige Lagebild nicht an; ein gesperrter Agent fragt Grok trotzdem; Meldungen nicht nach Wichtigkeit. Postfach (6): „gelesen“ liest vor; bei Ausfall stehen Nullen da; „Gelesen“ trifft die falsche Mail; drei Wochen alte Mails stehen da; die Signatur bleibt im Text; Öffnen markiert als gelesen. **Eine Gegenprobe zählte beim ersten Durchgang zu Unrecht:** Der eingebaute Fehler „gesperrter Agent“ ließ sich nicht bauen, die Prüfung scheiterte also schon am Start und nicht an dem Fehler. Mit einem Fehler, der baut, wiederholt: Die Prüfung scheitert genau in Schritt 11 (zehn Schritte davor in Ordnung). Danach alle Dateien wiederhergestellt (mit `git diff` gegen die Kopie von vorher verglichen), sauber gebaut, beide Prüfungen ohne eingebaute Fehler bestanden |
+| Tests zuerst | Budget-Hinweis, doppeltes Thema, Warnung und „gelesen“: Tests zuerst geschrieben und rot gesehen; für den Ausfall des Postfachs war die Handprüfung der rote Test. Alle Punkte aus dem Code-Review: erst der Test, rot gesehen (fünf rote Tests, dazu einer für den Rechenrest) |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Hinweise, alle eingearbeitet (Tabelle oben). Zwei davon waren Rückschritte aus meinen eigenen Korrekturen dieses Schritts („ungelesen“; „nachlesen“). Danach `npm run pruefen` und der Sammellauf erneut |
+| Fehler in den eigenen Tests bei der Nacharbeit | zwei, beide im Test, nicht im Programm: Ein Test erwartete bei einem Zehnmillionstel Dollar unter 0,40 $ noch „reicht nicht“ (das ist jetzt der gewollte Spielraum); ein älterer Test verließ sich darauf, dass eine frühere Warnung aus dem Test davor beim Ablösen verschwindet (genau der Fehler, der behoben wurde). Beide Tests angepasst, Begründung steht im Test |
+| Sicherheitsprüfung (von Hand) | Kein neuer Weg nach außen, keine neue Berechtigung, kein Schlüssel im Code (die Schlüssel und Passwörter der Prüfungen sind erfunden; alle Adressen sind `127.0.0.1` oder `example.com`). Strenger als vorher: Eine Warnung bremst den Desk die vollen sechs Stunden; „ungelesen“ ändert nichts im Postfach. Geprüft bleibt: Die Schnittstellen lehnen fremde Herkunft ab; aus Groks Antwort werden nur `http`- und `https`-Adressen zu Links; fremder Text bleibt Text; das Postfach-Passwort steht auf keiner Seite und in keiner Antwort; „Gelesen“ setzt nur das Gelesen-Zeichen, löschen und senden lehnt die Schnittstelle ab. Der Budget-Hinweis und die Themen-Regel sind nur Text auf der Seite; durchgesetzt wird weiter auf dem Server |
+| Am Rand aufgefallen, nicht geändert | Zwei Fehlersätze enden ohne Punkt („Letzter Versuch: Grok hat keinen lesbaren Bericht geliefert“, „… xAI bremst gerade, zu viele Anfragen“); „Ungelesen gesamt“ zählt den ganzen Posteingang, darüber steht „letzte 14 Tage“; „Mit freundlichen Grüßen“ gilt nicht als Beginn der Signatur; eine Warnung lässt sich nicht von Hand aufheben; das Häkchen „Von selbst lesen“ springt erst um, wenn der Server geantwortet hat |
+| Nicht geprüft | **echtes Grok** (Inhalt, Dauer, Kosten), **ein echtes Postfach**, Apple Mail, der Mac, Windows, Safari |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(die Prüfungen fragen nur Nachbauten; U1 bis U3 der Prüfliste kosten am Mac echtes Geld bei xAI und sind freiwillig).
+
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -1756,7 +1831,7 @@ das Mikrofon erst nach einem Klick freigeben (Safari).
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis T; Teil N erst, wenn eure IT so weit ist; Teil T neu seit J7). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis U; Teil N erst, wenn eure IT so weit ist; Teil U neu seit J8). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -1865,7 +1940,12 @@ Danach wie geplant:
    Leiste klappte das Gespräch nicht auf, „Anhalten“ direkt nach dem Abschicken hielt nichts an, ein Abriss
    der Verbindung zu Claude hieß „terminated.“, nach „Ja, ausführen“ zeigte der Raum die Änderung erst Minuten
    später, und nach dem Anhalten blieb eine leere Zeile stehen.
-   **Als Nächstes:** J8 (Handprüfungen im Browser für das Lagebild im Raum Intel gegen das nachgebaute Grok und
-   für das Lesen der Post gegen das nachgebaute Postfach; dazu die kleinen Befunde am Rand aus J6 und J7). Die
+22. **J8: gebaut, Testbereit** (Schritt J8 in Bereich J): Handprüfungen für das Lagebild im Raum Intel und für
+   das Lesen der Post, jetzt 24 Prüfungen. Dabei fünf Fehler gefunden und behoben: graue Knöpfe ohne Erklärung
+   bei aufgebrauchtem Tagesbudget, ein doppeltes Thema wurde als dazugekommen bestätigt, eine Warnung an den
+   Trading-Desk verschwand mit dem nächsten Lagebild, „gelesen“ beim Durchgehen der Mails las die Mail noch
+   einmal vor, und ein ausgefallenes Postfach sah aus wie ein leeres.
+   **Als Nächstes:** J9 (die kleinen Befunde am Rand aus J6 bis J8 in einem Zug; danach Handprüfung für den Raum
+   „Heute“ mit allen Quellen zugleich, auch wenn einzelne ausfallen). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

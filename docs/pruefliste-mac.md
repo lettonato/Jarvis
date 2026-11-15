@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 90 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S und T und die Punkte M11 bis M13 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 100 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T und U und die Punkte M11 bis M13 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -282,6 +282,21 @@ löschst du am Ende selbst wieder; JARVIS kann nichts löschen.
 | T5 | Eine längere Frage tippen (zum Beispiel „Erzähl mir ausführlich die Geschichte von Rosenheim“), Enter drücken und sofort danach Esc drücken | JARVIS antwortet nicht mehr und steht wieder auf „Bereit“. Im aufgeklappten Gespräch steht deine Frage, darunter keine leere Zeile |
 | T6 | Dieselbe Frage noch einmal stellen und, während JARVIS schreibt, das WLAN am Mac ausschalten. Danach wieder einschalten und etwas anderes fragen | Im Gespräch steht ein verständlicher deutscher Satz, zum Beispiel „Die Verbindung zu Claude ist abgerissen. Frag mich bitte noch einmal.“, kein einzelnes englisches Wort. Die nächste Frage beantwortet JARVIS wieder |
 | T7 | Die Testtermine in der Kalender-App löschen | Sie sind auch im Raum „Kalender“ weg, spätestens nach „Neu laden“ |
+
+## U. Lagebild und Post (Schritt J8, neu)
+
+Für U1 bis U3 brauchst du den xAI-Schlüssel in den Einstellungen. **Achtung, das kostet echtes Geld bei xAI:**
+jedes Lagebild und jede Suche etwa 25 bis 45 Cent. Mit dem Tagesbudget von 1 $ sind es höchstens zwei.
+Wenn du das nicht möchtest, lass U1 bis U3 aus. U4 bis U6 kosten nichts.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| U1 | Raum „Intel“ öffnen, auf „Aktualisieren“ klicken und warten | Erst „Grok liest die Nachrichten und X …“ mit laufenden Sekunden, dann das Lagebild: oben die Lage, darunter Meldungen mit Quelle. Oben steht, was es heute gekostet hat. Schreib mir bitte, wie lange es gedauert hat und was es gekostet hat |
+| U2 | Unten bei „Deine Themen“ ein Thema eintragen, das es schon gibt (zum Beispiel „bitcoin“) | „„bitcoin“ gibt es schon.“ und kein neues Schildchen |
+| U3 | Noch einmal „Aktualisieren“, bis oben mehr als 60 Cent stehen (bei 1 $ Tagesbudget also nach dem zweiten Lagebild) | „Aktualisieren“ und „Suchen“ sind grau, und darüber steht ein Satz, warum: was übrig ist und was nötig wäre |
+| U4 | Raum „Post“ öffnen und eine Mail anklicken, die du noch nicht gelesen hast | Der Text der Mail steht da, ohne Signatur. In deinem Mailprogramm ist die Mail danach **weiterhin ungelesen** |
+| U5 | Im Raum „Post“ auf „Mit JARVIS durchgehen“ klicken (den Knopf gibt es nur mit neuen wichtigen Mails). Auf die Frage „vorlesen“ antworten, danach „gelesen“ | JARVIS liest die Mail einmal vor. Auf „gelesen“ sagt er „Als gelesen markiert.“ und geht zur nächsten; in deinem Mailprogramm ist genau diese Mail jetzt gelesen |
+| U6 | WLAN am Mac ausschalten, im Raum „Post“ auf „Neu laden“ klicken, danach das WLAN wieder einschalten und noch einmal „Neu laden“ | Ohne WLAN: ein Satz wie „Der Mail-Server antwortet nicht. Ist das Internet da?“ und darunter „Was im Postfach liegt, weiß JARVIS gerade nicht.“, **nicht** „Keine wichtigen Mails“. Mit WLAN stehen die Mails wieder da |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

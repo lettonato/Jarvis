@@ -6,7 +6,7 @@ import { Edelmetalle } from "../Edelmetalle";
 import { useJarvis } from "../JarvisProvider";
 import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
-import { BASE_TOPICS, MAX_TOPICS, MOOD_LABEL, TYPICAL_INTEL_COST_USD, type IntelItem, type IntelReport, type IntelSnapshot } from "@/lib/intel";
+import { BASE_TOPICS, budgetHinweis, MAX_TOPICS, MOOD_LABEL, themaDazu, TYPICAL_INTEL_COST_USD, type IntelItem, type IntelReport, type IntelSnapshot } from "@/lib/intel";
 import { useNow } from "@/lib/useNow";
 
 // Intel: das Lagebild aus Nachrichten und X, das Grok für dich liest. Oben die Lage und eine Warnung an
@@ -42,8 +42,9 @@ export function IntelView() {
     }
   };
 
-  const left = intel ? intel.budgetUsd - intel.spentTodayUsd : 0;
-  const canRun = Boolean(intel?.configured && !intel.running && left >= TYPICAL_INTEL_COST_USD);
+  // Ein Maß für beides: Gibt es einen Hinweis, dass das Budget nicht reicht, sind die Knöpfe aus, und umgekehrt.
+  const zuWenig = budgetHinweis(intel);
+  const canRun = Boolean(intel?.configured && !intel.running && !zuWenig);
   const report = intel?.report ?? null;
 
   return (
@@ -86,6 +87,7 @@ export function IntelView() {
       )}
 
       {error && <Notice tone="error">{error}</Notice>}
+      {zuWenig && !intel?.running && <Notice>{zuWenig}</Notice>}
       {intel?.error && !intel.running && <Notice tone="error">Letzter Versuch: {intel.error}</Notice>}
       {intel?.running && <Running running={intel.running} now={now} />}
 
@@ -218,10 +220,12 @@ function Topics({ intel }: { intel: IntelSnapshot }) {
 
   const add = (e: FormEvent) => {
     e.preventDefault();
-    const t = draft.trim();
-    if (!t) return;
+    if (!draft.trim()) return;
+    // Erst prüfen, dann speichern: Ein Thema, das es schon gibt, wird nicht als „kommt ins nächste Lagebild“ bestätigt.
+    const dazu = themaDazu(own, draft);
+    if ("fehler" in dazu) return setMessage({ tone: "error", text: dazu.fehler });
     setDraft("");
-    void save({ topics: [...own, t] }, `„${t}“ kommt ins nächste Lagebild.`);
+    void save({ topics: dazu.topics }, `„${dazu.name}“ kommt ins nächste Lagebild.`);
   };
 
   return (

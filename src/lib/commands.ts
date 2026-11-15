@@ -260,9 +260,13 @@ function sessionCommand(ctx: CommandContext, s: Session, text: string): Decision
 
   const mail = findMail(ctx, s.ids[s.index]);
   if (!mail) return advance(ctx, s, "");
-  if (has(text, /vorles|\blies\b|lesen|was schreibt|worum geht|inhalt/)) {
+  // „lesen“ nur als eigenes Wort (auch „durchlesen“, „nachlesen“, „weiterlesen“): „gelesen“ heißt „als gelesen
+  // markieren“ und steht weiter unten. „vorgelesen“ will vorgelesen bekommen.
+  if (has(text, /vorles|vorgelesen|\blies\b|\b(?:durch|nach|weiter)?lesen\b|was schreibt|worum geht|inhalt/)) {
     return { reply: `${sender(mail)} schreibt:`, effect: { type: "readMail", uid: mail.uid }, after: "Soll ich daraus eine Aufgabe machen, oder gehen wir weiter?" };
   }
+  // „ungelesen“ und „nicht (als) gelesen“ heißen das Gegenteil von „gelesen“: nichts anfassen, weitergehen.
+  if (has(text, /ungelesen|\b(?:nicht|kein\w*)\b[^.!?]*\bgelesen/)) return advance(ctx, s, "Bleibt ungelesen.");
   if (has(text, /aufgabe\b|notier|to-?do|erinner|antworten|beantworten|^ja\b|mach das|gerne/)) {
     const date = findDate(text, today(ctx))?.iso ?? addDays(today(ctx), 1);
     const decision = advance(ctx, { ...s, done: s.done + 1 }, `Notiert: ${sender(mail)} antworten, bis ${spokenDay(date, today(ctx))}.`);

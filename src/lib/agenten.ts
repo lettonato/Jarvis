@@ -2,7 +2,7 @@ import type { BrowserStatus } from "./browser";
 import { isoDate } from "./dates";
 import { DOC_LIMITS, PHASE_LABEL, type DocsSnapshot } from "./documents";
 import { formatSignedUsd } from "./format";
-import { AUTO_HOURS, TYPICAL_INTEL_COST_USD, type IntelSnapshot } from "./intel";
+import { AUTO_HOURS, budgetReicht, type IntelSnapshot } from "./intel";
 import type { KostenPosten, KostenUebersicht } from "./kosten";
 import { metallSatz, METALLE_ZEITEN, type MetalleSnapshot } from "./metalle";
 import { MODELLE } from "./modelle";
@@ -148,7 +148,7 @@ function analyst(d: AgentenDaten, heute: string): Roh {
 function intel(d: AgentenDaten): Roh {
   const s = d.intel;
   const rest = s ? s.budgetUsd - s.spentTodayUsd : 0;
-  const kannStarten = Boolean(s?.configured && !s.running && rest >= TYPICAL_INTEL_COST_USD);
+  const kannStarten = Boolean(s?.configured && !s.running && budgetReicht(rest));
   return {
     zustand: !s ? "bereit" : !s.configured ? "nicht-eingerichtet" : s.running ? "laeuft" : s.error ? "fehler" : s.auto ? "wartet" : "bereit",
     satz: !s
@@ -159,7 +159,7 @@ function intel(d: AgentenDaten): Roh {
           ? s.running.focus
             ? `Sucht gerade zu ${s.running.focus}.`
             : "Liest gerade die Nachrichten."
-          : rest < TYPICAL_INTEL_COST_USD
+          : !budgetReicht(rest)
             ? "Das Tagesbudget ist aufgebraucht. Morgen liest er weiter."
             : s.auto
               ? "Wartet auf den nächsten Lauf."

@@ -110,15 +110,54 @@ export function itemsAbout(r: IntelReport | null, topic: string): IntelItem[] {
   return r.items.filter((i) => i.topic.toLowerCase().includes(t) || i.title.toLowerCase().includes(t) || i.summary.toLowerCase().includes(t));
 }
 
+// Ein Thema, wie es gespeichert und an Grok gegeben wird: eine Zeile, ohne Klammern, höchstens 40 Zeichen.
+const themaSauber = (raw: unknown) => String(raw).replace(/[<>{}\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, 40);
+
 // Themen säubern: kurz, ohne Dubletten, ohne die festen Themen.
 export function cleanTopics(list: unknown): string[] {
   if (!Array.isArray(list)) return [];
   const out: string[] = [];
   for (const raw of list) {
-    const t = String(raw).replace(/[<>{}\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, 40);
+    const t = themaSauber(raw);
     if (!t || BASE_TOPICS.some((b) => b.toLowerCase() === t.toLowerCase()) || out.some((o) => o.toLowerCase() === t.toLowerCase())) continue;
     out.push(t);
     if (out.length >= MAX_TOPICS) break;
   }
   return out;
 }
+
+const dollar = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+
+// Mehr als das lässt sich als Tagesbudget nicht eintragen.
+export const MAX_INTEL_BUDGET_USD = 10;
+
+// Was vom Tagesbudget noch da ist.
+export const budgetRest = (s: IntelSnapshot | null) => (s ? s.budgetUsd - s.spentTodayUsd : 0);
+
+// Reicht der Rest für ein Lagebild oder eine Suche? Die eine Regel für Server, Raum und Agenten-Übersicht. Ein
+// Millionstel Dollar Spielraum, weil der Rechner 3 minus 2,60 eine Spur kleiner als 0,40 ausrechnet.
+export const budgetReicht = (restUsd: number) => restUsd >= TYPICAL_INTEL_COST_USD - 1e-6;
+
+// Reicht das Tagesbudget nicht mehr für ein weiteres Lagebild, sagt der Raum das, statt die Knöpfe nur grau zu
+// zeigen: Oben steht dann etwa „0,76 $ von 1,00 $“, und niemand kann wissen, dass die 24 Cent nicht reichen.
+// Der Rest wird auf den Cent abgerundet, damit nie „übrig 0,40 $, nötig 0,40 $“ dasteht.
+export function budgetHinweis(s: IntelSnapshot | null): string | null {
+  if (!s?.configured) return null;
+  const rest = budgetRest(s);
+  if (budgetReicht(rest)) return null;
+  const uebrig = Math.max(0, Math.floor(rest * 100 + 1e-4) / 100);
+  const mehr = s.budgetUsd < MAX_INTEL_BUDGET_USD ? "Morgen geht es weiter; sofort geht es mit einem höheren Tagesbudget unten bei „Deine Themen“." : "Morgen geht es weiter.";
+  return `Für heute reicht das Tagesbudget nicht mehr für ein weiteres Lagebild oder eine Suche: Übrig sind ${dollar(uebrig)}, nötig sind etwa ${dollar(TYPICAL_INTEL_COST_USD)}. ${mehr}`;
+}
+
+// Ein eigenes Thema dazu. Liefert die neue Liste und den Namen, unter dem es gespeichert wird, oder den Grund,
+// warum es nicht dazukommt: So bestätigt der Raum nichts, was nicht geschehen ist.
+export function themaDazu(eigene: string[], eingabe: string): { topics: string[]; name: string } | { fehler: string } {
+  const roh = eingabe.trim();
+  const name = themaSauber(roh);
+  if (!name) return { fehler: "Das ist kein Thema." };
+  if ([...BASE_TOPICS, ...eigene].some((t) => t.toLowerCase() === name.toLowerCase())) return { fehler: `„${roh}“ gibt es schon.` };
+  if (eigene.length >= MAX_TOPICS) return { fehler: `Mehr als ${MAX_TOPICS} eigene Themen gehen nicht. Nimm erst eines heraus.` };
+  return { topics: [...eigene, name], name };
+}
+

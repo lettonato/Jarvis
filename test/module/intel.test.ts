@@ -176,4 +176,49 @@ describe("Intel: Warnung an den Desk", () => {
     assert.equal(meldungen.length, 1, "dieselbe Warnung nicht zweimal aufs Handy");
     assert.match(meldungen[0], /Große Börse gehackt\. Der Desk kauft die nächsten 6 Stunden nichts Neues/);
   });
+
+  test("ein späteres Lagebild ohne Warnung hebt die Warnung nicht vorzeitig auf", async () => {
+    const meldungen: string[] = [];
+    const ab = notify.onNotice((n) => n.kind === "warnung" && meldungen.push(n.text));
+    // Fünf Minuten nach dem Test davor: Dessen Suche (eine Minute voraus) hat auch gewarnt, und die neueste Warnung gilt.
+    const jetzt = new Date(Date.now() + 5 * 60_000);
+    const in_ = (minuten: number) => new Date(jetzt.getTime() + minuten * 60_000);
+    xai.naechste([
+      { antwort: lagebild({ desk_warnung: { aktiv: true, grund: "Solana-Netzwerk steht" } }) },
+      { antwort: lagebild() },
+      { antwort: lagebild() },
+      { antwort: lagebild({ desk_warnung: { aktiv: true, grund: "Stablecoin verliert Bindung" } }) },
+    ]);
+    await intel.refreshIntel(null, { wait: true, now: jetzt });
+    // Zehn Minuten später ein neues Lagebild und eine Suche, beide ohne Warnung: Die Seite hat „bis … Uhr“ zugesagt.
+    await intel.refreshIntel(null, { wait: true, now: in_(10) });
+    await intel.refreshIntel("Tesla", { wait: true, now: in_(11) });
+    const gilt = await intel.intelWarning(in_(12));
+    assert.equal(gilt?.text, "Solana-Netzwerk steht");
+    assert.equal(gilt?.until, new Date(jetzt.getTime() + 6 * 3_600_000).toISOString(), "die Frist läuft ab der Warnung, nicht ab dem neuen Lagebild");
+    assert.equal((await intel.intelSnapshot(in_(12))).warning?.text, "Solana-Netzwerk steht");
+    assert.equal(await intel.intelWarning(in_(6 * 60 + 1)), null, "nach sechs Stunden vorbei");
+    // Eine neue, andere Warnung löst die alte ab und wird gemeldet.
+    await intel.refreshIntel(null, { wait: true, now: in_(20) });
+    assert.equal((await intel.intelWarning(in_(21)))?.text, "Stablecoin verliert Bindung");
+    ab();
+    assert.deepEqual(meldungen.map((m) => m.replace(/^⚠️ Intel warnt: /, "").split(". ")[0]), ["Solana-Netzwerk steht", "Stablecoin verliert Bindung"]);
+  });
+
+  test("auch eine Warnung aus einem Stand von früher (ohne gemerkte Warnung) gilt ihre sechs Stunden", async () => {
+    const jetzt = new Date(Date.now() + 60 * 60_000); // nach allem, was die Tests davor gewarnt haben
+    const in_ = (minuten: number) => new Date(jetzt.getTime() + minuten * 60_000);
+    xai.naechste([{ antwort: lagebild({ desk_warnung: { aktiv: true, grund: "Börse setzt Auszahlungen aus" } }) }, { antwort: lagebild() }, { antwort: lagebild({ desk_warnung: { aktiv: true, grund: "Suche warnt" } }) }, { antwort: lagebild() }]);
+    await intel.refreshIntel(null, { wait: true, now: jetzt });
+    // So sah der Stand vor diesem Schritt aus: Die Warnung steht nur im Lagebild, gemerkt ist nichts.
+    const speicher = (globalThis as unknown as { __jarvisIntel: { state: { warnung?: unknown } } }).__jarvisIntel.state;
+    delete speicher.warnung;
+    await intel.refreshIntel(null, { wait: true, now: in_(10) });
+    assert.equal((await intel.intelWarning(in_(11)))?.text, "Börse setzt Auszahlungen aus");
+    // Dasselbe für eine Warnung, die nur in der abgelösten Suche stand.
+    await intel.refreshIntel("Tesla", { wait: true, now: in_(20) });
+    delete speicher.warnung;
+    await intel.refreshIntel("Nvidia", { wait: true, now: in_(30) });
+    assert.equal((await intel.intelWarning(in_(31)))?.text, "Suche warnt");
+  });
 });

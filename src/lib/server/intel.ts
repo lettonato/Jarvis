@@ -6,6 +6,8 @@ import {
   BASE_TOPICS,
   DEFAULT_INTEL_BUDGET_USD,
   TYPICAL_INTEL_COST_USD,
+  budgetReicht,
+  MAX_INTEL_BUDGET_USD,
   WARNING_HOURS,
   cleanTopics,
   type IntelItem,
@@ -38,6 +40,9 @@ type State = {
   day: { date: string; spentUsd: number };
   lastTryAt: string | null;
   error: string | null;
+  // Die letzte Warnung an den Desk, getrennt vom Lagebild: Sie gilt ihre sechs Stunden, auch wenn inzwischen ein
+  // neues Lagebild ohne Warnung da ist. Die Seite und das Handy haben „bis … Uhr“ zugesagt.
+  warnung?: { text: string; at: string } | null;
 };
 
 type Shared = {
@@ -84,13 +89,15 @@ function addCost(state: State, usd: number, now: Date) {
   void bucheBetrag("intel", "grok", usd, now);
 }
 
-// Die neueste Warnung aus Lagebild oder Suche, solange sie gilt.
+// Die neueste Warnung, solange sie gilt: die gemerkte, oder (bei einem Stand von früher) die im Lagebild oder in
+// der Suche. Ein späteres Lagebild ohne Warnung hebt sie nicht auf; Intel bremst den Desk, er gibt ihn nicht frei.
 function activeWarning(state: State, now: Date): IntelSnapshot["warning"] {
-  const reports = [state.report, state.search].filter((r): r is IntelReport => Boolean(r?.deskWarning));
-  const latest = reports.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+  const warnungen = [state.report, state.search].filter((r): r is IntelReport => Boolean(r?.deskWarning)).map((r) => ({ text: r.deskWarning!, at: r.at }));
+  if (state.warnung) warnungen.push(state.warnung);
+  const latest = warnungen.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
   if (!latest) return null;
   const until = Date.parse(latest.at) + WARNING_HOURS * HOUR;
-  return until > now.getTime() ? { text: latest.deskWarning!, at: latest.at, until: new Date(until).toISOString() } : null;
+  return until > now.getTime() ? { text: latest.text, at: latest.at, until: new Date(until).toISOString() } : null;
 }
 
 // Für den Trading-Desk: Gibt es gerade eine Warnung, kauft er nichts Neues.
@@ -126,7 +133,7 @@ export async function intelSnapshot(now = new Date()): Promise<IntelSnapshot> {
     topics: intelTopics(config),
     auto: config.intel?.auto !== false,
     warning: activeWarning(state, now),
-    nextAt: next && intelBudget(config) - spentToday(state, next) >= TYPICAL_INTEL_COST_USD ? next.toISOString() : null,
+    nextAt: next && budgetReicht(intelBudget(config) - spentToday(state, next)) ? next.toISOString() : null,
   };
 }
 
@@ -144,7 +151,7 @@ export async function refreshIntel(focus: string | null, opts: { wait?: boolean;
   if (shared.running) throw new IntelError(shared.running.focus ? `Ich suche gerade schon zu ${shared.running.focus}.` : "Ich lese die Nachrichten gerade schon.");
   const state = await load();
   const left = intelBudget(config) - spentToday(state, now);
-  if (left < TYPICAL_INTEL_COST_USD) {
+  if (!budgetReicht(left)) {
     throw new IntelError(`Das Intel-Budget von ${intelBudget(config).toLocaleString("de-DE", { minimumFractionDigits: 2 })} $ für heute ist aufgebraucht. Morgen lese ich weiter.`);
   }
   const topic = focus ? cleanTopics([focus])[0] ?? focus.trim().slice(0, 40) : null;
@@ -153,8 +160,13 @@ export async function refreshIntel(focus: string | null, opts: { wait?: boolean;
     .then(async (report) => {
       addCost(state, report.costUsd, now);
       const before = activeWarning(state, new Date());
+      // Was das abgelöste Lagebild (oder die abgelöste Suche) gewarnt hat, wird gemerkt, bevor es verschwindet;
+      // das fängt auch einen Stand von früher auf, in dem noch keine Warnung gemerkt ist.
+      const abgeloest = topic ? state.search : state.report;
+      if (abgeloest?.deskWarning && !(state.warnung && Date.parse(state.warnung.at) >= Date.parse(abgeloest.at))) state.warnung = { text: abgeloest.deskWarning, at: abgeloest.at };
       if (topic) state.search = report;
       else state.report = report;
+      if (report.deskWarning) state.warnung = { text: report.deskWarning, at: report.at };
       state.error = null;
       await save(state);
       // Eine neue Warnung kommt aufs Handy; dieselbe Warnung im nächsten Lagebild nicht noch einmal.
@@ -187,7 +199,7 @@ export async function intelFaellig(now = new Date()): Promise<boolean> {
   const config = await readConfig();
   const next = nextAuto(state, config, now);
   if (!next || next.getTime() > now.getTime()) return false;
-  return intelBudget(config) - spentToday(state, now) >= TYPICAL_INTEL_COST_USD;
+  return budgetReicht(intelBudget(config) - spentToday(state, now));
 }
 
 const SYSTEM = `Du bist Intel, der Nachrichten-Agent eines persönlichen Assistenten. Du stellst ein kurzes Lagebild zusammen, das morgens im Briefing vorgelesen wird.
@@ -312,7 +324,7 @@ export async function saveIntelSettings(input: { topics?: unknown; budgetUsd?: u
   let budget: number | undefined;
   if (input.budgetUsd !== undefined) {
     budget = Math.round(Number(input.budgetUsd) * 100) / 100;
-    if (!(budget >= TYPICAL_INTEL_COST_USD && budget <= 10)) throw new IntelError(`Bitte ein Tagesbudget zwischen ${TYPICAL_INTEL_COST_USD.toLocaleString("de-DE", { minimumFractionDigits: 2 })} und 10 Dollar eintragen.`);
+    if (!(budget >= TYPICAL_INTEL_COST_USD && budget <= MAX_INTEL_BUDGET_USD)) throw new IntelError(`Bitte ein Tagesbudget zwischen ${TYPICAL_INTEL_COST_USD.toLocaleString("de-DE", { minimumFractionDigits: 2 })} und ${MAX_INTEL_BUDGET_USD} Dollar eintragen.`);
   }
   await aendereConfig((config) => {
     const intel = { ...config.intel };

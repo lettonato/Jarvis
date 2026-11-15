@@ -42,6 +42,9 @@ export function MailView() {
     );
   }
 
+  // Lässt sich das Postfach gerade nicht lesen, zeigt der Raum nur die Meldung und die Entwürfe: keine Nullen,
+  // kein „Schön ruhig heute“ und kein Knopf zum Durchgehen. Alles, was vom Inhalt des Postfachs lebt, fragt hiernach.
+  const lesbar = !mail?.error;
   const important = (mail?.items ?? []).filter((m) => m.important);
   const bulk = (mail?.items ?? []).filter((m) => !m.important);
 
@@ -50,7 +53,7 @@ export function MailView() {
       subtitle={mail?.account ? `Posteingang ${mail.account}, letzte 14 Tage` : "lädt …"}
       actions={
         <>
-          {mail && mail.importantUnread > 0 && (
+          {lesbar && mail && mail.importantUnread > 0 && (
             <Button tone="primary" icon="fokus" onClick={() => ask("Meine Mails")}>
               Mit JARVIS durchgehen
             </Button>
@@ -61,27 +64,36 @@ export function MailView() {
         </>
       }
     >
-      {mail?.error && <Notice tone="error">{mail.error}</Notice>}
-      <Scheiben>
-        <Scheibe titel="Auf einen Blick">
-          <ul>
-            <ScheibenZeile wert={mail?.importantUnread ?? 0}>Neue wichtige</ScheibenZeile>
-            <ScheibenZeile wert={mail?.unread ?? 0}>Ungelesen gesamt</ScheibenZeile>
-            <ScheibenZeile wert={mail?.bulkUnread ?? 0}>Newsletter und Co.</ScheibenZeile>
-          </ul>
-        </Scheibe>
-      </Scheiben>
+      {mail?.error && (
+        <>
+          <Notice tone="error">{mail.error}</Notice>
+          <p className="text-sm text-quiet">Was im Postfach liegt, weiß JARVIS gerade nicht. Mit „Neu laden“ versucht er es noch einmal.</p>
+        </>
+      )}
+      {lesbar && (
+        <Scheiben>
+          <Scheibe titel="Auf einen Blick">
+            <ul>
+              <ScheibenZeile wert={mail?.importantUnread ?? 0}>Neue wichtige</ScheibenZeile>
+              <ScheibenZeile wert={mail?.unread ?? 0}>Ungelesen gesamt</ScheibenZeile>
+              <ScheibenZeile wert={mail?.bulkUnread ?? 0}>Newsletter und Co.</ScheibenZeile>
+            </ul>
+          </Scheibe>
+        </Scheiben>
+      )}
       <Antwortentwuerfe />
-      <Panel>
-        <h2 className="mb-2 text-xs font-bold text-see">Wichtig <span className="font-medium text-quiet">{important.length}</span></h2>
-        {mail && important.length === 0 && <p className="py-2 text-sm text-quiet">Keine wichtigen Mails. Schön ruhig heute.</p>}
-        <ul className="divide-y divide-schiefer/10">
-          {important.map((m) => (
-            <MailRow key={m.uid} mail={m} now={now} active={m.uid === current} />
-          ))}
-        </ul>
-      </Panel>
-      {bulk.length > 0 && (
+      {lesbar && (
+        <Panel>
+          <h2 className="mb-2 text-xs font-bold text-see">Wichtig <span className="font-medium text-quiet">{important.length}</span></h2>
+          {mail && important.length === 0 && <p className="py-2 text-sm text-quiet">Keine wichtigen Mails. Schön ruhig heute.</p>}
+          <ul className="divide-y divide-schiefer/10">
+            {important.map((m) => (
+              <MailRow key={m.uid} mail={m} now={now} active={m.uid === current} />
+            ))}
+          </ul>
+        </Panel>
+      )}
+      {lesbar && bulk.length > 0 && (
         <Panel>
           <details>
             <summary className="cursor-pointer text-xs font-bold text-see/80">
