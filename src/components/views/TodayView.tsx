@@ -10,6 +10,7 @@ import { spokenDue } from "@/lib/dates";
 import { ZUSTAND_LABEL, type AgentenSnapshot } from "@/lib/agenten";
 import { formatPct } from "@/lib/format";
 import { tageslage, type Tageslage } from "@/lib/heute";
+import { marktlage, ohnePunkt } from "@/lib/marktlage";
 import { MOOD_LABEL } from "@/lib/intel";
 import type { SicherheitsLage } from "@/lib/sicherheit";
 import { dateOf } from "@/lib/tasks";
@@ -53,7 +54,7 @@ function Liste({ titel, href, zahl, children }: { titel: string; href: string; z
 }
 
 export function TodayView() {
-  const { name, calendar, tasks, mail, projekte, desk, intel, documents, market, weather } = useJarvis();
+  const { name, calendar, tasks, mail, projekte, desk, intel, documents, market, weather, metalle } = useJarvis();
   const now = useNow();
   // Dieselbe Abfrage wie die Hinweisleiste: kein zweiter Abruf, und ein Klick dort gilt hier sofort.
   const { data: sicherheit } = usePolling<SicherheitsLage>("/api/sicherheit", 10_000);
@@ -64,6 +65,10 @@ export function TodayView() {
   const stunde = now.getHours();
   const gruss = stunde < 11 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend";
   const majors = market?.majors.quotes ?? [];
+  // Aus der Marktlage stehen hier nur Bewegungen: Die Warnung von Intel steht schon unter „Wartet auf dich“,
+  // Lücken in den Daten zeigt der Raum Intel. Beispielkurse und veraltete Kurse heißen aber auch hier so.
+  const maerkte = marktlage({ market, metalle, desk, intel });
+  const auffaellig = maerkte.auffaellig.filter((a) => a.art !== "warnung" && a.art !== "daten");
   const wichtigePost = mail?.configured && !mail.error ? mail.importantUnread : 0;
   const wetter = weather ? ` ${Math.round(weather.temperature)}\u00a0°C, ${weather.description} in ${weather.place}.` : "";
 
@@ -198,10 +203,22 @@ export function TodayView() {
                 {q.name}
               </ScheibenZeile>
             ))}
+            {maerkte.metalle?.zeilen.map((z) => (
+              <ScheibenZeile key={z.id} wert={z.aenderung === null ? z.wert : <span className={z.aenderung >= 0 ? "" : "opacity-70"}>{z.aenderungText}</span>}>
+                {z.name}
+              </ScheibenZeile>
+            ))}
             {desk && desk.status !== "aus" && <ScheibenZeile wert={formatPct(desk.dayPnlPct)}>Spielgeld-Desk</ScheibenZeile>}
           </ul>
-          {majors.length === 0 && (!desk || desk.status === "aus") && <p className="text-[0.95rem] opacity-80">Noch keine Kurse.</p>}
+          {majors.length === 0 && !maerkte.metalle && (!desk || desk.status === "aus") && <p className="text-[0.95rem] opacity-80">Noch keine Kurse.</p>}
+          {auffaellig.length > 0 && (
+            <p className="mt-2 text-sm">
+              Auffällig: {ohnePunkt(auffaellig[0].text)}
+              {auffaellig.length > 1 ? `, und ${auffaellig.length === 2 ? "eines mehr" : `${auffaellig.length - 1} mehr`}` : ""}.
+            </p>
+          )}
           {market?.majors.source === "demo" && <p className="mt-2 text-sm opacity-75">Beispielkurse, keine echten Daten.</p>}
+          {maerkte.metalle?.veraltet && <p className="mt-2 text-sm opacity-75">Edelmetalle: {maerkte.metalle.fuss}</p>}
           {intel?.report && <p className="mt-2 text-sm opacity-75">Lage laut Intel: {MOOD_LABEL[intel.report.mood]}</p>}
         </Scheibe>
 

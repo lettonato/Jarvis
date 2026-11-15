@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 75 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q und R und die Punkte M11 bis M13 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 80 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R und S und die Punkte M11 bis M13 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -249,6 +249,20 @@ Risiko ohne Frist, das seit 14 Tagen niemand angefasst hat, kommt einmal in der 
 | R1 | Im Testprojekt ein Risiko eintragen, als Frist das Datum von gestern | Auf der Kachel des Projekts steht rot „Risiko über der Frist“. Unter „Heute“ steht bei „Wartet auf dich“ das Projekt mit „Ein Risiko ist über der Frist: …, seit gestern überfällig“ |
 | R2 | In der Akte das Risiko abhaken | Die rote Marke und der Eintrag unter „Heute“ verschwinden |
 | R3 | Ein zweites Risiko ohne Frist eintragen und nichts weiter tun | Unter „Heute“ steht dazu nichts (auch am Montag nicht, weil es neu ist). Erst nach 14 Tagen steht in der Akte am Risiko „seit 14 Tagen unverändert“, und am Montag darauf steht es im Morgenbriefing und unter „Heute“. Das kannst du erst in zwei Wochen sehen; schreib mir dann bitte, ob es gekommen ist |
+
+## S. Marktlage auf einen Blick (Schritt E4.1, neu)
+
+Im Raum Intel steht jetzt ganz oben das Feld „Marktlage“: Krypto, Gold und Silber und das Spielgeld-Konto
+nebeneinander, darüber, was auffällt. JARVIS rechnet das selbst aus den Kursen, die er schon hat, ohne KI.
+Es ist keine Prognose und keine Anlageberatung.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| S1 | Den Raum „Intel“ öffnen | Oben das Feld „Marktlage“ mit Bitcoin, Ethereum und Solana in Euro und der Veränderung in 24 Stunden. Steht dort „Beispielkurse, keine echten Daten“, hat dein Mac gerade keine Verbindung zum Kursdienst; schreib mir das bitte |
+| S2 | Weiter unten bei „Gold und Silber“ auf „Jetzt lesen“ klicken (geht nur mit deinem Twelve-Data-Schlüssel) | Im Feld „Marktlage“ kommt die Gruppe „Edelmetalle“ dazu, mit denselben Kursen wie unten und „Kurse vom …“ mit dem Datum von heute oder dem letzten Handelstag |
+| S3 | Ansehen, was über den Gruppen steht | Entweder „Nichts Auffälliges“ oder eine kurze Liste, zum Beispiel „Bitcoin: +6 % in 24 Stunden“ oder „Gold steht am Hoch der letzten 21 Handelstage“. Ein Klick auf eine Zeile führt zu den Einzelheiten |
+| S4 | Unten eintippen oder sagen: „Marktübersicht“ | JARVIS antwortet in zwei, drei Sätzen mit denselben Zahlen und öffnet den Raum Intel. Läuft der Desk, nennt er ihn „Spielgeld-Konto“ |
+| S5 | Den Raum „Heute“ öffnen | In der Scheibe „Märkte“ stehen auch Gold und Silber |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

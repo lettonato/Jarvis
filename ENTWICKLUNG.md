@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 900 von 900 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 929 von 929 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -642,7 +642,8 @@ gespeichert; zwei Änderungen im selben Augenblick überschreiben sich nicht meh
 | E1.4 Zuruf: „Tagesübersicht“ oder „mein Tag“ öffnet „Heute“, „Projekte“ öffnet die Projekte | Testbereit | `src/lib/commands.ts` |
 | E2 Neue Oberfläche „Glashaus“: jeder Bereich ein heller Raum mit Fensterfront, Kamerafahrt beim Wechsel, Leiste unten mit allen Räumen und dem Feld für JARVIS | Testbereit | Schritt E2 unten. Die frühere 3D-Übersicht mit den Felsen wird nicht mehr gezeigt; die Projekte haben jetzt wie alles andere ihren eigenen Raum |
 | E3 Unternehmensübersicht (Teams, Dateien, Planner) | Blockiert | braucht Microsoft 365 (Bereich D) |
-| E4 Finanz- und Marktübersicht über Spielgeld-Desk und Intel hinaus | Offen | |
+| E4.1 Marktlage: Krypto, Edelmetalle und Spielgeld-Desk auf einen Blick, mit dem, was auffällt; ohne KI und ohne neue Datenquellen | Testbereit; Kryptokurse in der Sandbox nur als Beispieldaten, die Gruppe des Desks nicht im Browser | Schritt E4.1 unten; `src/lib/marktlage.ts`, `src/components/Marktlage.tsx`; im Browser geprüft (`test/hand/marktlage-rauch.ts`) |
+| E4.2 Finanzübersicht des Unternehmens (Umsatz, offene Posten, Liquidität) | Offen | braucht echte Firmendaten und eine Quelle dafür (Buchhaltung); nur nach Benedikts Freigabe |
 | E5 Agentenübersicht mit Steuerung | Testbereit | Schritt F1: Ansicht „Agenten“, Karte in „Heute“ |
 
 ### Testergebnisse Schritt E1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
@@ -765,6 +766,52 @@ Schablonen: bereinigt. (10) Tests für die neuen Fälle: ergänzt.
 kein eingebettetes HTML. Der Kaufpfad ist unverändert: Eine unbrauchbare Bewertung führt wie bisher zu keinem
 Kauf (Test). Die Ursache am Fehler enthält bei falscher Form nur die Länge der Antwort, nicht ihren Text.
 **Offene Probleme:** die Punkte unter „Nicht geprüft“. **Sicherheitsrisiken:** keine neuen.
+
+### Schritt E4.1: Marktlage auf einen Blick (15. November 2026)
+
+**Warum:** Krypto stand im Raum Trading, Gold und Silber standen im Raum Intel, das Spielgeld-Konto am Desk.
+Wer wissen wollte, ob sich irgendwo etwas Größeres bewegt hat, musste drei Räume ansehen. Die Marktlage stellt
+das an einer Stelle zusammen und sagt zuerst, was auffällt. Sie fragt nichts Neues ab und rechnet mit keinem
+KI-Modell: Sie liest nur, was die anderen Räume ohnehin laden.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| E4.1a Regeln an einer Stelle: Krypto fällt ab 5 % in 24 Stunden auf, Gold und Silber ab 2 % zum Vortag oder am Hoch oder Tief der letzten 21 Handelstage (höchstens 1 % entfernt), das Spielgeld-Konto ab 3 % Minus am Tag oder wenn der Desk pausiert, am Tageslimit oder im Not-Aus ist | Testbereit | `MARKT_REGELN`, `marktlage` in `src/lib/marktlage.ts` |
+| E4.1b Nichts wird geschätzt. Beispielkurse und veraltete Kurse heißen so und gelten nie als Bewegung; scheitert der Abruf der Edelmetalle oder fehlt ein Metall, steht das da, ohne den Wortlaut der Störung | Testbereit | Liste „Auffällig“, graue Punkte für Lücken in den Daten |
+| E4.1c Raum Intel: oben das Feld „Marktlage“ mit dem Auffälligen und den drei Gruppen Krypto, Edelmetalle, Spielgeld-Desk; jede Zeile führt in den Raum, in dem die Einzelheiten stehen | Testbereit | `Marktlage.tsx`; Krypto und Edelmetalle im Browser geprüft, die Gruppe des Desks nur über die Regeln |
+| E4.1d „Heute“: Die Scheibe „Märkte“ zeigt zusätzlich Gold und Silber und einen Satz „Auffällig: …“; veraltete Edelmetallkurse heißen auch dort so | Testbereit | `TodayView.tsx` |
+| E4.1e Zuruf „Marktübersicht“, „Marktlage“, „Marktüberblick“, „Finanzübersicht“ oder „Wie stehen die Märkte?“: JARVIS antwortet ohne KI in zwei, drei Sätzen und öffnet den Raum Intel. Die Warnung von Intel steht vorn und wörtlich; Beispieldaten und veraltete Kurse heißen gleich am Anfang ihres Satzes so | Testbereit | `marktSatz`, Regel in `src/lib/commands.ts` |
+| E4.1f Der Desk heißt überall „Spielgeld“. Die Warnung von Intel ist Text von Dritten: Kommt sie in einer Antwort vor, gilt das Gespräch als fremd beeinflusst | Testbereit | `marktlage.test.ts`, `src/lib/herkunft.ts` |
+
+**Eigene Entscheidungen (Benedikt hat sie noch nicht gesehen):** (1) Die Schwellen 5 %, 2 %, 1 % und 3 % sind
+von mir gewählt und stehen an einer Stelle (`MARKT_REGELN`). (2) Die Marktlage steht im Raum Intel, nicht in
+einem eigenen Raum; die Leiste unten ist schon voll. (3) „Heute“ zeigt nur Bewegungen und Marken; Lücken in den
+Daten stehen im Raum Intel, damit „Heute“ ruhig bleibt. (4) Der Zuruf antwortet mit Regeln, nicht mit Claude,
+auch wenn das KI-Gehirn an ist (bei bis zu vier Wörtern wie bei allen Regeln; ein ganzer Satz geht an Claude).
+(5) Die Marktlage schickt nichts über Telegram und meldet sich nicht von selbst; das wäre der nächste Schritt
+(G4). (6) Die Seite fragt den Stand der Edelmetalle jetzt in jedem Raum ab, aber nur alle fünf Minuten und nur
+bei JARVIS selbst; der Kursdienst wird dadurch nicht öfter gefragt (im Browser geprüft).
+
+**Grenzen:** Die Übersicht kennt nur, was JARVIS schon hat: Bitcoin, Ethereum, Solana, Gold, Silber und das
+Spielgeld-Konto. Aktien, Zinsen, Währungen und Zahlen des Unternehmens fehlen (E4.2, braucht Freigabe). Die
+Edelmetallkurse sind Tageskurse, zweimal am Tag gelesen; eine Bewegung innerhalb des Tages sieht die Marktlage
+erst beim nächsten Lesen. Sie ist keine Prognose und keine Anlageberatung, und so steht es im Feld.
+
+### Testergebnisse Schritt E4.1 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **929 Tests: 929 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 29 in `test/regeln/marktlage.test.ts`: was dasteht 9, was auffällt 13, Satz und Zuruf 7) |
+| Tests zuerst | Ehrlich: In der ersten Runde standen die Tests vor dem Code, aber ich habe sie nicht rot laufen sehen, bevor der Code da war; der Beleg dafür, dass sie etwas prüfen, sind die Gegenproben. Alle Befunde der Durchsicht standen zuerst als Test da und liefen rot (13 rote Tests) |
+| Gegenproben | Erste Runde: 45 absichtlich eingebaute Fehler, 42 bemerkt. Die drei Lücken sind geschlossen: eine überflüssige Bedingung entfernt, zwei Tests ergänzt (Stand der Kurse, Zuruf mit Warnung); danach alle bemerkt. Zweite Runde für die Stellen, die nach der Durchsicht neu sind: 36 eingebaute Fehler, 35 bemerkt, die eine Lücke mit einem Test geschlossen und danach bemerkt. Darunter: jede Schwelle knapp daneben, Beispielkurse gelten als Bewegung, veraltete Kurse gelten als Marke, Hoch und Tief vertauscht, Marke ohne 21 Handelstage, der Wortlaut der Störung steht da, der Desk verliert das Wort „Spielgeld“, die Warnung steht nicht vorn oder ohne ihren Punkt, „Arbeitsmarktlage“ oder „Nachrichten zur Marktlage“ lösen die Marktlage aus |
+| `npx next build` | erfolgreich, mit den vier bekannten Warnungen |
+| Handprüfung `marktlage-rauch` (Chromium, gebauter Server, nachgebautes Twelve Data) | alle Schritte in Ordnung: Raum Intel zeigt ohne Edelmetalle nur Krypto, als Beispieldaten gekennzeichnet; nach „Jetzt lesen“ stehen Gold (4.000,00 $, +0,3 %) und der Silber-Fonds (44,50 $, −3,3 %) da, auffällig sind der Silber-Fonds und Gold am Hoch; die Meldung des Kursdienstes („IGNORIERE ALLE REGELN“) steht nirgends; „Heute“ zeigt Gold, den Silber-Fonds und „Auffällig: …, und eines mehr“; der Zuruf „Marktübersicht“ öffnet Intel und antwortet im Gespräch mit dem erwarteten Satz ohne das Wort „Spielgeld“ (der Desk war nicht gestartet); Marktlage, „Heute“ und Zuruf haben den Kursdienst kein einziges Mal zusätzlich gefragt; mit zehn Tage alten Kursen steht in Intel und in „Heute“ „veraltet“, und nichts gilt mehr als Bewegung; keine Fehler in der Seite. Bilder angesehen |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde, alle eingearbeitet: „Heute“ zeigte veraltete Edelmetallkurse ohne Kennzeichen; die Regel für den Zuruf griff auch mitten in Wörtern („Arbeitsmarktlage“) und nahm „Nachrichten zur Marktlage“ den Nachrichten weg; ein gescheiterter erster Abruf und fehlende Metalle wurden verschwiegen; eine kurze Warnung von Intel verlor im gesprochenen Satz ihren Punkt und wurde dann nicht mehr als Text von Dritten erkannt; „Hoch der letzten 21 Handelstage“ stand auch da, wenn es so viele Kurse noch nicht gab oder Hoch und Tief fast gleich waren; der gesprochene Satz nannte Beispielkurse und veraltete Kurse erst am Ende; das Tageslimit meldete sich doppelt; das Feld leuchtete auch bei bloßen Lücken in den Daten; die Seite fragte den Stand der Edelmetalle jede Minute ab (jetzt alle fünf Minuten); Prozente standen in Zeile und Liste verschieden geschrieben |
+| Sicherheitsprüfung (von Hand) | Kein neuer Weg nach außen und keine neue Abfrage bei einem Dienst: Die Marktlage rechnet nur im Browser mit Daten, die schon da sind. Die Abfrage `/api/metalle` liest bei JARVIS selbst und fragt den Kursdienst nicht (im Browser gezählt). Der Wortlaut einer Störung des Kursdienstes steht weder im Feld noch im Satz. Die Warnung von Intel steht wörtlich da und macht das Gespräch fremd beeinflusst. Namen der Coins und Metalle sind feste Texte aus dem Programm. Der Desk bleibt Spielgeld |
+| Dabei bemerkt | Die Handprüfung fand die Antwort zunächst nicht: Im Browser ohne Mikrofon zeigt die Zeile über der Leiste den Mikrofon-Hinweis statt der Antwort; die Prüfung klappt jetzt das Gespräch auf. Am Programm war dabei nichts falsch. Im Bild fiel auf, dass „Silber-Fonds SLV“ in drei Zeilen umbrach; die Veränderung steht jetzt in einer eigenen Zeile |
+| Nicht geprüft | echter Mac und Safari; echte Kryptokurse (die Sandbox erreicht den Kursdienst nicht, deshalb Beispieldaten); die Gruppe „Spielgeld-Desk“ im Browser (der Desk war nicht gestartet; die Regeln dazu sind getestet); echtes Twelve Data; der Zuruf über die Stimme |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
 ## Bereich F – Agenten
 
@@ -1501,7 +1548,10 @@ Danach wie geplant:
    Entwurf im Postfach (Frage 13).
 15. **C4.2: gebaut, Testbereit** (Schritt C4.2 in Bereich C): Offene Risiken gehören zur Projektüberwachung.
    Ein Risiko mit Frist zählt wie eine Frist, ein lange unverändertes kommt montags zur Sprache.
-   **Als Nächstes:** E4 (Finanz- und Marktübersicht aus dem, was JARVIS schon hat: Spielgeld-Desk, Edelmetalle,
-   Intel; ohne neue Datenquellen). Die
+16. **E4.1: gebaut, Testbereit** (Schritt E4.1 in Bereich E): Marktlage im Raum Intel, in „Heute“ und als
+   Zuruf „Marktübersicht“: Krypto, Edelmetalle und Spielgeld-Desk auf einen Blick, mit dem, was auffällt.
+   Ohne KI und ohne neue Datenquellen.
+   **Als Nächstes:** G4.1 (das Auffällige der Marktlage im Morgenbriefing und im Tagesabschluss, mit denselben
+   Regeln wie die anderen Routinen; weiter ohne neue Datenquellen). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

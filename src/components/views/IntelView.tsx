@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Marktlage } from "../Marktlage";
 import { Edelmetalle } from "../Edelmetalle";
 import { useJarvis } from "../JarvisProvider";
 import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
@@ -61,6 +62,7 @@ export function IntelView() {
       </PageHeader>
 
       {!intel && <p className="text-sm text-quiet">Lade Intel …</p>}
+      <Marktlage />
 
       {intel && !intel.configured && (
         <Panel className="max-w-2xl">

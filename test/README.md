@@ -16,6 +16,9 @@ npm run pruefen     # Lint, Typprüfung und Tests
   `projekt-risiken.test.ts` prüft, was die Karte eines Projekts über offene Risiken weiß (über der Frist,
   nächste Frist, lange unverändert, Text von Dritten); wie das in „Heute“, im Briefing und im Tagesabschluss
   ankommt, steht in `heute.test.ts` und `routinen.test.ts`.
+  `marktlage.test.ts` prüft die Marktlage (Krypto, Edelmetalle, Spielgeld-Desk): was dasteht, ab wann etwas
+  auffällt, dass Beispielkurse und veraltete Kurse nie als Bewegung gelten, den gesprochenen Satz und den
+  Zuruf „Marktübersicht“.
   `claude-zugang.test.ts` prüft, dass nur `src/lib/server/claude.ts` eine Verbindung zu Claude aufbaut und
   jede Rolle ihre Wartezeit und Wiederholungen behält.
   `geteilt.test.ts` prüft die geteilten Abfragen der Oberfläche (eine Abfrage für mehrere Stellen, keine
@@ -97,7 +100,8 @@ normale Tests.
 Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in den Einstellungen und im Raum „Kalender“, Einstellungen speichern mit vielen Änderungen zur selben Zeit,
 Hinweise als Mitteilung am Mac vom Schalter bis zur Mitteilung des laufenden Servers,
 das persönliche Gedächtnis mit beschädigter Datei und Beiseitelegen über die Einstellungen,
-offene Risiken in „Heute“ und „Projekte“). Aufruf steht jeweils oben in der Datei.
+offene Risiken in „Heute“ und „Projekte“,
+die Marktlage im Raum Intel, in „Heute“ und als Zuruf). Aufruf steht jeweils oben in der Datei.
 
 `test/hand/postgres-rauch.ts` braucht kein Chrome, aber ein installiertes PostgreSQL (die Programme `initdb`
 und `pg_ctl`; gesucht in `JARVIS_PG_BIN` und an den üblichen Orten). Es startet ein eigenes, leeres PostgreSQL

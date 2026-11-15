@@ -4,6 +4,8 @@ import { formatEur, formatPct } from "./format";
 import { intelBriefing, intelSentence, itemsAbout, searchSentence, type IntelSnapshot } from "./intel";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { MarketSnapshot } from "./market";
+import { marktlage, marktSatz } from "./marktlage";
+import type { MetalleSnapshot } from "./metalle";
 import { SAFETY, type DeskSnapshot } from "./paper";
 import type { ProjekteSnapshot } from "./projekte";
 import { abschlussSatz, projektSatz, tagesabschluss } from "./routinen";
@@ -59,6 +61,7 @@ export type CommandContext = {
   calendar?: CalendarSnapshot | null;
   intel?: IntelSnapshot | null;
   projekte?: ProjekteSnapshot | null;
+  metalle?: MetalleSnapshot | null;
   session: Session | null;
 };
 
@@ -423,6 +426,12 @@ const RULES: Rule[] = [
   {
     match: CALENDAR_QUERY,
     run: (ctx, text) => calendarQuery(ctx, text),
+  },
+  {
+    // Die Marktlage aus dem, was JARVIS schon hat (src/lib/marktlage.ts): Krypto, Edelmetalle, Spielgeld-Desk.
+    // Nur das eigene Wort („Marktlage“, nicht „Arbeitsmarktlage“), und nicht, wenn es um Nachrichten oder eine Suche geht.
+    match: /^(?!.*(nachrichten|news|neuigkeiten|lagebild|recherch|\bsuch)).*((?<![a-zäöüß-])(markt(übersicht|überblick|lage)|finanz(übersicht|überblick))(?![a-zäöüß])|wie (stehen|laufen|sind) die märkte)/,
+    run: (ctx) => ({ reply: marktSatz(marktlage({ market: ctx.market, metalle: ctx.metalle ?? null, desk: ctx.desk, intel: ctx.intel ?? null })), navigate: "/intel" }),
   },
   {
     match: /tagesübersicht|tagesüberblick|\bmein tag\b|heute im überblick/,

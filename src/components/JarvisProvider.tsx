@@ -9,6 +9,7 @@ import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainT
 import { erinnerungsSatz, fuerGespraech, type CalendarSnapshot } from "@/lib/calendar";
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import { intelSentence, searchSentence, type IntelSnapshot } from "@/lib/intel";
+import type { MetalleSnapshot } from "@/lib/metalle";
 import { docDoneSentence, type DocsSnapshot } from "@/lib/documents";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
@@ -53,6 +54,8 @@ type Jarvis = {
   // Intel: das Lagebild aus Nachrichten und X.
   intel: IntelSnapshot | null;
   setIntel: (i: IntelSnapshot) => void;
+  // Edelmetalle: derselbe Stand wie in der Ansicht der Edelmetalle (eine geteilte Abfrage).
+  metalle: MetalleSnapshot | null;
   // Dokumente, die der Analyst schreibt oder geschrieben hat.
   documents: DocsSnapshot | null;
   setDocuments: (d: DocsSnapshot) => void;
@@ -162,6 +165,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 10_000);
   const { data: calendar, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
   const { data: intel, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
+  const { data: metalle } = usePolling<MetalleSnapshot>("/api/metalle", 300_000);
   const { data: documents, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
   const { data: projekte, set: setProjekte } = usePolling<ProjekteSnapshot>("/api/projekte", 60_000);
   const { data: memoryData, reload: loadMemory, set: setMemoryData } = usePolling<MemoryStand>("/api/gedaechtnis", 10 * 60_000);
@@ -196,7 +200,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Ins Gespräch gehen Outlook-Termine nur, wenn du es eingeschaltet hast: Was JARVIS hier antwortet, liest
     // das KI-Modell beim nächsten Satz mit. Die Räume zeigen weiter den ganzen Kalender.
-    latest.current = { name, market, weather, tasks, mail, desk, calendar: fuerGespraech(calendar), intel, projekte };
+    latest.current = { name, market, weather, tasks, mail, desk, calendar: fuerGespraech(calendar), intel, projekte, metalle };
     place.current = pathname;
     history.current = turns;
     brain.current = Boolean(settings?.brain.configured);
@@ -639,6 +643,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       reloadCalendar: () => loadCalendar("?force=1"),
       intel,
       setIntel,
+      metalle,
       documents,
       setDocuments,
       projekte,
@@ -677,6 +682,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       loadCalendar,
       intel,
       setIntel,
+      metalle,
       documents,
       setDocuments,
       projekte,
