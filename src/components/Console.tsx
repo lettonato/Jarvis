@@ -287,6 +287,9 @@ const Message = memo(function Message({ turn }: { turn: Turn }) {
     );
   }
   const empty = !turn.text.trim();
+  // Eine angehaltene Antwort, von der noch nichts dastand: keine leere Zeile mit Lichtpunkt (auch nicht nur mit dem
+  // Hinweis auf Inhalte von Dritten, der zu einem Text gehört). Hat sie Quellen, bleibt sie stehen.
+  if (empty && !turn.live && !turn.sources?.length) return null;
   return (
     <div className="flex animate-[jarvis-in_220ms_ease-out] gap-3">
       <span

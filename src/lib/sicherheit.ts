@@ -75,6 +75,11 @@ export type Freigabe = {
 
 export const FREIGABE_MINUTEN = 15;
 
+// Die Bereiche, die eine ausgeführte Aktion verändern kann. Nach einem Ja zu einer Freigabe nennt der Server die
+// betroffenen, und die Seite lädt sie sofort neu.
+export const BEREICHE = ["tasks", "mail", "desk", "memory", "intel", "documents", "calendar"] as const;
+export type Geaendert = (typeof BEREICHE)[number];
+
 export type AuditEintrag = {
   nr: number;
   zeit: string;

@@ -100,3 +100,10 @@ export type ViewName = keyof typeof VIEWS;
 
 export const viewName = (path: string): ViewName | undefined =>
   (Object.keys(VIEWS) as ViewName[]).find((v) => VIEWS[v] === path.split(/[?#]/)[0]);
+
+// Welche Antwort die Zeile über der Leiste zeigt: die auf das zuletzt Gesagte, wenn sie läuft oder etwas sagt.
+// Eine angehaltene, leere zählt nicht, und eine ältere Antwort auch nicht: Sonst stünde nach einer angehaltenen
+// Frage die Antwort auf die Frage davor da, als wäre sie die neue.
+export function antwortAufLetztes<T extends { who: "du" | "jarvis"; text: string; live?: boolean }>(turns: readonly T[]): T | undefined {
+  return turns.slice(turns.findLastIndex((t) => t.who === "du") + 1).findLast((t) => t.who === "jarvis" && (t.live === true || t.text.trim() !== ""));
+}

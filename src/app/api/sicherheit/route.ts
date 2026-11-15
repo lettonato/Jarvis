@@ -42,6 +42,8 @@ export async function POST(request: Request) {
   if (!body || typeof body.aktion !== "string") return Response.json({ error: "Ungültige Anfrage." }, { status: 400 });
   try {
     let message: string;
+    // Nach einem Ja: welche Bereiche sich geändert haben, damit die Seite sie sofort neu lädt.
+    let geaendert: string[] = [];
     switch (body.aktion) {
       case "notaus_an":
         message = await notausAn(typeof body.grund === "string" && body.grund.trim() ? body.grund : "am Mac ausgelöst", "mac");
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
         break;
       case "freigabe":
         if (typeof body.id !== "string" || typeof body.ja !== "boolean") return Response.json({ error: "Ungültige Anfrage." }, { status: 400 });
-        message = (await entscheideFreigabe(body.id, body.ja, "mac")).text;
+        ({ text: message, geaendert } = await entscheideFreigabe(body.id, body.ja, "mac"));
         break;
       case "c_strenge":
         if (body.strenge !== "immer" && body.strenge !== "bei-fremden-inhalten") return Response.json({ error: "Ungültige Anfrage." }, { status: 400 });
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
       default:
         return Response.json({ error: "Ungültige Anfrage." }, { status: 400 });
     }
-    return Response.json({ ...(await lage()), message });
+    return Response.json({ ...(await lage()), message, ...(geaendert.length ? { geaendert } : {}) });
   } catch (e) {
     if (e instanceof SicherheitsFehler || e instanceof FreigabeFehler || e instanceof ZugangsdatenFehler || e instanceof SchluesselbundFehler) return Response.json({ error: e.message }, { status: 409 });
     throw e;

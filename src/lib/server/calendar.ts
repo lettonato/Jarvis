@@ -91,10 +91,20 @@ function read(from, to) {
 
 function add(data) {
   const store = $.EKEventStore.alloc.init;
+  // Der genannte Kalender, wenn man in ihn eintragen darf: zuerst genau so geschrieben, sonst ohne Rücksicht auf
+  // Groß- und Kleinschreibung („arbeit“ meint „Arbeit“).
   let target = null;
+  let aehnlich = null;
+  const gesucht = String(data.calendar || "").trim();
   for (const c of calendars(store).list) {
-    if (data.calendar && text(c.title) === data.calendar && c.allowsContentModifications) target = c;
+    if (!gesucht || !c.allowsContentModifications) continue;
+    const name = String(text(c.title)).trim();
+    if (name === gesucht) target = c;
+    else if (!aehnlich && name.toLowerCase() === gesucht.toLowerCase()) aehnlich = c;
   }
+  if (!target) target = aehnlich;
+  // Ein ausdrücklich verlangter Kalender (fest) wird nie still durch einen anderen ersetzt.
+  if (!target && data.calendar && data.fest) return { fehler: "Den Kalender „" + gesucht + "“ gibt es nicht oder er ist schreibgeschützt." };
   if (!target) target = store.defaultCalendarForNewEvents;
   if (isNil(target)) return { fehler: "Ich finde keinen Kalender, in den ich eintragen darf." };
   const ev = $.EKEvent.eventWithEventStore(store);
@@ -320,14 +330,15 @@ export function checkEvent(input: NewEvent): NewEvent {
   };
 }
 
-// Trägt einen neuen Termin ein. Ohne Kalendernamen nimmt JARVIS den aus den Einstellungen,
-// sonst den Standardkalender des Macs.
+// Trägt einen neuen Termin ein. Ohne Kalendernamen nimmt JARVIS den aus den Einstellungen; gibt es den nicht
+// mehr oder ist er schreibgeschützt, den Standardkalender des Macs (die Antwort nennt, wo der Termin gelandet ist).
+// Ein ausdrücklich genannter Kalender gilt dagegen fest: Geht es dort nicht, wird nichts eingetragen.
 export async function addEvent(input: NewEvent): Promise<{ snapshot: CalendarSnapshot; calendar: string; event: NewEvent }> {
   const event = checkEvent(input);
   if (!onMac()) throw new CalendarError("Den Apple-Kalender gibt es nur auf dem Mac.");
   const { calendar } = await readConfig();
   const times = eventTimes(event);
-  const r = await eventKit(["neu", JSON.stringify({ title: event.title, location: event.location ?? "", calendar: event.calendar ?? calendar?.target ?? "", ...times })]).catch(
+  const r = await eventKit(["neu", JSON.stringify({ title: event.title, location: event.location ?? "", calendar: event.calendar ?? calendar?.target ?? "", fest: Boolean(event.calendar), ...times })]).catch(
     (e: unknown): ScriptResult => ({ zugriff: "fehler", fehler: e instanceof Error ? e.message : String(e) }),
   );
   if (r.zugriff === "offen") throw new CalendarError("Dein Kalender ist noch nicht verbunden. Tippe in der Kalender-Ansicht auf „Kalender verbinden“.");

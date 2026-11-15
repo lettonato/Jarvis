@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 989 von 989 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1005 von 1005 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -1673,6 +1673,74 @@ rechnen. (5) Der Mac, Windows und Safari sind nicht geprüft.
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
+### Schritt J7: Handprüfungen für den Raum Kalender und das Gespräch; sechs Fehler gefunden und behoben (15. November 2026)
+
+**Warum:** Für den Raum Kalender (ohne Outlook) und für das getippte Gespräch gab es keine Prüfung im Browser.
+Beide sind Kern von JARVIS: Im Kalender trägt er ein, und im Gespräch entscheidet sich, was an Claude geht, was
+erst nach einem Ja geschieht und ob „Anhalten“ anhält.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J7.1 Handprüfung Kalender: Zugriff noch nie gefragt, Nein am Mac mit dem Weg in die Systemeinstellungen, nach dem Erlauben die nächsten zwei Wochen (vorbei, läuft, kommt noch, ganztägig, freie Tage, Zahlen oben), eintragen mit Uhrzeit und ganztägig, Kalender für neue Termine wählen (kein schreibgeschützter), gewählter Kalender inzwischen schreibgeschützt, ein Mac, der nicht speichert, „Zeigen“ in der Kalender-App, Schutz der Schnittstelle, kein Ändern und Löschen | Testbereit, **nur gegen einen nachgebauten Mac-Kalender; die Kalender-App läuft nicht** | `test/hand/kalender-rauch.ts` (Port 3123, 9 Schritte); unten |
+| J7.2 Handprüfung Gespräch: feste Befehle ohne Claude-Schlüssel, Vorschlag „Termin …“, Termin und Aufgabe per Satz, ein Mac, der nicht speichert, Gespräch nach dem Neuladen und in einem neuen Fenster, freie Frage an Claude mit dem bisherigen Gespräch, Anhalten (sofort und mitten im Nachdenken), ein Termin, den das Modell eintragen will (Nein, dann Ja), Ausfall von Claude, „Neues Gespräch“, Schutz der Schnittstelle | Testbereit, **nur getippt und nur gegen nachgebautes Claude** | `test/hand/gespraech-rauch.ts` (Port 3124, 10 Schritte); unten |
+| J7.3 **Gefunden und behoben:** Ein ausdrücklich genannter Kalender wird nie still durch einen anderen ersetzt, weder über Claude noch beim festen Befehl ohne KI-Gehirn; die Frage oben nennt den Kalender | Testbereit, **am Mac nicht geprüft** (wenige Zeilen im Skript für die Kalender-App) | `fest` in `addEvent` und im Skript `EVENTKIT` (`src/lib/server/calendar.ts`); `genannterKalender` in `src/lib/commands.ts`; `was` in `gateway/richtlinien.ts`; `test/module/kalender.test.ts` (4 neue, 1 erweitert), `test/regeln/kalender-zuruf.test.ts` (6), `test/module/gateway.test.ts` (1); Prüfung Gespräch, Schritt 4; Prüfliste T2 |
+| J7.4 **Gefunden und behoben:** Der erste Klick auf die Zeile über der Leiste klappt das Gespräch auf, auch wenn dort der Hinweis „Klick einmal irgendwo auf die Seite …“ steht | Testbereit | `Antwortzeile` in `src/components/AppFrame.tsx`; Prüfung Gespräch, Schritt 5 |
+| J7.5 **Gefunden und behoben:** „Anhalten“ (Knopf oder Esc) direkt nach dem Abschicken hält die Frage auf | Testbereit | `pending` in `src/components/JarvisProvider.tsx`; Prüfung Gespräch, Schritt 7 |
+| J7.6 **Gefunden und behoben:** Reißt die Verbindung zu Claude mitten in der Antwort ab, steht ein verständlicher Satz da statt „terminated.“ | Testbereit | `abgerissen` in `src/lib/server/brain.ts` (nennt Claude nur, wenn es Claudes Verbindung war); `test/module/gehirn.test.ts` (1 neuer); Prüfung Gespräch, Schritt 9 |
+| J7.7 **Gefunden und behoben:** Nach „Ja, ausführen“ zeigt der Raum die Änderung sofort | Testbereit | Der Server nennt nach dem Ja die geänderten Bereiche (`geaendert` aus `entscheideFreigabe`, Liste `BEREICHE` in `src/lib/sicherheit.ts`), die Seite lädt sie neu (`NACH_JA` in `src/components/Sicherheit.tsx`); `test/module/gateway.test.ts` (2 erweitert); Prüfung Gespräch, Schritt 8 |
+| J7.8 **Gefunden und behoben:** Von einer angehaltenen Antwort, von der noch nichts dastand, bleibt keine leere Zeile; über der Leiste steht danach nicht die Antwort auf die Frage davor | Testbereit | `Message` in `src/components/Console.tsx`; `antwortAufLetztes` in `src/lib/brain.ts`; `test/regeln/antwortzeile.test.ts` (4); Prüfung Gespräch, Schritt 7 |
+
+**Die Funde im Einzelnen.**
+
+| Fund | vorher | jetzt |
+|---|---|---|
+| Kalender, ausdrücklich genannt (J7.3) | Nannte das Modell einen Kalender, den es nicht gibt oder der schreibgeschützt ist, hätte das Skript am Mac den Termin still in den Standardkalender gelegt, auch wenn du vorher „Termin im Kalender X“ freigegeben hast. Die automatischen Tests behaupteten das Gegenteil, weil der nachgebaute Kalender strenger war als das echte Skript | Der nachgebaute Kalender verhält sich wie das Skript. Ein ausdrücklich genannter Kalender gilt fest: Geht es dort nicht, wird nichts eingetragen und der Grund steht da. Der Kalender aus den Einstellungen bleibt ein Wunsch: Ist er nicht mehr beschreibbar, landet der Termin im Standardkalender, und JARVIS nennt, in welchem. Im Code-Review kam dazu heraus: Ohne KI-Gehirn überhörte der feste Befehl „Trag … in den Kalender Arbeit ein“ den Kalender ganz und schrieb „Arbeit“ in den Titel. Jetzt gilt ein genannter Kalender, den es gibt, auch dort fest. Groß- und Kleinschreibung des Namens spielt keine Rolle, und die Frage oben („Termin eintragen: …“) nennt den Kalender, wenn einer verlangt ist |
+| Erster Klick (J7.4) | Nach dem Öffnen steht über der Leiste „Klick einmal irgendwo auf die Seite, dann höre ich zu.“ Wer genau dorthin klickte, bekam das Gespräch nicht aufgeklappt: Der Hinweis verschwand schon beim Drücken, mit ihm das Element unter dem Zeiger, und der Browser zählt dann keinen Klick. Gemessen: 8 von 10 Versuchen ohne Wirkung | Die Zeile behält ihre Elemente, nur Text und Farbe wechseln: 10 von 10 |
+| Anhalten (J7.5) | JARVIS fängt eine gute Drittelsekunde nach dem Abschicken an. Wer in dieser Zeit anhielt, hielt nichts an: Die Frage ging trotzdem an Claude, die Antwort kam trotzdem (und kostete) | Anhalten nimmt auch zurück, was noch nicht unterwegs ist; es geht nichts an Claude |
+| Abriss (J7.6) | Im Gespräch stand „terminated.“ | „Die Verbindung zu Claude ist abgerissen. Frag mich bitte noch einmal.“ Reißt eine andere Verbindung ab (eine Webseite, der Browser-Agent), steht „Die Verbindung ist abgerissen. Versuch es bitte noch einmal.“ da, ohne Claude zu nennen |
+| Nach dem Ja (J7.7) | Oben stand „Eingetragen im Kalender …“, der Raum Kalender zeigte den Tag weiter als „frei“, bis zur nächsten regulären Abfrage (Kalender bis fünf Minuten, Post zwei, Aufgaben eine) | Nach einem Ja sagt der Server, was sich geändert hat, und die Seite lädt genau das frisch (Kalender, Aufgaben, Post, Gedächtnis, Desk, Dokumente, Intel). Nach einem Nein, einer Sperre oder einem Fehler lädt nichts neu |
+| Leere Zeile (J7.8) | Nach dem Anhalten blieb ein Lichtpunkt ohne Text stehen, manchmal mit dem Satz „Enthält Inhalte von Dritten“ darunter | Die Zeile gibt es nicht mehr (hat die Antwort Quellen, bleibt sie stehen). Die Zeile über der Leiste zeigt nur die Antwort auf das zuletzt Gesagte; nach einer angehaltenen Frage steht dort „Bereit“, nicht die Antwort auf die Frage davor |
+
+**Eigene Entscheidungen:** (1) Ausdrücklich genannter Kalender fest, Kalender aus den Einstellungen als Wunsch
+(Begründung in der Tabelle): Die Seite zeigt bei „landet in …“ schon vorher den Kalender, in dem der Termin
+wirklich landet. (2) „Anhalten“ nimmt in der Drittelsekunde auch einen festen Befehl zurück („Trag … ein“):
+Wer anhält, will, dass nichts geschieht. (3) Nach einem Ja lädt nur die betroffene Abfrage neu, nicht alles:
+Die Post frisch zu lesen dauert, und ein Termin ändert daran nichts. (4) Beide Prüfungen stellen sich, dem
+Server und dem Browser eine Zeitzone ein, in der es gerade Mittag ist; so sehen sie zu jeder Tageszeit denselben
+Kalender und laufen nie über Mitternacht. (5) Für den Schritt „erster Klick“ gilt im Browser der Prüfung fest
+„noch nicht geklickt“: Ob Chrome ein neues Fenster der Prüfung schon als angeklickt führt, wechselte von Lauf
+zu Lauf. (6) Eine angehaltene Frage bleibt im Gespräch stehen und gehört damit zum Verlauf, den Claude bei der
+nächsten Frage sieht, genau wie eine Frage, die beim Nachdenken angehalten wurde; „Neues Gespräch“ räumt sie weg.
+(7) Ein Wort hinter „in den Kalender“, das kein vorhandener Kalender ist, bleibt wie bisher Teil des Titels
+(„Trag morgen um 9 in den Kalender Zahnarzt ein“): JARVIS kann nicht wissen, ob ein Kalender gemeint war.
+
+**Grenzen:** (1) Die Kalender-App, die Rückfrage von macOS und das Skript dafür laufen in der Prüfung nicht.
+Geprüft ist, was JARVIS dem Mac übergibt und wie die Seite mit seinen Antworten umgeht. Die neuen Zeilen im Skript
+(J7.3) sind am Mac ungeprüft; Punkt T2 der Prüfliste prüft sie. (2) Das Gespräch ist getippt geprüft, nicht
+gesprochen (die Stimme prüft `stimme-rauch.ts`), und gegen nachgebautes Claude: Was das echte Modell antwortet
+oder welches Werkzeug es wählt, ist damit nicht geprüft. (3) Wird der Zugriff auf den Kalender entzogen, während
+der Raum offen ist, sagt die Seite es beim nächsten Eintragen; die Liste zeigt bis zum Neuladen, was sie zuletzt
+gelesen hat. (4) Der Mac, Windows und Safari sind nicht geprüft. Der Fund J7.4 betrifft vor allem Browser, die
+das Mikrofon erst nach einem Klick freigeben (Safari).
+
+### Testergebnisse Schritt J7 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1005 Tests: 1005 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 16). Am Mac wären es rechnerisch 1003 (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 22 Handprüfungen bestanden**, Code 0 (Kalender 9 Sekunden, Gespräch 29) |
+| Prüfung Kalender, erste Läufe | ein Fehlschlag aus der Prüfung selbst (ein erwarteter Text falsch abgeschrieben); danach bestanden |
+| Prüfung Gespräch, erste Läufe | mehrfach fehlgeschlagen, jedes Mal mit Ursache: Das Aufklappen nach dem Neuladen wirkte in 8 von 10 Versuchen nicht (Fund J7.4, nach der Korrektur 10 von 10); die Antwort kam trotz sofortigem „Anhalten“ (Fund J7.5); „terminated.“ im Gespräch (Fund J7.6); der Raum zeigte nach dem Ja weiter „frei“ (Fund J7.7, im Bild gesehen); leere Zeile nach dem Anhalten (Fund J7.8, im Bild gesehen). Aus der Prüfung selbst: zu früh getippt, bevor das Feld die Schreibmarke hatte („ZtZahnar“); ob Chrome ein neues Fenster als „angeklickt“ führt, wechselte von Lauf zu Lauf (jetzt fest vorgegeben); eine falsche Annahme über den Hinweis „Inhalte von Dritten“ |
+| Gegenproben (absichtlich eingebaute Fehler, je ein eigener Bau) | **12 von 12 entdeckt.** Kalender (5): „Heute noch“ zählt Vergangenes; ein genannter Kalender wird still ersetzt; „Zeigen“ öffnet immer heute; Termine in der Vergangenheit werden angenommen; Einträge ohne Titel werden gezeigt. Gespräch (7): Anhalten hält eine eben abgeschickte Frage nicht auf; nach dem Ja lädt der Raum nicht neu (in beiden Bauweisen); der Hinweis ist wieder ein eigenes Element; das Modell trägt Termine ohne Ja ein; ein Abriss heißt wieder „terminated“; ein genannter Kalender wird beim festen Befehl überhört. Danach alle Dateien wiederhergestellt (mit `git diff` gegen die Kopie von vorher verglichen) |
+| Tests zuerst | Für den genannten Kalender, den Mac, der nicht speichert, den Abriss, den festen Befehl mit Kalender, die Groß- und Kleinschreibung, die Frage mit Kalender und die Meldung an die Seite: Tests zuerst geschrieben und rot gesehen. Für Klick, Anhalten, Neuladen nach dem Ja und die leere Zeile war die Handprüfung der rote Test. Die Regel für die Zeile über der Leiste: Test gegen die alte Regel rot gesehen |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde. Eingearbeitet (acht): der feste Befehl ohne KI-Gehirn überhörte einen genannten Kalender; ein vom Modell leicht anders geschriebener Kalendername hätte jetzt hart abgelehnt (darum Groß- und Kleinschreibung egal, und die Frage nennt den Kalender); „Verbindung zu Claude“ stand auch da, wenn eine andere Verbindung abriss; über der Leiste stand nach einer angehaltenen Frage die Antwort davor; eine leere Antwort mit Quellen wäre verschwunden; die Seite führte eine eigene Liste, was nach welchem Ja neu zu laden ist (jetzt sagt es der Server); neu geladen wurde auch nach einem Fehler, und der Kalender doppelt gelesen; der nachgebaute Kalender nahm einen schreibgeschützten Standardkalender an. Als Entscheidung notiert (zwei): Eine angehaltene Frage bleibt im Verlauf (Entscheidung 6); zwei Sätze innerhalb einer Drittelsekunde starten wie bisher beide |
+| Rückschritt aus der Nacharbeit, von der Prüfung Gespräch gefunden | Nach dem Einarbeiten blieb die leere Zeile wieder stehen, wenn sie den Hinweis „Inhalte von Dritten“ trug. Behoben, danach beide Prüfungen und der Sammellauf erneut bestanden |
+| Sicherheitsprüfung (von Hand) | Kein neuer Weg nach außen, keine neue Berechtigung. Der Kalendername aus einem Satz wird nur mit vorhandenen Kalendern verglichen und geht wie bisher als Daten an den Mac, nie als Programmcode; im Suchmuster ist er entschärft. Strenger als vorher: Ein genannter Kalender wird nie ersetzt, und die Frage vor dem Ja zeigt ihn. Die Antwort auf ein Ja nennt der Seite nur die Namen der geänderten Bereiche, keine Inhalte. Die Prüfungen schreiben nur in eigene Testordner; Claude, Kalender und `open` sind Nachbauten; der Schlüssel darin ist erfunden |
+| Am Rand aufgefallen, nicht geändert | Die Bestätigung eines selbst getippten Termins trägt den Hinweis „Enthält Inhalte von Dritten“, sobald im Gespräch vorher fremde Inhalte standen (so gewollt, wirkt aber seltsam); das Datumsfeld zeigt im Browser der Prüfung das amerikanische Format; „Als Nächstes“ zeigt den Beginn eines Termins, der schon läuft |
+| Nicht geprüft | **der Mac** (Kalender-App, die Rückfrage von macOS, das geänderte Skript), Windows, echtes Claude, die Stimme in diesem Zusammenhang, Safari |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -1688,7 +1756,7 @@ rechnen. (5) Der Mac, Windows und Safari sind nicht geprüft.
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis P; Teil N erst, wenn eure IT so weit ist; Teil P neu seit G2.4). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis T; Teil N erst, wenn eure IT so weit ist; Teil T neu seit J7). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -1791,7 +1859,13 @@ Danach wie geplant:
 20. **J6: gebaut, Testbereit** (Schritt J6 in Bereich J): Handprüfungen für die Räume Aufgaben und Dokumente,
    jetzt 20 Prüfungen. Dabei gefunden und behoben: Ein Obsidian-Tresor, der sich nicht lesen lässt, sah aus
    wie „nichts fällig“; jetzt steht überall da, dass JARVIS die Aufgaben nicht lesen kann.
-   **Als Nächstes:** J7 (Handprüfungen im Browser für den Raum Kalender mit dem nachgebauten Mac-Kalender und
-   für das Gespräch auf der Startseite). Die
+21. **J7: gebaut, Testbereit** (Schritt J7 in Bereich J): Handprüfungen für den Raum Kalender und für das
+   getippte Gespräch, jetzt 22 Prüfungen. Dabei sechs Fehler gefunden und behoben: ein ausdrücklich genannter
+   Kalender wurde still ersetzt oder beim festen Befehl überhört (am Mac noch ungeprüft, Prüfliste T2), der erste Klick auf die Zeile über der
+   Leiste klappte das Gespräch nicht auf, „Anhalten“ direkt nach dem Abschicken hielt nichts an, ein Abriss
+   der Verbindung zu Claude hieß „terminated.“, nach „Ja, ausführen“ zeigte der Raum die Änderung erst Minuten
+   später, und nach dem Anhalten blieb eine leere Zeile stehen.
+   **Als Nächstes:** J8 (Handprüfungen im Browser für das Lagebild im Raum Intel gegen das nachgebaute Grok und
+   für das Lesen der Post gegen das nachgebaute Postfach; dazu die kleinen Befunde am Rand aus J6 und J7). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

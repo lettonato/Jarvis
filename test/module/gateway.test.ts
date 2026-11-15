@@ -180,6 +180,7 @@ describe("Gateway: Freigaben durch einen Menschen", () => {
     assert.match(offen[0].was, /Kaffee schwarz/);
     const r = await freigaben.entscheideFreigabe(offen[0].id, true, "mac");
     assert.equal(r.freigabe.zustand, "ausgefuehrt");
+    assert.deepEqual(r.geaendert, ["memory"], "die Oberfläche erfährt, was sie neu laden muss");
     assert.deepEqual((await memory.readMemory()).map((f) => f.text), ["Trinkt Kaffee schwarz."]);
     await assert.rejects(freigaben.entscheideFreigabe(offen[0].id, true, "telegram"), freigaben.FreigabeFehler);
     assert.equal((await memory.readMemory()).length, 1, "kein zweiter Eintrag");
@@ -200,7 +201,15 @@ describe("Gateway: Freigaben durch einen Menschen", () => {
     const f = await freigaben.erstelleFreigabe({ werkzeug: "gedaechtnis_merken", klasse: "C", agent: "gehirn", aufrufer: "gehirn", kanal: "mac", eingabe: { text: "Nein." }, was: "x", warum: "x", fremd: false });
     const r = await freigaben.entscheideFreigabe(f.id, false, "telegram");
     assert.equal(r.freigabe.zustand, "abgelehnt");
+    assert.deepEqual(r.geaendert, [], "nach einem Nein gibt es nichts neu zu laden");
     assert.equal((await memory.readMemory()).length, 0);
+  });
+
+  test("die Frage zu einem Termin nennt den Kalender, wenn einer verlangt ist", () => {
+    const was = regeln.RICHTLINIEN.termin_eintragen.was!;
+    const e = { titel: "Notar", datum: "2026-11-18", uhrzeit: "10:00", dauer_minuten: 60, ort: "Rosenheim" };
+    assert.equal(was({ ...e, kalender: "" }), "Termin eintragen: „Notar“ am 2026-11-18 um 10:00, Rosenheim");
+    assert.equal(was({ ...e, kalender: "Arbeit" }), "Termin eintragen: „Notar“ am 2026-11-18 um 10:00, Rosenheim, im Kalender „Arbeit“");
   });
 
   test("ohne Antwort verfällt die Frage nach 15 Minuten", async () => {

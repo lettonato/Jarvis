@@ -114,6 +114,43 @@ describe("Kalender: eintragen", () => {
   test("einen schreibgeschützten oder unbekannten Kalender lehnt JARVIS verständlich ab", async () => {
     await assert.rejects(kalender.addEvent({ title: "Test", date: morgen(), calendar: "Feiertage" }), /schreibgeschützt/);
     assert.equal(gespeichert().length, 0);
+    await assert.rejects(kalender.addEvent({ title: "Test", date: morgen(), calendar: "Gibt es nicht" }), /Den Kalender „Gibt es nicht“ gibt es nicht/);
+    assert.equal(gespeichert().length, 0, "ein ausdrücklich genannter Kalender wird nie still durch einen anderen ersetzt");
+  });
+
+  test("ein genannter Kalender wird auch gefunden, wenn nur die Groß- und Kleinschreibung abweicht", async () => {
+    const r = await kalender.addEvent({ title: "Abnahme", date: morgen(), calendar: " firma " });
+    assert.equal(r.calendar, "Firma");
+    assert.equal(gespeichert()[0].calendar, "Firma");
+    // Gibt es beide Schreibweisen, gilt die genaue.
+    setze({ kalender: [{ name: "firma", writable: true }, { name: "Firma", writable: true }, { name: "Privat", writable: true }] });
+    assert.equal((await kalender.addEvent({ title: "Zweiter", date: morgen(), calendar: "Firma" })).calendar, "Firma");
+    assert.equal((await kalender.addEvent({ title: "Dritter", date: morgen(), calendar: "firma" })).calendar, "firma");
+  });
+
+  test("ist auch der Standardkalender schreibgeschützt, wird nichts eingetragen", async () => {
+    setze({ kalender: [{ name: "Privat", writable: false }], standard: "Privat" });
+    await assert.rejects(kalender.addEvent({ title: "Test", date: morgen() }), /Ich finde keinen Kalender, in den ich eintragen darf/);
+    assert.equal(gespeichert().length, 0);
+  });
+
+  test("ist der in den Einstellungen gewählte Kalender nicht mehr beschreibbar, landet der Termin im Standardkalender, und JARVIS sagt das", async () => {
+    await kalender.speichereKalenderZiel("Firma");
+    try {
+      setze({ kalender: [{ name: "Privat", writable: true }, { name: "Firma", writable: false }] });
+      const r = await kalender.addEvent({ title: "Abnahme", date: morgen() });
+      assert.equal(r.calendar, "Privat");
+      assert.equal(gespeichert()[0].calendar, "Privat");
+      assert.equal(JSON.parse(aufrufe().find((a) => a.args[4] === "neu")!.args[5]).fest, false, "der Name aus den Einstellungen ist ein Wunsch, kein Muss");
+    } finally {
+      await kalender.speichereKalenderZiel("");
+    }
+  });
+
+  test("nimmt die Kalender-App den Termin nicht an, sagt JARVIS das, statt ihn als eingetragen zu melden", async () => {
+    setze({ speichern: "abgelehnt" });
+    await assert.rejects(kalender.addEvent({ title: "Test", date: morgen() }), /Der Kalender hat den Termin nicht gespeichert/);
+    assert.equal(gespeichert().length, 0);
   });
 });
 

@@ -485,6 +485,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     [context, addTurn, updateTurn, speakStream, listen, router, setSession, setTasks, setMail, setDesk, setCalendar, setIntel, setMemoryData, setDocuments, setProjekte],
   );
 
+  // Sätze, die abgeschickt, aber noch nicht in Arbeit sind.
+  const pending = useRef(new Set<ReturnType<typeof setTimeout>>());
   const handle = useCallback(
     (text: string, fromVoice: boolean) => {
       const clean = text.trim();
@@ -498,11 +500,15 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         .map(({ who, text, fremd }) => ({ who, text, ...(fremd ? { fremd: true } : {}) }));
       addTurn("du", clean);
       setThinking(true);
-      setTimeout(() => {
+      // Einen Augenblick später geht es los. Nach „Anhalten“ in diesem Augenblick geht der Satz nicht mehr los
+      // (siehe stop); im Gespräch bleibt er stehen, wie eine Frage, die beim Nachdenken angehalten wurde.
+      const wartet = setTimeout(() => {
+        pending.current.delete(wartet);
         const decision = decide(clean, context(), brain.current);
         if (decision) execute(decision);
         else askBrain(clean, earlier);
       }, 350);
+      pending.current.add(wartet);
     },
     [addTurn, execute, context, askBrain],
   );
@@ -522,6 +528,12 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   );
 
   const stop = useCallback(() => {
+    // Auch was gerade erst abgeschickt wurde und noch nicht unterwegs ist: Es geht nicht mehr los.
+    if (pending.current.size) {
+      pending.current.forEach(clearTimeout);
+      pending.current.clear();
+      setThinking(false);
+    }
     brainAbort.current?.abort();
     stopSpeaking();
   }, [stopSpeaking]);

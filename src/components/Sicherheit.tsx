@@ -4,7 +4,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { RaumLink } from "./RaumLink";
 import { Button, inputClass, Notice } from "./ui";
 import { postJson } from "@/lib/api";
-import { AGENTEN, KLASSE_LABEL, KLASSE_TEXT, NOTAUS_BESTAETIGUNG, type AgentName, type Freigabe, type Klasse, type SicherheitsLage, type ZugangsdatenStatus } from "@/lib/sicherheit";
+import { ladeNeu } from "@/lib/geteilt";
+import { AGENTEN, KLASSE_LABEL, KLASSE_TEXT, NOTAUS_BESTAETIGUNG, type AgentName, type Freigabe, type Geaendert, type Klasse, type SicherheitsLage, type ZugangsdatenStatus } from "@/lib/sicherheit";
 import { usePolling } from "@/lib/usePolling";
 import { useNow } from "@/lib/useNow";
 
@@ -14,6 +15,19 @@ import { useNow } from "@/lib/useNow";
 
 const ZEIT = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const zeit = (iso: string | null) => (iso ? ZEIT.format(new Date(iso)) : "");
+
+// Was nach einem Ja frisch geladen wird. Der Server sagt, welche Bereiche die Aktion geändert hat (geaendert);
+// sonst zeigte der Raum bis zur nächsten regulären Abfrage (beim Kalender fünf Minuten) den alten Stand, während
+// oben schon „Eingetragen“ steht. Der Kalender ist am Server schon frisch gelesen, das Postfach noch nicht.
+const NACH_JA: Record<Geaendert, [url: string, zusatz?: string]> = {
+  calendar: ["/api/kalender"],
+  tasks: ["/api/aufgaben"],
+  mail: ["/api/post", "?force=1"],
+  memory: ["/api/gedaechtnis"],
+  desk: ["/api/handel"],
+  documents: ["/api/dokumente"],
+  intel: ["/api/intel"],
+};
 
 function useSicherheit(ms = 4000) {
   const { data, reload, set } = usePolling<SicherheitsLage>("/api/sicherheit", ms);
@@ -28,9 +42,10 @@ function useSicherheit(ms = 4000) {
     setBusy(true);
     setNote(null);
     try {
-      const next = await postJson<SicherheitsLage & { message: string }>("/api/sicherheit", body);
+      const { geaendert, ...next } = await postJson<SicherheitsLage & { message: string; geaendert?: Geaendert[] }>("/api/sicherheit", body);
       set(next);
       setNote({ tone: "ok", text: next.message });
+      for (const bereich of geaendert ?? []) if (Object.hasOwn(NACH_JA, bereich)) void ladeNeu(...NACH_JA[bereich]);
       return true;
     } catch (e) {
       setNote({ tone: "error", text: e instanceof Error ? e.message : String(e) });

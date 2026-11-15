@@ -134,7 +134,7 @@ export const RICHTLINIEN: Record<string, Regel> = {
     freigabe: "klasse-c",
     ziel: "Apple-Kalender",
     daten: "neuer Termin",
-    was: (e) => `Termin eintragen: „${s(e.titel, 80)}“ am ${s(e.datum, 10)}${s(e.uhrzeit, 5) ? ` um ${s(e.uhrzeit, 5)}` : ", ganztägig"}${s(e.ort, 60) ? `, ${s(e.ort, 60)}` : ""}`,
+    was: (e) => `Termin eintragen: „${s(e.titel, 80)}“ am ${s(e.datum, 10)}${s(e.uhrzeit, 5) ? ` um ${s(e.uhrzeit, 5)}` : ", ganztägig"}${s(e.ort, 60) ? `, ${s(e.ort, 60)}` : ""}${s(e.kalender, 60) ? `, im Kalender „${s(e.kalender, 60)}“` : ""}`,
   }),
   gedaechtnis_merken: gehirn({ agent: "gehirn", klasse: "C", freigabe: "immer", ziel: "Gedächtnis", daten: "dauerhafter Eintrag", was: (e) => `Dauerhaft merken: „${s(e.text, 200)}“` }),
   gedaechtnis_aendern: gehirn({

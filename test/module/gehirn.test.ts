@@ -146,4 +146,19 @@ describe("Gehirn: Fehler als lesbarer Satz", () => {
     assert.equal(brain.explainBrainError(new Error("Geht das?")), "Geht das?");
     assert.equal(brain.explainBrainError("  "), "Unbekannter Fehler.");
   });
+
+  test("reißt die Verbindung zu Claude mitten in der Antwort ab, steht ein verständlicher Satz da", async () => {
+    claude.drehbuch([{ abbruch: true }]);
+    const fehler = await brain.think(config(), "sk-test", frage("Erzähl mir etwas Langes.")).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    assert.ok(fehler, "die Antwort ist nicht angekommen");
+    // Node meldet dann nur „terminated“; das versteht niemand.
+    assert.equal(brain.explainBrainError(fehler), "Die Verbindung zu Claude ist abgerissen. Frag mich bitte noch einmal.");
+    // Eine andere Meldung, in der das Wort nur vorkommt, bleibt, wie sie ist.
+    assert.equal(brain.explainBrainError(new Error("Der Auftrag wurde terminated genannt")), "Der Auftrag wurde terminated genannt.");
+    // Reißt eine andere Verbindung ab (eine Webseite, der Browser), wird nicht Claude genannt.
+    assert.equal(brain.explainBrainError(new Error("fetch failed", { cause: Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" }) })), "Die Verbindung ist abgerissen. Versuch es bitte noch einmal.");
+  });
 });

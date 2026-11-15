@@ -301,6 +301,17 @@ function taskFromSpeech(input: string, day: string): { text: string; due?: strin
 const ADD_EVENT =
   /^(?:bitte\s+)?trage?\b.*\bein$|termine?\s+(?:eintragen|anlegen)|\bneue[nr]?\s+termin|\b(?:in\s+(?:den|meinen)|ins)\s+kalender\b.*(?:\bein$|eintragen|schreiben|:)|^(?:bitte\s+)?(?:schreib|setz|leg|mach|erstell|plan)\w*\b.{0,20}\btermin|^termin\s+(?:am|um|für|morgen|übermorgen|heute|nächste)/;
 
+// „… in den Kalender Arbeit …“: Nennt der Satz einen Kalender, den es gibt, kommt sein Name aus dem Satz heraus
+// (sonst stünde er im Titel) und wird das Ziel. Der längste passende Name gewinnt („Arbeit Baustelle“ vor „Arbeit“).
+function genannterKalender(satz: string, kalender: { name: string }[]): { name: string; rest: string } | null {
+  const namen = kalender.map((k) => k.name.trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+  for (const name of namen) {
+    const muster = new RegExp(`(?:\\bin\\s+(?:den|meinen|dem)|\\bim|\\bins)\\s+kalender\\s+[„"“”']?${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[„"“”']?(?![\\p{L}\\p{N}])`, "iu");
+    if (muster.test(satz)) return { name, rest: satz.replace(muster, " ") };
+  }
+  return null;
+}
+
 const CALENDAR_QUERY =
   /termin|kalender|was (habe|hab) ich (heute|morgen|übermorgen|am|nächste|diese)|was steht (heute|morgen|übermorgen|am \S+|nächste[nr]? \S+)( so)? an|wie sieht (mein|der) (tag|morgen|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag) aus|bin ich .{0,20}(frei|verplant)|hab(e)? ich .{0,25}zeit/;
 
@@ -418,7 +429,10 @@ const RULES: Rule[] = [
   {
     match: ADD_EVENT,
     run: (ctx, text, original) => {
-      const event = eventFromSpeech(original, ctx.now);
+      // Ein genannter Kalender gilt fest. Bleibt ohne ihn kein Titel übrig, war der Name der Titel.
+      const genannt = genannterKalender(original, ctx.calendar?.calendars ?? []);
+      const imGenannten = genannt ? eventFromSpeech(genannt.rest, ctx.now) : null;
+      const event = imGenannten && genannt ? { ...imGenannten, calendar: genannt.name } : eventFromSpeech(original, ctx.now);
       if (!event) {
         if (/^termin\b/.test(text)) return calendarQuery(ctx, text);
         return { reply: "Wann und was soll ich eintragen? Sag zum Beispiel: Trag morgen um 9 Uhr Zahnarzt ein." };
@@ -427,7 +441,7 @@ const RULES: Rule[] = [
       if (ctx.calendar?.nurLesen) return { reply: "Eintragen kann ich nur in den Kalender am Mac. Outlook lese ich nur.", navigate: "/kalender" };
       const blocked = ctx.calendar?.access === "ok" || ctx.calendar?.access === "nur-schreiben" ? null : accessProblem(ctx.calendar ?? null);
       if (blocked) return { reply: blocked, navigate: "/kalender" };
-      return { reply: confirmSentence(event, today(ctx), ctx.calendar?.target), effect: { type: "addEvent", event }, navigate: "/kalender" };
+      return { reply: confirmSentence(event, today(ctx), event.calendar ?? ctx.calendar?.target), effect: { type: "addEvent", event }, navigate: "/kalender" };
     },
   },
   {

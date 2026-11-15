@@ -68,7 +68,17 @@ export function explainBrainError(e: unknown): string {
   if (e instanceof Anthropic.APIConnectionTimeoutError) return "Claude hat zu lange gebraucht. Frag mich bitte noch einmal.";
   if (e instanceof Anthropic.APIConnectionError) return "Ich erreiche Claude gerade nicht. Ist der Mac mit dem Internet verbunden?";
   if (e instanceof Anthropic.APIError) return alsSatz(`Claude meldet einen Fehler: ${e.message}`);
+  // Meldet es die Claude-Bibliothek, war es die Verbindung zu Claude; sonst eine andere (eine Webseite, der Browser).
+  if (abgerissen(e)) return e instanceof Anthropic.AnthropicError ? "Die Verbindung zu Claude ist abgerissen. Frag mich bitte noch einmal." : "Die Verbindung ist abgerissen. Versuch es bitte noch einmal.";
   return alsSatz(e instanceof Error ? e.message : String(e));
+}
+
+// Die Verbindung war da und ist dann weg, oft mitten in der Antwort (WLAN, Mac schläft ein, Anthropic bricht ab).
+// Node meldet das nur als „terminated“, mit dem eigentlichen Grund (etwa ECONNRESET) darunter.
+function abgerissen(e: unknown, tiefe = 0): boolean {
+  if (!(e instanceof Error) || tiefe > 3) return false;
+  const code = (e as { code?: unknown }).code;
+  return e.message.trim() === "terminated" || code === "ECONNRESET" || code === "UND_ERR_SOCKET" || abgerissen((e as { cause?: unknown }).cause, tiefe + 1);
 }
 
 // Prüft einen Schlüssel, bevor er gespeichert wird. Das kostet nichts, es wird nichts generiert.

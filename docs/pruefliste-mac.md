@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 80 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R und S und die Punkte M11 bis M13 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 90 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S und T und die Punkte M11 bis M13 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -265,6 +265,23 @@ Es ist keine Prognose und keine Anlageberatung.
 | S5 | Den Raum „Heute“ öffnen | In der Scheibe „Märkte“ stehen auch Gold und Silber |
 | S6 | An den nächsten Tagen auf das Morgenbriefing und den Tagesabschluss am Handy achten | An ruhigen Tagen steht dort nichts zum Markt. Hat sich Bitcoin, Ethereum oder Solana in 24 Stunden um 5 % oder mehr bewegt (oder Gold oder Silber am selben Tag um 2 %), steht ein Absatz „Märkte“ mit je einer Zeile dabei. Steht dort „Kryptokurse: gerade keine Verbindung“, hat dein Mac den Kursdienst nicht erreicht. Schreib mir bitte, wenn du den Absatz das erste Mal siehst, und ob die Zahl zu dem passt, was im Raum Intel steht |
 | S7 | An so einem Tag am Mac „Briefing“ sagen | JARVIS sagt nach den Nachrichten einen Satz „An den Märkten fällt auf: …“. Hör bitte hin, ob die Stimme die Prozente verständlich vorliest (zum Beispiel „minus sieben Prozent“), und schreib mir, wenn nicht |
+
+## T. Kalender und Gespräch (Schritt J7, neu)
+
+Den Raum Kalender und das getippte Gespräch klicke ich jetzt bei jeder Änderung automatisch durch, aber gegen
+einen nachgebauten Kalender und einen nachgebauten Claude. Dabei habe ich sechs Fehler gefunden und behoben.
+Diese Punkte zeigen, ob es mit deiner echten Kalender-App und dem echten Claude genauso ist. Die Testtermine
+löschst du am Ende selbst wieder; JARVIS kann nichts löschen.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| T1 | Raum „Kalender“: bei „Neuer Termin“ „JARVIS-Test“ eintippen, „Morgen“ anklicken, als Uhrzeit 09:00 eintragen, „30 Min“ anklicken, dann „Eintragen“ | Darunter steht „Eingetragen im Kalender …: JARVIS-Test, morgen um 9 Uhr.“ mit dem Kalender, der vorher rechts bei „landet in …“ stand. In der Kalender-App steht der Termin morgen von 9:00 bis 9:30 in genau diesem Kalender |
+| T2 | Im Gespräch tippen: „Trag übermorgen um 10 Uhr JARVIS-Test zwei in den Kalender Geburtstage ein“ (oder nenne einen anderen Kalender, in den man nichts eintragen kann, etwa „Feiertage“). Erscheint oben eine Frage, steht darin „im Kalender „Geburtstage““; dann auf „Ja, ausführen“ klicken. (Ohne eingerichtetes KI-Gehirn antwortet JARVIS gleich, ohne Frage) | Oben oder im Gespräch steht „Den Kalender „…“ gibt es nicht oder er ist schreibgeschützt.“ In der Kalender-App steht übermorgen **kein** neuer Termin, auch nicht in einem anderen Kalender. **Wichtig:** Steht er doch irgendwo, schreib mir das bitte; diese Stelle konnte ich nur am nachgebauten Kalender prüfen |
+| T3 | Im Gespräch tippen: „Trag am Freitag um 14 Uhr JARVIS-Test drei ein, wenn das für dich passt“, im Raum „Kalender“ bleiben und oben auf „Ja, ausführen“ klicken | Oben steht „Eingetragen im Kalender …“, und der Termin steht sofort in der Liste am Freitag, ohne dass du neu lädst |
+| T4 | JARVIS im Browser neu öffnen und noch nirgends klicken. Steht über der Leiste „Klick einmal irgendwo auf die Seite, dann höre ich zu.“, genau auf diese Zeile klicken | Das Gespräch klappt auf, und JARVIS hört ab jetzt zu. Steht die Zeile nicht da, lass den Punkt aus |
+| T5 | Eine längere Frage tippen (zum Beispiel „Erzähl mir ausführlich die Geschichte von Rosenheim“), Enter drücken und sofort danach Esc drücken | JARVIS antwortet nicht mehr und steht wieder auf „Bereit“. Im aufgeklappten Gespräch steht deine Frage, darunter keine leere Zeile |
+| T6 | Dieselbe Frage noch einmal stellen und, während JARVIS schreibt, das WLAN am Mac ausschalten. Danach wieder einschalten und etwas anderes fragen | Im Gespräch steht ein verständlicher deutscher Satz, zum Beispiel „Die Verbindung zu Claude ist abgerissen. Frag mich bitte noch einmal.“, kein einzelnes englisches Wort. Die nächste Frage beantwortet JARVIS wieder |
+| T7 | Die Testtermine in der Kalender-App löschen | Sie sind auch im Raum „Kalender“ weg, spätestens nach „Neu laden“ |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

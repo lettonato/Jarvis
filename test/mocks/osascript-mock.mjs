@@ -32,16 +32,25 @@ if (args[0] === "-l") {
   }
   if (modus === "neu") {
     const e = JSON.parse(args[5]);
-    const name = e.calendar || stand.standard;
-    const kalender = stand.kalender.find((k) => k.name === name);
-    if (!kalender || !kalender.writable) {
-      process.stdout.write(JSON.stringify({ zugriff: "ok", gespeichert: false, fehler: `Den Kalender „${name}“ gibt es nicht oder er ist schreibgeschützt.` }));
+    const antworte = (o) => {
+      process.stdout.write(JSON.stringify({ zugriff: "ok", ...o }));
       process.exit(0);
-    }
-    stand.events.push({ id: `neu-${stand.events.length + 1}`, title: e.title, start: e.start, end: e.end, allDay: e.allDay, location: e.location, calendar: name });
+    };
+    // Wie das echte Skript (EVENTKIT in src/lib/server/calendar.ts): der genannte Kalender, wenn es ihn gibt und er
+    // beschreibbar ist. Sonst der Standardkalender des Macs; war der Name ausdrücklich verlangt (fest), wird abgelehnt.
+    // Genau so geschrieben geht vor; sonst zählt Groß- und Kleinschreibung nicht.
+    const gesucht = String(e.calendar || "").trim();
+    const frei = stand.kalender.filter((k) => k.writable);
+    const genannt = gesucht ? (frei.find((k) => k.name.trim() === gesucht) ?? frei.find((k) => k.name.trim().toLowerCase() === gesucht.toLowerCase())) : undefined;
+    if (!genannt && gesucht && e.fest) antworte({ gespeichert: false, fehler: `Den Kalender „${gesucht}“ gibt es nicht oder er ist schreibgeschützt.` });
+    // Der Standardkalender für neue Termine ist am Mac immer einer, in den man eintragen darf, oder es gibt keinen.
+    const ziel = genannt ?? frei.find((k) => k.name === stand.standard);
+    if (!ziel) antworte({ gespeichert: false, fehler: "Ich finde keinen Kalender, in den ich eintragen darf." });
+    // „speichern: abgelehnt“ stellt nach, dass die Kalender-App den Termin nicht annimmt.
+    if (stand.speichern === "abgelehnt") antworte({ gespeichert: false, fehler: "Der Kalender hat den Termin nicht gespeichert. Testfehler vom Mac" });
+    stand.events.push({ id: `neu-${stand.events.length + 1}`, title: e.title, start: e.start, end: e.end, allDay: e.allDay, location: e.location, calendar: ziel.name });
     writeFileSync(store, JSON.stringify(stand));
-    process.stdout.write(JSON.stringify({ zugriff: "ok", gespeichert: true, kalender_name: name }));
-    process.exit(0);
+    antworte({ gespeichert: true, kalender_name: ziel.name });
   }
   const [von, bis] = [Number(args[5]), Number(args[6])];
   process.stdout.write(JSON.stringify({ zugriff: "ok", kalender: stand.kalender, standard: stand.standard, events: stand.events.filter((e) => e.start >= von && e.start <= bis) }));

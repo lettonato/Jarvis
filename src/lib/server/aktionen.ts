@@ -1,6 +1,6 @@
 import type { CalendarSnapshot } from "../calendar";
 import { VIEWS } from "../brain";
-import type { Kanal } from "../sicherheit";
+import { BEREICHE, type Geaendert, type Kanal } from "../sicherheit";
 import { BrowserError, runBrowserTask } from "./browser";
 import { addEvent, CalendarError, openCalendar } from "./calendar";
 import { readConfig, type JarvisConfig } from "./config";
@@ -27,7 +27,8 @@ export type AktionsKontext = {
 };
 
 // Was sich durch die Aktion geändert hat, damit die Oberfläche neu lädt.
-export type Folgen = { tasks?: boolean; mail?: boolean; desk?: boolean; memory?: boolean; intel?: boolean; documents?: boolean; calendar?: CalendarSnapshot; navigate?: string };
+// Die Bereiche stehen in BEREICHE (src/lib/sicherheit.ts): Nach einem Ja zu einer Freigabe erfährt die Seite ihre Namen.
+export type Folgen = Partial<Record<Exclude<Geaendert, "calendar">, boolean>> & { calendar?: CalendarSnapshot; navigate?: string };
 
 export type AktionsErgebnis = {
   // Der Satz für den Menschen.
@@ -169,9 +170,16 @@ export const AKTIONEN: Record<string, Aktion> = {
 
 // Führt eine freigegebene Aktion aus (nach dem Ja eines Menschen). Liefert den Satz für ihn.
 export async function fuehreAus(werkzeug: string, eingabe: Record<string, unknown>, ctx: AktionsKontext): Promise<string> {
+  return (await fuehreAusMitFolgen(werkzeug, eingabe, ctx)).text;
+}
+
+// Dasselbe, dazu was sich geändert hat (nur die Namen, etwa „calendar“), damit die Oberfläche es neu lädt.
+export async function fuehreAusMitFolgen(werkzeug: string, eingabe: Record<string, unknown>, ctx: AktionsKontext): Promise<{ text: string; geaendert: Geaendert[] }> {
   const aktion = Object.hasOwn(AKTIONEN, werkzeug) ? AKTIONEN[werkzeug] : null;
   if (!aktion) throw new Error(`Für „${werkzeug}“ gibt es keine freigebbare Aktion.`);
   const config = ctx.config ?? (await readConfig());
   const { brainKey } = await import("./brain");
-  return (await aktion(eingabe, { ...ctx, config, apiKey: ctx.apiKey ?? brainKey(config) ?? null })).text;
+  const ergebnis = await aktion(eingabe, { ...ctx, config, apiKey: ctx.apiKey ?? brainKey(config) ?? null });
+  const folgen = ergebnis.folgen ?? {};
+  return { text: ergebnis.text, geaendert: BEREICHE.filter((k) => Boolean(folgen[k])) };
 }

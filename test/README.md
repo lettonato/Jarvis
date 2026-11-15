@@ -106,7 +106,11 @@ offene Risiken in „Heute“ und „Projekte“,
 die Marktlage im Raum Intel, in „Heute“ und als Zuruf,
 der Raum Trading mit dem Spielgeld-Desk gegen einen nachgebauten Markt: Rückfrage, Kauf, Stop-Loss, Not-Aus,
 der Raum Aufgaben gegen einen Testordner als Obsidian-Tresor: verbinden, notieren, abhaken, verschieben, Tresor weg,
-der Raum Dokumente gegen einen nachgebauten Claude: bestellen, Fortschritt, PDF, öffnen, abbrechen, Neustart). Aufruf steht jeweils oben in der Datei.
+der Raum Dokumente gegen einen nachgebauten Claude: bestellen, Fortschritt, PDF, öffnen, abbrechen, Neustart,
+der Raum Kalender gegen einen nachgebauten Mac-Kalender: Zugriff erlauben, zwei Wochen Termine, eintragen, Kalender für neue Termine, ein Mac, der nicht speichert,
+das Gespräch, getippt, gegen einen nachgebauten Claude: feste Befehle, freie Fragen, Anhalten, eine Änderung erst nach dem Ja, Ausfall von Claude, neues Gespräch). Aufruf steht jeweils oben in der Datei.
+Die beiden letzten stellen für sich, den Server und den Browser eine Zeitzone ein, in der es gerade Mittag ist: Was „läuft“, „vorbei“ oder „heute noch“ ist, hängt an der Uhrzeit.
+Der nachgebaute Mac-Kalender (`test/mocks/osascript-mock.mjs`) wählt den Kalender für einen neuen Termin wie das echte Skript in `src/lib/server/calendar.ts` (genannter Kalender, Groß- und Kleinschreibung egal, sonst Standardkalender; ein ausdrücklich verlangter wird nie ersetzt; in einen schreibgeschützten wird nie eingetragen) und kann mit `speichern: "abgelehnt"` in seiner Datei nachstellen, dass die Kalender-App nicht speichert.
 Der nachgebaute Claude (`test/mocks/claude-mock.ts`) antwortet mit `bedenkzeit(ms)` verzögert; so lässt sich prüfen, was eine Seite während der Arbeit zeigt.
 
 **Alle Handprüfungen mit einem Befehl** (Schritt J4):

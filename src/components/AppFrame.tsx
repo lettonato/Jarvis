@@ -9,6 +9,7 @@ import { useConversation, useJarvis } from "./JarvisProvider";
 import { Orb } from "./Orb";
 import { RaumLink } from "./RaumLink";
 import { SicherheitsLeiste } from "./Sicherheit";
+import { antwortAufLetztes } from "@/lib/brain";
 import { eventsOn } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
 import { RAEUME, raumVon, type Raum } from "@/lib/raeume";
@@ -104,21 +105,25 @@ function Antwortzeile({ onOpen }: { onOpen: () => void }) {
   const { state, session, voice } = useJarvis();
   const { turns, interim } = useConversation();
   const label = useStateLabel();
-  const last = turns.findLast((t) => t.who === "jarvis");
+  const last = antwortAufLetztes(turns);
   if (!turns.length && !interim && !voice.error && !voice.hint && state === "idle" && !session) return null;
-  const zeile =
-    voice.error || voice.hint ? (
-      <p className={`line-clamp-2 ${voice.error ? "text-down" : "text-ocker"}`}>{voice.error ?? voice.hint}</p>
-    ) : state === "listening" ? (
-      <p className="line-clamp-2 italic text-quiet">{interim || "…"}</p>
-    ) : last?.live && !last.text ? (
-      <p className="text-quiet">{last.status ? `${last.status} …` : "Denke nach …"}</p>
-    ) : (
-      // Schreibt Claude eine lange Antwort, siehst du hier immer die letzten zwei Zeilen.
-      <span className="flex max-h-[2.9rem] flex-col justify-end overflow-hidden">
-        <span>{last?.text ?? label}</span>
-      </span>
-    );
+  const [klasse, text] =
+    voice.error || voice.hint
+      ? [`line-clamp-2 ${voice.error ? "text-down" : "text-ocker"}`, voice.error ?? voice.hint]
+      : state === "listening"
+        ? ["line-clamp-2 italic text-quiet", interim || "…"]
+        : last?.live && !last.text
+          ? ["block text-quiet", last.status ? `${last.status} …` : "Denke nach …"]
+          : // Schreibt Claude eine lange Antwort, siehst du hier immer die letzten zwei Zeilen.
+            ["flex max-h-[2.9rem] flex-col justify-end overflow-hidden", last?.text ?? label];
+  // Immer dieselben zwei Elemente, nur Klasse und Text wechseln. Der erste Klick auf die Seite räumt den Hinweis
+  // „Klick einmal irgendwo auf die Seite …“ schon beim Drücken weg; verschwände dabei das Element unter dem Zeiger,
+  // gäbe es für den Browser keinen Klick, und das Gespräch klappte beim ersten Klick auf diese Zeile nicht auf.
+  const zeile = (
+    <span className={klasse}>
+      <span>{text}</span>
+    </span>
+  );
   return (
     <button
       type="button"

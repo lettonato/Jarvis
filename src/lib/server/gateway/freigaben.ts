@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { FREIGABE_MINUTEN, KLASSE_LABEL, type AgentName, type Freigabe, type Kanal, type Klasse, type Wer } from "../../sicherheit";
+import { FREIGABE_MINUTEN, KLASSE_LABEL, type AgentName, type Freigabe, type Geaendert, type Kanal, type Klasse, type Wer } from "../../sicherheit";
 import { CONFIG_DIR } from "../config";
 import { notify } from "../notify";
 import { protokolliere } from "./audit";
@@ -120,7 +120,8 @@ export async function erstelleFreigabe(input: {
 }
 
 // Ja oder Nein eines Menschen. Liefert, was danach passiert ist, als Satz.
-export async function entscheideFreigabe(id: string, ja: boolean, von: Wer): Promise<{ text: string; freigabe: Freigabe }> {
+// geaendert: welche Bereiche die ausgeführte Aktion verändert hat (leer nach Nein, Sperre oder Fehler).
+export async function entscheideFreigabe(id: string, ja: boolean, von: Wer): Promise<{ text: string; freigabe: Freigabe; geaendert: Geaendert[] }> {
   if (von === "system") throw new FreigabeFehler("Freigaben entscheidet nur ein Mensch.");
   // Erst unter der Sperre: offen → laeuft (oder abgelehnt). Danach kann kein zweiter Klick mehr ausführen.
   const f = await nacheinander(async () => {
@@ -141,21 +142,22 @@ export async function entscheideFreigabe(id: string, ja: boolean, von: Wer): Pro
   await protokolliere({ art: "freigabe", agent: "mensch", kanal: von, was: f.werkzeug, klasse: f.klasse, ergebnis: ja ? "ja" : "nein", daten: { freigabe: f.id } });
   if (!ja) {
     notify({ kind: "freigabe_ende", id: f.id, text: "✖️ Abgelehnt, nichts geändert." });
-    return { text: "Abgelehnt. Ich ändere nichts.", freigabe: f };
+    return { text: "Abgelehnt. Ich ändere nichts.", freigabe: f, geaendert: [] };
   }
 
   // Noch einmal durch das Gateway, diesmal mit Zustimmung: Not-Aus, Sperren und Klasse D gelten weiter.
   const { pruefe } = await import("./gateway");
   const e = await pruefe({ werkzeug: f.werkzeug, agent: f.aufrufer, kanal: f.kanal, eingabe: f.eingabe, fremd: true, bestaetigt: true });
   let text: string;
+  let geaendert: Geaendert[] = [];
   if (e.art !== "erlaubt") {
     f.zustand = "gesperrt";
     text = e.art === "abgelehnt" ? `Nicht ausgeführt: ${e.grund}` : "Nicht ausgeführt.";
     await protokolliere({ art: "freigabe", agent: f.agent, kanal: f.kanal, was: f.werkzeug, klasse: f.klasse, ergebnis: "gesperrt", grund: text, daten: { freigabe: f.id } });
   } else {
     try {
-      const { fuehreAus } = await import("../aktionen");
-      text = await fuehreAus(f.werkzeug, f.eingabe, { kanal: f.kanal });
+      const { fuehreAusMitFolgen } = await import("../aktionen");
+      ({ text, geaendert } = await fuehreAusMitFolgen(f.werkzeug, f.eingabe, { kanal: f.kanal }));
       f.zustand = "ausgefuehrt";
       await protokolliere({ art: "freigabe", agent: f.agent, kanal: f.kanal, was: f.werkzeug, klasse: f.klasse, ergebnis: "ausgefuehrt", daten: { freigabe: f.id } });
     } catch (err) {
@@ -167,7 +169,7 @@ export async function entscheideFreigabe(id: string, ja: boolean, von: Wer): Pro
   f.ergebnis = text.slice(0, 3000);
   await nacheinander(async () => speichere(await lade()));
   notify({ kind: "freigabe_ende", id: f.id, text: `${f.zustand === "ausgefuehrt" ? "✅" : "⚠️"} ${f.ergebnis}` });
-  return { text: f.ergebnis, freigabe: f };
+  return { text: f.ergebnis, freigabe: f, geaendert };
 }
 
 // Beim Not-Aus: alle offenen Fragen schließen, nichts wird mehr ausgeführt.
