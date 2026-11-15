@@ -9,6 +9,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { beendeGruppe } from "../helfer/prozessgruppe";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { starteClaudeMock } from "../mocks/claude-mock";
 
@@ -34,17 +35,18 @@ async function main() {
   await config.writeConfig({ name: "Benedikt", claude: { apiKey: CLAUDE } });
 
   let server: ChildProcess | null = null;
-  const stop = () => {
-    try {
-      if (server?.pid) process.kill(-server.pid, "SIGTERM");
-    } catch {}
+  // Kommt erst zurück, wenn vom alten Server kein Prozess mehr läuft. `next start` bedient nach dem Signal zum
+  // Beenden offene Verbindungen weiter, solange die Seite im Browser abfragt; die Seite bekäme sonst nach dem
+  // Neustart weiter Antworten vom alten Prozess mit dem alten Gedächtnis im Speicher (so geschehen im Sammellauf).
+  const stop = async () => {
+    const pid = server?.pid;
     server = null;
+    if (pid) await beendeGruppe(pid);
   };
   // Der Server hält das Gedächtnis im Speicher. Eine von außen veränderte Datei sieht er erst nach einem Neustart,
   // genau wie am Mac.
   const start = async () => {
-    stop();
-    await warte(1500);
+    await stop();
     server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT), ANTHROPIC_BASE_URL: claude.url }, stdio: "ignore", detached: true });
     for (let i = 0; ; i++) {
       if (await fetch(`${BASIS}/api/einstellungen`).then((r) => r.ok, () => false)) break;
@@ -180,7 +182,8 @@ async function main() {
     await browser.close();
     console.log("Handprüfung Gedächtnis: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    // Ein Fehler beim Aufräumen darf den eigentlichen Fehler der Prüfung nicht verdecken.
+    await stop().catch((e) => console.error(String(e)));
     await claude.stop();
   }
 }

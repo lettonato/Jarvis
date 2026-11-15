@@ -212,6 +212,14 @@ ganzen Server.
   Datei schon so.
 * Ist die Datenbank nicht nur aus, sondern das Netz dorthin verstopft, wartet jede Anfrage bis zu fünf Sekunden,
   bevor die Meldung kommt.
+* **Beenden und Neustart (gefunden in Schritt J4, 15. November 2026):** Zentral liefe JARVIS als gebauter Server
+  (`next start`). Der hört nach dem Signal zum Beenden zwar auf, neue Verbindungen anzunehmen, wartet dann aber,
+  bis alle offenen Verbindungen von selbst enden. Ein offenes Browserfenster fragt weiter ab und hält sie offen:
+  In der Sandbox lebte der alte Prozess so über 20 Sekunden weiter und antwortete der offenen Seite mit seinem
+  alten Stand, während daneben schon der neue lief. Vermutlich läuft in dieser Zeit auch sein Zeitplan weiter;
+  das habe ich nicht geprüft. Für den Betrieb heißt das: Die Plattform muss den alten Container nach einer
+  kurzen Frist hart beenden, und es darf nie mehr als eine Instanz zugleich laufen (der Zeitplan und die
+  Dateien sind dafür nicht gebaut). Am Mac (`next dev`) schließt Next die Verbindungen beim Beenden selbst.
 * Die Sperre lässt immer nur eine Änderung zur Zeit zu. Für ein Projektgedächtnis mit wenigen Nutzern ist das
   richtig; für viele gleichzeitige Schreiber wäre es zu langsam.
 

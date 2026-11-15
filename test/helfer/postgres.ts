@@ -24,6 +24,16 @@ function findeProgramme(): string {
   return ort;
 }
 
+// Ob die Programme von PostgreSQL auf diesem Rechner zu finden sind.
+export function postgresVorhanden(): boolean {
+  try {
+    findeProgramme();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type TestPostgres = {
   url: string;
   port: number;

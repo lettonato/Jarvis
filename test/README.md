@@ -105,6 +105,26 @@ das persönliche Gedächtnis mit beschädigter Datei und Beiseitelegen über die
 offene Risiken in „Heute“ und „Projekte“,
 die Marktlage im Raum Intel, in „Heute“ und als Zuruf). Aufruf steht jeweils oben in der Datei.
 
+**Alle Handprüfungen mit einem Befehl** (Schritt J4):
+
+```
+JARVIS_CHROME=/pfad/zu/chrome npm run handpruefung -- [Ordner] [--ohne-bauen] [--nur name,name]
+```
+
+Der Sammellauf (`test/hand/alle.ts`) baut JARVIS einmal und lässt dann jede Prüfung nacheinander laufen, jede
+höchstens sechs Minuten. Mit einem Ordner landen dort die Bildschirmfotos je Prüfung, ein Protokoll je Prüfung
+(`name.log`) und `ergebnis.json`. Am Ende steht eine Zeile, und der Befehl endet mit Code 0 nur, wenn alle
+Prüfungen gelaufen sind und bestanden haben; 1 bei einem Fehlschlag; 2, wenn etwas nicht geprüft wurde (kein
+Chrome, kein PostgreSQL, Auswahl mit `--nur`). Ausgelassen ist nicht bestanden. Welche Prüfungen dazugehören
+und wie ein Lauf bewertet wird, steht in `test/helfer/handpruefungen.ts`; `test/regeln/handpruefungen.test.ts`
+bemerkt eine neue Datei `test/hand/*-rauch.ts`, die dort nicht eingetragen ist. Nach jeder Prüfung, nach einem Abbruch wegen der Zeit und bei Strg+C beendet der
+Sammellauf, was von ihr noch läuft (Server, Chrome); das geht nur unter Linux (über `/proc`), anderswo sagt er
+nach einem Abbruch, dass er es nicht feststellen kann.
+
+Eine Handprüfung, die JARVIS neu startet, muss warten, bis vom alten Server kein Prozess mehr läuft
+(`beendeGruppe` in `test/helfer/prozessgruppe.ts`): `next start` bedient nach dem Signal zum Beenden offene
+Verbindungen weiter, solange die Seite im Browser abfragt, und antwortet dann mit dem alten Stand.
+
 `test/hand/postgres-rauch.ts` braucht kein Chrome, aber ein installiertes PostgreSQL (die Programme `initdb`
 und `pg_ctl`; gesucht in `JARVIS_PG_BIN` und an den üblichen Orten). Es startet ein eigenes, leeres PostgreSQL
 auf 127.0.0.1 in einem Wegwerf-Ordner (`test/helfer/postgres.ts`), prüft das Projektgedächtnis darin

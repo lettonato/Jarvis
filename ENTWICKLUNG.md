@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 938 von 938 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 969 von 969 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -1486,6 +1486,74 @@ Servers wieder weg). Wer `config.json` von Hand ändert, während JARVIS speiche
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen; eines weniger (verlorene
 Änderungen an Einstellungen, darunter die Anmeldung bei Microsoft 365). **Neue laufende Kosten:** keine.
 
+### Schritt J4: alle Handprüfungen im Browser mit einem Befehl (15. November 2026)
+
+**Warum:** Inzwischen gibt es 17 Handprüfungen, die JARVIS im echten Browser durchklicken (Netzschleuse,
+Browser-Agent, PDF, Projekte, Routinen, Agenten, Stimme, Edelmetalle, Post, Microsoft 365, Einstellungen,
+Mitteilung am Mac, Gedächtnis, Risiken, Marktlage, PostgreSQL, Projekte mit PostgreSQL). Bisher lief nach
+einem Paket nur die Prüfung, die zum Paket gehörte. Ob ein älterer Raum dabei kaputtging, fiel erst auf, wenn
+jemand daran dachte, seine Prüfung von Hand zu starten.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J4.1 Ein Befehl: `npm run handpruefung -- [Ordner] [--ohne-bauen] [--nur name,name]` baut JARVIS einmal und lässt alle Prüfungen nacheinander laufen, jede höchstens sechs Minuten. Im Ordner liegen danach die Bildschirmfotos je Prüfung, ein Protokoll je Prüfung und `ergebnis.json` | Testbereit | `test/hand/alle.ts`; drei vollständige Durchläufe (unten) |
+| J4.2 Ehrliches Ergebnis: „Alle 17 bestanden“ und Code 0 nur, wenn alle gelaufen sind und bestanden haben. Ein Fehlschlag: Code 1, mit Namen und Grund. Etwas nicht geprüft (kein Chrome, kein PostgreSQL, Auswahl mit `--nur`): Code 2, und es steht da, was fehlt. Zwei ältere Prüfungen (Netzschleuse, Browser-Agent) enden immer mit Code 0; bei ihnen zählt, was sie ausgeben | Testbereit | `test/helfer/handpruefungen.ts`, `test/regeln/handpruefungen.test.ts` (24) |
+| J4.3 Nichts wird still übergangen: Eine neue Datei `test/hand/*-rauch.ts`, die nicht in der Liste steht, lässt `npm test` scheitern. Ein Tippfehler im Aufruf (`--nur` mit unbekanntem Namen, unbekannte Angabe, `JARVIS_CHROME` zeigt ins Leere) bricht ab | Testbereit | derselbe Test |
+| J4.4 Aufräumen: Nach jeder Prüfung, nach einem Abbruch wegen der Zeit und bei Strg+C beendet der Sammellauf, was von der Prüfung noch läuft (ihr Server in eigener Prozessgruppe, Chrome) | Testbereit, **nur unter Linux** | `test/helfer/prozessgruppe.ts`, `test/module/prozessgruppe.test.ts` (7 unter Linux); beides absichtlich ausgelöst (unten). Am Mac gibt es `/proc` nicht; dort sagt der Sammellauf nach einem Abbruch, dass er es nicht feststellen kann |
+| J4.5 Gebaut wird nur, wenn eine Prüfung läuft, die den gebauten Server startet | Testbereit | Regeltest: genau die Prüfungen mit `next start` tragen „bau“ |
+
+**Dabei gefunden und behoben: die Prüfung des persönlichen Gedächtnisses war wackelig.** Im ersten Sammellauf
+schlug sie fehl, einzeln bestand sie meist. Sie startet JARVIS dreimal neu, um zu zeigen, dass eine von außen
+veränderte Datei erst nach einem Neustart gilt. Ursache, mit Belegen: Der gebaute Server (`next start`) hört
+nach dem Signal zum Beenden zwar sofort auf, neue Verbindungen anzunehmen, wartet dann aber, bis alle offenen
+Verbindungen von selbst enden. Die Seite im Browser fragt weiter ab und hält ihre Verbindungen damit offen. Der
+alte Prozess lebte deshalb weiter (über 20 Sekunden gemessen) und beantwortete die Anfragen der offenen Seite
+mit seinem alten Gedächtnis im Speicher, während auf demselben Port schon der neue lief. Die Prüfung wartet
+jetzt, bis vom alten Server kein Prozess mehr läuft, und beendet ihn nach zwei Sekunden hart. Meine erste
+Vermutung dazu hatte ich mit einem zu groben Versuch (antwortet der Port noch?) für widerlegt gehalten; erst
+der Blick auf die Prozesse hat sie bestätigt.
+
+**Ist JARVIS am Mac betroffen? Nein.** Am Mac startet JARVIS mit `next dev` (`start-jarvis.command`); dort
+schließt Next beim Beenden alle Verbindungen selbst (nachgelesen in `node_modules/next/dist/server/lib/start-server.js`,
+nicht am Mac geprüft). **Für einen zentralen Betrieb gilt es** (dort liefe `next start`): Nach dem Signal zum
+Beenden kann der alte Prozess weiterleben, solange ein Browserfenster offen ist. Das steht jetzt in
+`docs/jarvis-2.0/09-azure-vorbereitung.md` bei den bekannten Grenzen.
+
+**Eigene Entscheidungen:** Sechs Minuten je Prüfung (die längste braucht hier 71 Sekunden). Die Prüfungen
+laufen nacheinander, nicht gleichzeitig: Sie teilen sich Ports und den gebauten Stand. Ausgelassen zählt nie
+als bestanden, auch nicht bei einer absichtlichen Auswahl.
+
+**Grenzen:** (1) Das Aufräumen nach einem Abbruch geht nur unter Linux. (2) Die anderen zwölf Prüfungen mit
+Server beenden ihn am Ende weiter mit einem einfachen Signal und warten nicht; das reicht, weil danach Seite und
+Prüfung enden, und der Sammellauf räumt unter Linux ohnehin nach. Ein gemeinsamer Helfer für Start und Stopp
+aller Prüfungen wäre sauberer und ist offen. (3) Ohne `JARVIS_CHROME` fallen alle Prüfungen im Browser aus,
+auch die zwei, die ein installiertes Chrome selbst fänden. (4) Der Sammellauf prüft, was die Prüfungen prüfen:
+Für die Räume Trading (Spielgeld-Desk), Aufgaben und Dokumente gibt es noch keine Handprüfung im Browser.
+(5) Alles läuft gegen Nachbauten; echte Dienste, Safari und der Mac sind damit nicht geprüft.
+
+### Testergebnisse Schritt J4 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **969 Tests: 969 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 31: Auswertung des Sammellaufs 24, Prozessgruppen 7). Am Mac wären es rechnerisch 967 (nicht dort gelaufen): Drei der sieben Tests zu Prozessgruppen brauchen `/proc`, dafür gibt es dort einen eigenen; unter Windows gibt es die sieben nicht |
+| Sammellauf, erster Durchlauf | **16 von 17 bestanden, 1 fehlgeschlagen** (Gedächtnis, siehe oben); Code 1, mit Namen und Grund |
+| Gedächtnis-Prüfung einzeln, vor der Korrektur | bei der Suche (mit zusätzlicher Ausgabe in der Prüfung) 8 von 13 Läufen fehlgeschlagen, immer beim dritten Neustart; in jedem antwortete der alte Server nach dem Signal weiter. In dem Lauf, in dem ich genauer hingesehen habe, wies er neue Verbindungen ab und antwortete nur noch auf der offenen |
+| Gedächtnis-Prüfung einzeln, nach der Korrektur | 6 von 6 Läufen bestanden |
+| Sammellauf, zweiter Durchlauf (nach der Korrektur) | **Alle 17 Handprüfungen bestanden**, Code 0 |
+| Sammellauf, dritter Durchlauf (nach dem Code-Review) | **Alle 17 Handprüfungen bestanden**, Code 0; danach lief kein Prozess einer Prüfung mehr |
+| Abbruch wegen der Zeit (Frist für den Versuch auf 4 Sekunden gesetzt, danach zurück auf 6 Minuten) | „nicht in der Zeit fertig geworden und abgebrochen“, Code 1; sechs noch laufende Prozesse der Prüfung beendet, der Port der Prüfung antwortet nicht mehr |
+| Abbruch des Sammellaufs mittendrin (Signal wie Strg+C, während die Prüfung Microsoft 365 lief) | vorher 21 Prozesse und ein antwortender Server, danach keiner; kein Wegwerf-Ordner blieb liegen |
+| Tippfehler in `JARVIS_CHROME` | bricht mit der Meldung ab, Code 1; nichts läuft |
+| `--nur pdf,postgres` | kein Bau; 2 von 17 bestanden, „Nicht geprüft: 15 nicht ausgewählte“, Code 2 |
+| Gescheiterter Bau (für den Versuch ohne `npx` im Pfad) | Code 1; ein altes `ergebnis.json` im Ordner ist ersetzt durch „Der Bau ist gescheitert; keine Handprüfung ist gelaufen“ |
+| Tests zuerst | Für Prozessgruppen, Marke, nicht abgeholte Prozesse, Bau-Regel und Chrome-Pfad: Tests zuerst geschrieben und rot gesehen. Die Tests zu den Angaben des Aufrufs entstanden zusammen mit dem Code; für die übrigen ersten Tests der Auswertung ist nicht festgehalten, dass sie vorher rot liefen. Dafür die Gegenproben |
+| Gegenproben | 53 absichtlich eingebaute Fehler: 52 bemerkt. Der eine nicht bemerkte (Ergebnis von vorn statt von hinten in der Ausgabe suchen) ändert am Ergebnis nichts: Beide Wege finden denselben Block |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde. Eingearbeitet (acht, zwei davon teilweise): Strg+C ließ Prüfung, Server und Chrome weiterlaufen; ein beendeter, noch nicht abgeholter Prozess galt als lebendig, das Beenden wäre in manchen Containern gescheitert; ein Fehler beim Aufräumen konnte den eigentlichen Fehler der Prüfung verdecken; nach einem gescheiterten Bau sah ein altes `ergebnis.json` aus wie neu; die Tests zu Prozessgruppen wären unter Windows gescheitert; gebaut wurde auch für Prüfungen, die keinen Server starten; ein Tippfehler in `JARVIS_CHROME` ließ still fast alles ausfallen (teilweise: die zwei Prüfungen, die Chrome selbst fänden, fallen ohne die Angabe weiter aus); die Dauer je Prüfung enthielt das Aufräumen (teilweise: der leere Profilordner entsteht weiter für jede Prüfung). Nicht eingearbeitet, als Grenze notiert: Aufräumen nur unter Linux; gemeinsamer Helfer für Start und Stopp aller Prüfungen |
+| Sicherheitsprüfung (von Hand) | Nur Prüfwerkzeug, kein Code von JARVIS geändert. Beendet werden nur Prozesse, die der Lauf selbst gestartet hat: über ihre eigene Prozessgruppe oder über eine Marke in der Umgebung, die je Prüfung einmalig ist (Prozessnummer, Name, Zeit). Ein laufendes JARVIS am selben Rechner trägt die Marke nicht und bleibt unberührt (geprüft mit einem Prozess mit anderer Marke). Gelöscht wird im Zielordner nur `ergebnis.json`. Keine Schlüssel, kein Netz |
+| Nicht geprüft | **der Mac** (kein `/proc`, anderes Chrome), Windows, echte Dienste, Safari |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -1595,6 +1663,11 @@ Danach wie geplant:
    Ohne KI und ohne neue Datenquellen.
 17. **G4.1: gebaut, Testbereit, nur gegen nachgebautes Telegram** (Schritt G4.1 in Bereich G): Starke
    Bewegungen am Markt stehen im Morgenbriefing und im Tagesabschluss, am Handy und gesprochen am Mac.
-   **Als Nächstes:** J4 (alle Handprüfungen im Browser mit einem Befehl nacheinander laufen lassen, damit nach jedem Paket auch die älteren Räume noch einmal durchgeklickt werden). Die
+18. **J4: gebaut, Testbereit** (Schritt J4 in Bereich J): Ein Befehl baut JARVIS und klickt alle 17
+   Handprüfungen im Browser nacheinander durch; „alle bestanden“ steht nur da, wenn alle gelaufen sind.
+   Dabei eine wackelige Prüfung (Gedächtnis) gefunden und behoben.
+   **Als Nächstes:** J5 (Handprüfungen im Browser für die Räume, die noch keine haben: Trading mit dem
+   Spielgeld-Desk gegen den nachgebauten Markt, Aufgaben, Dokumente; dazu ein gemeinsamer Helfer für Start und
+   Stopp des Servers in allen Handprüfungen). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).
