@@ -5,10 +5,10 @@
 // an echte Dienste. Vorher einmal `npx next build`.
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/einstellungen-rauch.ts [Ordner für Bilder]
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { starteClaudeMock } from "../mocks/claude-mock";
 import { starteTelegramMock } from "../mocks/telegram-mock";
@@ -32,12 +32,7 @@ async function main() {
   const config = await import("../../src/lib/server/config");
   await config.writeConfig({ name: "Benedikt" });
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT), ANTHROPIC_BASE_URL: claude.url, TELEGRAM_API_URL: tg.url, JARVIS_TELEGRAM_POLL_S: "1" }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT, { ANTHROPIC_BASE_URL: claude.url, TELEGRAM_API_URL: tg.url, JARVIS_TELEGRAM_POLL_S: "1" });
   const kopf = { "content-type": "application/json", "x-jarvis": "1" };
   const sende = (pfad: string, body: object, mehr: Record<string, string> = {}) => fetch(`${BASIS}${pfad}`, { method: "POST", headers: { ...kopf, ...mehr }, body: JSON.stringify(body) });
   const stelle = async (body: object) => {
@@ -45,11 +40,7 @@ async function main() {
     return { status: r.status, daten: (await r.json()) as { error?: string; message?: string; name?: string } };
   };
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/einstellungen`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await warte(500);
-    }
+    await server.bereit(`${BASIS}/api/einstellungen`);
 
     // 1. Fremde Seiten und Anfragen ohne den JARVIS-Kopf dürfen nichts ändern.
     assert.equal((await fetch(`${BASIS}/api/einstellungen`, { method: "POST", headers: { "content-type": "application/json" }, body: '{"action":"name","name":"Fremd"}' })).status, 403);
@@ -168,7 +159,7 @@ async function main() {
     await browser.close();
     console.log("Handprüfung Einstellungen: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
     await claude.stop();
     await tg.stop();
   }

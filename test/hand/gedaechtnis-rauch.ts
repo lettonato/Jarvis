@@ -5,11 +5,10 @@
 // Dienste. Vorher einmal `npx next build`.
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/gedaechtnis-rauch.ts [Ordner für Bilder]
 import assert from "node:assert/strict";
-import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
-import { beendeGruppe } from "../helfer/prozessgruppe";
+import { starteNext, type Dienst } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { starteClaudeMock } from "../mocks/claude-mock";
 
@@ -18,7 +17,6 @@ const BASIS = `http://127.0.0.1:${PORT}`;
 const bilder = process.argv[2] ?? "";
 const ordner = sichereUmgebung("gedaechtnis-rauch");
 const DATEI = path.join(ordner, "gedaechtnis.json");
-const warte = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Sieht aus wie ein echter Schlüssel, ist aber keiner. Zusammengesetzt, damit gitleaks ihn nicht meldet.
 const CLAUDE = ["sk-ant-api03", "test", "nur", "fuer", "die", "handpruefung"].join("-");
 // Was in der beschädigten Datei steht. Es darf nirgends auftauchen: nicht auf der Seite, nicht beim Modell.
@@ -34,25 +32,21 @@ async function main() {
   const config = await import("../../src/lib/server/config");
   await config.writeConfig({ name: "Benedikt", claude: { apiKey: CLAUDE } });
 
-  let server: ChildProcess | null = null;
+  let server: Dienst | null = null;
   // Kommt erst zurück, wenn vom alten Server kein Prozess mehr läuft. `next start` bedient nach dem Signal zum
   // Beenden offene Verbindungen weiter, solange die Seite im Browser abfragt; die Seite bekäme sonst nach dem
   // Neustart weiter Antworten vom alten Prozess mit dem alten Gedächtnis im Speicher (so geschehen im Sammellauf).
   const stop = async () => {
-    const pid = server?.pid;
+    const alt = server;
     server = null;
-    if (pid) await beendeGruppe(pid);
+    await alt?.stop();
   };
   // Der Server hält das Gedächtnis im Speicher. Eine von außen veränderte Datei sieht er erst nach einem Neustart,
   // genau wie am Mac.
   const start = async () => {
     await stop();
-    server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT), ANTHROPIC_BASE_URL: claude.url }, stdio: "ignore", detached: true });
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/einstellungen`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await warte(500);
-    }
+    server = await starteNext(PORT, { ANTHROPIC_BASE_URL: claude.url });
+    await server.bereit(`${BASIS}/api/einstellungen`);
   };
   const kopf = { "content-type": "application/json", "x-jarvis": "1" };
   const stelle = async (body: object) => {

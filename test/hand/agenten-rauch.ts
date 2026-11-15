@@ -2,10 +2,10 @@
 // (nicht Teil von npm test). Vorher einmal `npx next build`.
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/agenten-rauch.ts [Ordner für Bilder]
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 
 const PORT = 3109;
@@ -18,18 +18,9 @@ async function main() {
   await config.writeConfig({ name: "Benedikt", claude: { apiKey: "sk-test-nur-fuer-den-mock" } });
   const sperren = () => (JSON.parse(readFileSync(path.join(ordner, "sicherheit.json"), "utf8")) as { sperren: Record<string, unknown> }).sperren;
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT) }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT);
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/agenten`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    await server.bereit(`${BASIS}/api/agenten`);
     // Die Schnittstelle liest nur: Schreiben gibt es dort nicht.
     const schreiben = await fetch(`${BASIS}/api/agenten`, { method: "POST", headers: { "content-type": "application/json", "x-jarvis": "1" }, body: "{}" });
     assert.equal(schreiben.status, 405);
@@ -79,7 +70,7 @@ async function main() {
     await browser.close();
     console.log("Agentensteuerung: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
   }
 }
 

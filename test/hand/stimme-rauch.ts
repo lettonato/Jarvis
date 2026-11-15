@@ -3,14 +3,14 @@
 // Vorher einmal `npx next build`.
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/stimme-rauch.ts [Ordner für Bilder]
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { MOCK_SCHLUESSEL, starteElevenMock } from "../mocks/elevenlabs-mock";
 
-const PORT = 3111;
+const PORT = 3120;
 const BASIS = `http://127.0.0.1:${PORT}`;
 const bilder = process.argv[2] ?? "";
 const ordner = sichereUmgebung("stimme-rauch");
@@ -31,18 +31,9 @@ async function main() {
   await config.writeConfig({ name: "Benedikt" });
   const gespeichert = () => (JSON.parse(readFileSync(path.join(ordner, "config.json"), "utf8")) as { elevenlabs?: { enabled?: boolean; voiceId?: string; tagesZeichen?: number } }).elevenlabs;
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT), ELEVENLABS_BASE_URL: el.url }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT, { ELEVENLABS_BASE_URL: el.url });
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/stimme`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await warte(500);
-    }
+    await server.bereit(`${BASIS}/api/stimme`);
     // Vorlesen nur mit dem JARVIS-Kopf und nicht von fremden Seiten.
     const kopf = { "content-type": "application/json" };
     assert.equal((await fetch(`${BASIS}/api/stimme`, { method: "POST", headers: kopf, body: '{"text":"Hallo."}' })).status, 403);
@@ -175,7 +166,7 @@ async function main() {
     await browser.close();
     console.log("ElevenLabs-Stimme: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
     await Promise.race([el.stop(), warte(2000)]);
   }
 }

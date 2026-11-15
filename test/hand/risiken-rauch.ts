@@ -6,11 +6,11 @@
 // Der Server rechnet mit dem echten Tag. Ein lange unverändertes Risiko steht in „Heute“ nur am Montag; die
 // Prüfung erwartet deshalb je nach Wochentag das eine oder das andere und sagt am Ende, welcher Fall es war.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
 import { addDays, isoDate } from "../../src/lib/dates";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 
 const PORT = 3117;
@@ -37,18 +37,9 @@ async function main() {
   const ruht = await p.legeProjektAn({ name: "Altlast", status: "pausiert" }, "mac", vor20Tagen);
   await p.trageEin(ruht.id, { art: "risiko", text: "Ruht ohnehin", faellig: addDays(heute, -30) }, "mac", vor20Tagen);
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT) }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT);
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/projekte`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    await server.bereit(`${BASIS}/api/projekte`);
     const browser = await chromium.launch({ executablePath: process.env.JARVIS_CHROME, args: ["--no-sandbox"] });
     const seite = await browser.newPage({ viewport: { width: 1280, height: 1200 } });
     const fehler: string[] = [];
@@ -115,7 +106,7 @@ async function main() {
     assert.deepEqual(fehler, [], "keine Fehler in der Seite");
     console.log(`Offene Risiken in Heute und Projekte: alle Schritte in Ordnung (heute ist ${montag ? "Montag: das alte Risiko stand in „Heute“" : "kein Montag: das alte Risiko stand nur in „Projekte“"}).`);
   } finally {
-    stop();
+    await server.stopLeise();
   }
 }
 

@@ -2,10 +2,10 @@
 // Server und einen nachgebauten Telegram-Server (nicht Teil von npm test). Vorher einmal `npx next build`.
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/routinen-rauch.ts [Ordner für Bilder]
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { starteTelegramMock } from "../mocks/telegram-mock";
 
@@ -22,18 +22,9 @@ async function main() {
   await config.writeConfig({ name: "Benedikt", telegram: { token: TOKEN, bot: "jarvis_test_bot", chatId: 111, chatName: "Benedikt" } });
   const gespeichert = () => (JSON.parse(readFileSync(path.join(ordner, "config.json"), "utf8")) as { telegram: { abschluss?: string | null; projekte?: boolean; hinweise?: boolean } }).telegram;
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT), TELEGRAM_API_URL: tg.url, JARVIS_TELEGRAM_POLL_S: "1" }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT, { TELEGRAM_API_URL: tg.url, JARVIS_TELEGRAM_POLL_S: "1" });
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/einstellungen`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    await server.bereit(`${BASIS}/api/einstellungen`);
     const browser = await chromium.launch({ executablePath: process.env.JARVIS_CHROME, args: ["--no-sandbox"] });
     const seite = await browser.newPage({ viewport: { width: 1280, height: 1400 } });
     const fehler: string[] = [];
@@ -95,7 +86,7 @@ async function main() {
     await browser.close();
     console.log("Einstellungen Tagesabschluss und Hinweise: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
     // Der Server hält noch eine wartende Anfrage offen; darauf wartet die Prüfung nicht.
     await Promise.race([tg.stop(), new Promise((r) => setTimeout(r, 2000))]);
   }

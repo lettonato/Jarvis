@@ -5,10 +5,10 @@
 // Die Kryptokurse sind hier Beispieldaten (die Sandbox hat keine Verbindung zu den Kursdiensten); gerade das
 // soll die Marktlage ehrlich sagen. Der Spielgeld-Desk ist nicht gestartet und fehlt deshalb als Gruppe.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { starteTwelveMock, tagesreihe } from "../mocks/twelve-mock";
 
@@ -28,18 +28,9 @@ async function main() {
   const config = await import("../../src/lib/server/config");
   await config.writeConfig({ name: "Benedikt", twelvedata: { apiKey: SCHLUESSEL } });
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT) }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT);
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/metalle`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    await server.bereit(`${BASIS}/api/metalle`);
     const browser = await chromium.launch({ executablePath: process.env.JARVIS_CHROME, args: ["--no-sandbox"] });
     const seite = await browser.newPage({ viewport: { width: 1280, height: 1500 }, locale: "de-DE" });
     const fehler: string[] = [];
@@ -122,7 +113,7 @@ async function main() {
     assert.deepEqual(fehler, [], "keine Fehler in der Seite");
     console.log("Marktlage in Intel, Heute, als Zuruf und mit veralteten Kursen: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
     await twelve.stop();
   }
 }

@@ -4,10 +4,10 @@
 // der Link), verwerfen, Schutz der Schnittstelle. Verschickt wird nichts; kein echtes Postfach wird berührt. Vorher einmal `npx next build`.
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/post-rauch.ts [Ordner für Bilder]
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { starteClaudeMock } from "../mocks/claude-mock";
 import { MOCK_POST_ADRESSE, MOCK_POST_PASSWORT, starteImapMock } from "../mocks/imap-mock";
@@ -32,18 +32,9 @@ async function main() {
   await e.entwuerfeGeschrieben();
   const gespeichert = () => (JSON.parse(readFileSync(path.join(ordner, "entwuerfe.json"), "utf8")) as { entwuerfe: { uid: number; an: string; text: string; bearbeitet: boolean }[] }).entwuerfe;
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT), ANTHROPIC_BASE_URL: claude.url }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT, { ANTHROPIC_BASE_URL: claude.url });
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/entwuerfe`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    await server.bereit(`${BASIS}/api/entwuerfe`);
 
     // Der Schutz der Schnittstelle: ohne den eigenen Header und von fremden Seiten geht keine Änderung durch,
     // und senden oder anlegen kann man über sie gar nicht.
@@ -184,7 +175,7 @@ async function main() {
     await browser.close();
     console.log("Post und Antwortentwürfe: alles in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
     await imap.stop();
     await claude.stop();
   }

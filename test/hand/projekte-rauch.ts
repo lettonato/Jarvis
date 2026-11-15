@@ -6,11 +6,11 @@
 // Mit --postgres liegt das Projektgedächtnis dabei nicht in der Datei, sondern in einem eigenen, leeren
 // PostgreSQL auf diesem Rechner (Wegwerf-Datenbank, siehe test/helfer/postgres.ts). Die Schritte sind dieselben.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
 import { startePostgres } from "../helfer/postgres";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 
 const PORT = 3107;
@@ -41,18 +41,9 @@ async function main() {
   await p.schlageVor({ projekt: "Hallenneubau", quelle_art: "gespraech", quelle_hinweis: "Besprechung am 12.11.", eintraege: [{ art: "risiko", text: "Lieferzeit für Stahlträger liegt bei 14 Wochen" }, { ersetzt: aufgabe.id, faellig: "2026-11-20" }] }, { kanal: "mac", fremd: false });
   await p.schlageVor({ projekt: "Kundenportal", beschreibung: "Portal für Kundenaufträge", quelle_art: "mail", quelle_hinweis: "Mail von Max Huber vom 10.11.", eintraege: [{ art: "aufgabe", text: "Angebot für das Portal bis Freitag schicken", faellig: "2026-11-20" }] }, { kanal: "telegram", fremd: true });
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT) }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT);
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/projekte`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    await server.bereit(`${BASIS}/api/projekte`);
 
     // Der Schutz der Schnittstelle: ohne den eigenen Header und von fremden Seiten geht keine Änderung durch.
     const ohneHeader = await fetch(`${BASIS}/api/projekte`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ aktion: "projekt_anlegen", name: "Eingeschleust" }) });
@@ -130,7 +121,7 @@ async function main() {
     assert.deepEqual(datei.vorschlaege.map((v) => v.zustand).sort(), ["abgelehnt", "abgelehnt", "uebernommen", "uebernommen"]);
     console.log(`Ansicht Projekte${mitDatenbank ? " mit PostgreSQL" : ""}: alle Schritte in Ordnung.`);
   } finally {
-    stop();
+    await server.stopLeise();
     await schliesse(sp.speicher());
   }
 }

@@ -3,10 +3,10 @@
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/microsoft-rauch.ts [Ordner für Bilder]
 // Nichts davon berührt das echte Microsoft: Anmeldeserver und Graph sind der Nachbau aus test/mocks.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { graphTermin, MOCK_CLIENT, MOCK_TENANT, starteMicrosoftMock } from "../mocks/microsoft-mock";
 
@@ -28,18 +28,9 @@ async function main() {
   const config = await import("../../src/lib/server/config");
   await config.writeConfig({ name: "Benedikt" });
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT) }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT);
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/microsoft`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    await server.bereit(`${BASIS}/api/microsoft`);
     // Ändern darf nur die eigene Oberfläche: Ohne ihren Kopf nimmt die Schnittstelle nichts an.
     const fremd = await fetch(`${BASIS}/api/microsoft`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "einrichten", tenantId: MOCK_TENANT, clientId: MOCK_CLIENT }) });
     assert.ok(fremd.status >= 400, "ohne den Kopf der Oberfläche wird nichts eingetragen");
@@ -152,7 +143,7 @@ async function main() {
     await browser.close();
     console.log("Microsoft 365: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
     await ms.stop();
   }
 }

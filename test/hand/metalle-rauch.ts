@@ -3,10 +3,10 @@
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/metalle-rauch.ts [Ordner für Bilder]
 // Das nachgebaute Twelve Data verhält sich wie der kostenlose Plan: Gold je Feinunze, Silber nur über den Fonds SLV.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung } from "../helfer/umgebung";
 import { starteTwelveMock, tagesreihe } from "../mocks/twelve-mock";
 
@@ -25,18 +25,9 @@ async function main() {
   const config = await import("../../src/lib/server/config");
   await config.writeConfig({ name: "Benedikt", twelvedata: { apiKey: SCHLUESSEL } });
 
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: { ...process.env, PORT: String(PORT) }, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const server = await starteNext(PORT);
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/zeitplan`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    await server.bereit(`${BASIS}/api/zeitplan`);
     // Der Zeitplan liest nur, und Schreiben an die Edelmetalle braucht den Kopf, den nur die eigene Oberfläche schickt.
     assert.equal((await fetch(`${BASIS}/api/zeitplan`, { method: "POST", headers: { "content-type": "application/json", "x-jarvis": "1" }, body: "{}" })).status, 405);
     const fremd = await fetch(`${BASIS}/api/metalle`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "aktualisieren" }) });
@@ -118,7 +109,7 @@ async function main() {
     await browser.close();
     console.log("Edelmetalle und Zeitplan: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
     await twelve.stop();
   }
 }

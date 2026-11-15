@@ -103,7 +103,8 @@ Edelmetalle und Zeitplan, Antwortentwürfe im Raum „Post“, Microsoft 365 in 
 Hinweise als Mitteilung am Mac vom Schalter bis zur Mitteilung des laufenden Servers,
 das persönliche Gedächtnis mit beschädigter Datei und Beiseitelegen über die Einstellungen,
 offene Risiken in „Heute“ und „Projekte“,
-die Marktlage im Raum Intel, in „Heute“ und als Zuruf). Aufruf steht jeweils oben in der Datei.
+die Marktlage im Raum Intel, in „Heute“ und als Zuruf,
+der Raum Trading mit dem Spielgeld-Desk gegen einen nachgebauten Markt: Rückfrage, Kauf, Stop-Loss, Not-Aus). Aufruf steht jeweils oben in der Datei.
 
 **Alle Handprüfungen mit einem Befehl** (Schritt J4):
 
@@ -121,9 +122,13 @@ bemerkt eine neue Datei `test/hand/*-rauch.ts`, die dort nicht eingetragen ist. 
 Sammellauf, was von ihr noch läuft (Server, Chrome); das geht nur unter Linux (über `/proc`), anderswo sagt er
 nach einem Abbruch, dass er es nicht feststellen kann.
 
-Eine Handprüfung, die JARVIS neu startet, muss warten, bis vom alten Server kein Prozess mehr läuft
-(`beendeGruppe` in `test/helfer/prozessgruppe.ts`): `next start` bedient nach dem Signal zum Beenden offene
-Verbindungen weiter, solange die Seite im Browser abfragt, und antwortet dann mit dem alten Stand.
+Jede Handprüfung startet und beendet den gebauten Server über `test/helfer/server.ts` (Schritt J5), nie mit
+einem eigenen `next start`: `starteNext(port, umgebung)` startet nur auf einem freien Port, `bereit(adresse)`
+wartet auf eine gute Antwort des eigenen Servers, `stopLeise()` beendet ihn am Ende. Jede Prüfung hat ihren
+eigenen Port. Beides halten Regeltests in `test/regeln/handpruefungen.test.ts` fest. Der Grund: `next start`
+bedient nach dem Signal zum Beenden offene Verbindungen weiter, solange die Seite im Browser abfragt, und
+antwortet dann mit dem alten Stand; und ein liegen gebliebener Server auf dem Port sähe sonst aus wie der eigene.
+Eine Handprüfung, die JARVIS neu startet, wartet deshalb mit `stop()`, bis vom alten Server kein Prozess mehr läuft.
 
 `test/hand/postgres-rauch.ts` braucht kein Chrome, aber ein installiertes PostgreSQL (die Programme `initdb`
 und `pg_ctl`; gesucht in `JARVIS_PG_BIN` und an den üblichen Orten). Es startet ein eigenes, leeres PostgreSQL

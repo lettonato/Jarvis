@@ -5,10 +5,10 @@
 // Mitteilung. Vorher einmal `npx next build`.
 //   JARVIS_CHROME=/pfad/zu/chrome npx tsx test/hand/mitteilung-rauch.ts [Ordner für Bilder]
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { starteNext } from "../helfer/server";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
 
 const PORT = 3115;
@@ -52,19 +52,10 @@ async function main() {
   const geheim = await p.legeProjektAn({ name: "Adler", vertraulich: true }, "mac", eingetragen);
   await p.trageEin(geheim.id, { art: "aufgabe", text: "Kaufpreis nachverhandeln", faellig: "2026-01-07" }, "mac", eingetragen);
 
-  const umgebung = { ...process.env, PORT: String(PORT), TZ: ZONE, JARVIS_OSASCRIPT: path.resolve("test/mocks/osascript-mock.mjs"), JARVIS_MAC_LOG: LOG, JARVIS_MAC_STORE: path.join(path.dirname(LOG), "kalender.json") };
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env: umgebung, stdio: "ignore", detached: true });
-  const stop = () => {
-    try {
-      process.kill(-server.pid!, "SIGTERM");
-    } catch {}
-  };
+  const umgebung = { TZ: ZONE, JARVIS_OSASCRIPT: path.resolve("test/mocks/osascript-mock.mjs"), JARVIS_MAC_LOG: LOG, JARVIS_MAC_STORE: path.join(path.dirname(LOG), "kalender.json") };
+  const server = await starteNext(PORT, umgebung);
   try {
-    for (let i = 0; ; i++) {
-      if (await fetch(`${BASIS}/api/einstellungen`).then((r) => r.ok, () => false)) break;
-      if (i > 120) throw new Error("Der Server ist nicht gestartet.");
-      await pause(500);
-    }
+    await server.bereit(`${BASIS}/api/einstellungen`);
     const browser = await chromium.launch({ executablePath: process.env.JARVIS_CHROME, args: ["--no-sandbox"] });
     const seite = await browser.newPage({ viewport: { width: 1280, height: 1100 } });
     const fehler: string[] = [];
@@ -147,7 +138,7 @@ async function main() {
     await browser.close();
     console.log("Handprüfung Mitteilung am Mac: alle Schritte in Ordnung.");
   } finally {
-    stop();
+    await server.stopLeise();
   }
 }
 

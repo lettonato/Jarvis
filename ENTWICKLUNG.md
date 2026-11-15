@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 969 von 969 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 983 von 983 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -1554,6 +1554,62 @@ Für die Räume Trading (Spielgeld-Desk), Aufgaben und Dokumente gibt es noch ke
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
+### Schritt J5: gemeinsamer Start und Stopp für alle Handprüfungen, neue Handprüfung für den Raum Trading (15. November 2026)
+
+**Warum:** Zwei Grenzen aus J4. (1) Zwölf Handprüfungen starteten den gebauten Server jede für sich, mit je
+einer eigenen Warteschleife, und beendeten ihn mit einem einfachen Signal, ohne zu warten. Lag von einem früheren
+Lauf noch ein Server auf dem Port, antwortete der, und die Prüfung lief gegen den falschen Stand. (2) Für den
+Raum Trading gab es keine Prüfung im Browser.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J5.1 Eine Stelle für Start und Stopp: `starteNext(port, umgebung)` startet nur auf einem freien Port; `bereit(adresse)` gilt erst, wenn der Server mit gutem Status antwortet und der eigene Prozess auch anderthalb Sekunden später noch läuft; `stop()` kommt erst zurück, wenn kein Prozess der Gruppe mehr läuft; `stopLeise()` meldet einen Fehler beim Beenden, statt den eigentlichen Fehler der Prüfung zu verdecken | Testbereit | `test/helfer/server.ts`, `test/module/handserver.test.ts` (12) |
+| J5.2 Alle 13 Handprüfungen mit Server nutzen diese Stelle; keine startet den Server daran vorbei, und jede hat ihren eigenen Port | Testbereit | Regeltests in `test/regeln/handpruefungen.test.ts` (jetzt 26); Sammellauf unten |
+| J5.3 Neue Handprüfung Trading: Start über den Knopf, Scan, Blockchain-Prüfung, Urteil des Chiefs, Rückfrage vor dem Kauf mit Nein und Ja, Kauf mit Spielgeld, Stop-Loss nach einem Kurssturz, Not-Aus | Testbereit, **nur gegen nachgebauten Markt und nachgebautes Claude** | `test/hand/trading-rauch.ts`; unten |
+
+**Was die Prüfung Trading im Einzelnen zeigt:** Ohne den eigenen Header und von fremden Seiten startet niemand
+den Handel (403). Vor dem Start steht „Kein echter Handel“ da, der Not-Aus ist gesperrt. Nach dem Start fragt
+JARVIS vor dem Kauf des guten Coins; bis zur Antwort ist nichts gekauft. Der Coin, bei dem der Entwickler neue
+Coins erzeugen kann, erreicht den Chief gar nicht; den zweiten lehnt der Chief ab. „Nein“: nichts gekauft. Ein
+später aufgetauchter Coin, „Ja, kaufen“: Position mit 200 bis 500 $ (hier 471,20 $), das Spielgeld sinkt
+entsprechend. Kurs auf 60 %: Der Stop-Loss verkauft (hier −195,12 $), die Position verschwindet von der Seite.
+Not-Aus: danach kein Handel, keine offene Rückfrage und keine Anfrage an Claude mehr, obwohl ein neuer guter
+Coin auftaucht.
+
+**Eigene Entscheidungen:** (1) Die Rückfrage ab 100 $ ist in der Prüfung eingeschaltet (im Auslieferungszustand
+kauft der Desk seit 30. Oktober ohne Rückfrage); so sind beide Wege, Nein und Ja, geprüft. (2) Nach dem Not-Aus
+wartet die Prüfung doppelt so lange, wie der Desk vorher für einen neuen Coin gebraucht hat (gemessen 9,9
+Sekunden, also 20), mindestens 8 Sekunden. Ein fester kurzer Wert hätte nichts bewiesen. (3) Die Bestätigung
+nach der ersten guten Antwort kostet jeden Start anderthalb Sekunden; das ist der Preis dafür, einen fremden
+Server nicht für den eigenen zu halten. (4) Die Prüfung der Stimme hat jetzt Port 3120 (vorher 3111 wie die Post).
+
+**Grenzen:** (1) Die Prüfung Trading läuft gegen Nachbauten; echte Kurse, echte Blockchain-Abfragen und das
+echte Claude sind damit nicht geprüft. Rohstoffe (Gold, Silber, Öl) und die Suche auf X kommen in ihr nicht vor.
+(2) Geprüft wird nur an der IPv4-Adresse des Rechners, ob der Port frei ist. Hält ein anderer ihn nur über IPv6,
+scheitert der eigene Start, und die Prüfung endet mit der Meldung dazu (nicht geprüft: Die Sandbox hat kein IPv6).
+(3) Lässt sich ein Server am Ende nicht beenden, gilt die Prüfung trotzdem als bestanden; es steht in ihrer
+Ausgabe, der Sammellauf räumt unter Linux nach, und der nächste Start auf dem Port bricht ab. (4) Für die Räume
+Aufgaben und Dokumente gibt es weiter keine Handprüfung im Browser. (5) Der Mac, Windows und Safari sind nicht geprüft.
+
+### Testergebnisse Schritt J5 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **983 Tests: 983 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 14: Start und Stopp des Servers 12, Regeln der Handprüfungen 2). Am Mac wären es rechnerisch 981 (nicht dort gelaufen) |
+| Sammellauf mit Neubau, nach allen Änderungen | **Alle 18 Handprüfungen bestanden**, Code 0 (Trading 54 Sekunden, Microsoft 365 72) |
+| Sammellauf nach der Umstellung, vor der Prüfung Trading | Alle 17 Handprüfungen bestanden |
+| Prüfung Trading einzeln | dreimal hintereinander bestanden; nach der letzten Änderung (alle Dienste zeigen auf den Nachbau) noch einmal im Sammellauf, zusammen mit Stimme und Mitteilung |
+| Gegenprobe Trading | Not-Aus in der Prüfung weggelassen: Sie scheitert bei „auch Claude wird nicht mehr gefragt“ |
+| Belegter Port | Fremder Server auf dem Port einer Prüfung: Sie bricht ab mit „Auf Port … antwortet schon ein Server“, statt gegen ihn zu prüfen |
+| Tests zuerst | Für den Helfer: Tests zuerst geschrieben und rot gesehen (fremder Server antwortet, Frist je Antwort, Bestätigung nach der ersten Antwort, leises Beenden, doppelter Port). Die Prüfung Trading entstand tastend an der laufenden Seite und wurde danach festgeschrieben; zwei meiner ersten Erwartungen an die Seite waren falsch (Text vor dem Start, Überschrift ohne Positionen) und sind in der Prüfung korrigiert, nicht in JARVIS |
+| Gegenproben | 21 absichtlich eingebaute Fehler im Helfer: 21 bemerkt. Zwischendurch waren es 10 von 14; für die vier fehlenden kamen Tests dazu |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Befunde. Eingearbeitet (sechs): Warten ohne Frist, wenn jemand die Verbindung annimmt und nie antwortet; Stimme und Post auf demselben Port; ein fremder Server, der den Port kurz nach der Prüfung bindet, galt als der eigene; die Regel gegen einen Start am Helfer vorbei erkannte nur eine Schreibweise; zwölfmal dieselbe Zeile zum Beenden; doppelte Angaben in der Umgebung einer Prüfung. Geprüft, trifft nicht zu (einer): Ein Programm, das es nicht gibt, wird schon beim Start klar gemeldet; dafür gibt es jetzt einen Test. Nicht übernommen (drei): IPv6 und das Bestehen trotz gescheitertem Beenden (beides oben als Grenze), gemeinsame Warteschleife für drei Prüfungen (die Schleifen warten auf Verschiedenes) |
+| Sicherheitsprüfung (von Hand) | Nur Prüfwerkzeug, kein Code von JARVIS geändert. Der Helfer beendet nur die Prozessgruppe, die er selbst gestartet hat, und fragt den Port nur am eigenen Rechner ab. Die Prüfung Trading schreibt in einen eigenen leeren Testordner; alle Adressen des Desks nach außen (Kurse, Blockchain-Prüfung, Rohstoffe, X, Claude) zeigen auf Nachbauten am eigenen Rechner; der Schlüssel darin ist erfunden. Es bleibt Spielgeld |
+| Am Rand aufgefallen, nicht geändert | Der Raum Trading schreibt Prozente mit Bindestrich („-2 %“), Beträge mit echtem Minuszeichen |
+| Nicht geprüft | **der Mac**, Windows, echte Dienste, Safari |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -1666,8 +1722,9 @@ Danach wie geplant:
 18. **J4: gebaut, Testbereit** (Schritt J4 in Bereich J): Ein Befehl baut JARVIS und klickt alle 17
    Handprüfungen im Browser nacheinander durch; „alle bestanden“ steht nur da, wenn alle gelaufen sind.
    Dabei eine wackelige Prüfung (Gedächtnis) gefunden und behoben.
-   **Als Nächstes:** J5 (Handprüfungen im Browser für die Räume, die noch keine haben: Trading mit dem
-   Spielgeld-Desk gegen den nachgebauten Markt, Aufgaben, Dokumente; dazu ein gemeinsamer Helfer für Start und
-   Stopp des Servers in allen Handprüfungen). Die
+19. **J5: gebaut, Testbereit** (Schritt J5 in Bereich J): Alle Handprüfungen starten und beenden den Server
+   an einer Stelle (nur auf freiem Port, fremde Server werden nicht für den eigenen gehalten). Neue
+   Handprüfung für den Raum Trading mit dem Spielgeld-Desk, gegen nachgebauten Markt; jetzt 18 Prüfungen.
+   **Als Nächstes:** J6 (Handprüfungen im Browser für die Räume Aufgaben und Dokumente). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

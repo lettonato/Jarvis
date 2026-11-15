@@ -36,9 +36,33 @@ describe("Handprüfungen: was zum Sammellauf gehört", () => {
 describe("Handprüfungen: wann gebaut wird", () => {
   test("genau die Prüfungen, die den gebauten Server starten, brauchen den Bau", () => {
     for (const p of HANDPRUEFUNGEN) {
-      const startetServer = /"next", "start"/.test(readFileSync(path.join(ORDNER, p.datei), "utf8"));
+      const startetServer = /\bstarteNext\(/.test(readFileSync(path.join(ORDNER, p.datei), "utf8"));
       assert.equal(p.braucht.includes("bau"), startetServer, p.name);
     }
+  });
+
+  test("keine Prüfung startet den Server an der gemeinsamen Stelle vorbei", () => {
+    // Nur dort wird geprüft, dass der Port frei ist, und gewartet, bis der alte Server wirklich weg ist.
+    for (const datei of readdirSync(ORDNER).filter((d) => d.endsWith("-rauch.ts"))) {
+      // Ohne Kommentare: Dort darf `next start` erklärt werden.
+      const text = readFileSync(path.join(ORDNER, datei), "utf8").replace(/(^|\s)\/\/.*$/gm, "");
+      assert.doesNotMatch(text, /\bnext\b["'`,\s]+start\b/, datei);
+      assert.doesNotMatch(text, /\bspawn\(/, datei);
+    }
+  });
+
+  test("jede Prüfung hat ihren eigenen Port", () => {
+    // Bei gleichem Port hielte eine Prüfung den liegen gebliebenen Server einer anderen für belegt, oder (ohne
+    // die Prüfung auf einen freien Port) für ihren eigenen.
+    const ports = new Map<number, string>();
+    for (const datei of readdirSync(ORDNER).filter((d) => d.endsWith("-rauch.ts"))) {
+      const treffer = /^const PORT = (\d+);/m.exec(readFileSync(path.join(ORDNER, datei), "utf8"));
+      if (!treffer) continue;
+      const port = Number(treffer[1]);
+      assert.equal(ports.get(port), undefined, `${datei} nutzt Port ${port} wie ${ports.get(port)}`);
+      ports.set(port, datei);
+    }
+    assert.ok(ports.size >= 13, "die Ports wurden gefunden");
   });
 
   test("gebaut wird nur, wenn eine Prüfung läuft, die den Bau braucht", () => {
