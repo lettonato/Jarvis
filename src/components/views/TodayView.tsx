@@ -13,7 +13,7 @@ import { tageslage, type Tageslage } from "@/lib/heute";
 import { marktlage, ohnePunkt } from "@/lib/marktlage";
 import { MOOD_LABEL } from "@/lib/intel";
 import type { SicherheitsLage } from "@/lib/sicherheit";
-import { dateOf } from "@/lib/tasks";
+import { dateOf, TRESOR_UNLESBAR } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
 import { usePolling } from "@/lib/usePolling";
 
@@ -34,6 +34,8 @@ function tagesSatz(heute: Tageslage, wichtigePost: number): string {
   if (faellig) teile.push(`${mehrzahl(faellig, "Eine Aufgabe ist", "Aufgaben sind")} heute fällig`);
   if (ueberfaellig) teile.push(`${mehrzahl(ueberfaellig, "eine ist", "sind")} überfällig`);
   if (wichtigePost) teile.push(mehrzahl(wichtigePost, "eine wichtige Mail ist neu", "wichtige Mails sind neu"));
+  // Unlesbare Aufgaben sind unbekannt, nicht „nichts“.
+  if (heute.aufgabenUnlesbar) teile.push("die Aufgaben lassen sich gerade nicht lesen");
   if (!teile.length) return "Sonst liegt heute nichts an.";
   const satz = teile.join(", ");
   return `${satz[0].toUpperCase()}${satz.slice(1)}.`;
@@ -126,6 +128,8 @@ export function TodayView() {
         <Liste titel="Aufgaben" href="/aufgaben" zahl={faellig.length ? mehrzahl(faellig.length, "Eine fällig", "fällig") : undefined}>
           {tasks && !tasks.configured ? (
             <p className={leer}>Obsidian ist noch nicht verbunden.</p>
+          ) : heute.aufgabenUnlesbar ? (
+            <p className="text-[0.95rem] text-down">{TRESOR_UNLESBAR}</p>
           ) : faellig.length === 0 ? (
             <p className={leer}>Heute ist nichts fällig.</p>
           ) : (

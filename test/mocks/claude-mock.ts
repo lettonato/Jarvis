@@ -14,6 +14,9 @@ export type ClaudeMock = {
   // Eine feste Antwort auf jede Anfrage an ein Modell, solange das Drehbuch leer ist. Für die Schau: Der Chief
   // des Desks fragt mit einem eigenen Modell und bekommt so eine Bewertung, das Gespräch bleibt beim Üblichen.
   immer: (modell: string, zug: Zug) => void;
+  // Jede Antwort kommt erst nach so vielen Millisekunden (0: sofort). Damit eine Seite den Zustand „arbeitet“
+  // zeigen und ein Abbruch mitten in der Arbeit geprüft werden kann.
+  bedenkzeit: (ms: number) => void;
   anfragen: Record<string, unknown>[];
   stop: () => Promise<void>;
 };
@@ -30,6 +33,7 @@ export async function starteClaudeMock(): Promise<ClaudeMock> {
   const fest = new Map<string, Zug>();
   const anfragen: Record<string, unknown>[] = [];
   let n = 0;
+  let wartenMs = 0;
   const server: Server = createServer(async (req, res) => {
     const raw = await body(req);
     if (req.method === "GET" && req.url?.startsWith("/v1/models")) {
@@ -42,7 +46,20 @@ export async function starteClaudeMock(): Promise<ClaudeMock> {
     }
     const anfrage = JSON.parse(raw) as Record<string, unknown>;
     anfragen.push(anfrage);
+    // Der Zug steht fest, bevor gewartet wird: Sonst nähme eine längst abgebrochene Anfrage später einen Zug
+    // aus dem Drehbuch eines anderen Schritts.
     const zug = zuege.shift() ?? fest.get(String(anfrage.model)) ?? { text: "Erledigt." };
+    if (wartenMs > 0) {
+      const abgebrochen = await new Promise<boolean>((fertig) => {
+        const uhr = setTimeout(() => fertig(false), wartenMs);
+        res.once("close", () => {
+          clearTimeout(uhr);
+          fertig(true);
+        });
+      });
+      // Der Anrufer hat aufgelegt (Abbruch, Neustart): Es gibt niemanden mehr, dem zu antworten wäre.
+      if (abgebrochen) return;
+    }
     const id = `msg_${++n}`;
     // Wie bei Anthropic steht in der Antwort das Modell, das geantwortet hat: hier immer das angefragte.
     const model = typeof anfrage.model === "string" ? anfrage.model : "claude-opus-5-5";
@@ -89,6 +106,7 @@ export async function starteClaudeMock(): Promise<ClaudeMock> {
       anfragen.length = 0;
     },
     immer: (modell, zug) => void fest.set(modell, zug),
+    bedenkzeit: (ms) => void (wartenMs = ms),
     anfragen,
     stop: () => new Promise((resolve) => server.close(() => resolve())),
   };

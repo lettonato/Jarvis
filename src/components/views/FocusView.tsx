@@ -9,7 +9,7 @@ import { RaumLink } from "../RaumLink";
 import { PageHeader } from "../ui";
 import { clock, eventsOn, nextEvent } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
-import { dateOf, dueSoon } from "@/lib/tasks";
+import { aufgabenUnlesbar, dateOf, dueSoon } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
 
 // Gespräch: der Raum, in dem du mit JARVIS allein bist. An der Wand steht das ganze Gespräch; solange ihr noch
@@ -18,7 +18,8 @@ import { useNow } from "@/lib/useNow";
 
 const DATE = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 
-type Item = { icon: IconName; text: string; ask?: string; href?: string; alert?: boolean };
+// tun: das Wort rechts in der Zeile, wenn „Einrichten“ oder „Durchgehen“ nicht passt.
+type Item = { icon: IconName; text: string; ask?: string; href?: string; tun?: string; alert?: boolean };
 
 export function FocusView() {
   const { name, tasks, mail, calendar, weather, state, session, ask, voice } = useJarvis();
@@ -46,6 +47,8 @@ export function FocusView() {
     items.push({ icon: "post", text: n === 1 ? "1 neue wichtige Mail" : `${n} neue wichtige Mails`, ask: "Meine Mails", alert: n > 0 });
   }
   if (tasks && !tasks.configured) items.push({ icon: "aufgaben", text: "Obsidian verbinden", href: "/aufgaben" });
+  // Ein Tresor, der sich nicht lesen lässt, ist nicht dasselbe wie „0 Punkte“.
+  else if (aufgabenUnlesbar(tasks)) items.push({ icon: "aufgaben", text: "Aufgaben gerade nicht lesbar", href: "/aufgaben", tun: "Ansehen", alert: true });
   else if (tasks && today) {
     const soon = dueSoon(tasks.tasks, today);
     const overdue = soon.filter((t) => dateOf(t)! < today).length;
@@ -62,7 +65,7 @@ export function FocusView() {
     <>
       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.alert ? "bg-rot" : "bg-sonne"}`} aria-hidden />
       <span className="min-w-0 flex-1">{item.text}</span>
-      <span className="shrink-0 text-sm font-bold text-see group-hover:text-schiefer">{item.href ? "Einrichten" : "Durchgehen"}</span>
+      <span className="shrink-0 text-sm font-bold text-see group-hover:text-schiefer">{item.tun ?? (item.href ? "Einrichten" : "Durchgehen")}</span>
     </>
   );
 

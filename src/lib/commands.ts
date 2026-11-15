@@ -197,6 +197,8 @@ function prompt(ctx: CommandContext, s: Session): string {
 }
 
 function startTasks(ctx: CommandContext, intro: string): Decision {
+  // Lässt sich der Tresor nicht lesen, steht der Grund schon im Satz davor; „nichts fällig“ wäre dann geraten.
+  if (ctx.tasks?.error) return { reply: intro.trim(), navigate: "/aufgaben", session: null };
   const soon = dueSoon(ctx.tasks?.tasks ?? [], today(ctx));
   if (soon.length === 0) return { reply: `${intro} Bis nächste Woche ist nichts fällig.`.trim(), navigate: "/aufgaben", session: null };
   const session: Session = { kind: "aufgaben", ids: soon.map((t) => t.id), index: 0, done: 0 };
@@ -523,6 +525,8 @@ const RULES: Rule[] = [
         .join(" ");
       const mails = ctx.mail?.configured && !ctx.mail.error ? ctx.mail.importantUnread : 0;
       const tasks = ctx.tasks?.configured ? dueSoon(ctx.tasks.tasks, today(ctx)).length : 0;
+      // Ein Tresor, der sich nicht lesen lässt, steht schon mit seinem Grund im Briefing.
+      if (mails === 0 && ctx.mail?.configured && ctx.tasks?.configured && ctx.tasks.error) return { reply: intro };
       if (mails > 0) return startMail(ctx, `${intro} Fangen wir mit den Mails an.`, "aufgaben");
       if (tasks > 0) return startTasks(ctx, `${intro} Gehen wir die Punkte durch.`);
       const setup = !ctx.mail?.configured || !ctx.tasks?.configured ? " In den Einstellungen verbindest du dein Postfach und Obsidian, dann sage ich dir hier jeden Morgen, was ansteht." : " Es liegt nichts Dringendes an.";

@@ -104,7 +104,10 @@ Hinweise als Mitteilung am Mac vom Schalter bis zur Mitteilung des laufenden Ser
 das persönliche Gedächtnis mit beschädigter Datei und Beiseitelegen über die Einstellungen,
 offene Risiken in „Heute“ und „Projekte“,
 die Marktlage im Raum Intel, in „Heute“ und als Zuruf,
-der Raum Trading mit dem Spielgeld-Desk gegen einen nachgebauten Markt: Rückfrage, Kauf, Stop-Loss, Not-Aus). Aufruf steht jeweils oben in der Datei.
+der Raum Trading mit dem Spielgeld-Desk gegen einen nachgebauten Markt: Rückfrage, Kauf, Stop-Loss, Not-Aus,
+der Raum Aufgaben gegen einen Testordner als Obsidian-Tresor: verbinden, notieren, abhaken, verschieben, Tresor weg,
+der Raum Dokumente gegen einen nachgebauten Claude: bestellen, Fortschritt, PDF, öffnen, abbrechen, Neustart). Aufruf steht jeweils oben in der Datei.
+Der nachgebaute Claude (`test/mocks/claude-mock.ts`) antwortet mit `bedenkzeit(ms)` verzögert; so lässt sich prüfen, was eine Seite während der Arbeit zeigt.
 
 **Alle Handprüfungen mit einem Befehl** (Schritt J4):
 

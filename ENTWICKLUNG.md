@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 983 von 983 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 989 von 989 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -1610,6 +1610,69 @@ Aufgaben und Dokumente gibt es weiter keine Handprüfung im Browser. (5) Der Mac
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
+### Schritt J6: Handprüfungen für die Räume Aufgaben und Dokumente; ein unlesbarer Tresor heißt nicht mehr „nichts fällig“ (15. November 2026)
+
+**Warum:** Für die Räume Aufgaben und Dokumente gab es keine Prüfung im Browser (Grenze aus J5). Beide hängen am
+Mac (Obsidian, Vorschau, Finder) und lassen sich trotzdem prüfen: mit einem Testordner als Tresor, einem
+nachgebauten Claude und einem nachgebauten `/usr/bin/open`, das nur festhält, was geöffnet werden sollte.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J6.1 Handprüfung Aufgaben: Tresor über die Seite verbinden (ein Ordner, den es nicht gibt, wird abgelehnt), fünf Gruppen nach Fälligkeit mit den Zahlen oben, notieren mit Datum und „wichtig“, abhaken, verschieben auf morgen und um eine Woche, eine inzwischen in Obsidian geänderte Aufgabe, ein Tresor, der verschwindet, Schutz der Schnittstelle | Testbereit, **nur gegen einen Testordner; Obsidian selbst läuft nicht** | `test/hand/aufgaben-rauch.ts` (Port 3121); unten |
+| J6.2 Handprüfung Dokumente: ohne Claude-Schlüssel, bestellen von Hand, Stand während der Arbeit, fertiges PDF (von einem echten Chrome gesetzt), öffnen, im Finder zeigen, Ordner öffnen, im Browser ansehen, abbrechen, ein Dokument, das nicht fertig wird, Neustart mitten in der Arbeit, Schutz der Schnittstelle | Testbereit, **nur gegen nachgebautes Claude; recherchiert wird nichts** | `test/hand/dokumente-rauch.ts` (Port 3122); unten |
+| J6.3 **Gefunden und behoben:** Lässt sich der Tresor nicht lesen, steht das jetzt überall da, statt „nichts fällig“ | Testbereit | `aufgabenUnlesbar` und `TRESOR_UNLESBAR` in `src/lib/tasks.ts`; `test/regeln/routinen.test.ts` (5 neue), `test/module/gehirn.test.ts` (1 neuer) |
+
+**Der Fund im Einzelnen.** Die Prüfung Aufgaben benennt den Tresor mittendrin um. Der Raum zeigte dann oben in
+Rot „Den Ordner … gibt es nicht“ und direkt darunter in Grün „Keine offenen Aufgaben. Alles erledigt.“, dazu
+dreimal die Zahl 0. Am Mac entsteht derselbe Zustand ohne jedes Zutun: macOS sperrt den Ordner Dokumente, bis
+Terminal dort freigegeben ist, und der Tresor, den JARVIS anlegt, liegt genau dort. Das Code-Review hat danach
+gezeigt, dass derselbe Fehler an weiteren Stellen saß. Vorher und nachher:
+
+| Stelle | vorher | jetzt |
+|---|---|---|
+| Raum Aufgaben | Fehlermeldung, darunter „Alles erledigt“, Zahlen 0, Formular zum Notieren | nur die Fehlermeldung |
+| Heute | „Heute ist nichts fällig.“, „Sonst liegt heute nichts an.“, „Nichts wartet auf dich.“ | „Die Aufgaben lassen sich gerade nicht lesen.“, in „Wartet auf dich“ und in der Spalte Aufgaben der Satz zum Tresor |
+| Gespräch (Startseite) | „0 Punkte bis nächste Woche“ | „Aufgaben gerade nicht lesbar“ |
+| Zuruf „Meine Aufgaben“ | der Grund, danach „Bis nächste Woche ist nichts fällig.“ | nur der Grund |
+| Zuruf „Guten Morgen“ | der Grund, danach „Es liegt nichts Dringendes an.“ | der Grund, ohne den Nachsatz |
+| Tagesabschluss (Handy und gesprochen) | „Von den Aufgaben ist nichts offen geblieben.“ | „Aufgaben: Der Obsidian-Tresor lässt sich gerade nicht lesen.“ |
+| Morgenbriefing am Handy | die Aufgaben fehlten ohne ein Wort | derselbe Satz |
+| Was Claude im Gespräch vor Augen hat | „Aufgaben: 0 offen, 0 bis nächste Woche fällig“ | „Aufgaben: nicht lesbar (Grund)“ |
+
+**Eigene Entscheidungen:** (1) In Morgenbriefing und Tagesabschluss steht nur der kurze Satz, nicht der Grund: In
+ihm steht der Pfad des Ordners. Die Zurufe nennen wie bisher den Grund, und an Claude geht er wie bisher schon
+über das Werkzeug zum Lesen der Aufgaben. (2) Der Hinweis in
+„Wartet auf dich“ gilt als dringend: Solange er dasteht, weiß JARVIS nichts über die Aufgaben. (3) Die Zähler
+in der Leiste (Zahl neben „Aufgaben“) bleiben, wie sie sind: Dort steht dann keine Zahl, und das behauptet
+nichts. (4) Der nachgebaute Claude kann sich jetzt Bedenkzeit nehmen (`bedenkzeit(ms)`), damit die Seite den
+Analysten bei der Arbeit zeigt und ein Abbruch mittendrin geprüft werden kann.
+
+**Grenzen:** (1) Obsidian, Vorschau und Finder laufen in der Prüfung nicht; geprüft ist, was JARVIS in die
+Dateien schreibt und was es dem Mac übergibt. „Neuen Tresor in Dokumente anlegen“ klickt die Prüfung nicht (der
+Tresor entstünde im Benutzerordner). (2) Die Sperre von macOS ist mit einem umbenannten Ordner nachgestellt, nicht
+am Mac ausgelöst. (3) Die Prüfung Dokumente recherchiert nicht: Suche im Web, Kosten und das echte Claude sind
+damit nicht geprüft; die Kosten stehen wegen der winzigen nachgebauten Antworten bei 0,00 $. (4) Kurz vor
+Mitternacht (ab 23:58 Uhr) bricht die Prüfung Aufgaben mit einem Hinweis ab, statt über den Tageswechsel falsch zu
+rechnen. (5) Der Mac, Windows und Safari sind nicht geprüft.
+
+### Testergebnisse Schritt J6 (15. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **989 Tests: 989 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 6). Am Mac wären es rechnerisch 987 (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 20 Handprüfungen bestanden**, Code 0 (Aufgaben 10 Sekunden, Dokumente 77) |
+| Prüfung Aufgaben, erster Lauf | **fehlgeschlagen am letzten Schritt**: Die Seite zeigte „Alles erledigt“ neben der Fehlermeldung (der Fund oben). Nach der Korrektur im Raum Aufgaben erneut fehlgeschlagen, jetzt in „Heute“ (dort stand weiter „nichts fällig“); nach der Korrektur dort bestanden |
+| Prüfung Dokumente | erster und zweiter Lauf bestanden, **der dritte gescheitert**. Ursache gemessen (drei Messläufe): Der Auftrag, bei dem der Analyst nichts abgibt, war nach rund 25 Millisekunden gescheitert; meine Prüfung wartete auf die Anzeige „arbeitet“, die dann meist gar nicht erscheint. Das war ein Fehler der Prüfung, nicht von JARVIS; mit Bedenkzeit je Antwort danach vier von vier bestanden, dann zweimal in einem Lauf nur dieser beiden Prüfungen und einmal im Sammellauf |
+| Gegenproben Dokumente | Server ohne Chrome: scheitert bei „· PDF“ (es entsteht nur die Webseite). Abbrechen weggelassen: scheitert, weil kein Eintrag „abgebrochen“ erscheint |
+| Tests zuerst | Für die Regel „unlesbar ist nicht leer“: sechs Tests zuerst geschrieben und rot gesehen. Für die Anzeige in Aufgaben und Heute war die Handprüfung der rote Test. Für die Zeile im Raum Gespräch nicht eigens rot gesehen (den Text gab es vorher nicht) |
+| Gegenproben zur Regel | 14 absichtlich eingebaute Fehler (Übersicht, Tagesabschluss, Morgenbriefing, Zurufe, Blickfeld von Claude): 14 bemerkt |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | sieben Befunde. Eingearbeitet (sechs): „Sonst liegt heute nichts an“ stand weiter über der Fehlermeldung; derselbe Fehler in Tagesabschluss, Morgenbriefing, Zurufen und im Blickfeld von Claude (daraus wurde J6.3); die Prüfung Dokumente sah nach, ob das PDF geöffnet wurde, bevor der Mac es geöffnet haben musste; der nachgebaute Claude nahm für eine längst abgebrochene Anfrage später einen Zug aus dem Drehbuch eines anderen Schritts; die Seite konnte zwischen Änderung und Klick neu laden; das Formular zum Notieren stand auch bei fehlendem Tresor da. Als Grenze notiert (einer): ein Lauf über Mitternacht |
+| Sicherheitsprüfung (von Hand) | An JARVIS selbst nur Texte und Anzeige geändert: keine neue Eingabe, kein neuer Weg nach außen, nichts an Rechten. Aufs Handy geht der kurze Satz ohne Pfad. Die Prüfungen schreiben nur in eigene Testordner; Claude und `open` sind Nachbauten; der Schlüssel darin ist erfunden. Bestätigt durch die Prüfungen: Die Schnittstelle der Aufgaben schreibt nicht außerhalb des Tresors und nicht in andere Dateien als Markdown; die der Dokumente gibt keine Datei an fremde Seiten und kennt nur eigene Kennungen |
+| Am Rand aufgefallen, nicht geändert | Bei genau einem Abschnitt oder einer Quelle steht „1 Abschnitte“ und „1 Quellen“ (Raum Dokumente, Nachricht aufs Handy) |
+| Nicht geprüft | **der Mac** (Obsidian, Vorschau, Finder, die Ordnersperre von macOS), Windows, echtes Claude, Safari |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -1725,6 +1788,10 @@ Danach wie geplant:
 19. **J5: gebaut, Testbereit** (Schritt J5 in Bereich J): Alle Handprüfungen starten und beenden den Server
    an einer Stelle (nur auf freiem Port, fremde Server werden nicht für den eigenen gehalten). Neue
    Handprüfung für den Raum Trading mit dem Spielgeld-Desk, gegen nachgebauten Markt; jetzt 18 Prüfungen.
-   **Als Nächstes:** J6 (Handprüfungen im Browser für die Räume Aufgaben und Dokumente). Die
+20. **J6: gebaut, Testbereit** (Schritt J6 in Bereich J): Handprüfungen für die Räume Aufgaben und Dokumente,
+   jetzt 20 Prüfungen. Dabei gefunden und behoben: Ein Obsidian-Tresor, der sich nicht lesen lässt, sah aus
+   wie „nichts fällig“; jetzt steht überall da, dass JARVIS die Aufgaben nicht lesen kann.
+   **Als Nächstes:** J7 (Handprüfungen im Browser für den Raum Kalender mit dem nachgebauten Mac-Kalender und
+   für das Gespräch auf der Startseite). Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

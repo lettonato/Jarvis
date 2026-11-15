@@ -5,7 +5,7 @@ import type { IntelSnapshot } from "./intel";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
 import { fristText, projekteImText, RISIKO_REGELN, type ProjektKarte, type ProjekteSnapshot } from "./projekte";
-import { dateOf, sortTasks, type Task, type TasksSnapshot } from "./tasks";
+import { aufgabenUnlesbar, dateOf, sortTasks, TRESOR_UNLESBAR, type Task, type TasksSnapshot } from "./tasks";
 
 // Die Tagesübersicht: was heute ansteht und was auf dich wartet, aus allem, was JARVIS ohnehin schon kennt
 // (Kalender, Aufgaben, Post, Projekte, Agenten). Hier wird nur zusammengestellt und sortiert, ohne KI:
@@ -38,6 +38,8 @@ export type Tageslage = {
   naechster: TagesTermin | null;
   termineMorgen: number;
   aufgaben: { ueberfaellig: Task[]; heute: Task[]; dieseWoche: number };
+  // Der Tresor ist verbunden, lässt sich aber nicht lesen: Die Aufgaben oben sind dann leer, weil unbekannt.
+  aufgabenUnlesbar: boolean;
   projekte: ProjektHinweis[];
   post: MailItem[];
 };
@@ -145,6 +147,7 @@ export function tageslage(d: TagesDaten, now: Date): Tageslage {
   if (d.intel?.warning) brauchtDich.push({ art: "warnung", text: `Intel bremst den Desk: ${d.intel.warning.text}`, href: "/intel", dringend: true });
   const vorschlaege = d.projekte?.vorschlaege.length ?? 0;
   if (vorschlaege > 0) brauchtDich.push({ art: "vorschlag", text: `${mehrzahl(vorschlaege, "Ein Vorschlag fürs Projektgedächtnis wartet", "Vorschläge fürs Projektgedächtnis warten")} auf deine Bestätigung.`, href: "/projekte", dringend: false });
+  if (aufgabenUnlesbar(d.tasks)) brauchtDich.push({ art: "aufgaben", text: TRESOR_UNLESBAR, href: "/aufgaben", dringend: true });
   if (ueberfaellig.length > 0) brauchtDich.push({ art: "aufgaben", text: `${mehrzahl(ueberfaellig.length, "Eine Aufgabe ist", "Aufgaben sind")} überfällig.`, href: "/aufgaben", dringend: true });
   for (const h of projektHinweise.filter((x) => x.dringend)) brauchtDich.push({ art: "projekt", text: `${h.name}: ${h.grund}`, href: "/projekte", dringend: true });
   if (post.length > 0) brauchtDich.push({ art: "post", text: `${mehrzahl(post.length, "Eine neue wichtige Mail", "neue wichtige Mails")}.`, href: "/post", dringend: false });
@@ -158,6 +161,7 @@ export function tageslage(d: TagesDaten, now: Date): Tageslage {
     naechster,
     termineMorgen: eventsOn(kalender, addDays(heute, 1)).length,
     aufgaben: { ueberfaellig, heute: heuteFaellig, dieseWoche },
+    aufgabenUnlesbar: aufgabenUnlesbar(d.tasks),
     projekte: projektHinweise,
     post: post.slice(0, 5),
   };

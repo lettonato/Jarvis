@@ -24,6 +24,12 @@ export type TasksSnapshot = {
   error?: string;
 };
 
+// Ein Tresor, der sich nicht lesen lässt (am Mac etwa ohne Freigabe für den Ordner Dokumente), ist nicht dasselbe
+// wie „keine Aufgaben“: Dann sind sie unbekannt. Der genaue Grund steht in snapshot.error; dies ist der kurze Satz
+// für Übersichten und Nachrichten.
+export const TRESOR_UNLESBAR = "Der Obsidian-Tresor lässt sich gerade nicht lesen.";
+export const aufgabenUnlesbar = (t: TasksSnapshot | null | undefined): boolean => Boolean(t?.configured && t.error);
+
 export type TaskGroup = { id: "ueberfaellig" | "heute" | "woche" | "spaeter" | "offen"; title: string; tasks: Task[] };
 
 // Wann eine Aufgabe dran ist: Fälligkeit, sonst das geplante Datum.

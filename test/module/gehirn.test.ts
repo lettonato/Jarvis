@@ -43,6 +43,17 @@ describe("Gehirn: Gespräch und Werkzeuge", () => {
     assert.equal(claude.anfragen[0].model, "claude-opus-5-5");
   });
 
+  test("ein Tresor, der sich nicht lesen lässt, steht als „nicht lesbar“ im Blickfeld, nicht als 0 Aufgaben", async () => {
+    claude.drehbuch([{ text: "Ok." }]);
+    await brain.think({ ...config(), vaultPath: path.join(vault, "gibt-es-nicht") }, "sk-test", frage("Was steht an?"));
+    const gesendet = JSON.stringify(claude.anfragen[0].messages);
+    assert.match(gesendet, /Aufgaben: nicht lesbar \(Den Ordner .*gibt-es-nicht gibt es nicht\.\)/);
+    assert.doesNotMatch(gesendet, /Aufgaben: 0 offen/);
+    claude.drehbuch([{ text: "Ok." }]);
+    await brain.think(config(), "sk-test", frage("Was steht an?"));
+    assert.match(JSON.stringify(claude.anfragen[0].messages), /Aufgaben: 0 offen/, "ein leerer, lesbarer Tresor bleibt bei der Zahl");
+  });
+
   test("Systemprompt behandelt fremde Texte als Daten", async () => {
     claude.drehbuch([{ text: "Ok." }]);
     await brain.think(config(), "sk-test", frage("Hallo"));

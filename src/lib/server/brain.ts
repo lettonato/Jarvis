@@ -895,6 +895,7 @@ export async function think(
   if (remote) lines.push("Kanal: Telegram auf dem Handy");
   else if (view) lines.push(`Ansicht auf dem Bildschirm: ${VIEW_LABEL[view]}`);
   if (!vault) lines.push("Obsidian: nicht verbunden");
+  else if (tasks?.error) lines.push(`Aufgaben: nicht lesbar (${tasks.error})`);
   else if (tasks) {
     const soon = dueSoon(tasks.tasks, today);
     const overdue = soon.filter((t) => dateOf(t)! < today).length;

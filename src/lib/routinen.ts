@@ -2,7 +2,7 @@ import { accessProblem, clock, eventsOn, outlookLuecke, outlookSatz, verdecktAm,
 import { addDays, isoDate } from "./dates";
 import { tageslage, type ProjektHinweis, type TagesDaten, type Tageslage } from "./heute";
 import { fristText } from "./projekte";
-import { dateOf, type Task } from "./tasks";
+import { aufgabenUnlesbar, dateOf, TRESOR_UNLESBAR, type Task } from "./tasks";
 
 // Was JARVIS von selbst meldet: die Projekte im Morgenbriefing und der Tagesabschluss am Abend.
 // Wie die Tagesübersicht (src/lib/heute.ts) entsteht alles ohne KI aus Daten, die JARVIS ohnehin hat.
@@ -67,6 +67,8 @@ export type Abschluss = {
   // Fehlen gerade Termine aus Outlook, steht hier der Satz dazu, sonst nichts.
   outlookLuecke: string;
   kalenderProblem: string | null;
+  // Der Tresor lässt sich nicht lesen: Dann steht dieser Satz da, nicht „nichts offen geblieben“.
+  aufgabenProblem: string | null;
   aufgabenMorgen: Task[];
   // Projekte, bei denen morgen etwas fällig ist.
   fristenMorgen: ProjektHinweis[];
@@ -102,6 +104,7 @@ export function tagesabschluss(d: TagesDaten, now: Date): Abschluss {
     outlookMorgen: lesbar ? verdecktAm(d.calendar, morgen) : 0,
     outlookLuecke: lesbar ? outlookLuecke(d.calendar) : "",
     kalenderProblem: lesbar || stumm ? null : accessProblem(d.calendar),
+    aufgabenProblem: aufgabenUnlesbar(d.tasks) ? TRESOR_UNLESBAR : null,
     aufgabenMorgen: offen.filter((t) => dateOf(t) === morgen),
     fristenMorgen,
     projekteOffen,
@@ -125,7 +128,8 @@ export function abschlussNachricht(a: Abschluss, o: { name: string; namen: boole
 
   const erledigt = a.erledigt > 0 ? `${zahl(a.erledigt, "eine Aufgabe", "Aufgaben")} erledigt` : "";
   const liegt = a.ueberfaellig > 0 ? `${zahl(a.ueberfaellig, "eine Aufgabe ist", "Aufgaben sind")} überfällig` : "";
-  if (a.offenHeute.length > 0) {
+  if (a.aufgabenProblem) teileDerNachricht.push(`Aufgaben: ${a.aufgabenProblem}`);
+  else if (a.offenHeute.length > 0) {
     const kopf = [erledigt, `${zahl(a.offenHeute.length, "eine von heute ist", "von heute sind")} offen geblieben`, liegt].filter(Boolean).join(", ");
     teileDerNachricht.push(`Heute: ${kopf}.\n${liste(a.offenHeute, (t) => `• ${t.text}`)}`);
   } else {
@@ -176,7 +180,7 @@ export function abschlussSatz(a: Abschluss, name: string): string {
     a.offenHeute.length > 0 ? `${zahl(a.offenHeute.length, "eine von heute ist", "von heute sind")} offen geblieben` : "",
     a.ueberfaellig > 0 ? `${zahl(a.ueberfaellig, "eine ist", "sind")} überfällig` : "",
   ].filter(Boolean);
-  saetze.push(heute.length ? `Heute: ${heute.join(", ")}.` : "Von den Aufgaben ist heute nichts offen geblieben.");
+  saetze.push(a.aufgabenProblem ?? (heute.length ? `Heute: ${heute.join(", ")}.` : "Von den Aufgaben ist heute nichts offen geblieben."));
 
   if (a.kalenderProblem) saetze.push(a.kalenderProblem);
   else if (a.termineMorgen) {

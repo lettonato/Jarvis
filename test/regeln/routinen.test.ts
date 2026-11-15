@@ -273,3 +273,51 @@ describe("Routinen: einstellbar und abschaltbar", () => {
     assert.match(helpText("Benedikt", true), /\/abschluss – /);
   });
 });
+
+// Am Mac schützt macOS den Ordner Dokumente: Ohne Freigabe sieht JARVIS den Tresor, darf aber nicht hineinsehen.
+// Die Aufgaben sind dann nicht „keine“, sondern unbekannt, und genau das muss überall dastehen.
+describe("Ein Tresor, der sich nicht lesen lässt, ist nicht dasselbe wie keine Aufgaben", () => {
+  const GRUND = "macOS sperrt mir den Ordner /Users/b/Documents/Tresor.";
+  const kaputt: TasksSnapshot = { configured: true, tasks: [], doneToday: 0, error: GRUND };
+  const UNLESBAR = "Der Obsidian-Tresor lässt sich gerade nicht lesen.";
+  const ctx: CommandContext = { name: "Benedikt", market: null, weather: null, tasks: kaputt, mail: null, desk: null, calendar: null, intel: null, now: ABEND, session: null };
+
+  test("die Tagesübersicht merkt es sich und stellt es zu dem, was auf dich wartet", () => {
+    const lage = tageslage({ ...nichts, tasks: kaputt }, ABEND);
+    assert.equal(lage.aufgabenUnlesbar, true);
+    assert.deepEqual(lage.brauchtDich, [{ art: "aufgaben", text: UNLESBAR, href: "/aufgaben", dringend: true }]);
+    assert.equal(tageslage({ ...nichts, tasks: aufgaben([]) }, ABEND).aufgabenUnlesbar, false, "ein leerer Tresor ist lesbar");
+    assert.equal(tageslage(nichts, ABEND).aufgabenUnlesbar, false, "noch nicht geladen ist kein Fehler");
+    assert.equal(tageslage({ ...nichts, tasks: { configured: false, tasks: [], doneToday: 0 } }, ABEND).aufgabenUnlesbar, false, "nicht verbunden ist kein Fehler");
+  });
+
+  test("der Tagesabschluss sagt es, am Handy und gesprochen, statt „nichts offen geblieben“", () => {
+    const a = tagesabschluss({ ...nichts, calendar: kalender([]), tasks: kaputt }, ABEND);
+    assert.equal(a.aufgabenProblem, UNLESBAR);
+    const text = abschlussNachricht(a, { name: "Benedikt", namen: false });
+    assert.equal(text, `Feierabend, Benedikt. Dein Tag in Kürze:\n\nAufgaben: ${UNLESBAR}\n\nMorgen ist dein Kalender frei.`);
+    const satz = abschlussSatz(a, "Benedikt");
+    assert.ok(satz.includes(UNLESBAR), satz);
+    assert.ok(!/nichts offen geblieben/.test(satz), satz);
+    assert.equal(tagesabschluss({ ...nichts, tasks: aufgaben([]) }, ABEND).aufgabenProblem, null);
+  });
+
+  test("das Morgenbriefing am Handy sagt es, statt die Aufgaben wegzulassen", () => {
+    const text = briefingMessage({ name: "Benedikt", now: ABEND, weather: null, calendar: null, mail: null, tasks: kaputt, intel: null, desk: null, projekte: null, projektNamen: false });
+    assert.ok(text.includes(`Aufgaben: ${UNLESBAR}`), text);
+    assert.ok(!/nichts fällig/.test(text), text);
+  });
+
+  test("„Meine Aufgaben“ nennt den Grund und behauptet nicht, es sei nichts fällig", () => {
+    const antwort = decide("Meine Aufgaben", ctx, false);
+    assert.equal(antwort?.reply, GRUND);
+    assert.equal(antwort?.navigate, "/aufgaben");
+    assert.equal(antwort?.session, null);
+  });
+
+  test("das Briefing nennt den Grund und sagt nicht „es liegt nichts Dringendes an“", () => {
+    const antwort = decide("Guten Morgen", { ...ctx, mail: { configured: true, fetchedAt: "2026-11-13T09:00:00Z", unread: 0, importantUnread: 0, bulkUnread: 0, items: [] } }, false);
+    assert.ok(antwort?.reply.includes(GRUND), antwort?.reply);
+    assert.ok(!/nichts Dringendes/.test(antwort?.reply ?? ""), antwort?.reply);
+  });
+});

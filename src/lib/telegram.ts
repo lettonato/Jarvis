@@ -10,7 +10,7 @@ import type { DeskSnapshot } from "./paper";
 import type { ProjekteSnapshot } from "./projekte";
 import { projekteAbsatz } from "./routinen";
 import { tageslage } from "./heute";
-import { dateOf, dueSoon, type TasksSnapshot } from "./tasks";
+import { aufgabenUnlesbar, dateOf, dueSoon, TRESOR_UNLESBAR, type TasksSnapshot } from "./tasks";
 import type { WeatherSnapshot } from "./weather";
 
 // JARVIS auf dem Handy über Telegram: Du legst dir bei Telegram einen eigenen Bot an, JARVIS liest dessen
@@ -192,7 +192,8 @@ export function briefingMessage({ name, now, weather, calendar, mail, tasks, int
     }
   }
 
-  if (tasks?.configured && !tasks.error) {
+  if (aufgabenUnlesbar(tasks)) parts.push(`Aufgaben: ${TRESOR_UNLESBAR}`);
+  else if (tasks?.configured) {
     const soon = dueSoon(tasks.tasks, today);
     const overdue = soon.filter((t) => dateOf(t)! < today).length;
     const dueToday = soon.filter((t) => dateOf(t) === today);

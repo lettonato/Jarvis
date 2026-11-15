@@ -63,17 +63,20 @@ export function TasksView() {
       }
     >
       {tasks?.error && <Notice tone="error">{tasks.error}</Notice>}
-      {today && <AddTask today={today} />}
-      <Scheiben>
-        <Scheibe titel="Auf einen Blick">
-          <ul>
-            <ScheibenZeile wert={soon.length}>Bis nächste Woche</ScheibenZeile>
-            <ScheibenZeile wert={today ? soon.filter((t) => dateOf(t)! < today).length : 0}>Überfällig</ScheibenZeile>
-            <ScheibenZeile wert={tasks?.doneToday ?? 0}>Heute erledigt</ScheibenZeile>
-          </ul>
-        </Scheibe>
-      </Scheiben>
-      {tasks && today && groups.length === 0 && <Notice tone="ok">Keine offenen Aufgaben. Alles erledigt.</Notice>}
+      {today && !tasks?.error && <AddTask today={today} />}
+      {/* Lässt sich der Tresor nicht lesen, steht nur das da: keine Nullen und kein „alles erledigt“. */}
+      {!tasks?.error && (
+        <Scheiben>
+          <Scheibe titel="Auf einen Blick">
+            <ul>
+              <ScheibenZeile wert={soon.length}>Bis nächste Woche</ScheibenZeile>
+              <ScheibenZeile wert={today ? soon.filter((t) => dateOf(t)! < today).length : 0}>Überfällig</ScheibenZeile>
+              <ScheibenZeile wert={tasks?.doneToday ?? 0}>Heute erledigt</ScheibenZeile>
+            </ul>
+          </Scheibe>
+        </Scheiben>
+      )}
+      {tasks && !tasks.error && today && groups.length === 0 && <Notice tone="ok">Keine offenen Aufgaben. Alles erledigt.</Notice>}
       {groups.map((g) => (
         <Panel key={g.id} className={g.id === "ueberfaellig" ? "border-rot/40" : ""}>
           <h2 className={`mb-2 text-xs font-bold ${g.id === "ueberfaellig" ? "text-down" : "text-see"}`}>
