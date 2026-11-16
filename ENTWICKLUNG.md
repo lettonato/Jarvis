@@ -2364,6 +2364,50 @@ reichen, ist offen (Prüfliste Y8). (5) Nicht geprüft: der Mac, Safari, schmale
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
 (die Prüfungen fragen nur Nachbauten).
 
+### Schritt J16: Wenn JARVIS ganz hängt: im Browser nachgestellt; zwei Grenzen bewusst stehen gelassen (16. November 2026)
+
+**Warum:** Nach J15 blieb offen, was mit einer Änderung geschieht, bei der JARVIS hängt (J15, Grenze 1), und ob
+der Hinweis aus J14 auch dann kommt, wenn JARVIS nicht weg ist, sondern hängt (J14, Grenze 6: nur als Regel
+geprüft). An JARVIS selbst ist in diesem Schritt **nichts geändert**; neu ist eine Prüfung und zwei begründete
+Entscheidungen.
+
+**Bestandsaufnahme zuerst:** Die Seite kennt 36 Stellen, die etwas ändern (Aufgabe abhaken, Termin eintragen,
+Einstellungen speichern, Lagebild aktualisieren, Rückfrage des Desks beantworten und weitere). Einige dürfen
+lange dauern (das Lagebild, ein Dokument, das Prüfen eines Postfachs). Bei den lesenden Schnittstellen antwortet
+JARVIS auch dann, wenn eine Quelle ausfällt (die Übersicht der Post etwa meldet den Fehler in der Antwort);
+dauerhaft scheitern kann eine einzelne lesende Stelle heute nur bei einem Fehler im Programm oder, wenn das
+Projektgedächtnis in der Datenbank liegt, bei deren Ausfall.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J16.1 Hängt JARVIS ganz (nichts wird beantwortet), steht nach Ablauf der Fristen derselbe Hinweis oben wie beim Ausfall, mit „Änderungen kommen gerade nicht an“ | Testbereit, **nur im Browser der Sandbox** (in der Prüfung nach rund 40 bis 50 Sekunden) | Prüfung Ausfall, Schritt 10 (neu) |
+| J16.2 Eine Änderung, die dabei unterwegs ist, wird nicht abgebrochen. Antwortet JARVIS wieder, kommt sie an, genau einmal, und der Hinweis verschwindet | Testbereit, **nur im Browser der Sandbox**, an einer Änderung (Aufgabe abhaken) | Prüfung Ausfall, Schritt 10 |
+
+**Eigene Entscheidungen (beide: geprüft und bewusst nicht gebaut):** (1) **Änderungen bekommen keine Frist.** Ein
+Abbruch im Browser macht am Mac nichts rückgängig; nach einem zweiten Klick käme die Änderung womöglich doppelt
+an. Für den Fall, dass JARVIS ganz hängt, erklärt es der Hinweis oben; die Prüfung zeigt, dass die Änderung dann
+nicht verloren geht. (2) **Kein eigener Hinweis für eine einzelne lesende Stelle, die dauerhaft scheitert**
+(J14, Grenze 2). Das kommt heute praktisch nicht vor (siehe Bestandsaufnahme) und bräuchte in jedem Raum eine
+eigene Stelle. Wird das Projektgedächtnis einmal zentral in der Datenbank geführt (Bereich I), gehört es dazu.
+
+**Grenzen:** (1) Hängt nur die eine Schnittstelle einer Änderung und JARVIS antwortet sonst, bleibt der Knopf
+grau, bis die Seite neu geladen wird; ein Hinweis kommt dann nicht. Nicht nachgestellt. (2) Der Fall aus
+Entscheidung 2 bleibt ohne Hinweis. (3) Nicht geprüft: der Mac, Safari, andere Änderungen als das Abhaken.
+
+### Testergebnisse Schritt J16 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1126 Tests: 1126 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (keine neuen) |
+| Prüfung Ausfall mit dem neuen Schritt 10 | Dreimal gelaufen, dreimal bestanden (10 Schritte, rund 230 Sekunden) |
+| Sammellauf | **Nicht wiederholt:** Am Quelltext von JARVIS ist seit dem Sammellauf zu J15 (28 von 28) nichts geändert, nur an der Prüfung Ausfall |
+| Tests zuerst | Entfällt: Das Verhalten gab es schon, die Prüfung weist es nach. Dass sie nicht leer besteht, zeigt die Gegenprobe |
+| Gegenprobe (ein absichtlich eingebauter Fehler, eigener Bau) | „Eine abgelaufene Frist zählt nicht als keine Antwort“: **entdeckt an der gemeinten Stelle** (Schritt 10: „70 Sekunden, nachdem JARVIS hängt, steht oben immer noch kein Hinweis“). Danach Quelltext wie vorher, sauberer Bau, 10 Schritte bestanden. **Nicht durch eine Gegenprobe gedeckt:** „genau einmal“ (dafür müsste die Prüfung den Server verändern) |
+| Code-Review, Sicherheitsprüfung | Entfallen: keine Änderung am Quelltext von JARVIS. `seite.route` (Anfragen festhalten) steht nur in der Prüfung |
+| Nicht geprüft | **der Mac**, **Safari**; die Fälle aus Grenze 1 und 2 |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -2527,9 +2571,13 @@ Danach wie geplant:
 29. **J15: gebaut, Testbereit, nur in der Sandbox geprüft** (Schritt J15 in Bereich J): Auch die einzelnen
    Abfragen (eine Akte, der Raum Browser, die Spur der Spinne und fünf weitere) geben nach 30 Sekunden auf, statt
    für immer zu warten; der Raum Browser staut keine Abfragen mehr und beendet seine, wenn er verlassen wird.
-   **Als Nächstes:** ein Hinweis, wenn nur eine einzelne Stelle dauerhaft einen Fehler meldet und der Raum
-   deshalb einen alten Stand zeigt (J14, Grenze 2). Dann: was mit einer Änderung geschieht, bei der JARVIS hängt
-   (der Knopf bleibt grau; J15, Grenze 1). Als Frage an Benedikt
+30. **J16: geprüft, an JARVIS nichts geändert** (Schritt J16 in Bereich J): Hängt JARVIS ganz, kommt derselbe
+   Hinweis wie beim Ausfall, und eine Änderung, die gerade unterwegs ist, kommt genau einmal an, wenn er wieder
+   antwortet (im Browser der Sandbox nachgestellt). Zwei Grenzen bleiben bewusst stehen: keine Frist für
+   Änderungen, kein eigener Hinweis für eine einzelne Stelle, die dauerhaft scheitert.
+   **Als Nächstes:** Die Reihe zu Ausfällen (J12 bis J16) ist damit abgeschlossen, soweit sie sich ohne den Mac
+   prüfen lässt. Weiter mit einem Paket, das keine Entscheidung von Benedikt braucht; Kandidaten stehen in der
+   Übersicht oben (Modelladapter, Desktop-Agent mit Regeln, Gesprächsnachbereitung). Als Frage an Benedikt
    vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleibt der einmalige, nicht
    wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die weiteren Schritte für Azure (Anmeldung je Person,
    übrige Daten in die Datenbank) erst, wenn Benedikt entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

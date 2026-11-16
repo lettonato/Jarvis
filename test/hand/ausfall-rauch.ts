@@ -401,6 +401,50 @@ async function main() {
       await zweite.context().close();
     }
     schritt("auch eine einzelne Abfrage gibt nach 30 Sekunden auf: Die Akte und der Raum Browser sagen dann, dass sie sich nicht laden lassen; der Raum Browser schickt keine Abfragen hinterher und beendet seine, wenn er verlassen wird; antwortet JARVIS wieder, stehen beide von selbst da");
+
+    // 10. JARVIS hängt ganz: Nichts wird mehr beantwortet, auch keine Änderung (in Schritt 8 war er weg, und jede
+    //     Anfrage scheiterte sofort). Dann laufen erst die Fristen der Abfragen ab; danach steht oben derselbe
+    //     Hinweis. Eine Änderung, die gerade unterwegs ist, wird nicht abgebrochen: Kommt JARVIS zurück, kommt sie
+    //     an, genau einmal.
+    {
+      type Abfrage = Parameters<Parameters<Page["route"]>[1]>[0];
+      const wartend: Abfrage[] = [];
+      let haengt = false;
+      const seite = await neueSeite();
+      await seite.route(lesen, (r) => {
+        if (!haengt) return r.continue();
+        wartend.push(r);
+      });
+      await seite.goto(`${BASIS}/aufgaben`, { waitUntil: "domcontentloaded" });
+      const main = seite.locator("main:visible");
+      await main.getByText("Statiker anrufen").first().waitFor({ timeout: 25_000 });
+      assert.deepEqual(await scheibenZahlen(seite), ["3", "0", "0"]);
+      haengt = true;
+      const seit = Date.now();
+      await main.getByRole("button", { name: "Statiker anrufen erledigt" }).click();
+      await seite
+        .locator('[data-verbindung="aus"]')
+        .waitFor({ timeout: 70_000 })
+        .catch(() => assert.fail("70 Sekunden, nachdem JARVIS hängt, steht oben immer noch kein Hinweis"));
+      const dauer = Date.now() - seit;
+      assert.ok(dauer >= 30_000, `der Hinweis kommt erst, wenn Fristen abgelaufen sind, nicht nach ${dauer} ms`);
+      assert.match((await seite.locator("[data-verbindung]").innerText()).trim(), /^JARVIS antwortet seit \d\d:\d\d Uhr nicht\. Du siehst den Stand von davor, und Änderungen kommen gerade nicht an\.$/);
+      // Die Änderung ist noch unterwegs: Sie wird nicht von selbst abgebrochen (sonst käme sie nach einem zweiten
+      // Klick womöglich doppelt an), und es steht auch kein Fehler dazu da.
+      assert.doesNotMatch(await text(seite), /JARVIS antwortet gerade nicht\. Versuch es|Das dauert gerade zu lange|Failed to fetch/);
+      assert.ok(wartend.some((r) => r.request().method() === "POST"), "die Änderung wartet noch");
+      // JARVIS antwortet wieder: Die Änderung kommt an, der Hinweis verschwindet, und die Aufgabe ist einmal erledigt.
+      haengt = false;
+      for (const r of wartend.splice(0)) await r.continue().catch(() => {});
+      await seite
+        .locator('[data-verbindung="da"]')
+        .waitFor({ state: "attached", timeout: 40_000 })
+        .catch(() => assert.fail("40 Sekunden, nachdem JARVIS wieder antwortet, steht der Hinweis immer noch da"));
+      for (let i = 0; i < 40 && (await scheibenZahlen(seite)).join() !== "2,0,1"; i++) await seite.waitForTimeout(500);
+      assert.deepEqual(await scheibenZahlen(seite), ["2", "0", "1"], "die Änderung ist angekommen, genau einmal");
+      await seite.context().close();
+    }
+    schritt("hängt JARVIS ganz, steht nach Ablauf der Fristen oben derselbe Hinweis; eine Änderung, die unterwegs ist, wird nicht abgebrochen und kommt genau einmal an, wenn JARVIS wieder antwortet");
   } finally {
     await browser?.close();
     await server.stopLeise();
