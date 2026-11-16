@@ -12,6 +12,8 @@ const INBOX = "JARVIS/Eingang.md";
 const NOTES = "JARVIS/Notizen.md";
 const MAX_FILES = 4000;
 const MAX_BYTES = 1_000_000;
+const ERLEDIGT_TAGE = 14;
+const MAX_ERLEDIGT = 500;
 
 const TASK_LINE = /^(\s*(?:[-*+]|\d+[.)])\s+\[)([ xX/])(\]\s+)(.*)$/;
 const DATE = "(\\d{4}-\\d{2}-\\d{2})";
@@ -46,11 +48,18 @@ function readable(body: string): { text: string; tags: string[] } {
   return { text, tags };
 }
 
-export function parseTaskLine(line: string, file: string, index: number, today: string): { task?: Task; doneToday: boolean } {
+// seit: Erledigtes mit Text gibt es nur von diesem Tag bis heute. Ein Tresor sammelt über Jahre erledigte Zeilen,
+// und deren Text braucht niemand.
+export function parseTaskLine(line: string, file: string, index: number, today: string, seit = today): { task?: Task; doneToday: boolean; erledigt?: { am: string; text: string } } {
   const m = line.match(TASK_LINE);
   if (!m) return { doneToday: false };
   const body = m[4];
-  if (m[2] === "x" || m[2] === "X") return { doneToday: body.match(DONE_ON)?.[1] === today };
+  if (m[2] === "x" || m[2] === "X") {
+    // Wann sie erledigt wurde, weiß JARVIS nur, wenn es dasteht („✅ 2026-11-13“).
+    const am = body.match(DONE_ON)?.[1];
+    const text = am && am >= seit && am <= today ? readable(body).text : "";
+    return { doneToday: am === today, ...(am && text ? { erledigt: { am, text } } : {}) };
+  }
   const { text, tags } = readable(body);
   if (!text) return { doneToday: false };
   const important =
@@ -111,13 +120,17 @@ export async function vaultProblem(vault: string): Promise<string | null> {
   }
 }
 
-export async function readTasks(vault: string): Promise<TasksSnapshot> {
-  const today = isoDate(new Date());
+// now: der Tag, von dem aus „heute erledigt“ und die letzten zwei Wochen zählen (sonst die Uhr des Rechners).
+export async function readTasks(vault: string, now = new Date()): Promise<TasksSnapshot> {
+  const today = isoDate(now);
   const info = { name: path.basename(vault), path: vault };
   const problem = await vaultProblem(vault);
   if (problem) return { configured: true, vault: info, tasks: [], doneToday: 0, error: problem };
   const tasks: Task[] = [];
   let doneToday = 0;
+  // Für den Wochenbericht: diese Woche und die Woche davor, also höchstens die letzten 14 Tage.
+  const erledigt: NonNullable<TasksSnapshot["erledigt"]> = [];
+  const seit = addDays(today, -(ERLEDIGT_TAGE - 1));
   for (const full of await markdownFiles(vault)) {
     const stat = await fs.stat(full).catch(() => null);
     if (!stat || stat.size > MAX_BYTES) continue;
@@ -128,12 +141,15 @@ export async function readTasks(vault: string): Promise<TasksSnapshot> {
     content.split(/\r?\n/).forEach((line, i) => {
       if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
       if (fenced) return;
-      const parsed = parseTaskLine(line, file, i, today);
+      const parsed = parseTaskLine(line, file, i, today, seit);
       if (parsed.task) tasks.push(parsed.task);
       if (parsed.doneToday) doneToday++;
+      if (parsed.erledigt) erledigt.push(parsed.erledigt);
     });
   }
-  return { configured: true, vault: info, tasks, doneToday };
+  // Bei sehr vielen bleiben die neuesten, nicht die aus den Dateien, die zufällig zuerst gelesen wurden.
+  if (erledigt.length > MAX_ERLEDIGT) erledigt.sort((a, b) => b.am.localeCompare(a.am)).splice(MAX_ERLEDIGT);
+  return { configured: true, vault: info, tasks, doneToday, erledigt };
 }
 
 // Löst einen Pfad im Tresor auf und verhindert, dass ein Pfad aus dem Tresor herausführt.

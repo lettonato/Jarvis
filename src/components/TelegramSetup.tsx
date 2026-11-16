@@ -8,6 +8,7 @@ import { getJson, postJson } from "@/lib/api";
 import { HINWEIS_REGELN } from "@/lib/hinweise";
 import type { Settings } from "@/lib/settings";
 import { ABSCHLUSS_VORSCHLAG, findToken, pairLink, tokenProblem, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
+import { WOCHE_VORSCHLAG, WOCHENTAGE } from "@/lib/woche";
 
 // Einstellungen → Handy: Bot-Schlüssel eintragen, Handy koppeln, festlegen, was aufs Handy kommt.
 
@@ -217,6 +218,20 @@ function QrCode({ text }: { text: string }) {
 function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean; onChange: (p: Partial<TelegramPrefs>) => void }) {
   const [time, setTime] = useState(prefs.briefing ?? TELEGRAM_DEFAULTS.briefing!);
   const [abend, setAbend] = useState(prefs.abschluss ?? ABSCHLUSS_VORSCHLAG);
+  const [woche, setWoche] = useState(prefs.woche ?? WOCHE_VORSCHLAG);
+  // Den Wochentag übernimmt JARVIS sofort, die Uhrzeit beim Verlassen des Feldes (wie bei den anderen Uhrzeiten).
+  // Ein geleertes Uhrzeitfeld geht nie hinaus: Dann gilt die zuletzt gespeicherte Uhrzeit, sonst der Vorschlag.
+  const mitZeit = (w: typeof woche) => (w.zeit ? w : { ...w, zeit: prefs.woche?.zeit ?? WOCHE_VORSCHLAG.zeit });
+  const wocheTag = (tag: number) => {
+    const neu = mitZeit({ ...woche, tag });
+    setWoche(neu);
+    if (prefs.woche !== null) onChange({ woche: neu });
+  };
+  const wocheAn = (an: boolean) => {
+    const neu = mitZeit(woche);
+    setWoche(neu);
+    onChange({ woche: an ? neu : null });
+  };
   const box = "h-4 w-4 accent-gletscher";
   const row = "flex items-center gap-3 text-schiefer/85";
   return (
@@ -237,7 +252,7 @@ function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean;
       <label className={row}>
         <input type="checkbox" className={box} checked={prefs.projekte} onChange={(e) => onChange({ projekte: e.target.checked })} />
         <span>
-          Projekte beim Namen: Vorbereitung vor Terminen, die zu einem Projekt gehören, und Projektnamen im Briefing, in den Hinweisen am Tag und im Tagesabschluss
+          Projekte beim Namen: Vorbereitung vor Terminen, die zu einem Projekt gehören, und Projektnamen im Briefing, in den Hinweisen am Tag, im Tagesabschluss und im Wochenbericht
           <span className="block text-xs text-quiet">Aus, bis du es willst: Namen, Entscheidungen und offene Punkte gehen dann über Telegram. Ohne den Haken nennt JARVIS dort nur Zahlen. Vertrauliche Projekte nie.</span>
         </span>
       </label>
@@ -283,6 +298,35 @@ function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean;
           />
           <span className="text-xs text-quiet">Uhr: was offen blieb, was morgen kommt, was auf dich wartet</span>
         </span>
+      </div>
+      <div className={`${row} flex-wrap`} data-wochenbericht>
+        <label className="flex items-center gap-3">
+          <input type="checkbox" className={box} checked={prefs.woche !== null} onChange={(e) => wocheAn(e.target.checked)} />
+          Wochenbericht jeden
+        </label>
+        {/* Feste Breiten über die Hülle: Die Felder selbst füllen ihre Hülle (inputClass). */}
+        <span className="w-36 shrink-0">
+          <select value={woche.tag} onChange={(e) => wocheTag(Number(e.target.value))} aria-label="Wochentag für den Wochenbericht" className={inputClass}>
+            {WOCHENTAGE.map((name, i) => (
+              <option key={name} value={i + 1}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </span>
+        um
+        <span className="w-32 shrink-0">
+          <input
+            type="time"
+            value={woche.zeit}
+            onChange={(e) => setWoche({ ...woche, zeit: e.target.value })}
+            onBlur={() => prefs.woche !== null && woche.zeit && woche.zeit !== prefs.woche.zeit && onChange({ woche })}
+            aria-label="Uhrzeit für den Wochenbericht"
+            className={inputClass}
+          />
+        </span>
+        <span className="text-xs text-quiet">Uhr</span>
+        <p className="basis-full pl-7 text-xs text-quiet">Was erledigt ist, was liegt, was die nächsten sieben Tage bringen. Auch auf Zuruf: „Wochenbericht“, am Handy /woche.</p>
       </div>
     </fieldset>
   );

@@ -21,6 +21,11 @@ npm run pruefen     # Lint, Typprüfung und Tests
   Zuruf „Marktübersicht“, dazu den Absatz „Märkte“ in Morgenbriefing und Tagesabschluss (was hinein darf und
   was nicht). Dass er wirklich aufs Handy geht, prüft `test/module/hinweise.test.ts` mit nachgebautem Telegram
   und nachgebautem CoinGecko.
+  `woche.test.ts` prüft den Wochenbericht: was als diese Woche und als Vorwoche zählt, den Ausblick auf sieben
+  Tage (ein Termin über mehrere Tage steht einmal da), was nicht hinausgeht (vertrauliche Projekte, Outlook
+  ohne Freigabe, Projektnamen ohne den Schalter), die Zurufe am Mac und am Handy und wann er von selbst fällig
+  ist (auch über Mitternacht). Dass er über den Zeitplan wirklich einmal in der Woche aufs Handy geht, prüft
+  `test/module/hinweise.test.ts`.
   `claude-zugang.test.ts` prüft, dass nur `src/lib/server/claude.ts` eine Verbindung zu Claude aufbaut und
   jede Rolle ihre Wartezeit und Wiederholungen behält.
   `geteilt.test.ts` prüft die geteilten Abfragen der Oberfläche (eine Abfrage für mehrere Stellen, keine
@@ -116,8 +121,9 @@ die Bedienung ohne Maus und im schmalen Fenster: Tab-Taste, Leertaste, Menü der
 JARVIS so, wie ein Vorleseprogramm ihn liest: Aufbau jedes Raums, Ansage der Antwort, Meldungen nach einem Klick, aufgeklapptes Gespräch, Klickflächen ab 24 Pixel,
 was zehn Räume zeigen, solange JARVIS dort nichts laden kann: „lädt noch“ oder „lässt sich gerade nicht laden“, nie eine Null,
 das Zuhören mit einem nachgebauten Mikrofon: Weckwort, Befehl per Stimme, Zuhören nach der Antwort, „Stopp“, Echo, Fehler des Mikrofons, freihändig aus,
-Programme und Ordner am Mac öffnen gegen ein nachgebautes `open`: feste Liste, Zurufe, ausschalten, zur Probe öffnen, eigene Programme, Schutz der Schnittstelle, Werkzeug des KI-Gehirns, Audit-Log, ohne Mac). Aufruf steht jeweils oben in der Datei.
-Die sechs letzten und die Prüfung der Mitteilungen stellen für sich, den Server und den Browser eine Zeitzone ein, in der es gerade Mittag ist (`mittagsZone()` in `test/helfer/uhrzeiten.ts`): Was „läuft“, „vorbei“ oder „heute noch“ ist, hängt an der Uhrzeit.
+Programme und Ordner am Mac öffnen gegen ein nachgebautes `open`: feste Liste, Zurufe, ausschalten, zur Probe öffnen, eigene Programme, Schutz der Schnittstelle, Werkzeug des KI-Gehirns, Audit-Log, ohne Mac,
+der Wochenbericht gegen ein nachgebautes Telegram und einen Testordner als Tresor: ab Werk aus, Wochentag und Uhrzeit einstellen, Zuruf am Mac, `/woche` am Handy, von selbst zur eingestellten Zeit und nach einem Neustart kein zweites Mal). Aufruf steht jeweils oben in der Datei.
+Elf dieser Prüfungen (alle, die `mittagsZone()` aus `test/helfer/uhrzeiten.ts` aufrufen, darunter die des Wochenberichts) stellen für sich, den Server und den Browser eine Zeitzone ein, in der es gerade Mittag ist: Was „läuft“, „vorbei“ oder „heute noch“ ist, hängt an der Uhrzeit.
 Der nachgebaute Mac-Kalender (`test/mocks/osascript-mock.mjs`) wählt den Kalender für einen neuen Termin wie das echte Skript in `src/lib/server/calendar.ts` (genannter Kalender, Groß- und Kleinschreibung egal, sonst Standardkalender; ein ausdrücklich verlangter wird nie ersetzt; in einen schreibgeschützten wird nie eingetragen) und kann mit `speichern: "abgelehnt"` in seiner Datei nachstellen, dass die Kalender-App nicht speichert.
 Mit `wartezeit_ms` in seiner Datei lässt er sich mit der Antwort Zeit: So lässt sich prüfen, was eine Seite zeigt, solange der Kalender noch lädt.
 Nach „zurück“ im Browser hält die Seite den Raum, aus dem man kommt, unsichtbar bereit; eine Prüfung meint deshalb `main:visible`, nicht `main`.

@@ -173,12 +173,13 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 **Was dann aufs Handy kommt** (einzeln abschaltbar):
 
 - **Briefing** jeden Morgen zur eingestellten Zeit (Standard 7:30 Uhr): Wetter, Termine, wichtige Mails, fällige Aufgaben, Nachrichten und Spielgeld-Stand.
+- **Wochenbericht** (aus, bis du ihn einschaltest; vorgeschlagen Freitag 16:00 Uhr): was du diese Woche erledigt hast, was liegt, Termine und fällige Aufgaben der nächsten sieben Tage. Auf Zuruf jederzeit: „Wochenbericht“ am Mac, `/woche` am Handy. Als erledigt zählt, was in Obsidian mit Datum abgehakt ist (✅ und der Tag).
 - **Erinnerung** eine Viertelstunde vor jedem Termin.
 - **Warnungen:** Intel bremst den Desk, oder das Tageslimit ist erreicht.
 - **Trades:** jeder Kauf und Verkauf des Spielgeld-Desks mit Begründung.
 - **Rückfrage vor Käufen** mit den Knöpfen **Ja, kaufen** und **Nein** (nicht abschaltbar, solange die Rückfrage an ist; siehe [Rückfrage vor Käufen](#rückfrage-vor-käufen)). Nach deiner Antwort steht das Ergebnis unter der Frage, und die Knöpfe verschwinden.
 
-**Schreiben:** Mit KI-Gehirn schreibst du JARVIS wie in der App, etwa „Was steht morgen an?“, „Trag Freitag 15 Uhr Friseur ein“ oder „Fass mir die Mail von Anna zusammen“. Dazu gibt es feste Befehle, auch ohne KI-Gehirn: `/briefing`, `/handel`, `/pause` (oder einfach „Stopp“: keine neuen Käufe, der Stop-Loss passt weiter auf), `/weiter`, `/notaus`, `/hilfe`. Sprachnachrichten versteht er noch nicht; das Mikrofon der Handy-Tastatur macht aus Sprache Text.
+**Schreiben:** Mit KI-Gehirn schreibst du JARVIS wie in der App, etwa „Was steht morgen an?“, „Trag Freitag 15 Uhr Friseur ein“ oder „Fass mir die Mail von Anna zusammen“. Dazu gibt es feste Befehle, auch ohne KI-Gehirn: `/briefing`, `/abschluss`, `/woche`, `/handel`, `/pause` (oder einfach „Stopp“: keine neuen Käufe, der Stop-Loss passt weiter auf), `/weiter`, `/notaus`, `/hilfe`. Sprachnachrichten versteht er noch nicht; das Mikrofon der Handy-Tastatur macht aus Sprache Text.
 
 Schläft der Mac, antwortet JARVIS, sobald er wieder wach ist. Ist eine Nachricht dann älter als eine halbe Stunde, führt er sie nicht mehr blind aus und fragt nach; nur „Stopp“ und `/notaus` gelten auch verspätet. Das Briefing kommt noch bis drei Stunden nach der eingestellten Zeit. Damit Meldungen zuverlässig ankommen, sollte der Mac nicht schlafen: In den **Systemeinstellungen** unter **Batterie → Optionen** (MacBook) bzw. **Energie** (iMac, Mac mini) einschalten, dass er am Netzteil nicht von selbst in den Ruhezustand geht, wenn der Bildschirm aus ist.
 

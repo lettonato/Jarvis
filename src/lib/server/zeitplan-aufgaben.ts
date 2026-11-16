@@ -1,13 +1,14 @@
 import { HINWEIS_TAKT, HINWEIS_TAKT_MAC } from "../hinweise";
 import { AUTO_HOURS } from "../intel";
 import { REMINDER_MINUTES } from "../telegram";
+import { naechsteWoche, wochenTakt } from "../woche";
 import { naechsterTermin, taktText, type ZeitplanSnapshot } from "../zeitplan";
 import { readConfig, twelveKey } from "./config";
 import { hinweiseFaellig, macHinweiseAn, macHinweiseFaellig, merkeAmMac, merkeGemeldet, sendeHinweise, zeigeHinweise } from "./hinweise";
 import { IntelError, intelFaellig, intelSnapshot, refreshIntel } from "./intel";
 import { MitteilungError, mitteilungMoeglich } from "./mitteilung";
 import { MetalleError, metalleAuto, metalleFaellig, metalleNaechster, metalleZeiten, refreshMetalle } from "./metalle";
-import { erinnerungenFaellig, naechsteErinnerung, prefsOf, sendeErinnerungen, sendeTagesmeldung, tagesmeldungFaellig, TelegramError, TelegramNichtErreichbar, type Tagesmeldung } from "./telegram";
+import { erinnerungenFaellig, naechsteErinnerung, prefsOf, sendeErinnerungen, sendeTagesmeldung, sendeWochenbericht, tagesmeldungFaellig, TelegramError, TelegramNichtErreichbar, wochenberichtFaellig, type Tagesmeldung } from "./telegram";
 import { starteTakt, zeitplanMinute, zeitplanUebersicht, type Aufgabe } from "./zeitplan";
 
 // Was JARVIS von selbst tut, an einer Stelle: Intel, der Edelmetall-Agent, alles, was per Telegram von selbst
@@ -110,6 +111,26 @@ function meldung(id: Tagesmeldung, name: string, was: string, wen: string): Aufg
   };
 }
 
+// Der Wochenbericht: einmal in der Woche am eingestellten Tag. Anders als Briefing und Tagesabschluss gilt danach
+// nichts als „schon gemeldet“: Er fasst zusammen, die Hinweise am Tag bleiben, wie sie sind.
+const wochenbericht: Aufgabe = {
+  id: "woche",
+  agent: null,
+  name: "Wochenbericht",
+  takt: async () => {
+    const plan = (await telegram()).prefs.woche;
+    return plan ? `${wochenTakt(plan)}, per Telegram` : "ausgeschaltet";
+  },
+  naechster: async (now) => naechsteWoche((await telegram()).prefs.woche, now),
+  hinweis: async () => {
+    const { verbunden, prefs } = await telegram();
+    return !verbunden ? "Telegram ist nicht verbunden." : prefs.woche ? null : "Ausgeschaltet.";
+  },
+  faellig: (now, letzterLauf) => wochenberichtFaellig(now, letzterLauf),
+  lauf: (now) => sendeWochenbericht(now),
+  fehlerSatz: telegramSatz("Der Wochenbericht", "den Wochenbericht"),
+};
+
 const erinnerungen: Aufgabe = {
   id: "erinnerungen",
   agent: null,
@@ -166,7 +187,7 @@ const hinweiseMac: Aufgabe = {
   },
 };
 
-export const aufgaben = (): Aufgabe[] => [intel, metalle, meldung("briefing", "Morgenbriefing", "Das Morgenbriefing", "das Morgenbriefing"), erinnerungen, hinweise, hinweiseMac, meldung("abschluss", "Tagesabschluss", "Der Tagesabschluss", "den Tagesabschluss")];
+export const aufgaben = (): Aufgabe[] => [intel, metalle, meldung("briefing", "Morgenbriefing", "Das Morgenbriefing", "das Morgenbriefing"), erinnerungen, hinweise, hinweiseMac, meldung("abschluss", "Tagesabschluss", "Der Tagesabschluss", "den Tagesabschluss"), wochenbericht];
 
 // Startet den gemeinsamen Taktgeber. Mehrfach aufrufen schadet nicht.
 export const starteZeitplan = () => starteTakt(aufgaben);

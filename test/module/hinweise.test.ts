@@ -6,7 +6,7 @@
 // Dazu die Hinweise als Mitteilung am Mac selbst (ohne Handy): eigener Schalter, nur Zahlen, eigener Merker.
 
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { after, before, beforeEach, describe, test } from "node:test";
 import { sichereUmgebung, testOrdner } from "../helfer/umgebung";
@@ -696,6 +696,103 @@ describe("Zeitplan: Morgenbriefing und Tagesabschluss laufen über den gemeinsam
     await aufgaben.zeitplanJetzt(um(18, 2));
     assert.equal(texte().length, 1);
     assert.match(texte()[0], /^Feierabend, Benedikt\./);
+  });
+});
+
+describe("Zeitplan: der Wochenbericht kommt einmal in der Woche", () => {
+  const FREITAGS = { tag: 5, zeit: "16:00" };
+  // Der 13. November 2026 ist ein Freitag.
+  const tresor = () =>
+    writeFileSync(
+      path.join(vault, "Aufgaben.md"),
+      ["- [x] Angebot Müller verschickt ✅ 2026-11-12", "- [x] Wochenplan geschrieben ✅ 2026-11-09", "- [x] Rechnung Huber bezahlt ✅ 2026-11-04", "- [x] Ohne Datum abgehakt", "- [x] Uralt ✅ 2026-10-01", "- [ ] Steuer 📅 2026-11-03", "- [ ] Angebot nachfassen 📅 2026-11-17"].join("\n"),
+    );
+
+  test("aus, bis er eingeschaltet ist; was von Hand in der Datei kein Plan ist, bleibt aus", async () => {
+    await aufgaben.zeitplanJetzt(um(16, 1));
+    assert.deepEqual(texte(), []);
+    const aus = await eintrag("woche", um(12));
+    assert.deepEqual([aus.takt, aus.naechsterLauf, aus.hinweis], ["ausgeschaltet", null, "Ausgeschaltet."]);
+    for (const unsinn of [{ tag: 9, zeit: "16:00" }, { tag: 5, zeit: "16 Uhr" }, "freitags", true]) {
+      await stelleEin({ woche: unsinn });
+      await aufgaben.zeitplanJetzt(um(16, 1));
+      assert.deepEqual(texte(), [], JSON.stringify(unsinn));
+      assert.equal((await eintrag("woche", um(12))).takt, "ausgeschaltet", JSON.stringify(unsinn));
+    }
+  });
+
+  test("am eingestellten Wochentag zur Uhrzeit, einmal; nicht am Tag davor oder danach; nächste Woche wieder", async () => {
+    tresor();
+    await stelleEin({ woche: FREITAGS });
+    const vorher = await eintrag("woche", um(12));
+    assert.deepEqual([vorher.takt, vorher.naechsterLauf, vorher.hinweis, vorher.selbst], ["freitags um 16:00 Uhr, per Telegram", um(16).toISOString(), null, true]);
+    await aufgaben.zeitplanJetzt(um(16, 1, 12));
+    await aufgaben.zeitplanJetzt(um(15, 59));
+    assert.deepEqual(texte(), [], "Donnerstag und Freitag vor der Uhrzeit");
+    await aufgaben.zeitplanJetzt(um(16));
+    await aufgaben.zeitplanJetzt(um(16, 1));
+    await aufgaben.zeitplanJetzt(um(18));
+    await aufgaben.zeitplanJetzt(um(16, 0, 14));
+    assert.equal(texte().length, 1);
+    const text = texte()[0];
+    assert.match(text, /^Deine Woche, Benedikt \(9\. bis 13\. November\):/);
+    assert.match(text, /Erledigt: 2 Aufgaben \(Vorwoche: 1\)\./);
+    assert.match(text, /• Angebot Müller verschickt\n• Wochenplan geschrieben/);
+    assert.match(text, /Liegt noch: Eine Aufgabe ist überfällig\.\n• Steuer \(seit 10 Tagen überfällig\)/);
+    assert.match(text, /Fällig in den nächsten sieben Tagen:\n• Di\., 17\.11\.: Angebot nachfassen/);
+    for (const fremd of ["Ohne Datum", "Uralt", "Huber"]) assert.ok(!text.includes(fremd), fremd);
+    const e = await eintrag("woche", um(18));
+    assert.deepEqual([e.letzterLauf, e.ergebnis, e.naechsterLauf], [um(16).toISOString(), "ok", um(16, 0, 20).toISOString()]);
+    // Was „erledigt“ ist, zählt vom Tag des Berichts aus, nicht von der Uhr des Rechners: Der 18. November liegt
+    // für eine Uhr, die noch davor steht, in der Zukunft und fiele sonst heraus.
+    appendFileSync(path.join(vault, "Aufgaben.md"), "\n- [x] Später erledigt ✅ 2026-11-18");
+    await aufgaben.zeitplanJetzt(um(16, 0, 20));
+    assert.equal(texte().length, 2, "eine Woche später der nächste");
+    assert.match(texte()[1], /^Deine Woche, Benedikt \(16\. bis 20\. November\):/);
+    assert.match(texte()[1], /Erledigt: eine Aufgabe \(Vorwoche: 2\)\.\n• Später erledigt/);
+  });
+
+  test("Projekte stehen nur mit dem Schalter beim Namen, ein vertrauliches nie; der Tagesabschluss kommt unabhängig davon", async () => {
+    await fuelle();
+    await stelleEin({ woche: FREITAGS, abschluss: "16:00" });
+    await aufgaben.zeitplanJetzt(um(16));
+    assert.equal(texte().length, 2, "Wochenbericht und Tagesabschluss");
+    const ohne = texte().find((t) => t.startsWith("Deine Woche"))!;
+    assert.match(ohne, /Projekte: 2 haben Überfälliges oder eine Frist von heute\. Einzelheiten am Mac unter „Heute“\./);
+    for (const wort of ["Hallenneubau", "Statik", "Adler", "Kaufpreis"]) assert.ok(!ohne.includes(wort), wort);
+
+    tg.leeren();
+    await telegram.resetTelegram();
+    plan.vergissZeitplan();
+    rmSync(path.join(ordner, "zeitplan.json"), { force: true });
+    await stelleEin({ woche: FREITAGS, projekte: true });
+    await aufgaben.zeitplanJetzt(um(16));
+    const mit = texte().find((t) => t.startsWith("Deine Woche"))!;
+    assert.match(mit, /• Hallenneubau: /);
+    assert.match(mit, /• ein vertrauliches Projekt: Einzelheiten nur am Mac/);
+    for (const wort of ["Adler", "Kaufpreis"]) assert.ok(!mit.includes(wort), wort);
+  });
+
+  test("ist Telegram zur Uhrzeit nicht erreichbar, kommt er ein paar Minuten später, aber nur einmal; im Zeitplan steht ein fester Satz", async () => {
+    await stelleEin({ woche: FREITAGS });
+    tg.fehler.getMe = 502;
+    await aufgaben.zeitplanJetzt(um(16));
+    assert.deepEqual(texte(), []);
+    assert.equal((await eintrag("woche", um(16, 1))).fehler, "Telegram war nicht erreichbar. Der Wochenbericht kommt, sobald es wieder geht.");
+    delete tg.fehler.getMe;
+    await aufgaben.zeitplanJetzt(um(16, 1));
+    assert.deepEqual(texte(), [], "nicht jede Minute ein Versuch");
+    await aufgaben.zeitplanJetzt(um(16, 6));
+    await aufgaben.zeitplanJetzt(um(16, 12));
+    assert.equal(texte().length, 1);
+  });
+
+  test("ein Tresor, der sich nicht lesen lässt, steht als solcher im Bericht", async () => {
+    await config.writeConfig({ name: "Benedikt", vaultPath: path.join(vault, "gibt-es-nicht"), telegram: { ...basis, woche: FREITAGS } });
+    await aufgaben.zeitplanJetzt(um(16));
+    assert.equal(texte().length, 1);
+    assert.match(texte()[0], /Aufgaben: Der Obsidian-Tresor lässt sich gerade nicht lesen\./);
+    assert.ok(!/Erledigt|keine Aufgabe/.test(texte()[0]), texte()[0]);
   });
 });
 

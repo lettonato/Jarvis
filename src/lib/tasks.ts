@@ -21,6 +21,9 @@ export type TasksSnapshot = {
   vault?: { name: string; path: string };
   tasks: Task[];
   doneToday: number;
+  // Was in den letzten zwei Wochen erledigt wurde (Tag und Text), für den Wochenbericht. Nur Aufgaben, an denen
+  // ein Erledigt-Datum steht („✅ 2026-11-13“), wie Obsidian Tasks es setzt.
+  erledigt?: { am: string; text: string }[];
   error?: string;
 };
 

@@ -20,6 +20,7 @@ import { providerById } from "../mailProviders";
 import { findToken, isClock, tokenProblem } from "../telegram";
 import { isApprovalLimit, type ApprovalLimit } from "../approval";
 import { ausVon, EIGENE_HOECHSTENS, eigeneId, istFestesWort, istVergeben, programmName, zieleVon } from "../desktop";
+import { wochenPlan } from "../woche";
 
 type MailInput = { provider: string; host?: string; port?: number; user: string; password?: string };
 
@@ -36,7 +37,7 @@ export type EinstellungAktion =
   | { action: "removeXai" }
   | { action: "telegram"; token: string }
   | { action: "telegramCode" }
-  | { action: "telegramPrefs"; trades?: boolean; warnings?: boolean; reminders?: boolean; projekte?: boolean; hinweise?: boolean; briefing?: string | null; abschluss?: string | null }
+  | { action: "telegramPrefs"; trades?: boolean; warnings?: boolean; reminders?: boolean; projekte?: boolean; hinweise?: boolean; briefing?: string | null; abschluss?: string | null; woche?: { tag: number; zeit: string } | null }
   | { action: "telegramTest" }
   | { action: "telegramUnpair" }
   | { action: "removeTelegram" }
@@ -161,6 +162,7 @@ export async function aendereEinstellung(body: EinstellungAktion): Promise<Einst
     if (!config.telegram) return nein("Bitte zuerst den Bot-Schlüssel eintragen.");
     if (body.briefing !== undefined && body.briefing !== null && !isClock(String(body.briefing))) return nein("Bitte eine Uhrzeit wie 07:30 eintragen.");
     if (body.abschluss !== undefined && body.abschluss !== null && !isClock(String(body.abschluss))) return nein("Bitte eine Uhrzeit wie 18:00 eintragen.");
+    if (body.woche !== undefined && body.woche !== null && !wochenPlan(body.woche)) return nein("Bitte einen Wochentag und eine Uhrzeit wie 16:00 wählen.");
     const neu = await speichere((c) => {
       // Wurde der Bot inzwischen entfernt, gibt es nichts mehr einzustellen.
       if (!c.telegram) return;
@@ -168,6 +170,7 @@ export async function aendereEinstellung(body: EinstellungAktion): Promise<Einst
       for (const key of ["trades", "warnings", "reminders", "projekte", "hinweise"] as const) if (typeof body[key] === "boolean") next[key] = body[key];
       if (body.briefing !== undefined) next.briefing = body.briefing;
       if (body.abschluss !== undefined) next.abschluss = body.abschluss;
+      if (body.woche !== undefined) next.woche = wochenPlan(body.woche);
       c.telegram = next;
     });
     return { ok: true, config: neu };

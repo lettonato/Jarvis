@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 140 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y, Z, AA und AB und die Punkte M11 bis M13 und Y4 bis Y8 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 150 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y, Z, AA, AB und AC und die Punkte M11 bis M13 und Y4 bis Y8 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -416,6 +416,25 @@ nicht. JARVIS öffnet nur. Er bedient nichts und schließt nichts.
 | AB9 | Als eigenes Programm „Mail“ und danach „../Geheim“ eintragen | Beides wird abgelehnt, mit einem Satz, warum. Der Text bleibt im Feld stehen |
 | AB10 | Mit KI-Gehirn: „Ich möchte gleich eine Tabelle bauen, mach mir dafür bitte das passende Programm auf“ | Er öffnet Excel, ohne nachzufragen. Unter Sicherheit → Audit-Log steht der Aufruf, ebenso die Punkte von eben („Öffnen: Safari“) |
 | AB11 | In Telegram: „Öffne Safari“ | Auf dem Mac geht nichts auf; JARVIS sagt, dass er das nur am Mac kann oder dass er dafür kein Werkzeug hat |
+
+## AC. Wochenbericht (Schritt G5, neu)
+
+JARVIS fasst die Woche zusammen: was du erledigt hast, was liegt, was die nächsten sieben Tage bringen. Ohne
+KI-Modell, nur aus deinen Aufgaben in Obsidian, dem Kalender und dem Projektgedächtnis. In der Sandbox ist das nur
+gegen ein nachgebautes Telegram und einen Testordner geprüft. **Als erledigt zählt nur, was in Obsidian mit Datum
+abgehakt ist** (so wie JARVIS und das Plugin „Tasks“ es schreiben: `- [x] Angebot verschickt ✅ 2026-11-12`).
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| AC1 | Sagen oder tippen: „Wochenbericht“ | JARVIS antwortet mit „Deine Woche, Benedikt. …“ und nennt, wie viele Aufgaben du erledigt hast und wie viele es in der Vorwoche waren; der Raum „Heute“ geht auf |
+| AC2 | „Wie war meine Woche?“ | Dieselbe Antwort |
+| AC3 | Stimmt die Zahl der erledigten Aufgaben? In Obsidian nachzählen, was seit Montag abgehakt ist | Die Zahl passt. **Wichtig für mich:** Wenn sie zu klein ist, schau bitte, ob hinter den abgehakten Aufgaben ein Datum steht (✅ und der Tag). Ohne Datum kann JARVIS sie keiner Woche zuordnen |
+| AC4 | In Telegram: `/woche` | Eine Nachricht „Deine Woche, Benedikt (… bis …):“ mit den Erledigten beim Namen, dem Überfälligen, den Terminen der nächsten sieben Tage (je Tag eine Zeile) und den Aufgaben, die fällig werden |
+| AC5 | Hast du einen Termin über mehrere Tage im Kalender (Urlaub, Messe)? Dann in der Nachricht nachsehen | Er steht einmal da, an seinem ersten Tag, mit „(bis …)“, und zählt als ein Termin |
+| AC6 | Einstellungen → Handy: bei „Wochenbericht jeden“ den Haken setzen | Vorgeschlagen sind Freitag und 16:00 Uhr. Unter Agenten → Zeitplan steht „Wochenbericht, freitags um 16:00 Uhr, per Telegram“ mit dem nächsten Termin |
+| AC7 | Zum Ausprobieren: Wochentag auf heute stellen und die Uhrzeit auf zwei Minuten nach jetzt, dann warten | Der Bericht kommt von selbst aufs Handy, genau einmal. Im Zeitplan steht der Lauf. Danach Wochentag und Uhrzeit wieder so stellen, wie du sie haben willst |
+| AC8 | Ohne den Haken „Projekte beim Namen“: steht in der Nachricht ein Projektname? | Nein, nur Zahlen („Projekte: Eines hat Überfälliges …“). Mit dem Haken stehen offene Projekte beim Namen, ein vertrauliches nie |
+| AC9 | Den Haken bei „Wochenbericht jeden“ wieder entfernen, wenn du ihn nicht willst | Im Zeitplan steht „ausgeschaltet“; auf Zuruf und mit `/woche` geht er weiter |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

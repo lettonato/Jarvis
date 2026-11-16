@@ -43,6 +43,8 @@ export type TelegramConfig = {
   briefing?: string | null;
   // Uhrzeit (HH:MM) für den Tagesabschluss oder null. Fehlt der Wert, kommt keiner.
   abschluss?: string | null;
+  // Wochenbericht: Wochentag (1 Montag bis 7 Sonntag) und Uhrzeit (HH:MM), oder null. Fehlt der Wert, kommt keiner.
+  woche?: { tag: number; zeit: string } | null;
   // Hinweise am Tag (überfällig geworden, Rückmeldung fehlt, heute noch offen). Fehlt der Wert, kommen keine.
   hinweise?: boolean;
 };

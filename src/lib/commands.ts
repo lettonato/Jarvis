@@ -10,6 +10,7 @@ import type { MetalleSnapshot } from "./metalle";
 import { SAFETY, type DeskSnapshot } from "./paper";
 import type { ProjekteSnapshot } from "./projekte";
 import { abschlussSatz, projektSatz, tagesabschluss } from "./routinen";
+import { wocheSatz, wochenbericht } from "./woche";
 import { tageslage, type TagesDaten } from "./heute";
 import { dateOf, dueSoon, type Task, type TasksSnapshot } from "./tasks";
 import type { WeatherSnapshot } from "./weather";
@@ -522,6 +523,13 @@ const RULES: Rule[] = [
       const blocked = ctx.intel && !ctx.intel.configured ? newsNeedsKey(ctx) : null;
       return blocked ?? { reply: intelSentence(ctx.intel ?? null, ctx.now), navigate: "/intel" };
     },
+  },
+  {
+    // Der Wochenbericht: was diese Woche erledigt wurde, was liegt, was in den nächsten sieben Tagen kommt.
+    // Nur die Bitte um den Bericht selbst, als ganzer Satz: „Schreib einen Wochenbericht für Projekt Alpha“ oder
+    // „Notiere Wochenbericht abgeben“ ist ein anderer Auftrag.
+    match: /^((bitte )?(gib|zeig|sag|lies|bring|schick) (mir )?(bitte )?)?((den|meinen|einen) )?(wochenbericht|wochenrückblick|wochenabschluss)(,? (bitte|vor|jetzt))*$|^wie (war|lief) (meine|die|diese) woche$/,
+    run: (ctx) => ({ reply: wocheSatz(wochenbericht(tagesDaten(ctx), ctx.now), ctx.name), navigate: "/heute" }),
   },
   {
     // Der Tagesabschluss: was offen blieb und was morgen kommt. Freigaben und Not-Aus zeigt die Ansicht „Heute“.

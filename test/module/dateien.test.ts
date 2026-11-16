@@ -48,6 +48,41 @@ describe("Obsidian-Aufgaben", () => {
     assert.equal((await obsidian.readTasks(vault)).tasks.some((t) => t.text === "Angebot prüfen"), false);
   });
 
+  test("merkt sich, was in den letzten zwei Wochen erledigt wurde, mit Tag und Text; ohne Datum, älter oder aus der Zukunft nicht", async () => {
+    // Nach „hakt ab“ oben steht „Angebot prüfen“ als heute erledigt im Tresor.
+    const heute = (await obsidian.readTasks(vault)).erledigt ?? [];
+    assert.deepEqual(heute.map((e) => e.text), ["Angebot prüfen"]);
+    assert.match(heute[0].am, /^\d{4}-\d{2}-\d{2}$/);
+
+    await fs.writeFile(
+      path.join(vault, "Woche.md"),
+      ["- [x] **Angebot** an [[Max Huber|Max]] geschickt #wichtig ✅ 2026-11-12", "- [x] Erster Tag ✅ 2026-10-31", "- [X] Großes X ✅ 2026-11-13", "- [x] Zu alt ✅ 2026-10-30", "- [x] Aus der Zukunft ✅ 2026-11-14", "- [x] Ohne Datum", "- [x] ✅ 2026-11-12", "```", "- [x] Im Codeblock ✅ 2026-11-12", "```", "- [ ] Offen 📅 2026-11-12"].join("\n"),
+    );
+    const snap = await obsidian.readTasks(vault, new Date(2026, 10, 13, 16, 0));
+    assert.deepEqual(
+      [...(snap.erledigt ?? [])].sort((a, b) => a.am.localeCompare(b.am)),
+      [
+        { am: "2026-10-31", text: "Erster Tag" },
+        // steht seit dem Anlegen des Tresors oben in dieser Datei
+        { am: "2026-11-01", text: "Erledigt" },
+        { am: "2026-11-12", text: "Angebot an Max geschickt" },
+        { am: "2026-11-13", text: "Großes X" },
+      ],
+    );
+    assert.equal(snap.doneToday, 1);
+    await fs.rm(path.join(vault, "Woche.md"));
+  });
+
+  test("bei sehr vielen Erledigten bleiben die neuesten 500, nicht die, die in der Datei zuerst stehen", async () => {
+    const zeilen = [...Array.from({ length: 400 }, (_, i) => `- [x] Alt ${i} ✅ 2026-11-02`), ...Array.from({ length: 300 }, (_, i) => `- [x] Neu ${i} ✅ 2026-11-12`)];
+    await fs.writeFile(path.join(vault, "Viel.md"), zeilen.join("\n"));
+    const erledigt = (await obsidian.readTasks(vault, new Date(2026, 10, 13, 16, 0))).erledigt ?? [];
+    await fs.rm(path.join(vault, "Viel.md"));
+    assert.equal(erledigt.length, 500);
+    assert.equal(erledigt.filter((e) => e.am === "2026-11-12").length, 300, "alle neuen sind dabei");
+    assert.ok(erledigt.filter((e) => e.am === "2026-11-02").length < 200 + 1);
+  });
+
   test("schreibt nie außerhalb des Tresors", async () => {
     await assert.rejects(obsidian.writeVaultFile(vault, "../ausbruch.md", "x"), /außerhalb/);
     await assert.rejects(obsidian.writeVaultFile(vault, "/etc/ausbruch.md", "x"), /außerhalb/);

@@ -155,7 +155,9 @@ nach dem Umzug auf dem Mac. Alte Klartext-Kopien in Backups bleiben, bis die Sch
 **R-09 Telegram:** Wer Benedikts Telegram-Konto oder das Handy entsperrt in die Hand bekommt, kann JARVIS
 alles sagen, was das Gehirn kann (Mails lesen, Browser, Dokumente). Telegram ist für Firmendaten von D&S
 ungeeignet und sollte für den Geschäftsbereich durch Teams oder die eigene Oberfläche mit Entra-Anmeldung
-ersetzt werden.
+ersetzt werden. Seit Schritt G5 gehen mit dem Wochenbericht (auf `/woche` oder, wenn eingeschaltet, einmal in der
+Woche) auch die Texte der in dieser Woche erledigten Aufgaben über Telegram; die offenen Aufgaben und die Termine
+gehen dort schon mit Briefing und Tagesabschluss hinaus. Projektnamen weiter nur mit dem Schalter, vertrauliche nie.
 
 **R-10 Tests:** Kein Test im Repo, keine CI. Die in PR-Beschreibungen erwähnten Tests sind verloren. Damit ist
 das Abnahmekriterium von Phase 1 („nachweislich funktionsfähig“) heute nicht erfüllbar.

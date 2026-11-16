@@ -22,6 +22,7 @@ Umgebungsvariablen.
 | `twelvedata.apiKey` | Kurse für Gold, Silber, Öl | **ja** |
 | `telegram.token` | Schlüssel des eigenen Telegram-Bots | **ja** |
 | `telegram.bot`, `chatId`, `chatName`, `trades`, `warnings`, `reminders`, `projekte`, `briefing`, `abschluss` | Kopplung und Meldungen | nein |
+| `telegram.woche` | Wochenbericht von selbst: `{ "tag": 5, "zeit": "16:00" }` (Wochentag 1 Montag bis 7 Sonntag, Uhrzeit), fehlt oder `null`: aus. Alles andere gilt als aus | nein |
 | `calendar.target` | Kalender für neue Termine | nein |
 | `microsoft.tenantId`, `clientId`, `konto`, `extern` | Microsoft 365: Verzeichnis und Anwendung, verbundenes Konto, Schalter „Outlook-Termine auch im Gespräch und über Telegram“ (siehe `docs/jarvis-2.0/08-microsoft-365.md`) | nein |
 | `microsoft.refreshToken` | Anmeldung bei Microsoft 365 (Schlüssel zum Angemeldetbleiben); entsteht bei der Anmeldung mit Code, nie von Hand eintragen | **ja** |

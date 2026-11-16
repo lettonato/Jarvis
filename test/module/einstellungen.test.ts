@@ -172,7 +172,15 @@ describe("Einstellungen: Handy (Telegram)", () => {
     await schlecht(einstellungen.aendereEinstellung({ action: "telegramPrefs", trades: false }), /zuerst den Bot-Schlüssel/);
     await config.writeConfig({ name: "Benedikt", telegram: gekoppelt });
     await schlecht(einstellungen.aendereEinstellung({ action: "telegramPrefs", briefing: "25:00" }), /Uhrzeit wie 07:30/);
+    for (const falsch of [{ tag: 8, zeit: "16:00" }, { tag: 5, zeit: "16 Uhr" }, { tag: 5 }, "freitag"]) await schlecht(einstellungen.aendereEinstellung({ action: "telegramPrefs", woche: falsch as never }), /Wochentag und eine Uhrzeit wie 16:00/);
     assert.deepEqual((await config.readConfig()).telegram, gekoppelt);
+    // Der Wochenbericht: einschalten mit Wochentag und Uhrzeit, ausschalten mit null; nur der Plan wird gespeichert.
+    await gut(einstellungen.aendereEinstellung({ action: "telegramPrefs", woche: { tag: 5, zeit: "16:00", mehr: "x" } as never }));
+    assert.deepEqual((await config.readConfig()).telegram?.woche, { tag: 5, zeit: "16:00" });
+    await gut(einstellungen.aendereEinstellung({ action: "telegramPrefs", trades: true }));
+    assert.deepEqual((await config.readConfig()).telegram?.woche, { tag: 5, zeit: "16:00" }, "ein anderer Schalter lässt ihn stehen");
+    await gut(einstellungen.aendereEinstellung({ action: "telegramPrefs", woche: null }));
+    assert.equal((await config.readConfig()).telegram?.woche, null);
   });
 });
 

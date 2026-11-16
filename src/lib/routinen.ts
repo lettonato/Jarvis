@@ -15,42 +15,51 @@ import { aufgabenUnlesbar, dateOf, TRESOR_UNLESBAR, type Task } from "./tasks";
 //    Sonst nennt JARVIS dort nur Zahlen und verweist auf den Mac.
 
 const MAX_ZEILEN = 5;
-const zahl = (n: number, eins: string, viele: string) => (n === 1 ? eins : `${n} ${viele}`);
-const gross = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+export const zahl = (n: number, eins: string, viele: string) => (n === 1 ? eins : `${n} ${viele}`);
+export const gross = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const teile = (hinweise: ProjektHinweis[]) => ({ offen: hinweise.filter((h) => !h.vertraulich), geheim: hinweise.filter((h) => h.vertraulich).length });
 
 // Der Absatz „Projekte“ für Nachrichten aufs Handy. Leer, wenn kein Projekt Aufmerksamkeit braucht.
 export function projekteAbsatz(lage: Tageslage, vorschlaege: number, namen: boolean): string {
-  const { offen, geheim } = teile(lage.projekte);
   const zeilen: string[] = [];
   if (lage.projekte.length > 0) {
-    if (namen) {
-      const liste = offen.slice(0, MAX_ZEILEN).map((h) => `• ${h.name}: ${h.grund}`);
-      if (offen.length > MAX_ZEILEN) liste.push(`• und ${zahl(offen.length - MAX_ZEILEN, "ein weiteres", "weitere")}`);
-      if (geheim > 0) liste.push(`• ${zahl(geheim, "ein vertrauliches Projekt", "vertrauliche Projekte")}: Einzelheiten nur am Mac`);
-      zeilen.push(`Projekte, die dich brauchen:\n${liste.join("\n")}`);
-    } else {
+    if (namen) zeilen.push(`Projekte, die dich brauchen:\n${projektListe(lage.projekte)}`);
+    else {
       const dringend = lage.projekte.filter((h) => h.dringend).length;
       const davon = dringend === 0 ? "" : dringend === lage.projekte.length ? (dringend === 1 ? ", es ist dringend" : ", alle dringend") : `, ${dringend === 1 ? "eines" : dringend} davon dringend`;
       zeilen.push(`Projekte: ${zahl(lage.projekte.length, "Eines braucht", "brauchen")} dich${davon}. Einzelheiten am Mac unter „Heute“.`);
     }
   }
-  if (vorschlaege > 0) zeilen.push(`${zahl(vorschlaege, "Ein Vorschlag fürs Projektgedächtnis wartet", "Vorschläge fürs Projektgedächtnis warten")} am Mac auf deine Bestätigung.`);
+  if (vorschlaege > 0) zeilen.push(vorschlagSatz(vorschlaege, true));
   return zeilen.join("\n");
 }
+
+// Projekte als Zeilen fürs Handy, wenn Namen dort stehen dürfen: offene beim Namen, vertrauliche nur gezählt.
+// Auch der Wochenbericht (src/lib/woche.ts) nimmt diese Zeilen, damit die Regel an einer Stelle steht.
+export function projektListe(hinweise: ProjektHinweis[]): string {
+  const { offen, geheim } = teile(hinweise);
+  const zeilen = offen.slice(0, MAX_ZEILEN).map((h) => `• ${h.name}: ${h.grund}`);
+  if (offen.length > MAX_ZEILEN) zeilen.push(`• und ${zahl(offen.length - MAX_ZEILEN, "ein weiteres", "weitere")}`);
+  if (geheim > 0) zeilen.push(`• ${zahl(geheim, "ein vertrauliches Projekt", "vertrauliche Projekte")}: Einzelheiten nur am Mac`);
+  return zeilen.join("\n");
+}
+
+export const vorschlagSatz = (n: number, amMac = false) => `${zahl(n, "Ein Vorschlag fürs Projektgedächtnis wartet", "Vorschläge fürs Projektgedächtnis warten")}${amMac ? " am Mac" : ""} auf deine Bestätigung.`;
 
 // Dasselbe als gesprochener Satz am Mac: höchstens zwei Projekte beim Namen, der Rest gezählt.
 export function projektSatz(lage: Tageslage, vorschlaege: number): string {
   return projektSaetze(lage.projekte, vorschlaege).join(" ");
 }
 
-function projektSaetze(hinweise: ProjektHinweis[], vorschlaege: number): string[] {
+// was: „dich“ (das Projekt braucht dich) oder „eine Frist“ (im Wochenbericht: das Projekt hat eine Frist).
+export function projektSaetze(hinweise: ProjektHinweis[], vorschlaege: number, was: "dich" | "eine Frist" = "dich"): string[] {
   const { offen, geheim } = teile(hinweise);
   const saetze = offen.slice(0, 2).map((h) => `Im Projekt ${h.name}: ${h.grund}.`);
   const rest = offen.length - saetze.length + geheim;
-  if (rest > 0) saetze.push(saetze.length ? `${zahl(rest, "Ein weiteres Projekt braucht", "weitere Projekte brauchen")} dich, das steht unter Heute.` : `${zahl(rest, "Ein Projekt braucht", "Projekte brauchen")} dich, das steht unter Heute.`);
-  if (vorschlaege > 0) saetze.push(`${zahl(vorschlaege, "Ein Vorschlag fürs Projektgedächtnis wartet", "Vorschläge fürs Projektgedächtnis warten")} auf deine Bestätigung.`);
+  const [eins, viele] = was === "dich" ? ["braucht dich", "brauchen dich"] : ["hat eine Frist", "haben eine Frist"];
+  if (rest > 0) saetze.push(saetze.length ? `${zahl(rest, `Ein weiteres Projekt ${eins}`, `weitere Projekte ${viele}`)}, das steht unter Heute.` : `${zahl(rest, `Ein Projekt ${eins}`, `Projekte ${viele}`)}, das steht unter Heute.`);
+  if (vorschlaege > 0) saetze.push(vorschlagSatz(vorschlaege));
   return saetze;
 }
 
@@ -115,9 +124,9 @@ export function tagesabschluss(d: TagesDaten, now: Date): Abschluss {
 
 const terminZeile = (e: CalendarEvent) => `• ${e.allDay ? "ganztägig" : clock(e.start)} ${e.title}${e.location ? `, ${e.location}` : ""}`;
 
-function liste<T>(dinge: T[], zeile: (x: T) => string): string {
+export function liste<T>(dinge: T[], zeile: (x: T) => string): string {
   const zeilen = dinge.slice(0, MAX_ZEILEN).map(zeile);
-  if (dinge.length > MAX_ZEILEN) zeilen.push(`• und ${dinge.length - MAX_ZEILEN} weitere`);
+  if (dinge.length > MAX_ZEILEN) zeilen.push(`• und ${zahl(dinge.length - MAX_ZEILEN, "eine weitere", "weitere")}`);
   return zeilen.join("\n");
 }
 

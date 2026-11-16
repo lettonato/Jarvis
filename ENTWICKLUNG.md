@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1190 von 1190 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1219 von 1219 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -47,7 +47,9 @@ vorbereitet, soweit das ohne Azure geht: Das Projektgedächtnis kann in einer Po
 (geprüft gegen ein echtes PostgreSQL 16 in der Sandbox, **nicht in Azure**), und die Verbindung zu Claude wird
 an einer Stelle aufgebaut. In Azure ist nichts angelegt; es gibt keine Kosten. Seit Schritt H2.1 öffnet JARVIS
 auf Zuruf Programme und Ordner am Mac aus einer festen Liste (nur öffnen, nichts bedienen); das ist **nur gegen
-einen nachgebauten Mac geprüft**.
+einen nachgebauten Mac geprüft**. Seit Schritt G5 gibt es einen Wochenbericht (erledigt, offen, die nächsten
+sieben Tage): auf Zuruf am Mac und am Handy, und wenn man ihn einschaltet, einmal in der Woche von selbst per
+Telegram; **nur gegen ein nachgebautes Telegram und einen Testordner geprüft**.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Seit Schritt C2 hat auch das persönliche Gedächtnis die Zusagen des Projektgedächtnisses: Zwei
 Einträge zur selben Zeit überschreiben sich nicht, und eine beschädigte Datei wird nie stillschweigend ersetzt.
@@ -64,7 +66,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen; Speicher wahlweise Datei oder PostgreSQL (Schritt I1); das persönliche Gedächtnis mit denselben Zusagen wie das Projektgedächtnis (Schritt C2) | Mac-Prüfliste Teile E und Q; Zuordnung von Mails; persönliches Gedächtnis in die Datenbank (erst mit Anmeldung je Person); Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der sechs Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre), den gemeinsamen Zeitplan und den Edelmetall-Agenten (nur gegen Nachbau); **Offen** für weitere Agenten | Mac-Prüfliste Teile H und K; Marktagent, Newsletter und weitere |
-| G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss, Projektüberwachung, Hinweise am Tag aufs Handy und als Mitteilung am Mac (einstellbar, abschaltbar) und Antwortentwürfe für Mails ohne Versand; **Offen** für Marktüberwachung über Intel hinaus | Mac-Prüfliste Teile G, L, M und P; Entwurf im Ordner „Entwürfe“ des Postfachs (Frage 13) |
+| G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss, Wochenbericht (Schritt G5), Projektüberwachung, Hinweise am Tag aufs Handy und als Mitteilung am Mac (einstellbar, abschaltbar) und Antwortentwürfe für Mails ohne Versand; **Offen** für Marktüberwachung über Intel hinaus | Mac-Prüfliste Teile G, L, M, P und AC; Entwurf im Ordner „Entwürfe“ des Postfachs (Frage 13) |
 | D Microsoft 365 | **Testbereit** (nur gegen Nachbau) für Termine aus Outlook lesen (Schritt D1); **Blockiert** für die echte Anbindung, bis eure IT die Anwendung in Entra angelegt hat; **Offen** für Mail, Dateien, Teams | App-Registrierung durch die IT (Frage 14), Mac-Prüfliste Teil N; weitere Teile nur nach Benedikts Entscheidung |
 | H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme, das Unterbrechen mit „Stopp“ und, seit Schritt H2.1, das Öffnen von Programmen und Ordnern aus einer festen Liste; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme | Mac-Prüfliste Teil I mit echtem Schlüssel und Teil AB; weitere Teile eines Desktop-Agenten (H2.2) |
 | I Azure | **Testbereit** für die Vorbereitung (Schritt I1): Projektgedächtnis in PostgreSQL, Claude-Zugang an einer Stelle, Anleitung; **Blockiert** für alles in Azure selbst (Entscheidung und Kostenfreigabe) | Abonnement, IT-Kontakt, Region, Budget (Frage 3); davor Anmeldung je Person und die übrigen Daten auf die Datenbank umstellen |
@@ -120,7 +122,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Grok-Marktbeobachtung (Intel) | 2× täglich, Tagesbudget | proaktive Berichte | 9 | Testbereit |
 | Webcrawler | gemeinsamer Netzschutz `netz.ts` (alle IP-Formen, feste geprüfte IP je Abruf) | gemeinsam nutzbar, Lücken geschlossen | 2/9 | Testbereit (R-05 behoben) |
 | Trading-Simulation (Spielgeld) | vorhanden, kein Echtgeld-Code | strikt getrennt von Echtgeld | 9 | Testbereit |
-| Proaktive Routinen (Kalender, Projekte, Rückmeldungen, Berichte) | Briefing mit Projekten, Tagesabschluss, Erinnerungen mit Vorbereitung; jede einzeln abschaltbar | kontrollierbar, protokolliert, abschaltbar | 9 | Testbereit (Briefing, Abschluss), Offen (Rückmeldungen, Berichte) |
+| Proaktive Routinen (Kalender, Projekte, Rückmeldungen, Berichte) | Briefing mit Projekten, Tagesabschluss, Erinnerungen mit Vorbereitung, seit Schritt G5 ein Wochenbericht; jede einzeln abschaltbar | kontrollierbar, protokolliert, abschaltbar | 9 | Testbereit (Briefing, Abschluss, Wochenbericht, „Hier fehlt eine Rückmeldung“ in den Hinweisen am Tag), Offen (Berichte je Projekt, Rückmeldungen einholen) |
 | Verkehrsplanung | fehlt | echte Verkehrsdaten | 9 | Offen |
 | **Sichere Unternehmensintegrationen** | | | | |
 | Kalender | Apple-Kalender (macOS), lesen und eintragen | Outlook über Microsoft Graph | 5 | Testbereit (Apple), Graph Offen |
@@ -938,6 +940,7 @@ KI-Gehirn). Über Telegram stehen Projektnamen und -inhalte nur, wenn der Schalt
 | G3.6 Anhänge an der Antwort | Blockiert | Ein Link ins Mailprogramm kann keine Anhänge tragen. Das geht erst mit dem Entwurf im Postfach (G3.4, Frage 13) |
 | G4.1 Starke Bewegungen am Markt im Morgenbriefing und im Tagesabschluss (Handy und gesprochen am Mac) | Testbereit; nur gegen nachgebautes Telegram und nachgebautes CoinGecko | Schritt G4.1 unten; `marktAbsatz`, `marktHinweis` in `src/lib/marktlage.ts` |
 | G4.2 Marktüberwachung über Krypto und Edelmetalle hinaus (Aktien, Zinsen, Währungen) | Offen | neue Datenquellen, zum Teil bezahlt: braucht Benedikts Freigabe |
+| G5 Wochenbericht: was diese Woche erledigt wurde, was liegt, was die nächsten sieben Tage bringen; auf Zuruf am Mac und am Handy, von selbst einmal in der Woche per Telegram. **Voreinstellung: aus** | Testbereit, **nur gegen ein nachgebautes Telegram und einen Testordner als Tresor** | Schritt G5 unten; `src/lib/woche.ts`; Prüfliste Teil AC |
 
 ### Testergebnisse Schritt G1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -1248,6 +1251,78 @@ des Edelmetall-Agenten (morgens 7:30 Uhr und abends 17:30 Uhr, wenn er eingescha
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
 (CoinGecko ist für diese Abfrage kostenlos und wird schon benutzt).
+
+### Schritt G5: Wochenbericht, auf Zuruf und einmal in der Woche von selbst (16. November 2026)
+
+**Warum:** Der Auftrag nennt bei den proaktiven Routinen „Berichte“; in der Zielübersicht stand dort „Offen“.
+Morgens und abends meldet sich JARVIS schon. Einen Blick auf die ganze Woche gab es nicht: was geschafft ist, was
+liegen blieb und was die nächste Woche bringt.
+
+**Was JARVIS jetzt kann:** „Jarvis, Wochenbericht“ oder „Wie war meine Woche?“ am Mac, `/woche` oder
+„Wochenbericht“ in Telegram. Am Mac kommt ein kurzer gesprochener Text mit Zahlen („Du hast 3 Aufgaben erledigt, in
+der Vorwoche waren es 2. Eine ist überfällig. In den nächsten sieben Tagen hast du 4 Termine, die meisten am
+Montag.“), aufs Handy eine Nachricht mit den Erledigten beim Namen, dem Überfälligen mit seinem Alter, je Tag einer
+Zeile aus dem Kalender, den Aufgaben, die fällig werden, und den Projekten mit einer Frist. Wer will, bekommt ihn
+von selbst: Einstellungen → Handy → „Wochenbericht jeden … um … Uhr“, vorgeschlagen Freitag 16:00 Uhr.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| G5.1 Regeln ohne KI-Modell: diese Woche (Montag bis heute), die Vorwoche (Montag bis Sonntag), der Ausblick (morgen bis in sieben Tagen); Aufgaben, Kalender, Projekte | Testbereit | `src/lib/woche.ts`; `test/regeln/woche.test.ts` |
+| G5.2 Was erledigt wurde: Obsidian-Aufgaben mit Abhak-Datum („✅ 2026-11-12“) aus den letzten 14 Tagen, mit Text | Testbereit, **nur gegen einen Testordner** | `readTasks` in `src/lib/server/obsidian.ts`; `test/module/dateien.test.ts` |
+| G5.3 Auf Zuruf am Mac (fester Befehl, der Raum „Heute“ geht auf) und am Handy (`/woche`, steht im Menü des Bots und in `/hilfe`) | Testbereit, **nur gegen ein nachgebautes Telegram** | Regel in `src/lib/commands.ts`, `commandOf` in `src/lib/telegram.ts` |
+| G5.4 Von selbst über den gemeinsamen Zeitplan: am eingestellten Wochentag zur Uhrzeit, einmal, höchstens drei Stunden später (auch über Mitternacht), nach einem Fehlschlag frühestens nach fünf Minuten wieder. **Voreinstellung: aus** | Testbereit, **nur gegen ein nachgebautes Telegram** | `wocheFaellig`, Aufgabe „Wochenbericht“ in `src/lib/server/zeitplan-aufgaben.ts`; `test/module/hinweise.test.ts` |
+| G5.5 Einstellung unter „Handy (Telegram)“: Haken, Wochentag, Uhrzeit; die Schnittstelle lehnt Unsinn ab; im Zeitplan steht „freitags um 16:00 Uhr, per Telegram“ mit dem nächsten Termin | Testbereit | `src/components/TelegramSetup.tsx`, `src/lib/server/einstellungen.ts` |
+| G5.6 Was nicht hinausgeht: Projektnamen über Telegram nur mit dem Schalter „Projekte beim Namen“, ein vertrauliches Projekt nie (auch nicht gesprochen am Mac), Outlook-Termine ohne Freigabe nur als Zahl | Testbereit | dieselben Bausteine wie der Tagesabschluss (`projektListe`, `projektSaetze` in `src/lib/routinen.ts`) |
+| G5.7 Handprüfung „Wochenbericht“ (6 Schritte) im Browser; jetzt 31 Handprüfungen | Testbereit | `test/hand/woche-rauch.ts` (Port 3133) |
+| G5.8 Am echten Mac und mit dem echten Telegram prüfen; ob die erledigten Aufgaben in Benedikts Tresor ein Datum tragen | Offen (Benedikt) | Prüfliste Teil AC |
+| G5.9 Eine eigene Ansicht „Woche“ am Bildschirm; Rückmeldungen anderer im Bericht; ein Bericht je Projekt | Offen | nicht gebaut |
+
+**Eigene Entscheidungen (Benedikt hat sie noch nicht gesehen):** (1) Von selbst kommt der Bericht erst, wenn du
+ihn einschaltest; vorgeschlagen sind Freitag und 16:00 Uhr. Auf Zuruf geht er immer. (2) „Diese Woche“ ist Montag
+bis heute, der Ausblick morgen bis in sieben Tagen: Am Freitag deckt er die ganze nächste Arbeitswoche. (3) Als
+erledigt zählt nur, was in Obsidian mit Datum abgehakt ist. Ohne Datum kann JARVIS eine abgehakte Zeile keiner
+Woche zuordnen; er rät nicht. (4) Kein KI-Modell, keine neue Datenquelle, kein Absatz zu Märkten und Spielgeld-Desk
+(die stehen jeden Tag in Briefing und Abschluss). (5) Die Vorwoche steht als Zahl daneben, ohne „mehr“ oder
+„weniger“: Mitten in der Woche stünden sonst zwei Tage gegen sieben. (6) Ein Termin über mehrere Tage (Urlaub,
+Messe) steht einmal da, an seinem ersten Tag im Ausblick, mit „(bis Fr., 20.11.)“, und zählt als einer. (7) Der
+feste Befehl gilt nur für die Bitte um den Bericht selbst („Wochenbericht“, „Zeig mir meinen Wochenbericht“, „Wie
+war meine Woche?“). „Schreib einen Wochenbericht für Projekt Alpha“ ist ein anderer Auftrag und geht an das
+KI-Gehirn. (8) Nach dem Wochenbericht gilt nichts als „schon gemeldet“: Die Hinweise am Tag und der Tagesabschluss
+bleiben, wie sie sind. (9) Beim Start setzt JARVIS das Menü der Befehle am Handy neu, damit ein schon gekoppeltes
+Handy `/woche` (und künftige Befehle) angeboten bekommt. Das ist ein Aufruf an Telegram mit der festen Liste der
+Befehle, ohne Inhalt von dir.
+
+**Grenzen:** (1) **Nur gegen ein nachgebautes Telegram und einen Testordner als Tresor geprüft**, nie am Mac. (2)
+Erledigt wird nur in Obsidian gezählt, nicht im Projektgedächtnis, und nur mit Datum. Trägt Benedikts Tresor keine
+Daten hinter abgehakten Aufgaben, steht dort „noch keine Aufgabe“, obwohl er gearbeitet hat (Prüfliste AC3). JARVIS
+selbst schreibt das Datum beim Abhaken. (3) Gelesen werden die letzten 14 Tage und höchstens 500 erledigte Zeilen
+(die neuesten). (4) War der Mac zur eingestellten Zeit und die drei Stunden danach aus, fällt der Bericht dieser
+Woche aus; auf Zuruf gibt es ihn trotzdem. (5) Am Bildschirm gibt es keine eigene Ansicht der Woche: Am Mac spricht
+JARVIS Zahlen und öffnet „Heute“; die Liste steht nur in der Nachricht aufs Handy. (6) Was im Bericht aus dem
+Kalender steht, ist über die Regeln geprüft, nicht über den laufenden Server: Der nachgebaute Mac-Kalender liest ab
+dem echten Heute, die Tests gegen Telegram rechnen mit einem festen Datum. (7) Die Zeitumstellung (Sommerzeit) ist
+nicht nachgestellt. (8) Mit KI-Gehirn gilt der feste Befehl wie alle festen Befehle nur für kurze Sätze (bis vier
+Wörter); „Kannst du mir bitte den Wochenbericht geben“ beantwortet dann Claude mit seinen Werkzeugen, nicht dieser
+Bericht. (9) Getippt mit „Jarvis, “ davor trifft der feste Befehl nicht (so ist es auch bei „Jarvis, öffne Safari“);
+gesprochen wird das Weckwort vorher abgetrennt. Vorgemerkt als Kleinigkeit für beide Befehle.
+
+### Testergebnisse Schritt G5 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1219 Tests: 1219 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 29), am endgültigen Stand dreimal hintereinander |
+| Handprüfung „Wochenbericht“ | Mit dem endgültigen Stand zweimal gelaufen (nach den Gegenproben und im Sammellauf), zweimal bestanden (6 Schritte, 53 bis rund 100 Sekunden, je nachdem, wie lange es bis zur nächsten vollen Minute dauert). Das Bild der Einstellungen angesehen und die Zeile aufgeräumt (Wochentag und Uhrzeit hatten zuerst die falsche Breite) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 31 Handprüfungen bestanden**, in drei Teilen gestartet (14, 12 und 6; zusammen rund 19 Minuten). Im ersten Teil fiel „Agenten“ durch: Die Prüfung zählt die Zeilen des Zeitplans fest auf und kannte die neue Zeile „Wochenbericht“ nicht. Das war ein Fehler der Prüfung, nicht von JARVIS; sie ist nachgezogen (und prüft bei der neuen Zeile auch den Hinweis „Telegram ist nicht verbunden“) und bestand im zweiten Teil |
+| Tests zuerst | Die Regeln standen als Tests vor dem Code und waren rot. Die Korrekturen aus dem Code-Review bekamen erst einen roten Test (vier Regeltests rot gesehen; der Test zum Menü am Handy war zuerst aus einem falschen Grund rot, weil er selbst falsch gebaut war, und ist nach seiner Korrektur mit abgeschalteter Änderung noch einmal rot gelaufen); der Test zu den „neuesten 500“ und die Zeilen zu Terminen, die schon laufen, kamen nach dem Code, ihr Beleg sind die Gegenproben |
+| Gegenproben (absichtlich eingebaute Fehler) | 59 eingebaute Fehler: 35 an den Regeln, 14 gegen nachgebautes Telegram, Einstellungen und Testordner, 10 im Browser (je eigener Bau). **55 sofort entdeckt**, im Browser alle im gemeinten Schritt. Vier erst nach Schärfen, dann entdeckt: (1) „ein Projekt steht doppelt da“ (kein Test hatte ein Projekt mit Überfälligem **und** einer Frist im Ausblick); (2) „die meisten am Montag“, obwohl nur an einem Tag etwas steht; (3) „erledigt zählt von der Uhr des Rechners aus statt vom Tag des Berichts“; (4) „JARVIS merkt sich den Bericht nicht“: Die Handprüfung bestand trotzdem, weil der Zeitplan nach einem Lauf ohnehin fünf Minuten wartet und die Prüfung nach dem Neustart nur 26 Sekunden. Sie prüft jetzt zusätzlich, dass der Bericht für heute gemerkt ist; der Test gegen das nachgebaute Telegram hatte den Fehler von Anfang an entdeckt. Danach Quelltext wie vorher (verglichen), sauberer Bau, Handprüfung bestanden |
+| `npx next build` | erfolgreich, mit den bekannten Warnungen |
+| Code-Review (Skill `code-review`, mittlere Stufe, vor dem Commit) | Zehn Hinweise, acht umgesetzt: Ein Termin über mehrere Tage stand an jedem seiner Tage und zählte mehrfach, mit der Anfangszeit eines anderen Tages; ein schon gekoppeltes Handy hätte `/woche` nie im Menü gesehen; ein Bericht für spät am Abend (22:30 Uhr) fiel aus, wenn der Mac erst nach Mitternacht nachsah; das Wort „Wochenbericht“ irgendwo im Satz löste den Bericht aus („Notiere Wochenbericht abgeben bis Freitag“); ein geleertes Uhrzeitfeld ging beim Ändern des Wochentags an den Server; „2 weniger als in der Vorwoche“ verglich zwei Tage mit sieben; die Regel für vertrauliche Projekte stand ein zweites Mal im Code (jetzt dieselben Bausteine wie der Tagesabschluss); der Text jeder jemals erledigten Zeile wurde aufbereitet, und bei mehr als 500 blieben die zuerst gelesenen statt der neuesten. Nebenbei heißt es durch den gemeinsamen Baustein jetzt auch im Tagesabschluss „und eine weitere“ statt „und 1 weitere“. Bewusst gelassen: Die Prüfung „ist das eine Uhrzeit“ steht ein zweites Mal in `woche.ts` (die vorhandene zu benutzen ergäbe einen Kreis zwischen den Dateien); die Liste der Erledigten geht mit den Aufgaben an die Seite (der Zuruf am Mac braucht sie) |
+| Sicherheitsprüfung (von Hand; der Skill `security-review` läuft in dieser Sandbox nicht, weil die Verbindung zu GitHub fehlt) | Kein neuer Dienst, kein neues Werkzeug für das KI-Gehirn, keine neue Schnittstelle. Neu nach außen: (a) Über Telegram gehen jetzt auch die Texte **erledigter** Aufgaben der Woche; die Texte offener Aufgaben und Kalendertermine gehen dort schon mit Briefing und Tagesabschluss hinaus, und nur an den einen gekoppelten Chat. (b) Beim Start ein Aufruf an Telegram mit der festen Liste der Befehle. Projektnamen und -inhalte nur mit dem Schalter, vertrauliche Projekte nie, Outlook-Termine ohne Freigabe nur als Zahl (Tests und Gegenproben). Die Liste der Erledigten geht nicht an das KI-Gehirn: Es bekommt weiter nur Zahlen und, über sein Werkzeug, die offenen Aufgaben. Die Einstellung nimmt nur Wochentag 1 bis 7 und eine Uhrzeit an; alles andere lehnt die Schnittstelle ab, und was von Hand in der Datei steht und kein Plan ist, gilt als aus. Der Bericht verändert nichts (kein Schreiben in Tresor, Kalender oder Projektgedächtnis) |
+| Nicht geprüft | **der Mac, das echte Telegram, Benedikts Tresor und Kalender**; der gesprochene Bericht über die Stimme; Kalenderinhalt über den laufenden Server (Grenze 6); Zeitumstellung; Safari |
+| Aufgefallen | In einem von 16 vollständigen Testläufen dieses Pakets fiel ein einzelner Test durch (1218 von 1219). Die Ausgabe dieses Laufs hatte ich nicht aufgezeichnet; **ich kann nicht sagen, welcher Test es war.** In den 15 Läufen danach (elf direkt im Anschluss, drei am endgültigen Stand) kam es nicht wieder. Seither schreibe ich jeden Lauf in eine Datei. Das bleibt unter Beobachtung wie der einmalige Ausfall der Prüfung Gedächtnis aus J9 |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen; R-09 (Telegram ist ein Dienst außer
+Haus) gilt auch für den Wochenbericht und ist dort ergänzt. **Neue laufende Kosten:** keine.
 
 ## Bereich H – Sprache und Desktop
 
@@ -2720,8 +2795,14 @@ Danach wie geplant:
    öffne Excel“ öffnet Programme und Ordner aus einer festen Liste (19 Programme, 4 Ordner, bis zu 12 eigene), mit
    und ohne KI-Gehirn; in den Einstellungen lässt sich jeder Eintrag ausschalten. Nur öffnen, nichts bedienen.
    Neue Handprüfung „Programme am Mac“, jetzt 30 Prüfungen.
+33. **G5: gebaut, Testbereit, nur gegen ein nachgebautes Telegram und einen Testordner geprüft** (Schritt G5 in
+   Bereich G): Wochenbericht auf Zuruf („Wochenbericht“, „Wie war meine Woche?“, `/woche`) und, wenn eingeschaltet,
+   einmal in der Woche von selbst per Telegram (vorgeschlagen Freitag 16:00 Uhr, ab Werk aus). Ohne KI-Modell.
+   Neue Handprüfung „Wochenbericht“, jetzt 31 Prüfungen. Offen für Benedikt: Prüfliste Teil AC, vor allem, ob die
+   abgehakten Aufgaben in seinem Tresor ein Datum tragen (sonst zählt JARVIS sie nicht).
    **Als Nächstes:** ein Paket, das keine Entscheidung von Benedikt braucht; Kandidaten stehen in der
    Übersicht oben (Modelladapter, Gesprächsnachbereitung, weitere Teile des Desktop-Agenten). Als Frage an Benedikt
-   vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleibt der einmalige, nicht
-   wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die weiteren Schritte für Azure (Anmeldung je Person,
+   vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleiben der einmalige, nicht
+   wiederholbare Ausfall der Prüfung Gedächtnis aus J9 und ein einzelner, nicht festgehaltener Durchfaller in einem
+   von 16 Testläufen bei G5. Die weiteren Schritte für Azure (Anmeldung je Person,
    übrige Daten in die Datenbank) erst, wenn Benedikt entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

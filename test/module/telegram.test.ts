@@ -143,6 +143,30 @@ describe("Telegram: nur der gekoppelte Chat", () => {
   });
 });
 
+describe("Telegram: /woche", () => {
+  test("ein schon gekoppeltes Handy bekommt das Menü mit den Befehlen beim Start neu, also auch /woche", async () => {
+    // Das Handy ist seit dem Koppeln oben verbunden. JARVIS wird beendet und neu gestartet, wie nach einem Update.
+    telegram.stopTelegram();
+    await kurz();
+    tg.leeren();
+    telegram.startTelegram();
+    await warteBis(() => tg.gesendet.some((g) => g.methode === "setMyCommands"), "Menü beim Start");
+    const menue = tg.gesendet.filter((g) => g.methode === "setMyCommands").at(-1)!.body.commands as { command: string }[];
+    assert.ok(menue.some((c) => c.command === "woche"), JSON.stringify(menue));
+  });
+
+  test("antwortet ohne Claude mit dem Wochenbericht; „Wochenbericht“ ohne Schrägstrich ebenso", async () => {
+    const vorher = claude.anfragen.length;
+    for (const befehl of ["/woche", "Wochenbericht"]) {
+      tg.leeren();
+      tg.nachricht(ICH, befehl);
+      await warteBis(() => tg.texteAn(ICH).length > 0, befehl);
+      assert.match(tg.texteAn(ICH)[0], /^Deine Woche, Benedikt \(/, befehl);
+    }
+    assert.equal(claude.anfragen.length, vorher);
+  });
+});
+
 describe("Telegram: Freigaben per Knopf", () => {
   let frage: { messageId: number; ja: string } | null = null;
 

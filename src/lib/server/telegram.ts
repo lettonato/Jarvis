@@ -8,6 +8,7 @@ import type { CalendarSnapshot } from "../calendar";
 import { deskSentence, situation } from "../commands";
 import { isoDate } from "../dates";
 import { abschlussNachricht, istFaellig, tagesabschluss } from "../routinen";
+import { wocheFaellig as wocheDran, wocheNachricht, wochenbericht, wochenPlan } from "../woche";
 import { formatPct, formatUsd } from "../format";
 import { majorsSnapshot, marketSnapshot } from "../market";
 import { kursLage, marktAbsatz } from "../marktlage";
@@ -73,7 +74,7 @@ type TgUpdate = { update_id: number; message?: TgMessage; callback_query?: TgCal
 // asks: welche Telegram-Nachricht zu welcher Rückfrage gehört, damit JARVIS dort später das Ergebnis
 // einträgt und die Knöpfe entfernt.
 type Ask = { id: string; messageId: number; text: string };
-type State = { offset: number; history: BrainTurn[]; lastAt: string | null; reminded: string[]; briefedOn: string | null; abgeschlossenAm: string | null; asks: Ask[] };
+type State = { offset: number; history: BrainTurn[]; lastAt: string | null; reminded: string[]; briefedOn: string | null; abgeschlossenAm: string | null; wocheAm: string | null; asks: Ask[] };
 
 type Shared = {
   running: boolean;
@@ -90,6 +91,8 @@ type Shared = {
   queue: Promise<void>;
   // stand: der Stand des Kalenders beim Lesen (kalenderStand). Ändert sich etwas an Microsoft 365, gilt er nicht mehr.
   calendar: { at: number; snap: CalendarSnapshot; stand: number } | null;
+  // Für welchen Bot das Menü mit den Befehlen seit dem Start schon gesetzt ist.
+  menueFuer?: string | null;
 };
 const holder = globalThis as typeof globalThis & { __jarvisTelegram?: Shared };
 const shared: Shared = (holder.__jarvisTelegram ??= {
@@ -105,7 +108,7 @@ const shared: Shared = (holder.__jarvisTelegram ??= {
   calendar: null,
 });
 
-const freshState = (): State => ({ offset: 0, history: [], lastAt: null, reminded: [], briefedOn: null, abgeschlossenAm: null, asks: [] });
+const freshState = (): State => ({ offset: 0, history: [], lastAt: null, reminded: [], briefedOn: null, abgeschlossenAm: null, wocheAm: null, asks: [] });
 
 async function load(): Promise<State> {
   if (shared.state) return shared.state;
@@ -271,6 +274,8 @@ export const prefsOf = (tg?: TelegramConfig): TelegramPrefs => ({
   briefing: tg?.briefing === undefined ? TELEGRAM_DEFAULTS.briefing : tg.briefing,
   abschluss: tg?.abschluss ?? TELEGRAM_DEFAULTS.abschluss,
   hinweise: tg?.hinweise ?? TELEGRAM_DEFAULTS.hinweise,
+  // Was in der Datei kein gültiger Plan ist (von Hand geändert), heißt „ausgeschaltet“.
+  woche: wochenPlan(tg?.woche),
 });
 
 // Nach dem Speichern eines neuen Schlüssels: von vorn, mit frischem Code.
@@ -425,6 +430,8 @@ async function runCommand(command: TelegramCommand, config: JarvisConfig): Promi
         return await briefing(config, new Date());
       case "abschluss":
         return await abschluss(config, new Date());
+      case "woche":
+        return await woche(config, new Date());
       case "handel":
         return deskStatus(await deskSnapshot());
       case "pause":
@@ -528,6 +535,14 @@ async function abschluss(config: JarvisConfig, now: Date): Promise<string> {
   // Vom Markt nur starke Bewegungen und Marken; der Desk hat seinen eigenen Satz.
   const maerkte = marktAbsatz(kursLage(market, metalle), isoDate(now));
   return abschlussNachricht(a, { name: config.name, namen: prefsOf(config.telegram).projekte, handel: deskSentence(desk, true), maerkte });
+}
+
+// Der Wochenbericht: was diese Woche erledigt wurde, was liegt, was die nächsten sieben Tage bringen. Ohne Markt
+// und ohne Handel: Die stehen jeden Tag im Briefing und im Tagesabschluss.
+async function woche(config: JarvisConfig, now: Date): Promise<string> {
+  const [calendar, tasks, projekte] = await Promise.all([readCalendar().catch(() => null), config.vaultPath ? readTasks(config.vaultPath, now).catch(() => null) : null, uebersicht(now).catch(() => null)]);
+  const w = wochenbericht({ calendar, tasks, mail: null, projekte, desk: null, intel: null, documents: null, freigabenOffen: 0, notaus: false }, now);
+  return wocheNachricht(w, { name: config.name, namen: prefsOf(config.telegram).projekte });
 }
 
 // Rückfragen kommen immer, auch wenn Meldungen zu Trades abgeschaltet sind: Ohne dein Ja kauft der Desk nicht.
@@ -660,6 +675,28 @@ export async function sendeTagesmeldung(welche: Tagesmeldung, now: Date, davor?:
   ]);
 }
 
+// Ist der Wochenbericht jetzt dran? Einmal in der Woche am eingestellten Tag zur Uhrzeit, höchstens drei Stunden später.
+export async function wochenberichtFaellig(now: Date, letzterLauf: Date | null): Promise<boolean> {
+  const tg = (await readConfig()).telegram;
+  if (!tg?.chatId) return false;
+  const state = await load();
+  return wocheDran(prefsOf(tg).woche, now, state.wocheAm, BRIEFING_WINDOW_MS) && !wartetNoch(now, letzterLauf, NEUER_VERSUCH_MS);
+}
+
+export async function sendeWochenbericht(now: Date): Promise<void> {
+  const config = await readConfig();
+  await sendeVonSelbst([
+    {
+      merken: async () => {
+        const state = await load();
+        state.wocheAm = isoDate(now);
+        await save(state);
+      },
+      inhalt: () => woche(config, now),
+    },
+  ]);
+}
+
 // Die Termine, vor denen jetzt eine Erinnerung fällig ist. Der Kalender wird dafür höchstens alle fünf Minuten gelesen.
 async function zuErinnern(now: Date): Promise<CalendarSnapshot["events"]> {
   const tg = (await readConfig()).telegram;
@@ -738,6 +775,12 @@ async function poll() {
       continue;
     }
     const state = await load();
+    // Das Menü mit den Befehlen einmal je Start neu setzen: Sonst sähe ein Handy, das vor einem Update gekoppelt
+    // wurde, neue Befehle wie /woche nie. Gelingt es nicht, ist nichts verloren (die Befehle gehen trotzdem).
+    if (config.telegram?.chatId && shared.menueFuer !== token) {
+      shared.menueFuer = token;
+      void call(token, "setMyCommands", { commands: COMMANDS }).catch(() => {});
+    }
     const abort = (shared.abort = new AbortController());
     try {
       const updates = await call<TgUpdate[]>(token, "getUpdates", { offset: state.offset, timeout: POLL_S, allowed_updates: ["message", "callback_query"] }, AbortSignal.any([abort.signal, AbortSignal.timeout((POLL_S + 20) * 1000)]));
@@ -775,6 +818,7 @@ export function startTelegram() {
 export function stopTelegram() {
   if (!shared.running) return;
   shared.running = false;
+  shared.menueFuer = null;
   shared.unlisten?.();
   shared.unlisten = null;
   wakeTelegram();

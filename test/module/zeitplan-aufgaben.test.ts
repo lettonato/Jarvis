@@ -78,6 +78,7 @@ describe("Zeitplan: was angemeldet ist", () => {
       ["hinweise", null],
       ["hinweise-mac", null],
       ["abschluss", null],
+      ["woche", null],
     ]);
     assert.ok(aufgaben.aufgaben().every((a) => a.lauf && a.faellig), "alles führt der gemeinsame Taktgeber selbst aus");
     assert.ok(u.eintraege.every((e) => e.selbst));
@@ -93,6 +94,7 @@ describe("Zeitplan: was angemeldet ist", () => {
       ["Telegram ist nicht verbunden.", null],
       ["Telegram ist nicht verbunden.", null],
       ["Ausgeschaltet.", null],
+      ["Telegram ist nicht verbunden.", null],
       ["Telegram ist nicht verbunden.", null],
     ]);
   });
