@@ -14,9 +14,11 @@ import { fortschritt, merkeBeide, MERKE_START, zeile, type Merke } from "@/lib/a
 import { antwortAufLetztes } from "@/lib/brain";
 import { eventsOn } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
+import { verbindungsSatz } from "@/lib/ladestand";
 import { RAEUME, raumVon, type Raum } from "@/lib/raeume";
 import { dateOf, dueSoon } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
+import { useVerbindung } from "@/lib/usePolling";
 
 // Der Rahmen um alle Räume: unten auf dem Boden die Leiste mit den Räumen und dem Feld für JARVIS, oben die
 // Hinweise, die nicht warten können (Not-Aus, Freigaben, Rückfragen), und hinter dem Raum die dunkle Wand,
@@ -404,12 +406,31 @@ function Leiste() {
 }
 
 // Oben in jedem Raum: was nicht warten kann. Ohne Not-Aus, Freigabe oder Rückfrage ist hier nichts zu sehen.
+// Antwortet JARVIS nicht mehr, zeigen die Räume weiter, was sie zuletzt gelesen haben. Das steht dann hier, oben in
+// jeder Ansicht, und verschwindet mit der ersten Antwort. Die Stelle gibt es immer (für ein Vorleseprogramm, das nur
+// ansagt, was in einer vorhandenen Stelle neu erscheint); sichtbar ist sie nur mit dem Satz.
+function Verbindungshinweis() {
+  const { aus, seit } = useVerbindung();
+  return (
+    <div role="status" data-verbindung={aus ? "aus" : "da"} className={aus ? undefined : "sr-only"}>
+      {aus && <Verbindungssatz seit={seit} />}
+    </div>
+  );
+}
+
+// Der Satz dazu. Die Uhr läuft nur mit, solange er dasteht: damit nach Mitternacht „gestern“ dabeisteht.
+function Verbindungssatz({ seit }: { seit: number | null }) {
+  const jetzt = useNow();
+  return <p className="rounded-2xl border-l-4 border-ocker bg-white/92 px-4 py-2.5 text-sm text-schiefer shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl">{verbindungsSatz(seit, jetzt?.getTime() ?? seit ?? 0)}</p>;
+}
+
 function Hinweise() {
   const { market, weather } = useJarvis();
   const demo = market?.majors.source === "demo" || weather?.source === "demo";
   return (
     <>
       <div className="fixed left-1/2 top-3 z-30 w-[min(54rem,calc(100vw-1.5rem))] -translate-x-1/2 space-y-2" style={{ viewTransitionName: "jarvis-hinweise" }}>
+        <Verbindungshinweis />
         <SicherheitsLeiste />
         <ApprovalBar />
       </div>

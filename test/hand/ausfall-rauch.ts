@@ -152,6 +152,10 @@ async function main() {
       for (const satz of ["Die Sicherheitslage lässt sich gerade nicht laden.", "Die Verbindung zu Microsoft lässt sich gerade nicht laden."])
         await seite.locator("main:visible").locator('[data-ladestand="gestoert"]', { hasText: satz }).first().waitFor({ timeout: 20_000 }).catch(async () => assert.fail(`Einstellungen: „${satz}“ steht nicht da. Da steht: ${(await arten(seite)).join(" | ")}`));
       assert.doesNotMatch(await text(seite), SELBST, "Einstellungen: kein von Hand geschriebener Ladesatz");
+      // Einzelne Stellen scheitern immer wieder, aber JARVIS antwortet sonst: Oben steht kein Hinweis, er antworte nicht.
+      await seite.waitForTimeout(22_000);
+      assert.equal(await seite.locator('[data-verbindung="aus"]').count(), 0, "obwohl JARVIS sonst antwortet, steht oben, er antworte nicht");
+      assert.equal(await seite.locator('[data-verbindung="da"]').count(), 1);
       await seite.context().close();
 
       // Nur die Kurse fehlen: Der Desk steht da, aber keine leere Scan-Tabelle und keine Kachel, die ewig „…“ zeigt.
@@ -166,7 +170,7 @@ async function main() {
       assert.ok(!zeilen.includes("Scan: Solana-Memecoins"), "Trading: keine leere Scan-Tabelle ohne Kurse");
       await handel.context().close();
     }
-    schritt("fällt nur ein Teil aus (Zeitplan, Wetter, Gold und Silber, Sicherheitslage, Microsoft, die Krypto-Kurse im Trading-Raum), steht nur dort der Satz; der Rest des Raums ist da");
+    schritt("fällt nur ein Teil aus (Zeitplan, Wetter, Gold und Silber, Sicherheitslage, Microsoft, die Krypto-Kurse im Trading-Raum), steht nur dort der Satz; der Rest des Raums ist da, und oben steht kein Hinweis, JARVIS antworte nicht");
 
     // 5. Eine einzelne Akte lässt sich nicht laden; kommt JARVIS zurück, steht sie nach Sekunden da.
     {
@@ -243,6 +247,75 @@ async function main() {
       await seite.context().close();
     }
     schritt("wird eine Abfrage nie beantwortet, gibt JARVIS sie nach 30 Sekunden auf, sagt, was sich nicht laden lässt, und beendet sie; antwortet er wieder, steht der Raum von selbst da");
+
+    // 8. JARVIS fällt aus, nachdem der Raum schon gelesen war: Der Raum zeigt weiter seinen letzten Stand, und oben
+    //    steht, seit wann JARVIS nicht antwortet. Vorher stand der alte Stand ohne ein Wort da, und jede Änderung
+    //    meldete auf Englisch „Failed to fetch“.
+    {
+      const seite = await neueSeite();
+      // Für die freie Frage weiter unten: Die Seite soll glauben, das KI-Gehirn sei eingerichtet. Gefragt wird es
+      // nie, denn dann antwortet JARVIS schon nicht mehr.
+      await seite.route(/\/api\/einstellungen(\?|$)/, async (r) => {
+        if (!istLesen(r.request().method())) return r.continue();
+        const antwort = await r.fetch();
+        const stand = (await antwort.json()) as { brain: object };
+        await r.fulfill({ response: antwort, json: { ...stand, brain: { ...stand.brain, configured: true } } });
+      });
+      await seite.goto(`${BASIS}/aufgaben`, { waitUntil: "domcontentloaded" });
+      const main = seite.locator("main:visible");
+      await main.getByText("Statiker anrufen").first().waitFor({ timeout: 25_000 });
+      const hinweis = seite.locator("[data-verbindung]");
+      assert.equal(await seite.locator('[data-verbindung="da"]').count(), 1, "die Stelle für den Hinweis gibt es von Anfang an (sonst sagte ein Vorleseprogramm ihn nicht an)");
+      assert.equal(await hinweis.getAttribute("role"), "status");
+      assert.equal((await hinweis.innerText()).trim(), "", "solange JARVIS antwortet, steht dort nichts");
+      assert.equal(await seite.locator("main [data-verbindung]").count(), 0, "der Hinweis gehört nicht zum Raum");
+      const aus = (r: Parameters<Parameters<Page["route"]>[1]>[0]) => r.abort();
+      await seite.route(lesen, aus);
+      await seite
+        .locator('[data-verbindung="aus"]')
+        .waitFor({ timeout: 40_000 })
+        .catch(() => assert.fail("40 Sekunden nach dem Ausfall steht oben immer noch kein Hinweis"));
+      const satz = (await hinweis.innerText()).trim();
+      assert.match(satz, /^JARVIS antwortet seit \d\d:\d\d Uhr nicht\. Du siehst den Stand von davor, und Änderungen kommen gerade nicht an\.$/, `der Hinweis nennt die Zeit der letzten Antwort (${satz})`);
+      await main.getByText("Statiker anrufen").first().waitFor({ timeout: 5_000 });
+      assert.deepEqual(await arten(seite), [], "der Raum zeigt weiter seinen Stand und behauptet nicht, er lasse sich nicht laden");
+      assert.deepEqual(await scheibenZahlen(seite), ["3", "0", "0"]);
+      if (bilder) await seite.screenshot({ path: path.join(bilder, "aus-spaeter.png") });
+      // Eine Änderung sagt in einem Satz, woran es liegt.
+      await main.getByRole("button", { name: "Angebot prüfen erledigt" }).click();
+      await main.getByText("JARVIS antwortet gerade nicht. Versuch es gleich noch einmal.").first().waitFor({ timeout: 10_000 }).catch(async () => assert.fail(`nach „erledigt“ steht nicht da, dass JARVIS nicht antwortet. Da steht: ${(await text(seite)).replace(/\n+/g, " | ").slice(0, 400)}`));
+      // „Neu laden“ lässt alles stehen; der Hinweis oben erklärt es.
+      await main.getByRole("button", { name: "Neu laden" }).click();
+      await seite.waitForTimeout(1500);
+      await main.getByText("Statiker anrufen").first().waitFor({ timeout: 5_000 });
+      // Im Gespräch sagt JARVIS denselben Satz (vorher las er „Failed to fetch“ vor).
+      const feld = seite.getByRole("textbox", { name: "Nachricht an JARVIS" });
+      await feld.fill("Notiere Probe im Ausfall");
+      await feld.press("Enter");
+      await seite.waitForTimeout(1500);
+      await seite.locator("[data-antwortzeile]").click();
+      const gespraech = seite.getByRole("region", { name: "Gespräch" });
+      await gespraech.getByText("JARVIS antwortet gerade nicht. Versuch es gleich noch einmal.").first().waitFor({ timeout: 10_000 }).catch(async () => assert.fail(`im Gespräch steht nicht, dass JARVIS nicht antwortet. Da steht: ${(await gespraech.innerText()).replace(/\n+/g, " | ").slice(-300)}`));
+      // Eine freie Frage geht einen anderen Weg (die Antwort käme Stück für Stück): derselbe Satz, ein zweites Mal.
+      const frei = seite.getByRole("textbox", { name: "Nachricht an JARVIS" });
+      await frei.fill("Warum ist der Himmel blau?");
+      await frei.press("Enter");
+      await gespraech
+        .getByText("JARVIS antwortet gerade nicht. Versuch es gleich noch einmal.")
+        .nth(1)
+        .waitFor({ timeout: 10_000 })
+        .catch(async () => assert.fail(`nach der freien Frage steht im Gespräch nicht, dass JARVIS nicht antwortet. Da steht: ${(await gespraech.innerText()).replace(/\n+/g, " | ").slice(-300)}`));
+      assert.doesNotMatch(await seite.locator("body").innerText(), /Failed to fetch|Load failed/, "nirgends steht der Fehler des Browsers");
+      // JARVIS kommt zurück: Der Hinweis verschwindet von selbst.
+      await seite.unroute(lesen, aus);
+      await seite
+        .locator('[data-verbindung="da"]')
+        .waitFor({ state: "attached", timeout: 40_000 })
+        .catch(() => assert.fail("40 Sekunden, nachdem JARVIS wieder antwortet, steht der Hinweis immer noch da"));
+      assert.equal((await hinweis.innerText()).trim(), "");
+      await seite.context().close();
+    }
+    schritt("fällt JARVIS aus, nachdem der Raum gelesen war, steht oben, seit wann er nicht antwortet; der Raum zeigt weiter seinen Stand; eine Änderung, ein Befehl und eine freie Frage im Gespräch sagen „JARVIS antwortet gerade nicht“ statt „Failed to fetch“; kommt er zurück, verschwindet der Hinweis");
   } finally {
     await browser?.close();
     await server.stopLeise();

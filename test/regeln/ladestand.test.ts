@@ -10,7 +10,7 @@ import path from "node:path";
 import { describe, test } from "node:test";
 import { luecken } from "../../src/lib/heute";
 import { pauseNach } from "../../src/lib/geteilt";
-import { ladestand, QUELLEN, type Quelle } from "../../src/lib/ladestand";
+import { ladestand, QUELLEN, verbindungsSatz, type Quelle } from "../../src/lib/ladestand";
 
 const dateien = (ordner: string): string[] =>
   readdirSync(ordner, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? dateien(path.join(ordner, e.name)) : e.name.endsWith(".tsx") ? [path.join(ordner, e.name)] : []));
@@ -85,5 +85,28 @@ describe("Ladestand", () => {
     assert.match(ui, /export function Ladestand\(\{ quelle, aus[,} ]/);
     assert.match(ui, /aus: boolean/);
     assert.match(ui, /data-ladestand=\{/);
+  });
+});
+
+describe("JARVIS antwortet nicht mehr", () => {
+  const REST = " Uhr nicht. Du siehst den Stand von davor, und Änderungen kommen gerade nicht an.";
+  const jetzt = new Date(2026, 10, 16, 12, 30).getTime();
+
+  test("der Hinweis sagt, seit wann, dass der Stand von davor ist und dass Änderungen nicht ankommen", () => {
+    assert.equal(verbindungsSatz(new Date(2026, 10, 16, 12, 8, 41).getTime(), jetzt), `JARVIS antwortet seit 12:08${REST}`);
+    assert.equal(verbindungsSatz(new Date(2026, 10, 16, 7, 5).getTime(), jetzt), `JARVIS antwortet seit 07:05${REST}`);
+  });
+
+  test("ist das nicht heute (der Mac hat über Nacht geschlafen), steht der Tag dabei", () => {
+    assert.equal(verbindungsSatz(new Date(2026, 10, 15, 23, 10).getTime(), jetzt), `JARVIS antwortet seit gestern, 23:10${REST}`);
+    assert.equal(verbindungsSatz(new Date(2026, 10, 14, 9, 0).getTime(), jetzt), `JARVIS antwortet seit dem 14. November, 09:00${REST}`);
+    // Kurz nach Mitternacht ist „gestern“ erst ein paar Minuten her.
+    assert.equal(verbindungsSatz(new Date(2026, 10, 15, 23, 58).getTime(), new Date(2026, 10, 16, 0, 3).getTime()), `JARVIS antwortet seit gestern, 23:58${REST}`);
+    // Über den Monatswechsel.
+    assert.equal(verbindungsSatz(new Date(2026, 9, 31, 22, 0).getTime(), new Date(2026, 10, 1, 8, 0).getTime()), `JARVIS antwortet seit gestern, 22:00${REST}`);
+  });
+
+  test("hat er in diesem Besuch noch nie geantwortet, behauptet der Hinweis keinen Stand", () => {
+    assert.equal(verbindungsSatz(null, jetzt), "JARVIS antwortet gerade nicht. Änderungen kommen gerade nicht an.");
   });
 });

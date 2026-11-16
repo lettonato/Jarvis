@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useJarvis } from "./JarvisProvider";
 import { Button, inputClass, Notice } from "./ui";
-import { getJson, postJson } from "@/lib/api";
+import { frage, getJson, postJson } from "@/lib/api";
 import type { Settings } from "@/lib/settings";
 import { GRUND_TEXT, STIMME_LIMIT_MAX, STIMME_LIMIT_MIN, STIMME_MODELLE, type StimmeKonto, type StimmeStatus, type StimmeWahl } from "@/lib/stimme";
 
@@ -63,7 +63,7 @@ export function CloudVoiceSetup() {
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/stimme", { method: "POST", headers: { "content-type": "application/json", "x-jarvis": "1" }, body: JSON.stringify({ probe: true }) });
+      const res = await frage("/api/stimme", { method: "POST", headers: { "content-type": "application/json", "x-jarvis": "1" }, body: JSON.stringify({ probe: true }) });
       if (!res.ok) {
         const fehler = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(fehler.error ?? `Der Server antwortet mit ${res.status}.`);

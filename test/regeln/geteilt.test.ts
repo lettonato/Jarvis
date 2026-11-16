@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, mock, test } from "node:test";
 import { getJson } from "../../src/lib/api";
 import { abonniere, bild, fristFuer, gescheitert, ladeNeu, setze, stand } from "../../src/lib/geteilt";
+import { meldeAntwort, VERBUNDEN, verbindungJetzt } from "../../src/lib/verbindung";
 
 let abrufe: string[] = [];
 let antwort: unknown = { n: 1 };
@@ -384,5 +385,55 @@ describe("Frist für Abfragen", () => {
     } finally {
       fetchMock.mock.restore();
     }
+  });
+});
+
+// Eine Abfrage, die nach ihrer Frist aufgegeben wird, meldet, dass JARVIS nicht geantwortet hat (verbindung.ts).
+// Alles andere melden die Anfragen selbst (api.ts, siehe anfragen.test.ts).
+describe("Abgelaufene Fristen und die Frage, ob JARVIS antwortet", () => {
+  const START = new Date(2026, 10, 16, 12, 8).getTime();
+  const haengt = () => new Promise<unknown>(() => {});
+  // Hier läuft auch das Datum mit der gestellten Uhr. Jede Prüfung beginnt mit einer Antwort, damit nichts aus der
+  // Prüfung davor nachwirkt.
+  beforeEach(() => {
+    mock.timers.reset();
+    mock.timers.enable({ apis: ["setInterval", "setTimeout", "Date"], now: START });
+    meldeAntwort();
+  });
+
+  test("eine abgelaufene Frist zählt als „keine Antwort“: Nach der zweiten antwortet JARVIS nicht", async () => {
+    const ab = abonniere("/v1-haengt", 10_000, () => {}, haengt);
+    await vor(0);
+    await vor(10_000);
+    await vor(10_000);
+    await vor(9_999);
+    assert.equal(verbindungJetzt(), VERBUNDEN, "noch läuft die erste Frist");
+    await vor(1);
+    assert.equal(verbindungJetzt(), VERBUNDEN, "nach 30 Sekunden ist sie abgelaufen: ein Stolperer");
+    await vor(10_000);
+    assert.deepEqual(verbindungJetzt(), { aus: true, seit: START }, "nach 40 Sekunden die zweite");
+    ab();
+  });
+
+  test("eine beendete Abfrage (die letzte Stelle geht) zählt nicht", async () => {
+    // Kommen und Gehen, während die Abfrage hängt: Das sagt nichts über JARVIS.
+    for (let i = 0; i < 4; i++) {
+      const kurz = abonniere("/v2-haengt", 10_000, () => {}, haengt);
+      await vor(13_000);
+      kurz();
+      await vor(0);
+    }
+    await vor(60_000);
+    assert.equal(verbindungJetzt(), VERBUNDEN);
+  });
+
+  test("ein Lader, der scheitert, meldet selbst (über die Anfrage): Die Abfrage zählt ihn nicht noch einmal", async () => {
+    kaputt = true;
+    const ab = abonniere("/v3-kaputt", 10_000, () => {}, lade);
+    await vor(0);
+    for (let i = 0; i < 6; i++) await vor(10_000);
+    assert.equal(gescheitert("/v3-kaputt"), true);
+    assert.equal(verbindungJetzt(), VERBUNDEN);
+    ab();
   });
 });

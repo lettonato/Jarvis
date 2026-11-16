@@ -2,6 +2,8 @@
 // läuft dafür nur eine Abfrage, im kürzesten gewünschten Takt, und alle sehen denselben Stand. Ohne React,
 // damit sich die Regeln prüfen lassen; der Haken dazu steht in usePolling.ts.
 
+import { meldeKeineAntwort } from "./verbindung";
+
 // signal: Wird die Abfrage nach ihrer Frist aufgegeben, sagt das Signal es dem Lader, damit er sie wirklich beendet.
 type Lader = (url: string, signal?: AbortSignal) => Promise<unknown>;
 
@@ -52,7 +54,12 @@ async function hole(url: string, q: Quelle, zusatz = ""): Promise<void> {
   // Aufgegeben wird eine Abfrage nach ihrer Frist, oder wenn die letzte Stelle geht (siehe abonniere).
   const abbruch = new AbortController();
   q.unterwegs.add(abbruch);
-  const frist = setTimeout(() => abbruch.abort(), fristFuer(q.takt));
+  const begonnen = Date.now();
+  let fristAbgelaufen = false;
+  const frist = setTimeout(() => {
+    fristAbgelaufen = true;
+    abbruch.abort();
+  }, fristFuer(q.takt));
   try {
     // Wer zuerst fertig ist: die Antwort oder das Aufgeben. So zählt auch ein Lader als gescheitert, der auf das
     // Signal nicht hört.
@@ -73,6 +80,10 @@ async function hole(url: string, q: Quelle, zusatz = ""): Promise<void> {
     q.stand = next;
     melde(q);
   } catch {
+    // Nach ihrer Frist aufgegeben: Das ist eine Anfrage, die JARVIS nicht beantwortet hat (siehe verbindung.ts).
+    // Scheitert der Lader selbst, meldet er das selbst (api.ts); wurde die Abfrage beendet, weil niemand mehr
+    // zuhört, sagt das nichts über JARVIS.
+    if (fristAbgelaufen) meldeKeineAntwort(begonnen);
     // Ein vorhandener Stand bleibt stehen; der nächste Durchlauf versucht es wieder.
     if (quellen.get(url) !== q || q.stand !== null || nummer < q.gilt) return;
     // Gab es noch nie einen Stand, wartet der nächste Versuch nicht den ganzen Takt ab (bei den Terminen wären

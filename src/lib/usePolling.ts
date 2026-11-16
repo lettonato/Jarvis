@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { getJson } from "./api";
 import { abonniere, bild, ladeNeu, setze, type Bild } from "./geteilt";
+import { abonniereVerbindung, VERBUNDEN, verbindungJetzt, type Verbindung } from "./verbindung";
 
 const LEER: Bild = { stand: null, gescheitert: false };
 
@@ -24,4 +25,9 @@ export function usePolling<T>(url: string, intervalMs: number) {
   const reload = useCallback((query = "") => ladeNeu(url, query), [url]);
   const set = useCallback((wert: T) => setze(url, wert), [url]);
   return { data, failed, reload, set };
+}
+
+// Antwortet JARVIS gerade überhaupt? (Die Regel steht in verbindung.ts.) Für den Hinweis oben in jeder Ansicht.
+export function useVerbindung(): Verbindung {
+  return useSyncExternalStore(abonniereVerbindung, verbindungJetzt, () => VERBUNDEN);
 }

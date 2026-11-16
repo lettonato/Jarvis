@@ -36,3 +36,19 @@ export function ladestand(quelle: Quelle, aus: boolean): Ladestand {
     ? { art: "gestoert", text: `${name} ${mehrzahl ? "lassen" : "lässt"} sich gerade nicht laden.` }
     : { art: "laedt", text: `${name} ${mehrzahl ? "laden" : "lädt"} noch.` };
 }
+
+// Der Hinweis oben in jeder Ansicht, wenn JARVIS gar nicht mehr antwortet (siehe verbindung.ts): Die Räume zeigen
+// dann weiter, was sie zuletzt gelesen haben, und das soll dastehen. seit: wann er zuletzt geantwortet hat. War das
+// nicht heute (der Mac schlief über Nacht), steht der Tag dabei.
+const UHR = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
+const TAG = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long" });
+const tagVon = (ms: number) => {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+};
+export function verbindungsSatz(seit: number | null, jetzt: number): string {
+  if (seit === null) return "JARVIS antwortet gerade nicht. Änderungen kommen gerade nicht an.";
+  const tage = Math.round((tagVon(jetzt) - tagVon(seit)) / 86_400_000);
+  const wann = `${tage <= 0 ? "" : tage === 1 ? "gestern, " : `dem ${TAG.format(new Date(seit))}, `}${UHR.format(new Date(seit))} Uhr`;
+  return `JARVIS antwortet seit ${wann} nicht. Du siehst den Stand von davor, und Änderungen kommen gerade nicht an.`;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { frage } from "./api";
 import { GRUND_TEXT, stuecke } from "./stimme";
 import { afterWake, forSpeech, isStop, looksLikeEcho, sentences, stopsSpeech } from "./voiceText";
 
@@ -167,7 +168,7 @@ type ClipFail = { status: number; text: string | null };
 // Der Fehlertext ist ein Satz des JARVIS-Servers, nie der Text von ElevenLabs.
 async function fetchClip(text: string, signal: AbortSignal): Promise<string | ClipFail> {
   try {
-    const res = await fetch("/api/stimme", { method: "POST", headers: { "content-type": "application/json", "x-jarvis": "1" }, body: JSON.stringify({ text }), signal });
+    const res = await frage("/api/stimme", { method: "POST", headers: { "content-type": "application/json", "x-jarvis": "1" }, body: JSON.stringify({ text }), signal });
     if (!res.ok) {
       const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
       return { status: res.status, text: typeof body?.error === "string" ? body.error : null };

@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1089 von 1089 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1117 von 1117 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -2238,6 +2238,76 @@ offen (Prüfliste Teil Z).
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
 (die Prüfungen fragen nur Nachbauten).
 
+### Schritt J14: Ein Hinweis, wenn JARVIS nicht mehr antwortet; Änderungen sagen es auf Deutsch (16. November 2026)
+
+**Warum:** Zwei vorgemerkte Grenzen (J12, Grenze 3; J13, Grenze 5). Fällt JARVIS aus, nachdem ein Raum schon
+gelesen war, blieb der alte Stand ohne ein Wort stehen, und „Neu laden“ sagte nichts dazu.
+
+**Bestandsaufnahme zuerst (im Browser der Sandbox gemessen, mit einer Sonde, die danach wieder gelöscht wurde):**
+
+| Was | Vorher |
+|---|---|
+| Raum war gelesen, dann antwortet JARVIS nicht mehr | Der Raum zeigt weiter den alten Stand, ohne Hinweis. „Neu laden“ ändert nichts und sagt nichts |
+| Eine Änderung in dieser Zeit (Aufgabe abhaken, notieren, speichern) | Es erscheint der Text des Browsers auf Englisch: „Failed to fetch“ (in Safari hieße er „Load failed“) |
+| Eine Frage im Gespräch in dieser Zeit | JARVIS antwortet mit „Failed to fetch“ und liest das auch vor |
+| Raum wird erst während des Ausfalls geöffnet | Richtig seit J12: „… lässt sich gerade nicht laden.“ |
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J14.1 Antwortet JARVIS nicht mehr, steht oben in jeder Ansicht: „JARVIS antwortet seit 12:08 Uhr nicht. Du siehst den Stand von davor, und Änderungen kommen gerade nicht an.“ Die Räume zeigen weiter, was sie zuletzt gelesen haben. Mit der ersten Antwort verschwindet der Hinweis von selbst | Testbereit, **nur im Browser der Sandbox** | `src/lib/verbindung.ts` (neu), `Verbindungshinweis` in `AppFrame.tsx`, `useVerbindung` in `usePolling.ts`; `test/regeln/verbindung.test.ts` (neu, 10 Tests); Prüfung Ausfall, Schritt 8 |
+| J14.2 Jede Anfrage der Seite meldet, ob JARVIS geantwortet hat: die gemeinsamen Abfragen, jede Änderung, das Gespräch, das Vorlesen und die Probe der Stimme. Ein Klick, der ankommt, beendet den Hinweis sofort | Testbereit | `frage` in `src/lib/api.ts`; `test/regeln/anfragen.test.ts` (neu, 12 Tests, einer liest alle Dateien der Seite: nur `api.ts` darf `fetch` rufen) |
+| J14.3 Ein Stolperer ist kein Ausfall. Der Hinweis kommt erst, wenn zwei Anfragen mit mindestens acht Sekunden Abstand ohne Antwort geblieben sind **und** JARVIS seit zwölf Sekunden nicht geantwortet hat. Zwei Abfragen im Zehn-Sekunden-Takt nacheinander erfüllen beides | Testbereit | Regeltests; Prüfung Ausfall, Schritt 4 (einzelne Stellen fallen aus, JARVIS antwortet sonst: kein Hinweis) und Schritt 8 |
+| J14.4 Eine Abfrage, die nach ihrer Frist aufgegeben wird (J13), zählt als „keine Antwort“. Eine, die beendet wird, weil niemand mehr zuhört (Wechsel des Raums), zählt nicht; ebenso wenig ein „Stopp“ im Gespräch | Testbereit, **nur als Regel** | `geteilt.ts`; `test/regeln/geteilt.test.ts` (neu 3 Tests), `anfragen.test.ts` |
+| J14.5 Antwortet JARVIS gar nicht, sagen Änderungen und das Gespräch: „JARVIS antwortet gerade nicht. Versuch es gleich noch einmal.“ statt „Failed to fetch“. Das gilt auch, wenn eine Antwort mittendrin abreißt (JARVIS wird beendet, während er schreibt). Der Fehler des Browsers bleibt zum Nachsehen am Fehler hängen (`cause`) | Testbereit; der Abriss mittendrin **nur als Regel** | `NICHT_ERREICHBAR` in `api.ts`; Regeltests; Prüfung Ausfall, Schritt 8 (Aufgabe abhaken, ein Befehl und eine freie Frage im Gespräch) |
+| J14.6 War die letzte Antwort nicht heute (der Mac schlief über Nacht), steht der Tag dabei: „seit gestern, 23:10 Uhr“, „seit dem 14. November, 09:00 Uhr“. Hat JARVIS in diesem Besuch noch nie geantwortet: „JARVIS antwortet gerade nicht. Änderungen kommen gerade nicht an.“ | Testbereit, **nur als Regel** | `verbindungsSatz` in `src/lib/ladestand.ts`; `test/regeln/ladestand.test.ts` (neu 3 Tests) |
+| J14.7 Die Stelle für den Hinweis gibt es von Anfang an (unsichtbar und leer, als „Status“), damit ein Vorleseprogramm den Satz ansagt, wenn er erscheint | Testbereit; **ob VoiceOver ihn ansagt, ist nicht geprüft** | Prüfung Ausfall, Schritt 8 |
+
+**Eigene Entscheidungen:** (1) Ein Hinweis oben in jeder Ansicht, kein Zeichen an jedem einzelnen Raum: Alle
+Anfragen gehen an denselben JARVIS, und die Räume sollen ihren Stand behalten, statt leer zu werden. (2) Der
+Hinweis ist ocker wie andere Hinweise, kein Dialog, kein Knopf; er nennt die Zeit der letzten Antwort, weil das
+sagt, wie alt der Stand höchstens ist. (3) Jede Antwort zählt als Antwort, auch eine mit Fehler (auch „502“:
+JARVIS sagt das selbst, wenn etwa das Postfach nicht erreichbar ist). (4) Die Regel hat zwei Bedingungen, weil
+jede einen eigenen Fehlalarm verhindert: Der Abstand zwischen zwei Fehlschlägen zählt nicht die Zeit mit, die der
+Mac geschlafen hat (beim Aufwachen feuern alle Uhren zugleich, bevor das Netz da ist); die zwölf Sekunden ohne
+Antwort verhindern, dass eine einzelne Stelle, die immer wieder scheitert, als Ausfall von JARVIS gilt. (5) Eine
+Anfrage, die vor der letzten Antwort begonnen hat, zählt nicht: Braucht der Kalender sehr lange und wird nach
+seiner Frist aufgegeben, während JARVIS anderswo antwortet, sagt das nichts über JARVIS. (6) Für eine
+gescheiterte Änderung gibt es überall denselben Satz; „Neu laden“ bekommt keinen eigenen, der Hinweis oben
+erklärt es. (7) Aus den Reviews bewusst nicht übernommen: Auch ein Fehler des Browsers, der kein Ausfall ist
+(eine falsch gebaute Anfrage, ein Programmierfehler), wird zu „JARVIS antwortet gerade nicht“; der Browser
+unterscheidet das nicht verlässlich, und der ursprüngliche Fehler bleibt am Fehler hängen.
+
+**Grenzen:** (1) Der Hinweis kommt 10 bis 20 Sekunden nach dem Ausfall (zwei Abfragen im Zehn-Sekunden-Takt);
+hängt JARVIS, statt weg zu sein, erst nach etwa 40 bis 50 Sekunden (die Frist aus J13 läuft zuerst ab). Bis dahin
+steht der alte Stand ohne Hinweis da. Anfragen, die im Augenblick des Ausfalls schon unterwegs waren, zählen
+nicht mit. (2) Meldet nur eine einzelne Stelle dauerhaft einen Fehler, während JARVIS sonst antwortet, steht in
+einem schon gelesenen Raum weiter der alte Stand ohne Hinweis (der Rest von J12, Grenze 3). (3) „Neu laden“ sagt
+selbst nichts, wenn es scheitert. (4) Die einzelnen Abfragen (eine Akte, der Raum Browser, die Spur der Spinne)
+haben weiter keine Frist; hängt eine davon, meldet sie nichts (J13, Grenze 6). (5) In einem Fenster im
+Hintergrund bremst der Browser die Uhren; der Hinweis kann dort später kommen. (6) Nur als Regel geprüft, nicht
+im Browser: das Aufwachen des Mac, „gestern“ im Satz, der Abriss mitten in einer Antwort, die abgelaufene Frist
+als „keine Antwort“, der Fall „noch nie geantwortet“. (7) Im Gespräch spricht JARVIS dann über sich in der
+dritten Person („JARVIS antwortet gerade nicht“); ob er den Satz am Mac vorliest, hängt davon ab, ob die Stimme
+des Mac oder die von ElevenLabs gewählt ist (die zweite braucht JARVIS selbst). (8) Nicht geprüft: der Mac,
+Safari („Load failed“), VoiceOver, schmales Fenster.
+
+### Testergebnisse Schritt J14 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1117 Tests: 1117 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 28). Am Mac wären es rechnerisch zwei weniger (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 28 Handprüfungen bestanden**, in drei Teilen gestartet (13, 10 und 5; zusammen rund 14 Minuten). Ausfall 126 Sekunden (vorher 78: Schritt 4 wartet 22 Sekunden, ob ein falscher Hinweis kommt, und Schritt 8 wartet auf den Hinweis und auf sein Verschwinden) |
+| Tests zuerst | Zuerst und rot gesehen: die Regeltests zur ersten Fassung (das Modul fehlte) und die Prüfung Ausfall gegen einen Bau des Stands J13 (Schritt 8: „die Stelle für den Hinweis gibt es von Anfang an“). **Nicht zuerst rot gesehen:** die Regeltests zur endgültigen Fassung (nach den beiden Reviews wurde die Regel zweimal umgebaut; Regel und Tests sind dabei zusammen entstanden) und die neue Stelle in Schritt 4 der Prüfung; für beides stehen die Gegenproben |
+| Gegenproben | 38 absichtlich eingebaute Fehler: 8 im Browser mit je eigenem Bau, 30 an den Regeltests. **Im vollständigen Durchgang 36 von 38 entdeckt, jeder an der gemeinten Stelle** (das Skript vergleicht die Zahl der Schritte davor und den Wortlaut der Fehlermeldung). **Zwei zunächst nicht entdeckt, beides Lücken der Prüfungen:** (1) „das Gespräch fragt am gemeinsamen Weg vorbei“: Die Prüfung im Browser stellte nur einen Befehl („Notiere …“), der einen anderen Weg nimmt; ohne eingerichtetes KI-Gehirn beantwortet die Seite eine freie Frage selbst. Schritt 8 stellt jetzt auch eine freie Frage. (2) „auch Anfragen von vor der letzten Antwort zählen“: Der Regeltest wartete zu kurz, sodass die zweite Bedingung der Regel den Fehler verdeckte. Nach dem Schärfen beide einzeln wiederholt: **entdeckt**. Am Ende jedes Durchgangs: Quelltext wie vorher (Vergleich mit `git diff`), sauberer Bau, Prüfung Ausfall mit 8 Schritten bestanden |
+| Durch die Gegenproben gefunden | Im ersten Durchgang fiel ein eingebauter Fehler an einer anderen Stelle auf als gemeint („der Hinweis bleibt stehen“ schon in Schritt 4). Das hieß: Fallen einzelne Stellen aus, während JARVIS sonst antwortet, erschien der Hinweis für Augenblicke und verschwand mit der nächsten Antwort wieder. Daraus ist die zweite Bedingung der Regel entstanden (zwölf Sekunden ohne Antwort). Der Durchgang wurde abgebrochen und auf dem endgültigen Stand ganz wiederholt |
+| Code-Review (Skill `code-review`, Stufe mittel, zweimal: auf der ersten Fassung und nach dem Umbau) | **Erstes Review, zehn Hinweise, alle eingearbeitet:** ein Abriss mitten in der Antwort zeigte weiter den Text des Browsers; Änderungen und das Gespräch zählten nicht mit (ein Klick, der ankam, beendete den Hinweis nicht); eine nach ihrer Frist aufgegebene langsame Abfrage zählte, obwohl JARVIS anderswo antwortete; der ursprüngliche Fehler ging verloren; die Probe der Stimme fragte am gemeinsamen Weg vorbei; nach Mitternacht fehlte der Tag im Satz. Einer davon („502 bis 504 zählen als keine Antwort“) hat sich im zweiten Review als falsch erwiesen und ist wieder draußen. **Zweites Review, acht Hinweise, sechs eingearbeitet:** JARVIS sagt selbst „502“ (Postfach, Stimme), das hätte als Ausfall gegolten; die Schlafzeit des Mac zählte als Ausfall; das Vorlesen fragte am gemeinsamen Weg vorbei; ein Abriss mitten in der Antwort zählte nicht; eine Anfrage wurde an zwei Stellen als begonnen gemeldet; die Uhr für „gestern“ lief auch ohne Hinweis. **Einer zur Hälfte:** Anfragen, die beim Ausfall schon unterwegs waren, zählen weiter nicht (Grenze 1). **Einer bewusst nicht:** Eigene Entscheidungen 7 |
+| Sicherheitsprüfung (von Hand; der Skill dafür braucht den Stand bei GitHub) | Kein neuer Weg nach außen, keine neue Berechtigung, kein Schlüssel im Code. Geändert ist nur die Seite im Browser: Sie zählt mit, ob ihre eigenen Anfragen an JARVIS beantwortet werden, und zeigt statt des Textes des Browsers einen festen Satz. Der Satz enthält nichts aus der Antwort oder dem Fehler. Am Server ändert sich nichts. `seite.route` (Abfragen abbrechen) steht nur in den Prüfungen |
+| Aussehen | Ein Bild des Hinweises über dem Raum Aufgaben angesehen (1280 Pixel breit): ein heller Streifen mit ockerfarbener Kante oben in der Mitte, über den anderen Hinweisen. **Nicht eigens vermessen**, schmales Fenster nicht angesehen |
+| Nicht geprüft | **der Mac**, **Safari**, **VoiceOver**, echte Dienste, schmales Fenster; die Fälle aus Grenze 6 im Browser |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(die Prüfungen fragen nur Nachbauten).
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -2253,7 +2323,7 @@ offen (Prüfliste Teil Z).
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Z; Teil N erst, wenn eure IT so weit ist; Teile X, Y und Z neu seit J11, J12 und J13). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Z; Teil N erst, wenn eure IT so weit ist; Teile X, Y und Z neu seit J11, J12 und J13; die Punkte Y4 bis Y7 neu seit J14). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -2395,9 +2465,12 @@ Danach wie geplant:
    zeigt nach einer Antwort wieder die Antwort, auch wenn das Mikrofon gesperrt ist; die Meldung dazu ist dann nur
    noch als „Hinweis im Gespräch“ vermerkt. Eine Abfrage, die nie beantwortet wird, gibt JARVIS nach 30 bis 60
    Sekunden auf und sagt, was sich nicht laden lässt; vorher blieb sie für immer offen.
-   **Als Nächstes:** ein Hinweis, wenn ein Raum einen alten Stand zeigt, weil JARVIS inzwischen nicht mehr
-   antwortet, und eine Meldung, wenn „Neu laden“ scheitert (J12, Grenze 3; J13, Grenze 5). Dann: eine Frist auch
-   für die einzelnen Abfragen (Akte, Raum Browser, Spur der Spinne; J13, Grenze 6). Als Frage an Benedikt
+28. **J14: gebaut, Testbereit, nur in der Sandbox geprüft** (Schritt J14 in Bereich J): Antwortet JARVIS nicht
+   mehr, steht oben in jeder Ansicht, seit wann, und dass der Raum den Stand von davor zeigt. Eine Änderung oder
+   eine Frage sagt dann „JARVIS antwortet gerade nicht. Versuch es gleich noch einmal.“ statt „Failed to fetch“.
+   **Als Nächstes:** eine Frist auch für die einzelnen Abfragen (Akte, Raum Browser, Spur der Spinne; J13,
+   Grenze 6; J14, Grenze 4). Dann: ein Hinweis, wenn nur eine einzelne Stelle dauerhaft einen Fehler meldet und
+   der Raum deshalb einen alten Stand zeigt (J14, Grenze 2). Als Frage an Benedikt
    vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleibt der einmalige, nicht
    wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die weiteren Schritte für Azure (Anmeldung je Person,
    übrige Daten in die Datenbank) erst, wenn Benedikt entschieden hat, ob JARVIS zentral laufen soll (Frage 3).
