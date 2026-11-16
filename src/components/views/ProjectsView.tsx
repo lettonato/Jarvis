@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
 import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
-import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, Notice, PageHeader, Panel } from "../ui";
 import { getJson, postJson } from "@/lib/api";
 import { isoDate } from "@/lib/dates";
+import { pauseNach } from "@/lib/geteilt";
 import {
   ablageSatz,
   ART_LABEL,
@@ -43,13 +44,19 @@ const ABHAKBAR: EintragArt[] = ["aufgabe", "risiko", "naechster_schritt"];
 const REIHENFOLGE: EintragArt[] = ["aufgabe", "naechster_schritt", "entscheidung", "notiz", "risiko"];
 
 type Aktion = (body: Record<string, unknown>) => Promise<boolean>;
+// Lässt sich eine Akte nicht laden, liegen zwischen zwei Versuchen höchstens so viele Millisekunden.
+const AKTE_NOCHMAL_HOECHSTENS_MS = 60_000;
 
 export function ProjectsView() {
-  const { projekte, setProjekte } = useJarvis();
+  const { projekte, setProjekte, ausfall } = useJarvis();
   const now = useNow();
   const heute = now ? isoDate(now) : null;
   const [offen, setOffen] = useState<string | null>(null);
   const [akte, setAkte] = useState<ProjektAkte | null>(null);
+  // Die offene Akte ließ sich zuletzt nicht laden; versuch zählt hoch, damit die Abfrage noch einmal läuft.
+  const [akteAus, setAkteAus] = useState(false);
+  const [versuch, setVersuch] = useState(0);
+  const fehlversuche = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -81,17 +88,40 @@ export function ProjectsView() {
   useEffect(() => {
     if (!offen) return;
     let aktuell = true;
+    let nochmal: ReturnType<typeof setTimeout> | undefined;
     getJson<ProjekteAntwort>(`/api/projekte?projekt=${encodeURIComponent(offen)}`)
-      .then((a) => aktuell && setAkte(a.akte))
-      .catch(() => {});
+      .then((a) => {
+        if (!aktuell) return;
+        fehlversuche.current = 0;
+        setAkte(a.akte);
+        setAkteAus(false);
+        // JARVIS antwortet, aber das Projekt gibt es nicht mehr: Die Kachel klappt zu, statt ewig zu laden.
+        if (!a.akte) setOffen(null);
+      })
+      .catch(() => {
+        // Die Akte lässt sich nicht laden: Das steht dann da, und JARVIS versucht es wieder, nach 5, 15, 45
+        // Sekunden und dann jede Minute (wie bei den anderen Abfragen, geteilt.ts).
+        if (!aktuell) return;
+        setAkteAus(true);
+        nochmal = setTimeout(() => setVersuch((n) => n + 1), Math.min(pauseNach(fehlversuche.current++), AKTE_NOCHMAL_HOECHSTENS_MS));
+      });
     return () => {
       aktuell = false;
+      clearTimeout(nochmal);
     };
-  }, [offen, projekte]);
+  }, [offen, projekte, versuch]);
 
   const schliesse = () => {
     setOffen(null);
     setAkte(null);
+    setAkteAus(false);
+    fehlversuche.current = 0;
+  };
+  const oeffne = (id: string) => {
+    setAkte(null);
+    setAkteAus(false);
+    fehlversuche.current = 0;
+    setOffen(id);
   };
   const liste = projekte?.projekte ?? [];
   const vorschlaege = projekte?.vorschlaege ?? [];
@@ -118,7 +148,7 @@ export function ProjectsView() {
         </Scheiben>
       )}
 
-      {!projekte && <p className="text-sm text-quiet">Lade Projekte …</p>}
+      {!projekte && <Ladestand quelle="projekte" aus={ausfall.projekte} />}
       {error && <Notice meldung tone="error">{error}</Notice>}
       {info && !error && <Notice meldung tone="ok">{info}</Notice>}
 
@@ -154,13 +184,13 @@ export function ProjectsView() {
       {liste.length > 0 && (
         <section aria-label="Projekte" className="grid gap-3 sm:grid-cols-2">
           {liste.map((p) => (
-            <ProjektKachel key={p.id} p={p} heute={heute} aktiv={offen === p.id} onOpen={() => (offen === p.id ? schliesse() : (setAkte(null), setOffen(p.id)))} />
+            <ProjektKachel key={p.id} p={p} heute={heute} aktiv={offen === p.id} onOpen={() => (offen === p.id ? schliesse() : oeffne(p.id))} />
           ))}
         </section>
       )}
 
       {offen && akte && akte.projekt.id === offen && <Akte akte={akte} heute={heute} busy={busy} act={act} onClose={schliesse} />}
-      {offen && (!akte || akte.projekt.id !== offen) && <p className="text-sm text-quiet">Lade die Akte …</p>}
+      {offen && (!akte || akte.projekt.id !== offen) && <Ladestand quelle="akte" aus={akteAus} />}
 
       {projekte && (
         <p className="text-xs text-quiet">

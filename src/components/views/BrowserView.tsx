@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "../icons";
-import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { getJson, postJson } from "@/lib/api";
 import { BROWSER_RULES, hostLabel, MAX_MINUTES, TASK_LABEL, type BrowserStatus, type BrowserTask } from "@/lib/browser";
 
@@ -30,6 +30,10 @@ function shortUrl(raw: string) {
 
 export function BrowserView() {
   const [status, setStatus] = useState<BrowserStatus | null>(null);
+  // Der Zustand des Browsers ließ sich zuletzt nicht lesen. Gezeigt wird das nur, solange noch keiner da ist
+  // (dann ist es nicht „lädt noch“); ein vorhandener bleibt stehen. Eigene Abfrage statt usePolling, weil der
+  // Takt wechselt (jede Sekunde, solange ein Auftrag läuft): Dort ginge beim Wechsel der Stand kurz verloren.
+  const [statusAus, setStatusAus] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +44,12 @@ export function BrowserView() {
     let alive = true;
     const load = () =>
       getJson<BrowserStatus>("/api/browser")
-        .then((next) => alive && setStatus(next))
-        .catch(() => {});
+        .then((next) => {
+          if (!alive) return;
+          setStatus(next);
+          setStatusAus(false);
+        })
+        .catch(() => alive && setStatusAus(true));
     load();
     const timer = setInterval(load, running ? 1_000 : 2_500);
     return () => {
@@ -109,6 +117,7 @@ export function BrowserView() {
         )}
       </PageHeader>
 
+      {!status && <Ladestand quelle="browser" aus={statusAus} />}
       {status && !status.ready && (
         <Panel className="max-w-2xl">
           <p className="mb-3 text-sm text-quiet">Den Browser bedient Claude, das KI-Gehirn von JARVIS. Dafür braucht es den Claude-Schlüssel.</p>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RaumLink } from "./RaumLink";
-import { Button, Notice, Panel } from "./ui";
+import { Button, Ladestand, Notice, Panel } from "./ui";
 import { ZUSTAND_LABEL, type AgentAktion, type AgentLage, type AgentenSnapshot, type AgentZustand } from "@/lib/agenten";
 import { postJson } from "@/lib/api";
 import { fromIso } from "@/lib/dates";
@@ -59,7 +59,7 @@ function anfrage(agent: AgentLage, aktion: AgentAktion): { url: string; body: ob
 const KNOPF: Record<AgentAktion, string> = { starten: "Jetzt starten", pausieren: "Pausieren", fortsetzen: "Fortsetzen", sperren: "Sperren", entsperren: "Entsperren" };
 
 export function AgentControl() {
-  const { data, reload } = usePolling<AgentenSnapshot>("/api/agenten", 10_000);
+  const { data, failed, reload } = usePolling<AgentenSnapshot>("/api/agenten", 10_000);
   const now = useNow(30_000);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -115,7 +115,7 @@ export function AgentControl() {
         </p>
       )}
       {!data ? (
-        <p className="text-sm text-quiet">Die Agenten melden sich …</p>
+        <Ladestand quelle="agenten" aus={failed} />
       ) : (
         <ul className="flex flex-col divide-y divide-schiefer/10">
           {data.agenten.map((a) => (

@@ -5,7 +5,7 @@ import { useJarvis } from "../JarvisProvider";
 import { Antwortentwuerfe } from "../Antwortentwuerfe";
 import { MailSetup } from "../setup";
 import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
-import { Button, Notice, PageHeader, Panel } from "../ui";
+import { Button, Ladestand, Notice, PageHeader, Panel } from "../ui";
 import { addDays, isoDate } from "@/lib/dates";
 import type { MailItem } from "@/lib/mail";
 import { useNow } from "@/lib/useNow";
@@ -23,7 +23,7 @@ function when(iso: string, now: Date | null): string {
 }
 
 export function MailView() {
-  const { mail, session, reloadMail, ask } = useJarvis();
+  const { mail, session, reloadMail, ask, ausfall } = useJarvis();
   const now = useNow();
   const current = session?.kind === "post" ? session.ids[session.index] : null;
 
@@ -44,13 +44,14 @@ export function MailView() {
 
   // Lässt sich das Postfach gerade nicht lesen, zeigt der Raum nur die Meldung und die Entwürfe: keine Nullen,
   // kein „Schön ruhig heute“ und kein Knopf zum Durchgehen. Alles, was vom Inhalt des Postfachs lebt, fragt hiernach.
-  const lesbar = !mail?.error;
+  // Dasselbe gilt, solange das Postfach noch nicht gelesen ist (lädt noch, oder JARVIS antwortet nicht).
+  const lesbar = mail != null && !mail.error;
   const important = (mail?.items ?? []).filter((m) => m.important);
   const bulk = (mail?.items ?? []).filter((m) => !m.important);
 
   return (
     <Shell
-      subtitle={mail?.account ? `Posteingang ${mail.account}, letzte 14 Tage` : "lädt …"}
+      subtitle={mail?.account ? `Posteingang ${mail.account}, letzte 14 Tage` : undefined}
       actions={
         <>
           {lesbar && mail && mail.importantUnread > 0 && (
@@ -64,6 +65,7 @@ export function MailView() {
         </>
       }
     >
+      {!mail && <Ladestand quelle="post" aus={ausfall.mail} />}
       {mail?.error && (
         <>
           <Notice tone="error">{mail.error}</Notice>
@@ -74,10 +76,10 @@ export function MailView() {
         <Scheiben>
           <Scheibe titel="Auf einen Blick">
             <ul>
-              <ScheibenZeile wert={mail?.importantUnread ?? 0}>Neue wichtige</ScheibenZeile>
+              <ScheibenZeile wert={mail.importantUnread}>Neue wichtige</ScheibenZeile>
               {/* Die Zahl kommt vom Postfach und zählt alles, nicht nur die 14 Tage der Liste; darum heißt sie so. */}
-              <ScheibenZeile wert={mail?.unread ?? 0}>Ungelesen im ganzen Posteingang</ScheibenZeile>
-              <ScheibenZeile wert={mail?.bulkUnread ?? 0}>Newsletter und Co.</ScheibenZeile>
+              <ScheibenZeile wert={mail.unread}>Ungelesen im ganzen Posteingang</ScheibenZeile>
+              <ScheibenZeile wert={mail.bulkUnread}>Newsletter und Co.</ScheibenZeile>
             </ul>
           </Scheibe>
         </Scheiben>
@@ -86,7 +88,7 @@ export function MailView() {
       {lesbar && (
         <Panel>
           <h2 className="mb-2 text-xs font-bold text-see">Wichtig <span className="font-medium text-quiet">{important.length}</span></h2>
-          {mail && important.length === 0 && <p className="py-2 text-sm text-quiet">Keine wichtigen Mails. Schön ruhig heute.</p>}
+          {important.length === 0 && <p className="py-2 text-sm text-quiet">Keine wichtigen Mails. Schön ruhig heute.</p>}
           <ul className="divide-y divide-schiefer/10">
             {important.map((m) => (
               <MailRow key={m.uid} mail={m} now={now} active={m.uid === current} />

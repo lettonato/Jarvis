@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { RaumLink } from "./RaumLink";
-import { Button, inputClass, Notice } from "./ui";
+import { Button, inputClass, Ladestand, Notice } from "./ui";
 import { postJson } from "@/lib/api";
 import { ladeNeu } from "@/lib/geteilt";
 import { AGENTEN, KLASSE_LABEL, KLASSE_TEXT, NOTAUS_BESTAETIGUNG, type AgentName, type Freigabe, type Geaendert, type Klasse, type SicherheitsLage, type ZugangsdatenStatus } from "@/lib/sicherheit";
@@ -30,7 +30,7 @@ const NACH_JA: Record<Geaendert, [url: string, zusatz?: string]> = {
 };
 
 function useSicherheit(ms = 4000) {
-  const { data, reload, set } = usePolling<SicherheitsLage>("/api/sicherheit", ms);
+  const { data, failed, reload, set } = usePolling<SicherheitsLage>("/api/sicherheit", ms);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -55,7 +55,7 @@ function useSicherheit(ms = 4000) {
       setBusy(false);
     }
   };
-  return { lage: data, send, note, busy };
+  return { lage: data, aus: failed, send, note, busy };
 }
 
 const restMinuten = (f: Freigabe, jetzt: number) => Math.max(0, Math.ceil((Date.parse(f.bis) - jetzt) / 60_000));
@@ -141,10 +141,10 @@ const ZUSTAND_TEXT: Record<Freigabe["zustand"], string> = {
 
 // In den Einstellungen.
 export function SicherheitsZentrale() {
-  const { lage, send, note, busy } = useSicherheit(5000);
+  const { lage, aus, send, note, busy } = useSicherheit(5000);
   const [bestaetigung, setBestaetigung] = useState("");
   const [alleAudit, setAlleAudit] = useState(false);
-  if (!lage) return <p className="text-sm text-quiet">Lade …</p>;
+  if (!lage) return <Ladestand quelle="sicherheit" aus={aus} />;
   const { zustand, freigaben, audit, pruefung, zugangsdaten } = lage;
   const offen = freigaben.filter((f) => f.zustand === "offen");
   const erledigt = freigaben.filter((f) => f.zustand !== "offen").slice(0, 8);

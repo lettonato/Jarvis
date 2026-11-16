@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "./icons";
+import { ladestand, type Quelle } from "@/lib/ladestand";
 
 // Bausteine, die alle Räume teilen: die Tafel mit dem großen Wort, Abschnitte an der Wand, Knöpfe, Hinweise.
 
@@ -94,6 +95,19 @@ export function LinkButton({ href, children, icon }: { href: string; children: R
       {icon && <Icon name={icon} className="h-4 w-4" />}
       {children}
     </a>
+  );
+}
+
+// Der Satz, der dasteht, solange ein Raum seine Quelle nicht hat: „… lädt noch“, oder, wenn JARVIS dort nicht
+// antwortet (aus), „… lässt sich gerade nicht laden“. Wer ihn benutzt, muss wissen, ob die Abfrage gescheitert ist
+// (failed aus usePolling, ausfall aus useJarvis); ein eigener Ladesatz bliebe bei einem Ausfall für immer stehen
+// (test/regeln/ladestand.test.ts). Gewöhnlicher Text, keine Meldung: Er steht schon da, wenn der Raum aufgeht.
+export function Ladestand({ quelle, aus, className = "text-sm text-quiet" }: { quelle: Quelle; aus: boolean; className?: string }) {
+  const stand = ladestand(quelle, aus);
+  return (
+    <p className={className} data-ladestand={stand.art}>
+      {stand.text}
+    </p>
   );
 }
 

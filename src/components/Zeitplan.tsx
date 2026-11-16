@@ -1,6 +1,6 @@
 "use client";
 
-import { Abschnitt, Panel } from "./ui";
+import { Abschnitt, Ladestand, Panel } from "./ui";
 import { HINWEIS_REGELN } from "@/lib/hinweise";
 import { usePolling } from "@/lib/usePolling";
 import { useNow } from "@/lib/useNow";
@@ -34,7 +34,7 @@ function zuletzt(e: ZeitplanEintrag, jetzt: Date | null) {
 }
 
 export function Zeitplan() {
-  const { data } = usePolling<ZeitplanSnapshot>("/api/zeitplan", 30_000);
+  const { data, failed } = usePolling<ZeitplanSnapshot>("/api/zeitplan", 30_000);
   const now = useNow(30_000);
   return (
     <Panel id="zeitplan">
@@ -44,7 +44,7 @@ export function Zeitplan() {
         gesperrt, läuft dieser Agent nicht; Nachrichten an dich kommen weiter. Zwei Läufe derselben Aufgabe überschneiden sich nie.
       </p>
       {!data ? (
-        <p className="mt-3 text-sm text-quiet">Lade den Zeitplan …</p>
+        <Ladestand quelle="zeitplan" aus={failed} className="mt-3 text-sm text-quiet" />
       ) : (
         <ul className="mt-3 flex flex-col divide-y divide-schiefer/10">
           {data.eintraege.map((e) => (

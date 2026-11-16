@@ -31,6 +31,9 @@ type Quelle = {
 
 const quellen = new Map<string, Quelle>();
 
+// Wie lange nach dem soundsovielten Fehlschlag in Folge bis zum nächsten Versuch gewartet wird: 5, 15, 45 Sekunden …
+export const pauseNach = (fehlversuche: number): number => 5_000 * 3 ** fehlversuche;
+
 function melde(q: Quelle) {
   q.bild = { stand: q.stand, gescheitert: q.gescheitert };
   for (const a of [...q.abos.values()]) a.hoerer();
@@ -58,7 +61,7 @@ async function hole(url: string, q: Quelle, zusatz = ""): Promise<void> {
     // Gab es noch nie einen Stand, wartet der nächste Versuch nicht den ganzen Takt ab (bei den Terminen wären
     // das fünf Minuten „lässt sich gerade nicht laden“ nach einem einzigen Stolperer beim Start): nach 5, dann
     // 15, dann 45 Sekunden und so fort, aber nie dichter als der Takt.
-    const pause = 5_000 * 3 ** q.fehlversuche++;
+    const pause = pauseNach(q.fehlversuche++);
     if (pause < q.takt) {
       if (q.erst) clearTimeout(q.erst);
       q.erst = setTimeout(() => void hole(url, q), pause);

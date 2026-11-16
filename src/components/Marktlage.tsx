@@ -2,7 +2,7 @@
 
 import { useJarvis } from "./JarvisProvider";
 import { RaumLink } from "./RaumLink";
-import { Abschnitt, Panel } from "./ui";
+import { Abschnitt, Ladestand, Panel } from "./ui";
 import { marktlage, type MarktZeile } from "@/lib/marktlage";
 
 // Die Marktlage im Raum Intel: Krypto, Edelmetalle und der Spielgeld-Desk nebeneinander, darüber, was auffällt.
@@ -36,7 +36,7 @@ function Gruppe({ titel, href, zeilen, fuss }: { titel: string; href: string; ze
 }
 
 export function Marktlage() {
-  const { market, metalle, desk, intel } = useJarvis();
+  const { market, metalle, desk, intel, ausfall } = useJarvis();
   const lage = marktlage({ market, metalle, desk, intel });
   const auffaellig = lage.auffaellig.filter((a) => a.art !== "warnung");
   const leer = !lage.krypto && !lage.metalle && !lage.desk;
@@ -63,8 +63,11 @@ export function Marktlage() {
         !leer && <p className="mt-3 text-[0.95rem] text-schiefer">Nichts Auffälliges.</p>
       )}
 
+      {/* Sind die Krypto-Kurse noch nicht da (lädt noch, oder JARVIS antwortet nicht), steht das da, auch wenn
+          Edelmetalle oder Desk schon etwas zeigen. „Noch keine Kurse“ heißt: gelesen, aber leer. */}
+      {!market && <Ladestand quelle="kurse" aus={ausfall.market} className="mt-3 text-[0.95rem] text-quiet" />}
       {leer ? (
-        <p className="mt-3 text-[0.95rem] text-quiet">Noch keine Kurse.</p>
+        market && <p className="mt-3 text-[0.95rem] text-quiet">Noch keine Kurse.</p>
       ) : (
         <div className="mt-4 grid gap-x-8 gap-y-5 md:grid-cols-3">
           {lage.krypto && <Gruppe titel="Krypto" href="/trading" zeilen={lage.krypto.zeilen} fuss={lage.krypto.beispiel ? "Beispielkurse, keine echten Daten." : undefined} />}

@@ -4,7 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
 import { CalendarSetup } from "../setup";
 import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
-import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { MICROSOFT_SATZ, OUTLOOK_KALENDER } from "@/lib/microsoft";
 import { clock, confirmSentence, eventsOn, nextEvent, type CalendarEvent, type CalendarSnapshot, type NewEvent } from "@/lib/calendar";
@@ -18,7 +18,7 @@ const AGENDA_DAYS = 14;
 const LONG = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 
 export function CalendarView() {
-  const { calendar, run, reloadCalendar } = useJarvis();
+  const { calendar, run, reloadCalendar, ausfall } = useJarvis();
   const now = useNow();
   const today = now ? isoDate(now) : null;
   const [note, setNote] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export function CalendarView() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
-      <PageHeader icon="kalender" holo="modul-kalender" title="Kalender" subtitle={ready ? (macKalender === 0 ? "deine Termine aus Outlook" : `${macKalender} Kalender aus der Kalender-App auf deinem Mac${outlook ? ", dazu Outlook" : ""}`) : "dein Apple-Kalender"}>
+      <PageHeader icon="kalender" holo="modul-kalender" title="Kalender" subtitle={ready ? (macKalender === 0 ? "deine Termine aus Outlook" : `${macKalender} Kalender aus der Kalender-App auf deinem Mac${outlook ? ", dazu Outlook" : ""}`) : calendar ? "dein Apple-Kalender" : undefined}>
         {calendar && calendar.access !== "kein-mac" && !calendar.nurLesen && (
           <Button icon="kalender" onClick={() => open()}>
             In Kalender-App öffnen
@@ -54,7 +54,9 @@ export function CalendarView() {
         </Button>
       </PageHeader>
 
-      {!ready && (
+      {/* Solange der Kalender nicht gelesen ist, steht nur das da; „verbinden“ wäre eine Behauptung. */}
+      {!calendar && <Ladestand quelle="kalender" aus={ausfall.calendar} />}
+      {calendar && !ready && (
         <Panel className="max-w-2xl">
           <h2 className="mb-1 text-sm font-bold text-schiefer">Mit dem Kalender verbinden</h2>
           <p className="mb-4 text-sm text-quiet">

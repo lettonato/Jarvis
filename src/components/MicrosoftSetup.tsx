@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useJarvis } from "./JarvisProvider";
-import { Button, inputClass, Notice } from "./ui";
+import { Button, inputClass, Ladestand, Notice } from "./ui";
 import { postJson } from "@/lib/api";
 import { istClientId, istTenant, type MicrosoftStatus } from "@/lib/microsoft";
 import { usePolling } from "@/lib/usePolling";
@@ -19,7 +19,7 @@ export function MicrosoftSetup() {
   const { reloadCalendar } = useJarvis();
   const [wartet, setWartet] = useState(false);
   // Solange du den Code bei Microsoft eingibst, schaut die Seite alle paar Sekunden nach, ob es geklappt hat.
-  const { data: status, set } = usePolling<MicrosoftStatus>("/api/microsoft", wartet ? 3_000 : 5 * 60_000);
+  const { data: status, failed, set } = usePolling<MicrosoftStatus>("/api/microsoft", wartet ? 3_000 : 5 * 60_000);
   const [busy, setBusy] = useState(false);
   const [meldung, setMeldung] = useState<Meldung>(null);
   const [aendern, setAendern] = useState(false);
@@ -52,7 +52,7 @@ export function MicrosoftSetup() {
     }
   }
 
-  if (!status) return <p className="text-sm text-quiet">Lade …</p>;
+  if (!status) return <Ladestand quelle="microsoft" aus={failed} />;
   return (
     <div className="space-y-3 text-sm">
       {!status.eingerichtet || aendern ? (

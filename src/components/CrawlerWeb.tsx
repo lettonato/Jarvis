@@ -450,7 +450,8 @@ function Spider({ geo, mode }: { geo: Geo; mode: Mode }) {
 
 // ---------- Die Ansicht ----------
 
-export function CrawlerWeb({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnapshot | null }) {
+// Nur mit gelesenem Desk (siehe TradingDesk): Ohne ihn stünde hier „Die Spinne schläft“, auch wenn sie läuft.
+export function CrawlerWeb({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnapshot }) {
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number | null>(null);
   const working = desk?.status === "laeuft" || desk?.status === "tageslimit" || desk?.status === "pausiert";

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { ApprovalPanel, ApprovalRule } from "./Approvals";
 import { RaumLink } from "./RaumLink";
-import { PageHeader } from "./ui";
+import { Ladestand, PageHeader } from "./ui";
 import { CrawlerWeb } from "./CrawlerWeb";
 import { useJarvis } from "./JarvisProvider";
 import { AGENTS, type Agent } from "@/lib/agents";
@@ -56,7 +56,7 @@ const PLATTE = "border-t-[3px] border-schiefer bg-wand/60";
 const KACHEL = "border-t-2 border-schiefer/30 bg-wand/60";
 
 export function TradingDesk() {
-  const { market: snap, desk } = useJarvis();
+  const { market: snap, desk, ausfall } = useJarvis();
   const [now, setNow] = useState<Date | null>(null);
   const controls = useDeskAction();
 
@@ -75,25 +75,32 @@ export function TradingDesk() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 sm:p-6">
       <Header now={now} isDemo={isDemo} loading={!snap} desk={desk} />
+      {/* Solange der Desk oder die Kurse nicht gelesen sind (lädt noch, oder JARVIS antwortet nicht), steht das da.
+          Ohne den Desk bleibt weg, was nur mit ihm stimmt: Konto, Spinne, Trades und Protokoll zeigten sonst
+          „10.000 $“, „Die Spinne schläft“ und „Noch nichts passiert“, auch wenn der Handel gerade läuft. */}
+      {!desk && <Ladestand quelle="desk" aus={ausfall.desk} />}
+      {!snap && <Ladestand quelle="kurse" aus={ausfall.market} />}
       {desk && <ApprovalPanel desk={desk} />}
-      <AgentGrid snap={snap} desk={desk} />
-      <CrawlerWeb snap={snap} desk={desk} />
-      <section className="grid gap-3 lg:grid-cols-3">
-        <Account desk={desk} isDemo={isDemo} controls={controls} />
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-          {(snap?.majors.quotes ?? []).map((q) => (
-            <MajorCard key={q.id} quote={q} />
-          ))}
-        </div>
-      </section>
+      {desk && <AgentGrid snap={snap} desk={desk} />}
+      {desk && <CrawlerWeb snap={snap} desk={desk} />}
+      {(desk || snap) && (
+        <section className="grid gap-3 lg:grid-cols-3">
+          {desk && <Account desk={desk} isDemo={isDemo} controls={controls} />}
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            {(snap?.majors.quotes ?? []).map((q) => (
+              <MajorCard key={q.id} quote={q} />
+            ))}
+          </div>
+        </section>
+      )}
       {desk && desk.positions.length > 0 && <Positions desk={desk} controls={controls} now={now} />}
       {desk && <Commodities desk={desk} controls={controls} />}
       {/* Die Scan-Tabelle hat elf Spalten und bekommt die ganze Breite: So steht die Prüfung, die letzte Spalte, ohne Schieben da. */}
-      <ScannerTable snap={snap} verdicts={desk?.verdicts ?? {}} />
+      {snap && <ScannerTable snap={snap} verdicts={desk?.verdicts ?? {}} />}
       <section className="grid flex-1 items-start gap-3 lg:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-3 lg:col-span-2">
-          <Trades trades={desk?.trades ?? []} />
-          <DeskLog log={desk?.log ?? []} />
+          {desk && <Trades trades={desk.trades} />}
+          {desk && <DeskLog log={desk.log} />}
         </div>
         <ThresholdsPanel />
       </section>
@@ -104,7 +111,7 @@ export function TradingDesk() {
 
 function Header({ now, isDemo, loading, desk }: { now: Date | null; isDemo: boolean; loading: boolean; desk: DeskSnapshot | null }) {
   const subtitle = !desk
-    ? "lädt …"
+    ? undefined
     : desk.status === "aus"
       ? "Spielgeld-Handel noch nicht gestartet"
       : `Spielgeld, Tag ${Math.min(desk.testDay, SAFETY.testDays)} von ${SAFETY.testDays}, ${STATUS_LABEL[desk.status]}`;
@@ -132,32 +139,33 @@ function StatusPill({ desk }: { desk: DeskSnapshot }) {
 
 type Metric = { value: string; detail: string; progress?: number };
 
-function agentState(agent: Agent, desk: DeskSnapshot | null): { label: string; live: boolean } {
-  if (!desk) return { label: "…", live: false };
+function agentState(agent: Agent, desk: DeskSnapshot): { label: string; live: boolean } {
   if (desk.status === "aus") return { label: "bereit", live: false };
   if (desk.status === "notaus") return { label: "steht", live: false };
   if (desk.status === "laeuft") return { label: "aktiv", live: true };
   return agent.guards ? { label: "wacht", live: true } : { label: "Pause", live: false };
 }
 
-function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnapshot | null }) {
+// Nur mit gelesenem Desk (siehe TradingDesk): Ohne ihn stünde hier „noch keine Ausführung“, auch wenn es welche gab.
+function AgentGrid({ snap, desk }: { snap: MarketSnapshot | null; desk: DeskSnapshot }) {
   const candidates = snap?.scan.candidates ?? [];
   const passed = candidates.filter((c) => c.passed).length;
-  const stats = desk?.stats;
-  const lastBuy = desk?.trades.find((t) => t.side === "kauf");
-  const lastFill = desk?.trades[0];
+  const stats = desk.stats;
+  const lastBuy = desk.trades.find((t) => t.side === "kauf");
+  const lastFill = desk.trades[0];
   const metrics: Partial<Record<Agent["id"], Metric>> = {
     chief: {
-      value: desk?.lastPick ? `$${desk.lastPick}` : "–",
-      detail: desk?.chief === "claude" ? "letzte Wahl, Claude bewertet" : "letzte Wahl nach Faustregeln",
+      value: desk.lastPick ? `$${desk.lastPick}` : "–",
+      detail: desk.chief === "claude" ? "letzte Wahl, Claude bewertet" : "letzte Wahl nach Faustregeln",
     },
     scan: {
-      value: snap ? String(snap.scan.scanned) : "…",
+      // Ohne Kurse ein Strich, kein „…“: Dass sie laden oder ausgefallen sind, steht oben im Raum.
+      value: snap ? String(snap.scan.scanned) : "–",
       detail: "Coins gescannt",
       progress: snap && snap.scan.scanned ? candidates.length / snap.scan.scanned : 0,
     },
-    vet: { value: snap ? `${passed}/${candidates.length}` : "…", detail: "bestehen die harten Filter", progress: candidates.length ? passed / candidates.length : 0 },
-    social: desk?.x.enabled
+    vet: { value: snap ? `${passed}/${candidates.length}` : "–", detail: "bestehen die harten Filter", progress: candidates.length ? passed / candidates.length : 0 },
+    social: desk.x.enabled
       ? { value: stats ? formatCount(stats.postsRead) : "–", detail: `X-Beiträge gelesen, Grok heute ${formatUsd(desk.x.spentTodayUsd)} von ${formatUsd(desk.x.budgetUsd)}` }
       : { value: stats ? formatCount(stats.pagesRead) : "–", detail: "Seiten gelesen, X ist ohne xAI-Schlüssel aus" },
     size: { value: lastBuy ? formatUsd(lastBuy.usd) : "–", detail: `Ticket, ${SAFETY.minTradeShare * 100} bis ${SAFETY.maxTradeShare * 100} % des Kontos je nach Überzeugung` },
@@ -214,10 +222,11 @@ function AgentTile({ agent, metric, state }: { agent: Agent; metric?: Metric; st
 
 type Controls = ReturnType<typeof useDeskAction>;
 
-function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo: boolean; controls: Controls }) {
+// Nur mit gelesenem Desk: Ohne ihn stünde hier das Startkapital, als wäre nie gehandelt worden.
+function Account({ desk, isDemo, controls }: { desk: DeskSnapshot; isDemo: boolean; controls: Controls }) {
   const { act, busy, note } = controls;
-  const started = desk && desk.status !== "aus";
-  const day = desk ? Math.min(desk.testDay, SAFETY.testDays) : 0;
+  const started = desk.status !== "aus";
+  const day = Math.min(desk.testDay, SAFETY.testDays);
   return (
     <section className={`flex min-w-0 flex-col gap-3 p-3 lg:col-span-2 ${PLATTE}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -225,7 +234,7 @@ function Account({ desk, isDemo, controls }: { desk: DeskSnapshot | null; isDemo
           <p className="text-xs text-quiet">
             Spielgeld-Konto{started ? `, Tag ${day} von ${SAFETY.testDays}` : ""}
           </p>
-          <p className="text-3xl font-bold">{formatUsd(desk?.equity ?? SAFETY.startCapitalUsd)}</p>
+          <p className="text-3xl font-bold">{formatUsd(desk.equity)}</p>
           {started && desk ? (
             <p className="text-sm">
               <span className={desk.pnlUsd >= 0 ? "text-up" : "text-down"}>
@@ -560,13 +569,13 @@ function CommodityCard({
   );
 }
 
-function ScannerTable({ snap, verdicts }: { snap: MarketSnapshot | null; verdicts: Record<string, CoinVerdict> }) {
-  const rows = snap?.scan.candidates ?? [];
+function ScannerTable({ snap, verdicts }: { snap: MarketSnapshot; verdicts: Record<string, CoinVerdict> }) {
+  const rows = snap.scan.candidates;
   return (
     <section className={`flex min-w-0 flex-col ${PLATTE}`}>
       <div className="flex items-center justify-between border-b border-line px-3 py-2">
         <h2 className="text-sm font-bold text-see">Scan: Solana-Memecoins</h2>
-        <span className="text-xs text-quiet">{snap ? `${snap.scan.scanned} gescannt` : "lädt …"}</span>
+        <span className="text-xs text-quiet">{snap.scan.scanned} gescannt</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] whitespace-nowrap text-left text-xs">
@@ -765,7 +774,8 @@ function Footer({ desk, controls }: { desk: DeskSnapshot | null; controls: Contr
         type="button"
         disabled={!armed || controls.busy}
         onClick={() => controls.act("notaus")}
-        title={armed ? "Stoppt sofort alle Agenten. Auch per Sprache: „Stopp alles“." : "Der Not-Aus greift, sobald der Spielgeld-Handel läuft."}
+        // Kennt JARVIS den Desk gerade nicht, behauptet der Knopf auch nicht, dass kein Handel läuft.
+        title={armed ? "Stoppt sofort alle Agenten. Auch per Sprache: „Stopp alles“." : desk ? "Der Not-Aus greift, sobald der Spielgeld-Handel läuft." : "Der Zustand des Trading-Desks ist gerade nicht bekannt."}
         className="rounded-full border border-down px-4 py-1 font-bold text-down hover:bg-down/15 disabled:cursor-not-allowed disabled:border-down/40 disabled:text-down/50"
       >
         Not-Aus

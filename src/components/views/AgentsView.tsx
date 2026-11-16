@@ -6,7 +6,7 @@ import { RaumLink } from "../RaumLink";
 import { Zeitplan } from "../Zeitplan";
 import { Icon } from "../icons";
 import { useJarvis } from "../JarvisProvider";
-import { PageHeader, Panel } from "../ui";
+import { Ladestand, PageHeader, Panel } from "../ui";
 import { fromIso } from "@/lib/dates";
 import { CURRENT_PHASE, isActive, MODULES, type JarvisModule } from "@/lib/modules";
 
@@ -82,8 +82,8 @@ function AgentCard({ module, highlighted }: { module: JarvisModule; highlighted:
 }
 
 function WeatherDetail() {
-  const { weather } = useJarvis();
-  if (!weather) return <p className="mt-3 text-xs text-quiet">Wetter lädt …</p>;
+  const { weather, ausfall } = useJarvis();
+  if (!weather) return <Ladestand quelle="wetter" aus={ausfall.weather} className="mt-3 text-xs text-quiet" />;
   return (
     <div className="mt-3">
       <p className="text-sm text-schiefer">

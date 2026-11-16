@@ -171,22 +171,22 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: market, failed: marketAus } = usePolling<MarketSnapshot>("/api/market", 30_000);
-  const { data: weather } = usePolling<WeatherSnapshot>("/api/weather", 10 * 60_000);
+  const { data: weather, failed: weatherAus } = usePolling<WeatherSnapshot>("/api/weather", 10 * 60_000);
   const { data: tasks, failed: tasksAus, reload: reloadTasks, set: setTasks } = usePolling<TasksSnapshot>("/api/aufgaben", 60_000);
   const { data: mail, failed: mailAus, reload: loadMail, set: setMail } = usePolling<MailSnapshot>("/api/post", 2 * 60_000);
-  const { data: settings, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
+  const { data: settings, failed: settingsAus, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
   const { data: desk, failed: deskAus, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 10_000);
   const { data: calendar, failed: calendarAus, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
   const { data: intel, failed: intelAus, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
-  const { data: metalle } = usePolling<MetalleSnapshot>("/api/metalle", 300_000);
+  const { data: metalle, failed: metalleAus } = usePolling<MetalleSnapshot>("/api/metalle", 300_000);
   const { data: documents, failed: documentsAus, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
   const { data: projekte, failed: projekteAus, set: setProjekte } = usePolling<ProjekteSnapshot>("/api/projekte", 60_000);
+  const { data: memoryData, failed: memoryAus, reload: loadMemory, set: setMemoryData } = usePolling<MemoryStand>("/api/gedaechtnis", 10 * 60_000);
   // Je Abfrage: Sie hat noch nie geantwortet, und der letzte Versuch ist gescheitert (usePolling, failed).
   const ausfall = useMemo<Ausfall>(
-    () => ({ calendar: calendarAus, tasks: tasksAus, mail: mailAus, projekte: projekteAus, desk: deskAus, intel: intelAus, documents: documentsAus, market: marketAus }),
-    [calendarAus, tasksAus, mailAus, projekteAus, deskAus, intelAus, documentsAus, marketAus],
+    () => ({ calendar: calendarAus, tasks: tasksAus, mail: mailAus, projekte: projekteAus, desk: deskAus, intel: intelAus, documents: documentsAus, market: marketAus, metalle: metalleAus, weather: weatherAus, settings: settingsAus, memory: memoryAus }),
+    [calendarAus, tasksAus, mailAus, projekteAus, deskAus, intelAus, documentsAus, marketAus, metalleAus, weatherAus, settingsAus, memoryAus],
   );
-  const { data: memoryData, reload: loadMemory, set: setMemoryData } = usePolling<MemoryStand>("/api/gedaechtnis", 10 * 60_000);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [session, setSessionState] = useState<Session | null>(null);

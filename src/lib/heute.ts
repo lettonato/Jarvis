@@ -3,6 +3,7 @@ import { addDays, isoDate } from "./dates";
 import type { DocsSnapshot } from "./documents";
 import { ohnePunkt } from "./format";
 import type { IntelSnapshot } from "./intel";
+import { ladestand } from "./ladestand";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
 import { fristText, projekteImText, RISIKO_REGELN, type ProjektKarte, type ProjekteSnapshot } from "./projekte";
@@ -181,17 +182,16 @@ export type Luecke = { art: "laedt" | "fehlt" | "gestoert"; text: string };
 // Je Quelle, warum sie gerade fehlt, oder null, wenn sie gelesen ist.
 export type Luecken = { kalender: Luecke | null; outlook: Luecke | null; aufgaben: Luecke | null; post: Luecke | null; projekte: Luecke | null };
 
-const laedt = (text: string): Luecke => ({ art: "laedt", text });
 const fehlt = (text: string): Luecke => ({ art: "fehlt", text });
 const gestoert = (text: string): Luecke => ({ art: "gestoert", text });
 
 // Welche eigenen Abfragen von Anfang an scheitern (JARVIS selbst antwortet dort nicht): Das ist nicht „lädt noch“.
 // Eine Liste für alle: JarvisProvider füllt sie, „Heute“ liest sie.
-export type Ausfall = Record<"calendar" | "tasks" | "mail" | "projekte" | "desk" | "intel" | "documents" | "market", boolean>;
+export type Ausfall = Record<"calendar" | "tasks" | "mail" | "projekte" | "desk" | "intel" | "documents" | "market" | "metalle" | "weather" | "settings" | "memory", boolean>;
 export type Ausfaelle = Partial<Ausfall>;
 
 function kalenderLuecke(k: CalendarSnapshot | null, aus: boolean): Luecke | null {
-  if (!k) return aus ? gestoert("Der Kalender lässt sich gerade nicht laden.") : laedt("Der Kalender lädt noch.");
+  if (!k) return ladestand("kalender", aus);
   if (k.access === "ok") return null;
   if (k.access === "offen") return fehlt("Der Kalender ist noch nicht verbunden.");
   if (k.access === "kein-mac") return fehlt("Den Kalender gibt es nur auf dem Mac.");
@@ -207,9 +207,9 @@ export function luecken(d: Pick<TagesDaten, "calendar" | "tasks" | "mail" | "pro
   return {
     kalender: kalenderLuecke(k, aus.calendar === true),
     outlook: outlook ? gestoert(outlook) : null,
-    aufgaben: !d.tasks ? (aus.tasks ? gestoert("Die Aufgaben lassen sich gerade nicht laden.") : laedt("Die Aufgaben laden noch.")) : !d.tasks.configured ? fehlt("Obsidian ist noch nicht verbunden.") : aufgabenUnlesbar(d.tasks) ? gestoert(TRESOR_UNLESBAR) : null,
-    post: !d.mail ? (aus.mail ? gestoert("Das Postfach lässt sich gerade nicht laden.") : laedt("Das Postfach lädt noch.")) : !d.mail.configured ? fehlt("Das Postfach ist noch nicht verbunden.") : d.mail.error ? gestoert("Das Postfach antwortet nicht.") : null,
-    projekte: !d.projekte ? (aus.projekte ? gestoert("Die Projekte lassen sich gerade nicht laden.") : laedt("Die Projekte laden noch.")) : null,
+    aufgaben: !d.tasks ? ladestand("aufgaben", aus.tasks === true) : !d.tasks.configured ? fehlt("Obsidian ist noch nicht verbunden.") : aufgabenUnlesbar(d.tasks) ? gestoert(TRESOR_UNLESBAR) : null,
+    post: !d.mail ? ladestand("post", aus.mail === true) : !d.mail.configured ? fehlt("Das Postfach ist noch nicht verbunden.") : d.mail.error ? gestoert("Das Postfach antwortet nicht.") : null,
+    projekte: !d.projekte ? ladestand("projekte", aus.projekte === true) : null,
   };
 }
 

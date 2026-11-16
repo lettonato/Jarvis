@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { useJarvis } from "../JarvisProvider";
 import { VaultSetup } from "../setup";
 import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
-import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, Notice, PageHeader, Panel } from "../ui";
 import { addDays, isoDate, shortDue } from "@/lib/dates";
 import { dateOf, dueSoon, groupTasks, type Task } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
@@ -15,7 +15,7 @@ import { useNow } from "@/lib/useNow";
 const obsidianLink = (path: string) => `obsidian://open?path=${encodeURIComponent(path)}`;
 
 export function TasksView() {
-  const { tasks, session, reloadTasks, ask } = useJarvis();
+  const { tasks, session, reloadTasks, ask, ausfall } = useJarvis();
   const now = useNow();
   const today = now ? isoDate(now) : null;
   const current = session?.kind === "aufgaben" ? session.ids[session.index] : null;
@@ -40,7 +40,7 @@ export function TasksView() {
 
   return (
     <Shell
-      subtitle={tasks?.vault ? `aus deinem Obsidian-Tresor „${tasks.vault.name}“` : "lädt …"}
+      subtitle={tasks?.vault ? `aus deinem Obsidian-Tresor „${tasks.vault.name}“` : undefined}
       actions={
         <>
           {soon.length > 0 && (
@@ -63,9 +63,11 @@ export function TasksView() {
       }
     >
       {tasks?.error && <Notice tone="error">{tasks.error}</Notice>}
-      {today && !tasks?.error && <AddTask today={today} />}
+      {/* Solange die Aufgaben nicht gelesen sind (lädt noch, oder JARVIS antwortet nicht), steht nur das da. */}
+      {!tasks && <Ladestand quelle="aufgaben" aus={ausfall.tasks} />}
+      {tasks && today && !tasks.error && <AddTask today={today} />}
       {/* Lässt sich der Tresor nicht lesen, steht nur das da: keine Nullen und kein „alles erledigt“. */}
-      {!tasks?.error && (
+      {tasks && !tasks.error && (
         <Scheiben>
           <Scheibe titel="Auf einen Blick">
             <ul>

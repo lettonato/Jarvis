@@ -9,6 +9,8 @@ import { RaumLink } from "../RaumLink";
 import { PageHeader } from "../ui";
 import { clock, eventsOn, nextEvent } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
+import { ohnePunkt } from "@/lib/format";
+import { ladestand } from "@/lib/ladestand";
 import { aufgabenUnlesbar, dateOf, dueSoon } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
 
@@ -22,7 +24,7 @@ const DATE = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric",
 type Item = { icon: IconName; text: string; ask?: string; href?: string; tun?: string; alert?: boolean };
 
 export function FocusView() {
-  const { name, tasks, mail, calendar, weather, state, session, ask, voice } = useJarvis();
+  const { name, tasks, mail, calendar, weather, state, session, ask, voice, ausfall } = useJarvis();
   const { turns, interim } = useConversation();
   const label = useStateLabel();
   const talking = turns.length > 0 || Boolean(interim) || session !== null;
@@ -32,7 +34,10 @@ export function FocusView() {
   const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
 
   const items: Item[] = [];
-  if (calendar?.access === "offen") items.push({ icon: "kalender", text: "Kalender verbinden", href: "/kalender" });
+  // Antwortet JARVIS an einer Quelle nicht, steht das bei dem, was ansteht; sonst fehlte sie dort einfach.
+  const fehlt = (quelle: "kalender" | "post" | "aufgaben", href: string): Item => ({ icon: quelle, text: ohnePunkt(ladestand(quelle, true).text), href, tun: "Ansehen", alert: true });
+  if (!calendar && ausfall.calendar) items.push(fehlt("kalender", "/kalender"));
+  else if (calendar?.access === "offen") items.push({ icon: "kalender", text: "Kalender verbinden", href: "/kalender" });
   else if (calendar && calendar.access !== "ok" && calendar.access !== "kein-mac") items.push({ icon: "kalender", text: "Kein Zugriff auf den Kalender", href: "/kalender", alert: true });
   else if (calendar?.access === "ok" && now && today) {
     const rest = eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime());
@@ -40,13 +45,15 @@ export function FocusView() {
     const soon = next && isoDate(new Date(next.start)) === today ? `, als Nächstes ${clock(next.start)} ${next.title}` : "";
     items.push({ icon: "kalender", text: rest.length ? `${rest.length} ${rest.length === 1 ? "Termin" : "Termine"} heute${soon}` : "Heute keine Termine mehr", ask: "Meine Termine" });
   }
-  if (mail && !mail.configured) items.push({ icon: "post", text: "Postfach verbinden", href: "/post" });
+  if (!mail && ausfall.mail) items.push(fehlt("post", "/post"));
+  else if (mail && !mail.configured) items.push({ icon: "post", text: "Postfach verbinden", href: "/post" });
   else if (mail?.error) items.push({ icon: "post", text: "Postfach antwortet nicht", href: "/post", alert: true });
   else if (mail) {
     const n = mail.importantUnread;
     items.push({ icon: "post", text: n === 1 ? "1 neue wichtige Mail" : `${n} neue wichtige Mails`, ask: "Meine Mails", alert: n > 0 });
   }
-  if (tasks && !tasks.configured) items.push({ icon: "aufgaben", text: "Obsidian verbinden", href: "/aufgaben" });
+  if (!tasks && ausfall.tasks) items.push(fehlt("aufgaben", "/aufgaben"));
+  else if (tasks && !tasks.configured) items.push({ icon: "aufgaben", text: "Obsidian verbinden", href: "/aufgaben" });
   // Ein Tresor, der sich nicht lesen lässt, ist nicht dasselbe wie „0 Punkte“.
   else if (aufgabenUnlesbar(tasks)) items.push({ icon: "aufgaben", text: "Aufgaben gerade nicht lesbar", href: "/aufgaben", tun: "Ansehen", alert: true });
   else if (tasks && today) {

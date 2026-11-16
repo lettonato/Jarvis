@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Abschnitt, Button, inputClass, LinkButton, Notice, Panel } from "./ui";
+import { Abschnitt, Button, inputClass, Ladestand, LinkButton, Notice, Panel } from "./ui";
 import { postJson } from "@/lib/api";
 import { formatUsd } from "@/lib/format";
 import { datum, fondsSatz, prozent, type MetallLage, type MetalleSnapshot } from "@/lib/metalle";
@@ -23,7 +23,7 @@ const wann = (iso: string, jetzt: Date | null) => {
 const farbe = (n: number | null) => (n === null || Math.abs(n) < 0.05 ? "text-schiefer" : n > 0 ? "text-up" : "text-down");
 
 export function Edelmetalle() {
-  const { data, set } = usePolling<MetalleSnapshot>("/api/metalle", 60_000);
+  const { data, failed, set } = usePolling<MetalleSnapshot>("/api/metalle", 60_000);
   const now = useNow(30_000);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -58,7 +58,7 @@ export function Edelmetalle() {
         )}
       </div>
 
-      {!data && <p className="mt-3 text-sm text-quiet">Lade die Kurse …</p>}
+      {!data && <Ladestand quelle="metalle" aus={failed} className="mt-3 text-sm text-quiet" />}
 
       {data && !data.eingerichtet && (
         <div className="mt-3 max-w-2xl">

@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Marktlage } from "../Marktlage";
 import { Edelmetalle } from "../Edelmetalle";
 import { useJarvis } from "../JarvisProvider";
-import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { BASE_TOPICS, budgetHinweis, MAX_TOPICS, MOOD_LABEL, themaDazu, TYPICAL_INTEL_COST_USD, type IntelItem, type IntelReport, type IntelSnapshot } from "@/lib/intel";
 import { alsSatz } from "@/lib/format";
@@ -30,7 +30,7 @@ const MOOD_TONE: Record<IntelReport["mood"], string> = {
 };
 
 export function IntelView() {
-  const { intel, setIntel } = useJarvis();
+  const { intel, setIntel, ausfall } = useJarvis();
   const now = useNow();
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +63,7 @@ export function IntelView() {
         )}
       </PageHeader>
 
-      {!intel && <p className="text-sm text-quiet">Lade Intel …</p>}
+      {!intel && <Ladestand quelle="intel" aus={ausfall.intel} />}
       <Marktlage />
 
       {intel && !intel.configured && (

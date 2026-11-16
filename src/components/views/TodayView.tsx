@@ -14,6 +14,7 @@ import { marktlage } from "@/lib/marktlage";
 import { MOOD_LABEL } from "@/lib/intel";
 import type { SicherheitsLage } from "@/lib/sicherheit";
 import { dateOf } from "@/lib/tasks";
+import { ladestand } from "@/lib/ladestand";
 import { useNow } from "@/lib/useNow";
 import { wetterKurz } from "@/lib/weather";
 import { usePolling } from "@/lib/usePolling";
@@ -211,7 +212,7 @@ export function TodayView() {
           </ul>
           {/* Antwortet die Abfrage der Kurse selbst nicht, steht das da; „Noch keine Kurse“ wäre dann falsch. */}
           {!market && ausfall.market ? (
-            <p className="text-[0.95rem] opacity-80">Die Krypto-Kurse lassen sich gerade nicht laden.</p>
+            <p className="text-[0.95rem] opacity-80">{ladestand("kurse", true).text}</p>
           ) : (
             majors.length === 0 && !maerkte.metalle && (!desk || desk.status === "aus") && <p className="text-[0.95rem] opacity-80">Noch keine Kurse.</p>
           )}
@@ -228,7 +229,7 @@ export function TodayView() {
 
         <Scheibe titel="Agenten" href="/agenten">
           {!agenten ? (
-            <p className="text-[0.95rem] opacity-80">{agentenAus ? "Die Agenten lassen sich gerade nicht laden." : "Die Agenten melden sich …"}</p>
+            <p className="text-[0.95rem] opacity-80">{ladestand("agenten", agentenAus).text}</p>
           ) : (
             <ul>
               {agenten.agenten.map((a) => (

@@ -7,7 +7,7 @@ import { MicrosoftSetup } from "../MicrosoftSetup";
 import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
 import { SicherheitsZentrale } from "../Sicherheit";
 import { TelegramSetup } from "../TelegramSetup";
-import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { APPROVAL, APPROVAL_CHOICES, type ApprovalLimit } from "@/lib/approval";
 import type { MemoryStand } from "@/lib/brain";
@@ -159,13 +159,13 @@ function abschnitteVon(settings: Settings): Abschnitt[] {
 }
 
 export function SettingsView() {
-  const { settings } = useJarvis();
+  const { settings, ausfall } = useJarvis();
   const abschnitte = settings ? abschnitteVon(settings) : [];
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
       <PageHeader icon="einstellungen" title="Einstellungen" subtitle="Alles bleibt auf deinem Mac." />
       {!settings ? (
-        <p className="text-sm text-quiet">Lade Einstellungen …</p>
+        <Ladestand quelle="einstellungen" aus={ausfall.settings} />
       ) : (
         <>
           <nav aria-label="Abschnitte der Einstellungen" className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
@@ -335,7 +335,7 @@ function BrainSetup() {
 const SINCE = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" });
 
 function MemorySetup() {
-  const { memory, memoryError, setMemory, reloadMemory } = useJarvis();
+  const { memory, memoryError, setMemory, reloadMemory, ausfall } = useJarvis();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -360,7 +360,7 @@ function MemorySetup() {
     if (await send({ action: "merken", text })) setText("");
   };
 
-  if (!memory) return <p className="text-sm text-quiet">Lade …</p>;
+  if (!memory) return <Ladestand quelle="gedaechtnis" aus={ausfall.memory} />;
   // Die Datei ist beschädigt oder nicht lesbar: JARVIS ersetzt sie nicht von selbst. Beiseitelegen gibt es nur für
   // eine beschädigte Datei; es zerstört nichts und behält, was sich darin noch lesen lässt.
   if (memoryError) {

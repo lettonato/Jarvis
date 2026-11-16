@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1063 von 1063 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1069 von 1069 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -2099,6 +2099,79 @@ der Korrektur nicht ausprobiert.
 (die Prüfungen fragen nur Nachbauten).
 
 
+### Schritt J12: Ausfälle in allen Räumen ehrlich anzeigen (15. und 16. November 2026)
+
+**Warum:** Seit J10 unterscheidet „Heute“, ob eine Quelle noch lädt oder JARVIS dort nicht antwortet. Die anderen
+Räume taten das nicht (J10, Grenze 8; vorgemerkt in J11).
+
+**Bestandsaufnahme zuerst:** Ein Messlauf durch alle zwölf Räume, einmal mit Abfragen, die nie beantwortet werden,
+einmal mit Abfragen, die sofort scheitern; aufgeschrieben, was dann jeweils dasteht.
+
+| Raum | Was bei einem Ausfall dastand |
+|---|---|
+| Aufgaben | „lädt …“ für immer; in der Scheibe „Bis nächste Woche 0, Überfällig 0, Heute erledigt 0“ |
+| Post | „lädt …“ für immer; „Wichtig 0“; in der Scheibe drei Nullen |
+| Kalender | die Karte „Mit dem Kalender verbinden“, darin „Lade Kalender …“ |
+| Projekte, Dokumente, Einstellungen | „Lade …“ für immer |
+| Intel | „Lade Intel …“, „Noch keine Kurse.“, „Lade die Kurse …“ |
+| Agenten | „Die Agenten melden sich …“, „Lade den Zeitplan …“ |
+| Trading | „lädt …“; dazu **„Spielgeld-Konto 10.000,00 $“, „Die Spinne schläft“, „Noch nichts passiert“, „noch keine Ausführung“**, gleich ob der Handel gerade läuft |
+| Browser | gar nichts: kein Zustand, kein Feld für einen Auftrag |
+| Gespräch | Kalender, Post und Aufgaben fehlten bei „Was gerade ansteht“ einfach |
+| Heute | richtig (seit J10) |
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J12.1 Ein Satz je Quelle an einer Stelle: „… lädt noch.“ oder, wenn JARVIS dort nicht antwortet, „… lässt sich gerade nicht laden.“ „Heute“ und die Räume sagen über dieselbe Quelle dasselbe | Testbereit | `src/lib/ladestand.ts` (18 Quellen), Baustein `Ladestand` in `ui.tsx`; `heute.ts` benutzt dieselben Sätze; Regeltests |
+| J12.2 Zehn Räume sagen, was sich nicht laden lässt, statt für immer zu laden: Aufgaben, Kalender, Post, Projekte, Trading, Intel (Lagebild, Marktlage, Gold und Silber), Agenten (Steuerung, Zeitplan, Wetter), Browser, Dokumente, Einstellungen (dazu dort Sicherheitslage, Gedächtnis, Microsoft, Kalender) | Testbereit | je Raum `Ladestand`; Prüfung Ausfall, Schritte 1, 2 und 4 |
+| J12.3 Solange eine Quelle nicht gelesen ist, behauptet der Raum nichts: keine Zahl in den Scheiben, kein „verbinden“, kein Formular; im Trading-Raum bleiben Konto, Spinne, Trades und Protokoll weg, und der Not-Aus dort sagt nicht mehr, es laufe kein Handel | Testbereit | `TasksView`, `MailView`, `CalendarView`, `TradingDesk` (Bausteine nehmen den Desk nur noch gelesen an); Prüfung Ausfall, Schritte 1 und 2 |
+| J12.4 Eine einzelne Projektakte, die sich nicht laden lässt, sagt das; JARVIS versucht es nach 5, 15, 45 Sekunden und dann jede Minute wieder. Gibt es das Projekt nicht mehr, klappt die Kachel zu | Testbereit | `ProjectsView.tsx`, `pauseNach` in `geteilt.ts`; Prüfung Ausfall, Schritt 5 |
+| J12.5 Im Raum Gespräch steht bei „Was gerade ansteht“, welche Quelle sich nicht laden lässt | Testbereit | `FocusView.tsx`; Prüfung Ausfall, Schritt 3 |
+| J12.6 Kein Raum schreibt seinen Ladesatz mehr selbst: Ein Regeltest liest alle Bausteine und lässt nur zwei begründete Ausnahmen zu | Testbereit | `test/regeln/ladestand.test.ts` (6 Tests) |
+| J12.7 Handprüfung „Ausfall“ | Testbereit, **nur im Browser der Sandbox** | `test/hand/ausfall-rauch.ts` (Port 3130, 6 Schritte); jetzt 28 Handprüfungen |
+
+**Eigene Entscheidungen:** (1) Solange ein Raum seine Quelle nicht hat, steht dort nur der Satz. Auch das Feld
+„Notieren“ im Raum Aufgaben kommt erst, wenn die Aufgaben gelesen sind. (2) Der Satz ist gewöhnlicher Text und
+keine Meldung (Regel aus J11: Was schon dasteht, wenn der Raum aufgeht, unterbricht kein Vorleseprogramm).
+(3) Kein Zusatz wie „JARVIS versucht es weiter“; die Räume mit „Neu laden“ behalten den Knopf. (4) Im
+Trading-Raum zeigen die Kacheln „Scan“ und „Vet“ ohne Kurse einen Strich statt „…“, und die Scan-Tabelle kommt
+erst mit den Kursen. (5) In „Heute“ heißt es jetzt „Die Agenten laden noch.“ statt „Die Agenten melden sich …“.
+(6) Der Raum Browser behält seine eigene Abfrage (Hinweis aus dem Code-Review, bewusst nicht übernommen): Sein
+Takt wechselt, sobald ein Auftrag läuft, und die gemeinsame Abfrage vergisst bei einem Wechsel des Takts für
+einen Augenblick den Stand; das Bild des Browsers würde dann flackern.
+
+**Grenzen:** (1) **Wann das am Mac vorkommt:** Ist JARVIS ganz beendet, lädt die Seite gar nicht erst; die Sätze
+erscheinen, wenn eine einzelne Abfrage scheitert oder JARVIS gerade neu startet, während die Seite offen ist. Am
+Mac lässt sich das kaum von Hand herbeiführen; belegt ist es nur in der Sandbox. (2) Eine Abfrage, die nie
+beantwortet wird, bleibt bei „lädt noch“; eine Frist gibt es nicht. (3) Fällt JARVIS aus, nachdem ein Raum schon
+gelesen war, bleibt der alte Stand ohne Hinweis stehen (wie bisher, J10, Eigene Entscheidungen 4). (4) Nicht im
+Browser geprüft: der Satz zum Gedächtnis in den Einstellungen (steht nur mit Claude-Schlüssel da) und die
+Marktlage, wenn nur die Krypto-Kurse fehlen, Edelmetalle oder Desk aber da sind (die Testdaten haben weder noch).
+(5) Die schmale Leiste für Not-Aus und Freigaben oben zeigt nichts, wenn sich die Sicherheitslage nicht laden
+lässt; in den Einstellungen steht es. (6) Im Trading-Raum zeigen die übrigen Kacheln ohne Kurse weiter ihre
+Erklärtexte; nur die Werte sind Striche. (7) Am Rand aufgefallen, nicht geändert: Die Karte für Microsoft 365
+wechselt ihren Takt, während du dich anmeldest; nach dem Code müsste dabei für einen Augenblick „lädt noch“
+aufblitzen (nicht gemessen). (8) Schmales Fenster und Mac sind für diesen Schritt nicht geprüft.
+
+### Testergebnisse Schritt J12 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1069 Tests: 1069 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 6). Am Mac wären es rechnerisch 1067 (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 28 Handprüfungen bestanden**, in drei Teilen gestartet (13, 10 und 5; zusammen rund 11 Minuten). Ausfall 47 Sekunden |
+| Bestandsaufnahme | Messlauf durch alle zwölf Räume in zwei Fällen (Abfragen hängen; Abfragen scheitern); Ergebnis in der Tabelle oben |
+| Prüfung Ausfall, erste Läufe | zuerst rot gegen den alten Stand (kein Raum außer „Heute“ kannte den Unterschied). Danach drei Fehler der Prüfung selbst: ein erwarteter Text war geraten („Intel verbinden“ statt „Mit Grok verbinden“); im Raum Agenten fehlt bei einem Ausfall auch das Wetter; das Gedächtnis steht ohne Claude-Schlüssel gar nicht in den Einstellungen (Grenze 4) |
+| Gegenproben (20 absichtlich eingebaute Fehler: 16 im Browser mit je eigenem Bau, 4 an den Regeltests) | **20 von 20 entdeckt, jede an der gemeinten Stelle** (das Skript vergleicht dafür, nach wie vielen Schritten die Prüfung scheitert). Ein Durchgang, keine Wiederholung nötig |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Hinweise, alle nachgeprüft. **Neun eingearbeitet:** (1) eine Akte, die es nicht mehr gibt, „lud“ für immer; (2) fehlende Krypto-Kurse standen in der Marktlage nur da, wenn sonst gar nichts da war; (3) der Not-Aus im Trading-Raum sagte ohne gelesenen Desk „greift, sobald der Handel läuft“; (4) mit Desk, aber ohne Kurse zeigten zwei Kacheln für immer „…“ und die Scan-Tabelle stand leer da; (5) der neue Versuch für eine Akte kam alle 5 Sekunden für immer; (7) die Bausteine im Trading-Raum und in der Post nahmen weiter „nicht gelesen“ an, obwohl sie nur noch gelesen aufgerufen werden (jetzt lässt der Typ nichts anderes zu); (8) und (9) zwei Kommentare an der falschen Stelle; (10) der Regeltest wäre unter Windows an den Pfaden gescheitert. **Einer bewusst nicht** (6, siehe Eigene Entscheidungen 6) |
+| Tests zuerst | Zuerst und rot gesehen: der Regeltest (erst fehlte der Baustein, dann fielen die letzten zwei von Hand geschriebenen Sätze auf), die Prüfung Ausfall gegen den alten Stand, und aus dem Review je einzeln mit eigenem Bau: Not-Aus (3), Kacheln und Scan-Tabelle (4), Akte ohne Projekt (1), Abstand der Versuche (5). **Nicht zuerst rot gesehen:** die Marktlage mit nur fehlenden Krypto-Kursen (2; dafür gibt es keine Prüfung, Grenze 4) |
+| Sicherheitsprüfung (von Hand; der Skill dafür braucht den Stand bei GitHub) | Kein neuer Weg nach außen, keine neue Berechtigung, kein Schlüssel im Code. Der neue Versuch für eine Akte geht nur an JARVIS selbst, höchstens einer je Fehlschlag, mit wachsendem Abstand bis zu einer Minute. `seite.route` (Abfragen hängen lassen, abbrechen, Antworten verändern) steht nur in den Prüfungen. Der Not-Aus in Agenten und Einstellungen ist unverändert; der Knopf im Trading-Raum war ohne gelesenen Desk schon vorher gesperrt |
+| Aussehen | Mit gelesenen Daten ist an den Räumen nichts umgebaut; die vorhandenen Prüfungen der Räume (Aufgaben, Post, Kalender, Trading, Intel, Agenten, Einstellungen) bestehen unverändert. **Nicht eigens vermessen** (anders als in J11) |
+| Nicht geprüft | **der Mac**, **Safari**, echte Dienste, schmales Fenster; ein echter Ausfall von JARVIS (nur im Browser nachgestellt); die Fälle aus Grenze 4 |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(die Prüfungen fragen nur Nachbauten).
+
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -2114,7 +2187,7 @@ der Korrektur nicht ausprobiert.
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis W; Teil N erst, wenn eure IT so weit ist; Teil W neu seit J10). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Y; Teil N erst, wenn eure IT so weit ist; Teile X und Y neu seit J11 und J12). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -2247,9 +2320,15 @@ Danach wie geplant:
    alles Anklickbare ist mindestens 24 Pixel hoch. Neue Handprüfung „Vorlesen“, jetzt 27 Prüfungen. Dabei einen
    alten Fehler gefunden und behoben: Wer genau dann tippte oder die Eingabetaste drückte, wenn JARVIS den Raum
    wechselte, verlor einen Buchstaben oder schickte nichts ab.
-   **Als Nächstes:** „lässt sich gerade nicht laden“ auch in den anderen Räumen (wie in „Heute“ seit J10). Dann
-   die Zeile über der Leiste, wenn das Mikrofon nicht erlaubt ist (sie zeigt dann den Hinweis statt der Antwort;
-   J11, Grenze 2). Als Frage an Benedikt vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter
+26. **J12: gebaut, Testbereit, nur in der Sandbox nachgestellt** (Schritt J12 in Bereich J): Zehn Räume sagen
+   jetzt, wenn sich etwas nicht laden lässt, statt für immer „Lade …“ zu zeigen. Dabei gefunden und behoben: Die
+   Räume Aufgaben und Post zeigten bei einem Ausfall Nullen, der Kalender bot „verbinden“ an, und der
+   Trading-Raum zeigte ein Konto mit 10.000 $ und „Die Spinne schläft“, gleich ob der Handel lief. Neue
+   Handprüfung „Ausfall“, jetzt 28 Prüfungen.
+   **Als Nächstes:** die Zeile über der Leiste, wenn das Mikrofon nicht erlaubt ist (sie zeigt dann den Hinweis
+   statt der Antwort; J11, Grenze 2). Dann: ein Hinweis, wenn ein Raum einen alten Stand zeigt, weil JARVIS
+   inzwischen nicht mehr antwortet (J12, Grenze 3), und eine Frist für Abfragen, die nie beantwortet werden
+   (J12, Grenze 2). Als Frage an Benedikt vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter
    Beobachtung bleibt der einmalige, nicht wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die
    weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
    entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

@@ -347,6 +347,17 @@ Stimme“ gibt es bisher nicht; sag mir, wenn du einen möchtest).
 | X7 | VoiceOver ausschalten. Raum „Aufgaben“: eine Aufgabe mit der Maus abhaken; Raum „Agenten“: „öffnen ›“ und „Feste Grenzen“ anklicken | Der Haken ist etwas größer als früher, alles lässt sich leichter treffen. Sieht irgendwo etwas verrutscht aus, schreib es mir bitte |
 | X8 | Im Feld für JARVIS „Meine Termine“ tippen, Eingabetaste. Sobald JARVIS antwortet und in den Raum Kalender wechselt, sofort weitertippen: „Wie wird das Wetter“, Eingabetaste | Im Feld fehlt kein Buchstabe, und die zweite Frage wird abgeschickt (früher ging in diesem Augenblick manchmal ein Buchstabe verloren, oder die Eingabetaste machte nur eine neue Zeile) |
 
+## Y. Wenn JARVIS etwas nicht laden kann (Schritt J12, neu)
+
+Die Räume sagen jetzt, wenn sich etwas nicht laden lässt („Die Aufgaben lassen sich gerade nicht laden.“), statt für
+immer „Lade …“ zu zeigen oder eine Null. Von Hand lässt sich das am Mac kaum herbeiführen; in der Sandbox ist es
+nachgestellt. Für dich bleiben zwei kurze Blicke.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| Y1 | JARVIS starten und nacheinander die Räume Aufgaben, Post, Kalender, Trading und Agenten öffnen | Alles sieht aus wie vorher. Für einen Augenblick kann „… lädt noch.“ dastehen; danach steht der Inhalt da |
+| Y2 | Nur falls es dir begegnet: In einem Raum steht „… lässt sich gerade nicht laden.“ | Nach ein paar Sekunden bis einer Minute sollte der Inhalt von selbst kommen. Bleibt der Satz stehen, schreib mir bitte, in welchem Raum und was du vorher getan hast |
+
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 
 Das ist der einzige Teil, der echte Zugangsdaten bewegt. **Mach ihn nur, wenn du das möchtest.** Er lässt

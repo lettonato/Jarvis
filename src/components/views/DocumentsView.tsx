@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useJarvis } from "../JarvisProvider";
-import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { DOC_LIMITS, PHASE_LABEL, PHASE_SHORT, plainPoint, type DocJob, type DocsSnapshot } from "@/lib/documents";
 import { anzahl } from "@/lib/format";
@@ -26,7 +26,7 @@ const PHASES = Object.keys(PHASE_SHORT) as NonNullable<DocJob["phase"]>[];
 const EXAMPLE = "Erstell mir ein Dokument über die KI-Wertschöpfungskette: Markt, alle beteiligten Firmen, gern mit Grafiken.";
 
 export function DocumentsView() {
-  const { documents, setDocuments } = useJarvis();
+  const { documents, setDocuments, ausfall } = useJarvis();
   const now = useNow(1000);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +52,7 @@ export function DocumentsView() {
         </Button>
       </PageHeader>
 
-      {!documents && <p className="text-sm text-quiet">Lade Dokumente …</p>}
+      {!documents && <Ladestand quelle="dokumente" aus={ausfall.documents} />}
 
       {documents && !documents.configured && (
         <Panel className="max-w-2xl">

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useJarvis } from "./JarvisProvider";
-import { Button, inputClass, Notice } from "./ui";
+import { Button, inputClass, Ladestand, Notice } from "./ui";
 import { getJson, postJson } from "@/lib/api";
 import type { CalendarSnapshot } from "@/lib/calendar";
 import { MAIL_PROVIDERS, providerById } from "@/lib/mailProviders";
@@ -182,7 +182,7 @@ export function MailSetup() {
 // Der Apple-Kalender braucht keinen Schlüssel, nur die Freigabe von macOS. Ein Klick löst die
 // Rückfrage aus; danach wählst du, in welchen Kalender JARVIS neue Termine einträgt.
 export function CalendarSetup() {
-  const { calendar, setCalendar } = useJarvis();
+  const { calendar, setCalendar, ausfall } = useJarvis();
   const [busy, setBusy] = useState<"zugriff" | "ziel" | "einstellungen" | "laden" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -210,7 +210,7 @@ export function CalendarSetup() {
     }
   }
 
-  if (!calendar) return <p className="text-sm text-quiet">Lade Kalender …</p>;
+  if (!calendar) return <Ladestand quelle="kalender" aus={ausfall.calendar} />;
   const writable = calendar.calendars.filter((c) => c.writable);
 
   return (
