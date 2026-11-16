@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useJarvis } from "./JarvisProvider";
 import { Button, inputClass, Ladestand, Notice } from "./ui";
-import { getJson, postJson } from "@/lib/api";
+import { getJson, LANGE_FRIST_MS, postJson } from "@/lib/api";
 import type { CalendarSnapshot } from "@/lib/calendar";
 import { MAIL_PROVIDERS, providerById } from "@/lib/mailProviders";
 import type { Settings } from "@/lib/settings";
@@ -202,7 +202,8 @@ export function CalendarSetup() {
     setBusy("laden");
     setError(null);
     try {
-      setCalendar(await getJson<CalendarSnapshot>("/api/kalender?force=1"));
+      // Der Kalender am Mac und Outlook zusammen dürfen länger brauchen als eine gewöhnliche Abfrage.
+      setCalendar(await getJson<CalendarSnapshot>("/api/kalender?force=1", undefined, LANGE_FRIST_MS));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

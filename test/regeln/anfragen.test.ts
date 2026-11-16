@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, mock, test } from "node:test";
-import { ApiError, frage, getJson, NICHT_ERREICHBAR, postJson, postStream } from "../../src/lib/api";
+import { ApiError, EINZEL_FRIST_MS, frage, getJson, LANGE_FRIST_MS, NICHT_ERREICHBAR, postJson, postStream, ZU_LANGE } from "../../src/lib/api";
 import { meldeAntwort, VERBUNDEN, verbindungJetzt } from "../../src/lib/verbindung";
 
 // So oft kommen die schnellsten Abfragen der Seite. Scheitern zwei davon nacheinander, antwortet JARVIS nicht.
@@ -241,5 +241,176 @@ describe("Jede Anfrage meldet, ob JARVIS geantwortet hat", () => {
     assert.ok(imBrowser.includes(path.join("src", "lib", "useVoice.ts")) && imBrowser.includes(path.join("src", "components", "CloudVoiceSetup.tsx")), "die Suche findet die Dateien der Seite");
     const direkt = imBrowser.filter((d) => /(?<![\w.])fetch\(/.test(readFileSync(d, "utf8")));
     assert.deepEqual(direkt, [path.join("src", "lib", "api.ts")]);
+  });
+});
+
+// Die gemeinsamen Abfragen geben seit J13 nach einer Frist auf (geteilt.ts). Die einzelnen daneben (eine Akte, der
+// Raum Browser, die Spur der Spinne, „Kalender neu laden“, eine Mail öffnen) warteten weiter für immer: Die Akte
+// „lädt noch“, der Knopf bleibt grau, die Spur bleibt stehen.
+describe("Eine einzelne Abfrage gibt nach ihrer Frist auf", () => {
+  // Hier läuft neben dem Datum auch die Uhr für die Frist.
+  beforeEach(() => {
+    mock.timers.reset();
+    mock.timers.enable({ apis: ["setTimeout", "Date"], now: START });
+    meldeAntwort();
+  });
+  // Eine Anfrage, die nie beantwortet wird; wie der Browser endet sie mit einem Abbruch, wenn ihr Signal es sagt.
+  const signale: (AbortSignal | undefined)[] = [];
+  const haengt: Antwort = (_url, init) =>
+    new Promise<Response>((_, scheitere) => {
+      signale.push(init?.signal ?? undefined);
+      const ende = () => scheitere(new DOMException("The operation was aborted.", "AbortError"));
+      if (init?.signal?.aborted) ende();
+      else init?.signal?.addEventListener("abort", ende);
+    });
+  beforeEach(() => (signale.length = 0));
+  // Wie eine Anfrage gerade steht, ohne auf sie zu warten.
+  const beobachte = (anfrage: Promise<unknown>) => {
+    const stand: { art: "offen" | "da" | "gescheitert"; fehler?: unknown } = { art: "offen" };
+    anfrage.then(
+      () => (stand.art = "da"),
+      (e: unknown) => {
+        stand.art = "gescheitert";
+        stand.fehler = e;
+      },
+    );
+    return stand;
+  };
+  const vor = async (ms: number) => {
+    mock.timers.tick(ms);
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+  };
+  // Der Satz dazu ist ein eigener: Eine abgelaufene Frist heißt nicht, dass JARVIS weg ist.
+  const istZuLange = (e: unknown) => {
+    assert.ok(e instanceof ApiError, `ein Fehler mit Satz, nicht ${String(e)}`);
+    assert.equal(e.message, ZU_LANGE);
+    assert.equal(e.status, 0);
+    assert.ok(e.cause instanceof DOMException, "der Abbruch selbst bleibt zum Nachsehen dabei");
+  };
+  const istAbbruch = (e: unknown) => assert.ok(e instanceof DOMException && e.name === "AbortError", `ein Abbruch, nicht ${String(e)}`);
+
+  test("hängt sie, ist nach 30 Sekunden Schluss: mit dem Satz, und die Anfrage wird wirklich beendet", async () => {
+    assert.equal(EINZEL_FRIST_MS, 30_000);
+    antworte = haengt;
+    const stand = beobachte(getJson("/api/projekte?projekt=halle"));
+    await vor(29_999);
+    assert.equal(stand.art, "offen");
+    assert.equal(signale[0]?.aborted, false);
+    await vor(1);
+    assert.equal(stand.art, "gescheitert");
+    istZuLange(stand.fehler);
+    assert.equal(ZU_LANGE, "Das dauert gerade zu lange. Versuch es gleich noch einmal.");
+    assert.equal(signale[0]?.aborted, true, "sonst bliebe die Verbindung offen");
+  });
+
+  test("antwortet JARVIS rechtzeitig, läuft keine Uhr weiter", async () => {
+    antworte = async (_url, init) => {
+      signale.push(init?.signal ?? undefined);
+      return Response.json({ n: 1 });
+    };
+    assert.deepEqual(await getJson("/x"), { n: 1 });
+    await vor(120_000);
+    assert.equal(signale[0]?.aborted, false);
+  });
+
+  test("wer länger warten darf, sagt es: Eine Mail zu öffnen und „Kalender neu laden“ dürfen eine Minute dauern", async () => {
+    assert.equal(LANGE_FRIST_MS, 60_000);
+    antworte = haengt;
+    const stand = beobachte(getJson("/api/post?uid=7", undefined, LANGE_FRIST_MS));
+    await vor(59_999);
+    assert.equal(stand.art, "offen");
+    await vor(1);
+    istZuLange(stand.fehler);
+    // Dass die beiden Stellen die lange Frist auch nehmen, lässt sich nur am Quelltext sehen.
+    assert.match(readFileSync("src/components/JarvisProvider.tsx", "utf8"), /getJson<MailMessage>\([^\n]*, undefined, LANGE_FRIST_MS\)/);
+    assert.match(readFileSync("src/components/setup.tsx", "utf8"), /getJson<CalendarSnapshot>\("\/api\/kalender\?force=1", undefined, LANGE_FRIST_MS\)/);
+  });
+
+  test("die gemeinsamen Abfragen bringen ihre eigene Frist mit: Dann gibt es keine zweite", async () => {
+    antworte = haengt;
+    const abbruch = new AbortController();
+    const stand = beobachte(getJson("/x", abbruch.signal, 0));
+    await vor(300_000);
+    assert.equal(stand.art, "offen");
+    assert.equal(signale[0], abbruch.signal);
+    abbruch.abort();
+    await vor(0);
+    istAbbruch(stand.fehler);
+    assert.match(readFileSync("src/lib/usePolling.ts", "utf8"), /getJson<unknown>\(url, signal, 0\)/, "so rufen die gemeinsamen Abfragen");
+  });
+
+  test("wird der Raum verlassen (ein Signal von außen), endet die Abfrage sofort: ein Abbruch, kein Ausfall", async () => {
+    antworte = haengt;
+    for (let i = 0; i < 3; i++) {
+      const abbruch = new AbortController();
+      const stand = beobachte(getJson("/api/browser", abbruch.signal));
+      await vor(10_000);
+      assert.equal(stand.art, "offen");
+      abbruch.abort();
+      await vor(0);
+      istAbbruch(stand.fehler);
+      assert.equal(signale[i]?.aborted, true, "die Anfrage selbst ist beendet");
+    }
+    // Die Uhren der beendeten Abfragen laufen nicht weiter.
+    await vor(120_000);
+    assert.equal(verbindungJetzt(), VERBUNDEN);
+    // War das Signal schon gesetzt, geht die Abfrage gar nicht erst auf Reisen.
+    const schon = new AbortController();
+    schon.abort();
+    const stand = beobachte(getJson("/x", schon.signal));
+    await vor(0);
+    istAbbruch(stand.fehler);
+    assert.equal(signale[3]?.aborted, true);
+  });
+
+  test("mit Signal von außen gilt die Frist trotzdem", async () => {
+    antworte = haengt;
+    const abbruch = new AbortController();
+    const stand = beobachte(getJson("/api/browser", abbruch.signal));
+    await vor(EINZEL_FRIST_MS);
+    istZuLange(stand.fehler);
+    assert.equal(abbruch.signal.aborted, false, "das Signal des Raums bleibt, wie es ist");
+  });
+
+  test("eine abgelaufene Frist zählt als „keine Antwort“: Nach der zweiten antwortet JARVIS nicht", async () => {
+    antworte = haengt;
+    const erste = beobachte(getJson("/x"));
+    await vor(EINZEL_FRIST_MS);
+    assert.equal(erste.art, "gescheitert");
+    assert.equal(verbindungJetzt(), VERBUNDEN, "ein Stolperer");
+    const zweite = beobachte(getJson("/x"));
+    await vor(EINZEL_FRIST_MS);
+    assert.equal(zweite.art, "gescheitert");
+    assert.deepEqual(verbindungJetzt(), { aus: true, seit: START });
+  });
+
+  test("kommt nur der Anfang der Antwort und der Rest nie, gilt dasselbe (und nicht eine leere Antwort)", async () => {
+    antworte = async (_url, init) =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(c) {
+            c.enqueue(new TextEncoder().encode('{"akte":'));
+            init?.signal?.addEventListener("abort", () => c.error(new DOMException("The operation was aborted.", "AbortError")));
+          },
+        }),
+      );
+    const stand = beobachte(getJson("/x"));
+    await vor(EINZEL_FRIST_MS - 1);
+    assert.equal(stand.art, "offen");
+    await vor(1);
+    assert.equal(stand.art, "gescheitert");
+    istZuLange(stand.fehler);
+    // Wird der Raum mittendrin verlassen: ein Abbruch, auch dann keine leere Antwort.
+    const abbruch = new AbortController();
+    const verlassen = beobachte(getJson("/x", abbruch.signal));
+    await vor(1_000);
+    abbruch.abort();
+    await vor(0);
+    istAbbruch(verlassen.fehler);
+  });
+
+  test("ein Fehler von JARVIS bleibt sein Fehler, auch kurz vor der Frist", async () => {
+    antworte = async () => Response.json({ error: "Dieses Projekt gibt es nicht." }, { status: 404 });
+    await assert.rejects(() => getJson("/x"), (e: unknown) => e instanceof ApiError && e.status === 404 && e.message === "Dieses Projekt gibt es nicht.");
   });
 });

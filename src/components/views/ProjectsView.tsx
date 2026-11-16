@@ -89,7 +89,9 @@ export function ProjectsView() {
     if (!offen) return;
     let aktuell = true;
     let nochmal: ReturnType<typeof setTimeout> | undefined;
-    getJson<ProjekteAntwort>(`/api/projekte?projekt=${encodeURIComponent(offen)}`)
+    // Wird die Akte zugeklappt oder der Raum verlassen, endet auch, was noch unterwegs ist.
+    const abbruch = new AbortController();
+    getJson<ProjekteAntwort>(`/api/projekte?projekt=${encodeURIComponent(offen)}`, abbruch.signal)
       .then((a) => {
         if (!aktuell) return;
         fehlversuche.current = 0;
@@ -108,6 +110,7 @@ export function ProjectsView() {
     return () => {
       aktuell = false;
       clearTimeout(nochmal);
+      abbruch.abort();
     };
   }, [offen, projekte, versuch]);
 

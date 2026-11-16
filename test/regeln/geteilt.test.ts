@@ -376,11 +376,11 @@ describe("Frist für Abfragen", () => {
     neu();
   });
 
-  test("getJson reicht den Abbruch an den Browser weiter", async () => {
+  test("getJson reicht den Abbruch an den Browser weiter (ohne eigene Frist, wie es die gemeinsamen Abfragen rufen)", async () => {
     const abbruch = new AbortController();
     const fetchMock = mock.method(globalThis, "fetch", async () => Response.json({ n: 1 }));
     try {
-      assert.deepEqual(await getJson("/x", abbruch.signal), { n: 1 });
+      assert.deepEqual(await getJson("/x", abbruch.signal, 0), { n: 1 });
       assert.equal((fetchMock.mock.calls[0].arguments[1] as RequestInit).signal, abbruch.signal);
     } finally {
       fetchMock.mock.restore();

@@ -38,9 +38,44 @@ export async function frage(url: string, init: RequestInit): Promise<Response> {
   return res;
 }
 
-// signal: beendet die Anfrage von außen (die geteilten Abfragen geben nach ihrer Frist auf, siehe geteilt.ts).
-export async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
-  return parse<T>(await frage(url, { cache: "no-store", signal }));
+// So lange wartet eine einzelne Abfrage auf JARVIS (eine Akte, der Raum Browser, die Spur der Spinne). Wie bei den
+// gemeinsamen Abfragen (fristFuer in geteilt.ts): JARVIS lässt seinen eigenen Quellen weniger. Wo JARVIS selbst
+// länger brauchen darf (das Postfach, der Kalender am Mac zusammen mit Outlook), gilt die lange Frist.
+export const EINZEL_FRIST_MS = 30_000;
+export const LANGE_FRIST_MS = 60_000;
+
+// Läuft die Frist ab, heißt das nicht, dass JARVIS weg ist: Vielleicht braucht nur diese eine Stelle zu lange.
+export const ZU_LANGE = "Das dauert gerade zu lange. Versuch es gleich noch einmal.";
+
+// Ohne Frist wartete eine Abfrage für immer, wenn JARVIS hängt, und mit ihr der Raum („lädt noch“) oder der Knopf,
+// der sie ausgelöst hat.
+// signal: beendet die Abfrage von außen (der Raum wird verlassen); das bleibt ein Abbruch.
+// fristMs: 0 heißt keine eigene Frist (die gemeinsamen Abfragen bringen ihre mit, siehe usePolling.ts).
+export async function getJson<T>(url: string, signal?: AbortSignal, fristMs = EINZEL_FRIST_MS): Promise<T> {
+  if (fristMs <= 0) return parse<T>(await frage(url, { cache: "no-store", signal }));
+  const begonnen = Date.now();
+  const abbruch = new AbortController();
+  const vonAussen = () => abbruch.abort();
+  if (signal?.aborted) abbruch.abort();
+  else signal?.addEventListener("abort", vonAussen);
+  let abgelaufen = false;
+  const frist = setTimeout(() => {
+    abgelaufen = true;
+    abbruch.abort();
+  }, fristMs);
+  try {
+    const daten = await parse<T>(await frage(url, { cache: "no-store", signal: abbruch.signal }));
+    // Kam nur der Anfang der Antwort, endet das Lesen mit dem Abbruch ohne Inhalt: Das ist keine Antwort.
+    if (abbruch.signal.aborted) throw new DOMException("Die Abfrage wurde beendet.", "AbortError");
+    return daten;
+  } catch (e) {
+    if (!abgelaufen) throw e;
+    meldeKeineAntwort(begonnen);
+    throw new ApiError(ZU_LANGE, 0, e);
+  } finally {
+    clearTimeout(frist);
+    signal?.removeEventListener("abort", vonAussen);
+  }
 }
 
 export async function postJson<T>(url: string, body: unknown): Promise<T> {

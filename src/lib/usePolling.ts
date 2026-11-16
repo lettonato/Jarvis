@@ -7,13 +7,16 @@ import { abonniereVerbindung, VERBUNDEN, verbindungJetzt, type Verbindung } from
 
 const LEER: Bild = { stand: null, gescheitert: false };
 
+// Die gemeinsamen Abfragen bringen ihre eigene Frist mit (fristFuer in geteilt.ts): keine zweite in getJson.
+const lade = (url: string, signal?: AbortSignal) => getJson<unknown>(url, signal, 0);
+
 // Lädt eine JARVIS-Schnittstelle sofort und danach in festen Abständen neu.
 // `reload` lädt sofort, `set` übernimmt eine Antwort, die eine Änderung schon mitgebracht hat.
 // Fragen mehrere Stellen dieselbe Schnittstelle ab (die Sicherheitslage steht in der Hinweisleiste, in „Heute“
 // und in den Einstellungen), läuft nur eine Abfrage im kürzesten Takt, und alle sehen denselben Stand. Die
 // Regeln dazu stehen in geteilt.ts. Ist die letzte Stelle weg, wird der Stand vergessen und später frisch geladen.
 export function usePolling<T>(url: string, intervalMs: number) {
-  const subscribe = useCallback((hoerer: () => void) => abonniere(url, intervalMs, hoerer, getJson), [url, intervalMs]);
+  const subscribe = useCallback((hoerer: () => void) => abonniere(url, intervalMs, hoerer, lade), [url, intervalMs]);
   // Eine Anmeldung für beides: den Stand und die Auskunft, dass die Schnittstelle noch nie geantwortet hat und der
   // letzte Versuch gescheitert ist (failed; nicht bloß „lädt noch“).
   const { stand, gescheitert } = useSyncExternalStore(

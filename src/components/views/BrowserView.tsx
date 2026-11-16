@@ -42,19 +42,29 @@ export function BrowserView() {
   // Läuft ein Auftrag, schaut die Seite jede Sekunde nach, sonst alle paar Sekunden.
   useEffect(() => {
     let alive = true;
-    const load = () =>
-      getJson<BrowserStatus>("/api/browser")
+    // Solange eine Abfrage unterwegs ist, kommt keine weitere dazu: Hängt JARVIS, stauten sie sich sonst, und der
+    // Browser lässt zu einem Server nur wenige zugleich zu.
+    let unterwegs = false;
+    // Wird der Raum verlassen, endet auch, was noch unterwegs ist.
+    const abbruch = new AbortController();
+    const load = () => {
+      if (unterwegs) return;
+      unterwegs = true;
+      getJson<BrowserStatus>("/api/browser", abbruch.signal)
         .then((next) => {
           if (!alive) return;
           setStatus(next);
           setStatusAus(false);
         })
-        .catch(() => alive && setStatusAus(true));
+        .catch(() => alive && setStatusAus(true))
+        .finally(() => (unterwegs = false));
+    };
     load();
     const timer = setInterval(load, running ? 1_000 : 2_500);
     return () => {
       alive = false;
       clearInterval(timer);
+      abbruch.abort();
     };
   }, [running]);
 

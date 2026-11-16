@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 120 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y und Z und die Punkte M11 bis M13 und Y4 bis Y7 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 120 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y und Z und die Punkte M11 bis M13 und Y4 bis Y8 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -347,7 +347,7 @@ Stimme“ gibt es bisher nicht; sag mir, wenn du einen möchtest).
 | X7 | VoiceOver ausschalten. Raum „Aufgaben“: eine Aufgabe mit der Maus abhaken; Raum „Agenten“: „öffnen ›“ und „Feste Grenzen“ anklicken | Der Haken ist etwas größer als früher, alles lässt sich leichter treffen. Sieht irgendwo etwas verrutscht aus, schreib es mir bitte |
 | X8 | Im Feld für JARVIS „Meine Termine“ tippen, Eingabetaste. Sobald JARVIS antwortet und in den Raum Kalender wechselt, sofort weitertippen: „Wie wird das Wetter“, Eingabetaste | Im Feld fehlt kein Buchstabe, und die zweite Frage wird abgeschickt (früher ging in diesem Augenblick manchmal ein Buchstabe verloren, oder die Eingabetaste machte nur eine neue Zeile) |
 
-## Y. Wenn JARVIS etwas nicht laden kann (Schritte J12 bis J14, neu)
+## Y. Wenn JARVIS etwas nicht laden kann (Schritte J12 bis J15, neu)
 
 Die Räume sagen jetzt, wenn sich etwas nicht laden lässt („Die Aufgaben lassen sich gerade nicht laden.“), statt für
 immer „Lade …“ zu zeigen oder eine Null. Von Hand lässt sich das am Mac kaum herbeiführen; in der Sandbox ist es
@@ -362,6 +362,7 @@ nachgestellt. Für dich bleiben zwei kurze Blicke.
 | Y5 | Solange JARVIS aus ist: eine Aufgabe abhaken, und unten im Feld eine Frage tippen und abschicken | Beide Male steht da: „JARVIS antwortet gerade nicht. Versuch es gleich noch einmal.“ Steht irgendwo „Failed to fetch“ oder „Load failed“, schreib mir bitte, wo |
 | Y6 | JARVIS wieder starten, die Seite **nicht** neu laden | Nach höchstens einer halben Minute verschwindet der Streifen von selbst, und das Abhaken geht wieder |
 | Y7 | Nur falls es dir begegnet: Der Streifen erscheint, obwohl JARVIS läuft (etwa kurz nach dem Aufklappen des Mac) | Das sollte nicht vorkommen. Schreib mir bitte, was du vorher getan hast und wie lange er stand |
+| Y8 | Nur falls es dir begegnet: Irgendwo steht „Das dauert gerade zu lange. Versuch es gleich noch einmal.“ (etwa nach „Kalender neu laden“ oder wenn JARVIS eine Mail öffnen soll) | Beim zweiten Versuch sollte es gehen. Kommt der Satz öfter, schreib mir bitte, wobei; dann ist die Wartezeit für deinen Mac zu knapp |
 
 ## Z. Die Zeile über der Leiste, wenn das Mikrofon gesperrt ist (Schritt J13, neu)
 

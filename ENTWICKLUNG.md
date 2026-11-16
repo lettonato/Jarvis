@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1117 von 1117 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1126 von 1126 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -2308,6 +2308,62 @@ Safari („Load failed“), VoiceOver, schmales Fenster.
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
 (die Prüfungen fragen nur Nachbauten).
 
+### Schritt J15: Auch einzelne Abfragen geben nach einer Frist auf; nichts staut sich mehr (16. November 2026)
+
+**Warum:** Eine vorgemerkte Grenze (J13, Grenze 6; J14, Grenze 4). Die gemeinsamen Abfragen geben seit J13 nach
+einer Frist auf, die einzelnen daneben warteten weiter für immer.
+
+**Bestandsaufnahme zuerst (im Quelltext gelesen; der Raum Browser im Browser der Sandbox gemessen):** Acht
+einzelne Abfragen hatten keine Frist: eine Projektakte, der Stand im Raum Browser, die Spur der Spinne im
+Trading-Raum, „Kalender neu laden“ in den Einstellungen, das Warten auf das Koppeln mit Telegram, die Liste der
+Stimmen, eine Mail im Gespräch öffnen, die Vorbereitung zu einem Termin. Hängt JARVIS, heißt das: Die Akte „lädt
+noch“ für immer, der Knopf bleibt grau, die Spur bleibt stehen. Der Raum Browser schickte dabei alle zweieinhalb
+Sekunden eine weitere Abfrage hinterher, die auch hängen blieb (gemessen: fünf in zwölf Sekunden), das Koppeln mit
+Telegram alle drei Sekunden; ein Browser lässt zu einem Server nur wenige Abfragen zugleich zu.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J15.1 Jede einzelne Abfrage gibt nach 30 Sekunden auf und wird wirklich beendet. Das sitzt an einer Stelle (`getJson`) und gilt damit für alle acht | Testbereit für die Akte und den Raum Browser; die übrigen sechs **nur als Regel** (dieselbe Funktion) | `EINZEL_FRIST_MS` und `getJson` in `src/lib/api.ts`; `test/regeln/anfragen.test.ts` (neu 9 Tests); Prüfung Ausfall, Schritt 9 |
+| J15.2 Wo JARVIS selbst länger brauchen darf, gilt eine Minute: eine Mail öffnen (das Postfach) und „Kalender neu laden“ (der Kalender am Mac zusammen mit Outlook) | Testbereit, **nur als Regel** | `LANGE_FRIST_MS`; Regeltest (liest dafür auch die beiden Stellen im Quelltext) |
+| J15.3 Wo der Fehler gezeigt oder gesagt wird („Kalender neu laden“, die Mail im Gespräch), heißt er: „Das dauert gerade zu lange. Versuch es gleich noch einmal.“ Die Räume sagen wie bisher „… lässt sich gerade nicht laden.“ | Testbereit; der Satz **nur als Regel**, die Räume im Browser | `ZU_LANGE` in `api.ts`; Regeltests; Prüfung Ausfall, Schritt 9 |
+| J15.4 Eine abgelaufene Frist zählt für den Hinweis aus J14 als „keine Antwort“, aber nur, wenn JARVIS seit dem Beginn der Abfrage auch sonst nicht geantwortet hat | Testbereit, **nur als Regel** | Regeltests |
+| J15.5 Solange eine Abfrage unterwegs ist, schickt der Raum Browser keine weitere hinterher; ebenso das Warten auf das Koppeln mit Telegram | Raum Browser: Testbereit. Telegram: **gebaut, nicht geprüft** | `BrowserView.tsx`, `TelegramSetup.tsx`; Prüfung Ausfall, Schritt 9 (eine Abfrage in zwölf Sekunden statt fünf) |
+| J15.6 Wird der Raum verlassen (oder die Akte zugeklappt), endet sofort, was noch unterwegs ist; das gilt als Abbruch, nicht als Ausfall | Raum Browser: Testbereit. Akte, Spur der Spinne, Telegram: **gebaut, nur die Regel dahinter geprüft** | `getJson(url, signal)`; `BrowserView.tsx`, `ProjectsView.tsx`, `CrawlerWeb.tsx`, `TelegramSetup.tsx`; Regeltests; Prüfung Ausfall, Schritt 9 |
+
+**Eigene Entscheidungen:** (1) Die Frist sitzt in `getJson` und nicht an jeder der acht Stellen: Wer künftig eine
+Abfrage baut, hat sie von selbst. Die gemeinsamen Abfragen rufen `getJson` ausdrücklich ohne eigene Frist, weil sie
+ihre mitbringen (J13). (2) 30 Sekunden wie bei den gemeinsamen Abfragen, weil JARVIS seinen eigenen Quellen
+weniger lässt; eine Minute nur dort, wo zwei Quellen nacheinander dran sein können. (3) Ein eigener Satz für die
+abgelaufene Frist, weil sie nicht heißt, dass JARVIS weg ist. (4) **Änderungen bekommen bewusst keine Frist.** Ein
+Abbruch im Browser macht am Mac nichts rückgängig; wer dann noch einmal klickt, täte es womöglich zweimal. Und
+manche Änderungen dürfen Minuten dauern (ein Dokument, das Lagebild, ein Auftrag im Raum Browser). (5) Aus dem
+Review bewusst nicht übernommen: beide Fristen (die der gemeinsamen und die der einzelnen Abfragen) in einen
+Baustein zu legen, und die beiden Schleifen auf eine Kette von Weckern umzubauen; beides wäre ein größerer Umbau
+an Stellen, die geprüft laufen.
+
+**Grenzen:** (1) Hängt JARVIS während einer Änderung, bleibt der Knopf weiter grau, bis die Seite neu geladen
+wird (Eigene Entscheidungen 4). (2) Nicht im Browser geprüft: die Spur der Spinne, „Kalender neu laden“, das
+Koppeln mit Telegram, die Liste der Stimmen, eine Mail öffnen, die Vorbereitung zu einem Termin; das Beenden beim
+Zuklappen einer Akte. (3) Gibt die Seite eine Abfrage auf, arbeitet JARVIS am Mac sie trotzdem zu Ende; das
+Ergebnis kommt dann mit der nächsten Abfrage oder gar nicht an. (4) Ob 30 Sekunden am echten Mac für jede Stelle
+reichen, ist offen (Prüfliste Y8). (5) Nicht geprüft: der Mac, Safari, schmales Fenster.
+
+### Testergebnisse Schritt J15 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1126 Tests: 1126 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 9). Am Mac wären es rechnerisch zwei weniger (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 28 Handprüfungen bestanden**, in drei Teilen gestartet (13, 10 und 5; zusammen rund 14 Minuten). Ausfall 171 Sekunden (vorher 126: Schritt 9 wartet die Frist von 30 Sekunden wirklich ab) |
+| Tests zuerst | Zuerst und rot gesehen: fünf der Regeltests zur Frist (hängt für immer; keine Uhr; halbe Antwort) und der neue Schritt 9 der Prüfung Ausfall gegen einen Bau des Stands J14 („… schickt der Raum Browser keine weitere hinterher (5 in zwölf Sekunden)“). **Nicht zuerst rot gesehen:** die Regeltests zum Signal von außen und zum eigenen Satz (aus dem Review; Regel und Test sind zusammen entstanden) und die Stelle „Raum verlassen“ in Schritt 9; dafür stehen die Gegenproben |
+| Fehler der Prüfung selbst | (1) Der nachgestellte Browser der Regeltests brach eine Anfrage nicht ab, deren Signal schon gesetzt war (der echte tut das); nachgezogen. (2) Aus dem Review: Schritt 9 gab hängende Abfragen zuerst nur für neue frei; eine, die kurz vorher losging, hätte noch ihre ganze Frist gehangen und die Prüfung gelegentlich scheitern lassen. Die Prüfung hält die Abfragen jetzt selbst fest und lässt beim Freigeben auch die wartenden durch |
+| Gegenproben | 18 absichtlich eingebaute Fehler: 4 im Browser mit je eigenem Bau (keine Frist; der Raum Browser staut wieder; er lässt seine Abfrage beim Verlassen hängen; die Frist ist zu knapp), 14 an den Regeltests. **18 von 18 entdeckt, jeder an der gemeinten Stelle** (das Skript vergleicht die Zahl der Schritte davor und den Wortlaut der Fehlermeldung). Danach: Quelltext wie vorher (Vergleich mit `git diff`), sauberer Bau, Prüfung Ausfall mit 9 Schritten bestanden. **Nicht durch Gegenproben gedeckt:** die Sperre gegen den Stau beim Koppeln mit Telegram und das Beenden beim Zuklappen einer Akte, beim Verlassen des Trading-Raums und der Einstellungen (dafür gibt es keine Prüfung im Browser, Grenze 2) |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Hinweise, alle nachgeprüft. **Sechs eingearbeitet:** „Kalender neu laden“ kann länger als 30 Sekunden brauchen (jetzt eine Minute); eine abgelaufene Frist sagte „JARVIS antwortet gerade nicht“ (jetzt ein eigener Satz); die Sperre gegen den Stau galt nur je Durchlauf, und beim Verlassen des Raums blieb die Abfrage offen (jetzt endet sie); die Prüfung im Browser hing an einem knappen Zeitfenster; der Regeltest zur langen Frist prüfte eine Zahl im Quelltext (jetzt den Namen, an beiden Stellen). **Vier bewusst nicht:** eine Frist auch für Änderungen (Eigene Entscheidungen 4, Grenze 1); ein gemeinsamer Baustein für beide Fristen und die Schleifen als Kette von Weckern (Eigene Entscheidungen 5); die Prüfung im Browser gegen den Entwicklungsserver (sie läuft immer gegen den gebauten Stand) |
+| Sicherheitsprüfung (von Hand; der Skill dafür braucht den Stand bei GitHub) | Kein neuer Weg nach außen, keine neue Berechtigung, kein Schlüssel im Code. Geändert ist nur, wann der Browser eigene lesende Abfragen an JARVIS beendet; es bleiben weniger Verbindungen offen als vorher. Änderungen werden nie von selbst abgebrochen. Am Server ändert sich nichts |
+| Nicht geprüft | **der Mac**, **Safari**, echte Dienste, schmales Fenster; die Stellen aus Grenze 2 im Browser |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(die Prüfungen fragen nur Nachbauten).
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -2323,7 +2379,7 @@ Safari („Load failed“), VoiceOver, schmales Fenster.
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Z; Teil N erst, wenn eure IT so weit ist; Teile X, Y und Z neu seit J11, J12 und J13; die Punkte Y4 bis Y7 neu seit J14). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Z; Teil N erst, wenn eure IT so weit ist; Teile X, Y und Z neu seit J11, J12 und J13; die Punkte Y4 bis Y8 neu seit J14 und J15). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -2468,9 +2524,12 @@ Danach wie geplant:
 28. **J14: gebaut, Testbereit, nur in der Sandbox geprüft** (Schritt J14 in Bereich J): Antwortet JARVIS nicht
    mehr, steht oben in jeder Ansicht, seit wann, und dass der Raum den Stand von davor zeigt. Eine Änderung oder
    eine Frage sagt dann „JARVIS antwortet gerade nicht. Versuch es gleich noch einmal.“ statt „Failed to fetch“.
-   **Als Nächstes:** eine Frist auch für die einzelnen Abfragen (Akte, Raum Browser, Spur der Spinne; J13,
-   Grenze 6; J14, Grenze 4). Dann: ein Hinweis, wenn nur eine einzelne Stelle dauerhaft einen Fehler meldet und
-   der Raum deshalb einen alten Stand zeigt (J14, Grenze 2). Als Frage an Benedikt
+29. **J15: gebaut, Testbereit, nur in der Sandbox geprüft** (Schritt J15 in Bereich J): Auch die einzelnen
+   Abfragen (eine Akte, der Raum Browser, die Spur der Spinne und fünf weitere) geben nach 30 Sekunden auf, statt
+   für immer zu warten; der Raum Browser staut keine Abfragen mehr und beendet seine, wenn er verlassen wird.
+   **Als Nächstes:** ein Hinweis, wenn nur eine einzelne Stelle dauerhaft einen Fehler meldet und der Raum
+   deshalb einen alten Stand zeigt (J14, Grenze 2). Dann: was mit einer Änderung geschieht, bei der JARVIS hängt
+   (der Knopf bleibt grau; J15, Grenze 1). Als Frage an Benedikt
    vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleibt der einmalige, nicht
    wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die weiteren Schritte für Azure (Anmeldung je Person,
    übrige Daten in die Datenbank) erst, wenn Benedikt entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

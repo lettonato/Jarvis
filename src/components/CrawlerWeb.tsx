@@ -186,10 +186,12 @@ function useTrail(fast: boolean) {
   useEffect(() => {
     let stop = false;
     let timer: ReturnType<typeof setTimeout>;
+    // Wird der Raum verlassen, endet auch, was noch unterwegs ist.
+    const abbruch = new AbortController();
     const poll = async () => {
       if (!document.hidden) {
         try {
-          const next = await getJson<CrawlTrail>(`/api/handel/spur?nach=${seq.current}`);
+          const next = await getJson<CrawlTrail>(`/api/handel/spur?nach=${seq.current}`, abbruch.signal);
           if (stop) return;
           const restarted = next.seq < seq.current;
           const first = restarted || seq.current === 0;
@@ -207,6 +209,7 @@ function useTrail(fast: boolean) {
     return () => {
       stop = true;
       clearTimeout(timer);
+      abbruch.abort();
     };
   }, [fast]);
   return trail;

@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname, useRouter } from "next/navigation";
 import type { Ausfall } from "@/lib/heute";
 import type { AvatarState } from "@/lib/avatar";
-import { ApiError, getJson, postJson, postStream } from "@/lib/api";
+import { ApiError, getJson, LANGE_FRIST_MS, postJson, postStream } from "@/lib/api";
 import { alsSatz } from "@/lib/format";
 import { fahrtArten } from "@/lib/raeume";
 import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type MemoryStand, type Source } from "@/lib/brain";
@@ -295,7 +295,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
             setMail(await postJson<MailSnapshot>("/api/post", { action: "seen", uid: effect.uid }));
             return;
           case "readMail": {
-            const message = await getJson<MailMessage>(`/api/post?uid=${effect.uid}`);
+            // Das Postfach darf sich Zeit lassen (wie bei der Übersicht: eine Minute).
+            const message = await getJson<MailMessage>(`/api/post?uid=${effect.uid}`, undefined, LANGE_FRIST_MS);
             setMailText((prev) => ({ ...prev, [effect.uid]: message }));
             return speakable(message.text);
           }

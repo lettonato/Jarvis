@@ -42,15 +42,24 @@ export function TelegramSetup() {
   const waiting = Boolean(tg?.configured && !tg.paired);
   useEffect(() => {
     if (!waiting) return;
+    // Solange eine Abfrage unterwegs ist, kommt keine weitere dazu (hängt JARVIS, stauten sie sich sonst).
+    let unterwegs = false;
+    const abbruch = new AbortController();
     const timer = setInterval(() => {
-      getJson<Settings>("/api/einstellungen")
+      if (unterwegs) return;
+      unterwegs = true;
+      getJson<Settings>("/api/einstellungen", abbruch.signal)
         .then((next) => {
           if (next.telegram.paired) setMessage(null);
           if (next.telegram.paired || next.telegram.code !== tg?.code) setSettings(next);
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => (unterwegs = false));
     }, 3_000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      abbruch.abort();
+    };
   }, [waiting, tg?.code, setSettings]);
 
   if (!tg) return null;

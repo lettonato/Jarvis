@@ -316,6 +316,91 @@ async function main() {
       await seite.context().close();
     }
     schritt("fällt JARVIS aus, nachdem der Raum gelesen war, steht oben, seit wann er nicht antwortet; der Raum zeigt weiter seinen Stand; eine Änderung, ein Befehl und eine freie Frage im Gespräch sagen „JARVIS antwortet gerade nicht“ statt „Failed to fetch“; kommt er zurück, verschwindet der Hinweis");
+
+    // 9. Auch eine einzelne Abfrage gibt nach ihrer Frist auf (30 Sekunden): eine Akte und der Raum Browser. Vorher
+    //    stand dort für immer „lädt noch“, und der Raum Browser schickte alle zweieinhalb Sekunden eine weitere
+    //    Abfrage hinterher, die auch hängen blieb. Wird der Raum verlassen, endet, was noch unterwegs ist.
+    {
+      // Hält lesende Abfragen fest, bis die Prüfung sie freigibt; dann gehen sie durch, auch die schon wartenden
+      // (sonst hinge eine, die kurz vor dem Freigeben losging, noch ihre ganze Frist lang).
+      type Abfrage = Parameters<Parameters<Page["route"]>[1]>[0];
+      const halte = () => {
+        const wartend: Abfrage[] = [];
+        let frei = false;
+        return {
+          griff: (r: Abfrage) => {
+            if (frei || !istLesen(r.request().method())) return r.continue();
+            wartend.push(r);
+          },
+          gibFrei: async () => {
+            frei = true;
+            for (const r of wartend.splice(0)) await r.continue().catch(() => {});
+          },
+        };
+      };
+      const seite = await neueSeite();
+      const akte = /\/api\/projekte\?projekt=/;
+      const beendet: number[] = [];
+      let start = 0;
+      seite.on("requestfailed", (r) => {
+        if (akte.test(r.url())) beendet.push(Date.now() - start);
+      });
+      const akteHalt = halte();
+      await seite.route(akte, akteHalt.griff);
+      await seite.goto(`${BASIS}/projekte`, { waitUntil: "domcontentloaded" });
+      const main = seite.locator("main:visible");
+      await main.getByRole("region", { name: "Projekte" }).getByText("Hallenneubau").first().click();
+      start = Date.now();
+      await main.locator('[data-ladestand="laedt"]', { hasText: "Die Akte lädt noch." }).waitFor({ timeout: 10_000 });
+
+      // Währenddessen der Raum Browser, in einem eigenen Fenster.
+      const zweite = await neueSeite();
+      const status = /\/api\/browser(\?|$)/;
+      let fragen = 0;
+      let abgebrochen = 0;
+      zweite.on("request", (r) => {
+        if (status.test(r.url()) && istLesen(r.method())) fragen++;
+      });
+      zweite.on("requestfailed", (r) => {
+        if (status.test(r.url())) abgebrochen++;
+      });
+      const statusHalt = halte();
+      await zweite.route(status, statusHalt.griff);
+      await zweite.goto(`${BASIS}/browser`, { waitUntil: "domcontentloaded" });
+      const raum = zweite.locator("main:visible");
+      await raum.locator('[data-ladestand="laedt"]', { hasText: "Der Browser lädt noch." }).waitFor({ timeout: 15_000 });
+      await zweite.waitForTimeout(12_000);
+      assert.equal(fragen, 1, `solange eine Abfrage unterwegs ist, schickt der Raum Browser keine weitere hinterher (${fragen} in zwölf Sekunden)`);
+      assert.ok((await arten(zweite)).includes("laedt: Der Browser lädt noch."), "nach zwölf Sekunden lädt es noch (die Frist ist nicht zu knapp)");
+      assert.equal(abgebrochen, 0);
+      // Raum verlassen: Die hängende Abfrage endet sofort, nicht erst nach ihrer Frist.
+      await zweite.getByRole("navigation", { name: "Räume" }).getByRole("link", { name: /^Aufgaben/ }).click();
+      await zweite.locator("main:visible").getByText("Statiker anrufen").first().waitFor({ timeout: 15_000 });
+      await zweite.waitForTimeout(1_000);
+      assert.equal(abgebrochen, 1, `wird der Raum Browser verlassen, endet seine hängende Abfrage sofort (beendet: ${abgebrochen})`);
+      // Zurück im Raum: Nach der Frist steht da, dass er sich nicht laden lässt.
+      await zweite.goBack();
+      await zweite
+        .locator("main:visible")
+        .locator('[data-ladestand="gestoert"]', { hasText: "Der Browser lässt sich gerade nicht laden." })
+        .waitFor({ timeout: 45_000 })
+        .catch(async () => assert.fail(`nach 45 Sekunden ohne Antwort steht im Raum Browser immer noch nicht, dass er sich nicht laden lässt. Da steht: ${(await arten(zweite)).join(" | ")}`));
+
+      await main
+        .locator('[data-ladestand="gestoert"]', { hasText: "Die Akte lässt sich gerade nicht laden." })
+        .waitFor({ timeout: 15_000 })
+        .catch(async () => assert.fail(`nach 45 Sekunden ohne Antwort steht immer noch nicht da, dass die Akte sich nicht laden lässt. Da steht: ${(await arten(seite)).join(" | ")}`));
+      assert.ok(beendet.length >= 1 && beendet[0] >= 28_000, `die hängende Abfrage nach der Akte ist nach ihrer Frist beendet, nicht früher (beendet nach ${beendet.join(", ")} ms)`);
+      // Antwortet JARVIS wieder, stehen beide von selbst da.
+      await akteHalt.gibFrei();
+      await main.getByText("Projektakte").waitFor({ timeout: 25_000 });
+      assert.deepEqual(await arten(seite), [], "die Akte ist da, kein Satz mehr");
+      await statusHalt.gibFrei();
+      await zweite.locator("main:visible").locator("[data-ladestand]").first().waitFor({ state: "detached", timeout: 25_000 });
+      await seite.context().close();
+      await zweite.context().close();
+    }
+    schritt("auch eine einzelne Abfrage gibt nach 30 Sekunden auf: Die Akte und der Raum Browser sagen dann, dass sie sich nicht laden lassen; der Raum Browser schickt keine Abfragen hinterher und beendet seine, wenn er verlassen wird; antwortet JARVIS wieder, stehen beide von selbst da");
   } finally {
     await browser?.close();
     await server.stopLeise();
