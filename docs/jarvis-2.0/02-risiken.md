@@ -262,9 +262,23 @@ Verbindungen außerhalb des eigenen Rechners sind immer verschlüsselt und prüf
 (`test/module/projekte-datenbank.test.ts`), und JARVIS kommt mit einem Konto ohne das Recht aus, Tabellen
 anzulegen.
 
+**R-27 Programme und Ordner am Mac öffnen (neu mit Schritt H2.1, eingedämmt, am Mac ungeprüft):** JARVIS startet
+auf Zuruf Programme. Drei Dinge könnten dabei schiefgehen. (1) Ein fremder Text (Mail, Webseite) bringt das
+KI-Modell dazu, etwas zu öffnen. Eingedämmt: Das Modell kann nur einen eingeschalteten Eintrag aus Benedikts
+Liste wählen, nie einen Namen, einen Pfad oder eine Adresse; was es sonst schickt, lehnt der Server ab. Öffnen
+allein gibt keine Daten hinaus und ändert nichts; Internetadressen und einzelne Dateien öffnet dieser Weg
+bewusst nicht, denn das wäre ein Abflusskanal. Über Telegram gibt es das Werkzeug nicht. (2) Ein eigener
+Programmname wird als Befehl missbraucht. Eingedämmt: kein Aufruf über eine Shell, feste Argumente, der Name
+darf weder Schrägstrich noch Doppelpunkt enthalten und nicht mit einem Bindestrich beginnen, und
+eintragen lässt er sich nur am Mac über die geschützte Schnittstelle. (3) Ein eigenes Programm, das selbst etwas
+Gefährliches tut (ein Skript als App), startet auf Zuruf ohne Rückfrage. Das bleibt: Was in der Liste steht,
+entscheidet Benedikt, und jedes Öffnen steht im Audit-Log. **Offen:** Alles ist nur gegen ein nachgebautes
+`open` geprüft (`test/module/desktop.test.ts`, `test/hand/desktop-rauch.ts`); am Mac zeigt es erst Prüfliste
+Teil AB. Vor einem Betrieb mit mehreren Personen müsste die Liste je Person gelten.
+
 ## Was bereits gut ist und erhalten bleiben soll
 
-* Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt H1 sind es 20) prüfen Host, Herkunft und einen eigenen Header.
+* Server lauscht nur auf 127.0.0.1, alle API-Routen (seit Schritt H2.1 sind es 25) prüfen Host, Herkunft und einen eigenen Header.
 * Kalender und „Öffnen“ ohne Shell, mit festen Argumenten.
 * Obsidian- und Dokumentpfade gegen Ausbruch aus dem Ordner geprüft (inkl. Symlinks).
 * Desk-Käufe brauchen eine echte menschliche Freigabe; das Modell kann sie nicht erteilen.

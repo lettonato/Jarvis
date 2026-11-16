@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 130 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y, Z und AA und die Punkte M11 bis M13 und Y4 bis Y8 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 140 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y, Z, AA und AB und die Punkte M11 bis M13 und Y4 bis Y8 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -396,6 +396,26 @@ mit den Lautsprechern des Mac.
 | AA6 | Mit KI-Gehirn: per Stimme etwas fragen, wofür er im Web nachsehen muss. Solange „Denke nach …“ dasteht: „Jarvis, stopp“ | Das Nachdenken hört auf, es kommt keine Antwort mehr. Bisher kam sie trotzdem |
 | AA7 | Mit den Lautsprechern des Mac (ohne Kopfhörer): ihn etwas Längeres sagen lassen und nichts sagen | Er spricht zu Ende, ohne sich selbst zu unterbrechen, und nimmt seinen eigenen Satz danach nicht als neue Frage. Tut er es doch, schreib mir bitte, was er gerade gesagt hat |
 | AA8 | Nur falls es dir begegnet: Unten steht dauerhaft „Ich höre zu …“, obwohl du nichts gesagt hast | Das sollte nicht mehr vorkommen. Schreib mir bitte, was du vorher getan hast |
+
+## AB. Programme und Ordner am Mac öffnen (Schritt H2.1, neu)
+
+JARVIS öffnet auf Zuruf Programme und Ordner aus einer festen Liste (Einstellungen → Programme). In der Sandbox
+ist das nur gegen einen nachgebauten Mac geprüft: Ob die Programme bei dir wirklich aufgehen, sehe ich von hier
+nicht. JARVIS öffnet nur. Er bedient nichts und schließt nichts.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| AB1 | Sagen oder tippen: „Öffne Safari“ | JARVIS antwortet „Ich öffne Safari.“, und Safari kommt nach vorn |
+| AB2 | „Starte Excel“, danach „Mach den Finder auf“ und „Öffne den Rechner“ | Alle drei gehen auf. Geht eines nicht, schreib mir bitte, welches und was JARVIS dazu sagt |
+| AB3 | „Zeig mir den Ordner Downloads“, danach „Öffne den Ordner Dokumente“ | Der Finder zeigt den jeweiligen Ordner. Fragt macOS, ob JARVIS (oder das Terminal) auf den Ordner zugreifen darf, notier es bitte |
+| AB4 | „Öffne die Systemeinstellungen“, danach „Öffne die Einstellungen“ | Erst gehen die Systemeinstellungen des Mac auf, dann die Einstellungen von JARVIS |
+| AB5 | Einstellungen → Programme: die Liste durchgehen und bei jedem Programm, das du hast, auf „Öffnen“ klicken | Jedes installierte Programm geht auf. **Wichtig für mich:** welche nicht aufgehen, obwohl sie installiert sind (dann stimmt der Name in meiner Liste nicht) |
+| AB6 | Ein Programm aus der Liste, das du **nicht** installiert hast (zum Beispiel Spotify oder WhatsApp): „Öffne Spotify“ | JARVIS sagt „Ich konnte Spotify nicht öffnen. Vielleicht ist das Programm auf diesem Mac nicht installiert.“ Es erscheint kein Fenster von macOS, das nach dem Programm sucht |
+| AB7 | In den Einstellungen bei „Safari“ den Haken entfernen, dann „Öffne Safari“ | „Safari ist in den Einstellungen unter „Programme“ ausgeschaltet.“, und nichts geht auf. Haken wieder setzen |
+| AB8 | Unten ein eigenes Programm eintragen, das du hast (der Name wie im Ordner „Programme“, zum Beispiel „Notion“), dann „Öffne Notion“ | Es steht in der Liste und geht auf. „Entfernen“ nimmt es wieder heraus |
+| AB9 | Als eigenes Programm „Mail“ und danach „../Geheim“ eintragen | Beides wird abgelehnt, mit einem Satz, warum. Der Text bleibt im Feld stehen |
+| AB10 | Mit KI-Gehirn: „Ich möchte gleich eine Tabelle bauen, mach mir dafür bitte das passende Programm auf“ | Er öffnet Excel, ohne nachzufragen. Unter Sicherheit → Audit-Log steht der Aufruf, ebenso die Punkte von eben („Öffnen: Safari“) |
+| AB11 | In Telegram: „Öffne Safari“ | Auf dem Mac geht nichts auf; JARVIS sagt, dass er das nur am Mac kann oder dass er dafür kein Werkzeug hat |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1146 von 1146 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1190 von 1190 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -45,7 +45,9 @@ gegen ein nachgebautes Microsoft geprüft**; mit dem echten läuft es erst, wenn
 Verzeichnis angelegt hat und Benedikt sich am Mac selbst anmeldet. Seit Schritt I1 ist der Umzug nach Azure
 vorbereitet, soweit das ohne Azure geht: Das Projektgedächtnis kann in einer PostgreSQL-Datenbank liegen
 (geprüft gegen ein echtes PostgreSQL 16 in der Sandbox, **nicht in Azure**), und die Verbindung zu Claude wird
-an einer Stelle aufgebaut. In Azure ist nichts angelegt; es gibt keine Kosten.
+an einer Stelle aufgebaut. In Azure ist nichts angelegt; es gibt keine Kosten. Seit Schritt H2.1 öffnet JARVIS
+auf Zuruf Programme und Ordner am Mac aus einer festen Liste (nur öffnen, nichts bedienen); das ist **nur gegen
+einen nachgebauten Mac geprüft**.
 Offen ist die Prüfung auf dem Mac ([Prüfliste](docs/pruefliste-mac.md)); bis dahin steht alles auf
 „Testbereit“. Seit Schritt C2 hat auch das persönliche Gedächtnis die Zusagen des Projektgedächtnisses: Zwei
 Einträge zur selben Zeit überschreiben sich nicht, und eine beschädigte Datei wird nie stillschweigend ersetzt.
@@ -64,7 +66,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | F Agenten | **Testbereit** für die zentrale Steuerung der sechs Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre), den gemeinsamen Zeitplan und den Edelmetall-Agenten (nur gegen Nachbau); **Offen** für weitere Agenten | Mac-Prüfliste Teile H und K; Marktagent, Newsletter und weitere |
 | G Proaktive Routinen | **Testbereit** für Morgenbriefing mit Projekten, Tagesabschluss, Projektüberwachung, Hinweise am Tag aufs Handy und als Mitteilung am Mac (einstellbar, abschaltbar) und Antwortentwürfe für Mails ohne Versand; **Offen** für Marktüberwachung über Intel hinaus | Mac-Prüfliste Teile G, L, M und P; Entwurf im Ordner „Entwürfe“ des Postfachs (Frage 13) |
 | D Microsoft 365 | **Testbereit** (nur gegen Nachbau) für Termine aus Outlook lesen (Schritt D1); **Blockiert** für die echte Anbindung, bis eure IT die Anwendung in Entra angelegt hat; **Offen** für Mail, Dateien, Teams | App-Registrierung durch die IT (Frage 14), Mac-Prüfliste Teil N; weitere Teile nur nach Benedikts Entscheidung |
-| H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme und das Unterbrechen mit „Stopp“; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme, Programme öffnen auf macOS | Mac-Prüfliste Teil I mit echtem Schlüssel; Desktop-Agent mit Regeln |
+| H Sprache und Desktop | **Testbereit** (nur gegen Nachbau) für die ElevenLabs-Stimme, das Unterbrechen mit „Stopp“ und, seit Schritt H2.1, das Öffnen von Programmen und Ordnern aus einer festen Liste; vorhanden: Weckwort, Vorlesen mit der Mac-Stimme | Mac-Prüfliste Teil I mit echtem Schlüssel und Teil AB; weitere Teile eines Desktop-Agenten (H2.2) |
 | I Azure | **Testbereit** für die Vorbereitung (Schritt I1): Projektgedächtnis in PostgreSQL, Claude-Zugang an einer Stelle, Anleitung; **Blockiert** für alles in Azure selbst (Entscheidung und Kostenfreigabe) | Abonnement, IT-Kontakt, Region, Budget (Frage 3); davor Anmeldung je Person und die übrigen Daten auf die Datenbank umstellen |
 | J Qualität | **Testbereit** für das Kostenbuch (Kosten je Agent, heute und im Monat) und die Modellwahl an einer Stelle (Schritt J1); **Testbereit** für das Zurückspielen der Sicherung (Schritt J2) und das Speichern der Einstellungen in einem Zug (Schritt J3); **Offen** für einen zweiten Zugang zu Claude (die Stelle dafür gibt es seit I1) | Mac-Prüfliste H7 und H8 (Zahlen mit der Abrechnung bei Anthropic vergleichen) |
 
@@ -93,7 +95,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 |---|---|---|---|---|
 | **Fundament** | | | | |
 | Sicherheitsnetz: Tests, CI, Secret-Scan, Rückfallpunkt | 123 Tests, CI grün, gitleaks ohne Fund | jeder Schritt automatisch geprüft | 1 | Abgeschlossen ([CI-Lauf](https://github.com/lettonato/Jarvis/actions/runs/42112321400)); Mac-Prüfliste offen |
-| Security Gateway (alle Werkzeuge, Klassen A–D, Deny by Default) | alle 32 Werkzeuge von Gehirn (24), Browser (7) und Analyst (1) laufen durch `gateway/`, Websuche und Webseiten werden protokolliert, Herkunftsmarkierung, Freigaben per Knopf | jede Aktion geprüft, protokolliert, freigegeben | 2 | Testbereit (Sandbox geprüft, Mac offen) |
+| Security Gateway (alle Werkzeuge, Klassen A–D, Deny by Default) | alle Werkzeuge laufen durch `gateway/` (die Richtlinientabelle hat seit Schritt H2.1 40 Einträge, davon 7 für den Browser), Websuche und Webseiten werden protokolliert, Herkunftsmarkierung, Freigaben per Knopf | jede Aktion geprüft, protokolliert, freigegeben | 2 | Testbereit (Sandbox geprüft, Mac offen) |
 | Zentraler Not-Aus und Agentensperre | ein Schalter für Gespräch, Browser, Analyst, Intel, Desk; lösen nur am Mac mit „FREIGEBEN“ | ein Schalter für alles, nur Mensch löst | 2 | Testbereit (Sandbox geprüft, Mac offen) |
 | Audit-Log und Alarmierung | `audit.jsonl` mit SHA-256-Kette, Schwärzung, Alarm per Telegram/Mac | manipulationssicher, Azure Monitor | 2/3 | Testbereit (lokal); unveränderliche Ablage Offen (Phase 3) |
 | Geheimnisverwaltung | wahlweise Klartext `~/.jarvis/config.json` oder macOS-Schlüsselbund (Umzug per Knopf am Mac) | Key Vault, Managed Identity, getrennt Test/Prod | 2/3 | Schlüsselbund Testbereit (Sandbox geprüft, Mac offen); Key Vault Offen (Phase 3) |
@@ -112,7 +114,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Mitarbeiterkapazitäten | fehlt | nur offizielle Zeiterfassung, keine Überwachung | 7 | Offen |
 | **Gemeinsame Agentensteuerung** | | | | |
 | Agentensteuerung an einer Stelle | Ansicht „Agenten“: Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre für fünf Agenten | dazu Zeitplan und weitere Agenten | 9 | Testbereit (Steuerung), Offen (Zeitplan, neue Agenten) |
-| KI-Gehirn mit Werkzeugen | 28 Werkzeuge + Websuche, alle über das Gateway | über Gateway, Datenminimierung | 2/4 | Testbereit |
+| KI-Gehirn mit Werkzeugen | 31 Werkzeuge + Websuche, alle über das Gateway | über Gateway, Datenminimierung | 2/4 | Testbereit |
 | Browser-Agent | eigenes Chrome, harte Kauf-/Passwortsperren, jede Aktion über das Gateway, jede Verbindung über die Netzschleuse (kein DNS-Rebinding, auch WebSockets geprüft) | über Gateway, DNS-geprüfte Adressen | 2/9 | Testbereit (R-04 samt Rest behoben, Mac offen) |
 | Dokumentenagent (Recherche → PDF) | vorhanden, Kostenbremse 10 $, Abgabe über das Gateway, Not-Aus bricht ab | über Gateway, Ablage SharePoint/Blob | 9 | Testbereit |
 | Grok-Marktbeobachtung (Intel) | 2× täglich, Tagesbudget | proaktive Berichte | 9 | Testbereit |
@@ -128,7 +130,7 @@ Wo steht jede Kernfunktion auf dem Weg zum fertigen Geschäftsführungsassistent
 | Teams | fehlt | berechtigte Informationen | 5 | Offen |
 | Handy | Telegram (ein gekoppelter Chat) | für Firmendaten Teams/Dashboard statt Telegram | 5/7 | Testbereit (privat) |
 | **Desktop und Sprache** | | | | |
-| Programme und Dateien öffnen | Kalender-App, Obsidian, eigene PDFs (macOS) | Desktop Agent mit freigegebenen Aktionen | 8 | Testbereit (eingeschränkt) |
+| Programme und Dateien öffnen | Kalender-App, Obsidian, eigene PDFs (macOS); seit Schritt H2.1 auf Zuruf 19 Programme, 4 Ordner und bis zu 12 eigene Programme aus einer festen Liste (nur öffnen) | Desktop Agent mit freigegebenen Aktionen | 8 | Testbereit (nur gegen einen nachgebauten Mac) |
 | Sprache (Weckwort, Vorlesen, Unterbrechen) | Web-Speech im Browser | Desktop Agent, unterbrechbar | 8 | Testbereit |
 | Autostart und Morgenroutine | `start-jarvis.command` per Doppelklick | Start beim Login, Identität prüfen, Briefing | 8 | Blockiert (Windows oder Mac?) |
 
@@ -1263,7 +1265,8 @@ ElevenLabs, auch Inhalt aus Mails, Terminen und Aufgaben (R-20 in `docs/jarvis-2
 | H1.4 Fehler von ElevenLabs als eigener Satz von JARVIS (nie der Text des Dienstes), sichtbar in den Einstellungen und einmal als Hinweis | Testbereit | `fehlerText` |
 | H1.5 Unterbrechen: „Stopp“, „Halt“, „Ruhe“, „Hör auf“ ohne „Jarvis“, während er spricht; Escape und „Jarvis …“ wie bisher. Bricht auch die Wolkenstimme sofort ab | Testbereit (Regel und Escape geprüft; das gesprochene „Stopp“ seit Schritt J17 auch im Browser, mit einem nachgebauten Mikrofon) | `stopsSpeech` in `src/lib/voiceText.ts`; `test/hand/zuhoeren-rauch.ts` |
 | H1.6 Mit echtem ElevenLabs-Schlüssel am Mac prüfen | Offen (Benedikt) | Prüfliste Teil I; kostet Zeichen aus seinem Tarif |
-| H2 Desktop-Agent mit Regeln | Offen | |
+| H2.1 Programme und Ordner am Mac auf Zuruf öffnen, aus einer festen Liste | Testbereit (**nur gegen einen nachgebauten Mac**) | Schritt H2.1 unten; Prüfliste Teil AB |
+| H2.2 Weitere Teile eines Desktop-Agenten (eigene Ordner, Dateien suchen und öffnen, Programme bedienen oder schließen) | Offen | nicht gebaut; jedes davon braucht eigene Regeln, siehe Grenzen in H2.1 |
 
 ### Testergebnisse Schritt H1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -1287,6 +1290,80 @@ ElevenLabs abgelehnt („ungewöhnliche Aktivität“, Gratis-Zugang gesperrt). 
 informiert; von der Cloud aus wird nichts mehr erzeugt. **Sicherheitsrisiken:** neu R-20 (Vorgelesenes geht
 an ElevenLabs). Laufende Kosten entstehen erst, wenn Benedikt einen bezahlten Tarif wählt und die Stimme
 einschaltet; das ist seine Entscheidung.
+
+### Schritt H2.1: Programme und Ordner am Mac auf Zuruf öffnen, nach festen Regeln (16. November 2026)
+
+**Warum:** Am Mac öffnen konnte JARVIS bisher nur die Kalender-App, Obsidian und seine eigenen PDFs. „Jarvis,
+öffne Excel“ ergab „Das verstehe ich noch nicht“ oder ging an das KI-Gehirn, das dafür kein Werkzeug hatte. Der
+Auftrag nennt in Bereich H einen Desktop-Agenten mit Regeln; das ist der erste, kleinste Teil davon.
+
+**Was JARVIS jetzt kann:** „Jarvis, öffne Safari“, „Starte Excel“, „Mach den Finder auf“, „Kannst du bitte Teams
+öffnen“, „Zeig mir den Ordner Downloads“. Es gibt eine feste Liste: 19 Programme (Safari, Chrome, Outlook, Teams,
+Word, Excel, PowerPoint, Apple Mail, Apple Notizen, Erinnerungen, Finder, Musik, Fotos, Karten, Rechner, Vorschau,
+Systemeinstellungen, Spotify, WhatsApp) und 4 Ordner (Dokumente, Downloads, Schreibtisch, Bilder). In den
+Einstellungen unter „Programme“ lässt sich jeder Eintrag ausschalten, und es gehen bis zu 12 eigene Programme dazu
+(nur der Name, so wie das Programm im Ordner „Programme“ heißt). **JARVIS öffnet nur. Er bedient nichts, schließt
+nichts, löscht nichts, und er öffnet keine einzelnen Dateien und keine Internetadressen.**
+
+**Wie es abgesichert ist:** (1) Geöffnet wird an genau einer Stelle (`src/lib/server/desktop.ts`), ohne Shell, mit
+festen Argumenten für `/usr/bin/open`: bei Apple-Programmen die feste Kennung von Apple, sonst der Name aus der
+Liste, bei Ordnern der feste Pfad im Benutzerordner. Was nicht auf der Liste steht oder ausgeschaltet ist, lehnt
+der Server ab, gleich wer fragt. (2) Die Seite und das KI-Gehirn schicken nie einen Namen oder Pfad, nur die
+Kennung eines Listeneintrags. (3) Das KI-Gehirn bekommt ein Werkzeug `programm_oeffnen`, das nur die eingeschalteten
+Einträge zur Auswahl hat; es läuft über das Security Gateway (Klasse A, nur am Mac, nicht über Telegram). (4) Ein
+eigenes Programm darf nicht heißen wie etwas, das in JARVIS schon etwas bedeutet („Mail“, „Kalender“, „Notizen“,
+„Einstellungen“ und so weiter), nicht wie ein fester Eintrag, und der Name darf nur aus Buchstaben, Ziffern,
+Leerzeichen und wenigen Zeichen bestehen (kein Schrägstrich, kein Doppelpunkt, kein Bindestrich am Anfang). (5) Jedes
+Öffnen und jede Ablehnung steht im Audit-Log.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| H2.1.1 Regeln: feste Liste, Zuruf verstehen („öffne“, „starte“, „mach … auf“, „… öffnen“, „zeig mir den Ordner …“, mit „bitte“, „mal“, „kannst du“), eigene Namen prüfen | Testbereit | `src/lib/desktop.ts`; `test/regeln/desktop.test.ts` (22 Tests) |
+| H2.1.2 Server: Öffnen ohne Shell, nur Einträge der Liste, Ausgeschaltetes abgelehnt, Frist von 10 Sekunden, eigene Sätze bei Fehlern, Audit-Log | Testbereit, **nur gegen einen nachgebauten Mac** | `src/lib/server/desktop.ts`, `/api/desktop`; `test/module/desktop.test.ts` (22 Tests) |
+| H2.1.3 Gespräch: fester Befehl ohne KI-Gehirn; mit KI-Gehirn das Werkzeug `programm_oeffnen` über das Security Gateway | Testbereit, **nur gegen einen nachgebauten Mac und ein nachgebautes KI-Modell** | `decide()` in `src/lib/commands.ts`; `brain.ts`; `gateway/richtlinien.ts` |
+| H2.1.4 Einstellungen „Programme und Ordner am Mac“: ein- und ausschalten, zur Probe öffnen, eigene Programme hinzufügen und entfernen | Testbereit, **nur gegen einen nachgebauten Mac** | `src/components/ProgrammeSetup.tsx`; Handprüfung „Programme am Mac“ |
+| H2.1.5 Handprüfung „Programme am Mac“ (11 Schritte) im Browser; jetzt 30 Handprüfungen | Testbereit | `test/hand/desktop-rauch.ts` (Port 3132) |
+| H2.1.6 Am echten Mac prüfen: ob die Programme wirklich aufgehen, ob die Namen stimmen, was bei einem nicht installierten Programm geschieht | Offen (Benedikt) | Prüfliste Teil AB |
+
+**Eigene Entscheidungen:** (1) Die feste Liste ist von Anfang an eingeschaltet. Jeder Eintrag öffnet nur ein
+übliches Programm oder einen der vier Standardordner; ausschalten geht je Eintrag. (2) Nur öffnen. Bedienen,
+Schließen und Beenden sind nicht gebaut. (3) Keine Internetadressen und keine eigenen Ordner oder Dateien: Eine
+Adresse zu öffnen wäre ein Weg, auf dem ein fremder Text (aus einer Mail oder Webseite) Daten hinausschicken könnte;
+das braucht eigene Regeln und kommt, wenn überhaupt, als eigener Schritt. (4) Das Werkzeug des KI-Gehirns ist Klasse
+A ohne Rückfrage: Ein Programm aus deiner eigenen Liste zu öffnen verändert nichts und gibt nichts hinaus. Über
+Telegram gibt es das Werkzeug nicht. (5) Der Not-Aus hält das KI-Gehirn an, nicht deinen eigenen Zuruf oder Klick;
+so ist es beim Öffnen von Obsidian und der Kalender-App auch. (6) **„Öffne die Systemeinstellungen“ meint jetzt die
+des Macs**, „Öffne die Einstellungen“ weiterhin die von JARVIS. Vorher landeten beide in JARVIS. (7) „Dokumente“
+und „Bilder“ allein bleiben, was sie in JARVIS waren; den Ordner am Mac öffnet erst „Öffne den Ordner Dokumente“.
+(8) Apple-Programme werden über die Kennung von Apple geöffnet, nicht über den Namen: Die App heißt je nach Sprache
+des Macs „Notizen“ oder „Notes“. Microsoft-Programme, Chrome, Spotify und WhatsApp über den Namen.
+
+**Grenzen:** (1) **Alles ist nur gegen einen nachgebauten Mac geprüft**: Statt `/usr/bin/open` läuft in den
+Prüfungen ein kleines Programm, das mitschreibt, womit es aufgerufen wurde. Ob die Kennungen und Namen auf Benedikts
+Mac stimmen und was das echte `open` bei einem nicht installierten Programm meldet, zeigt erst Prüfliste Teil AB.
+(2) JARVIS erfährt nur, ob der Mac den Auftrag angenommen hat, nicht, ob das Fenster wirklich vorn ist. (3) Scheitert
+das Öffnen, sagt JARVIS „Ich konnte … nicht öffnen. Vielleicht ist das Programm auf diesem Mac nicht installiert.“;
+den wahren Grund kennt er nicht. (4) Antwortet der Mac zehn Sekunden
+lang nicht, sagt JARVIS, dass er nicht weiß, ob das Programm offen ist. (5) In den ersten Augenblicken nach dem Laden
+der Seite, bevor die Einstellungen da sind, kennt das Gespräch die Liste noch nicht; ein Zuruf in diesem Moment geht
+wie früher weiter. Nicht nachgestellt. (6) Ein eigenes Programm, dessen Name nur aus einem Füllwort besteht („Bitte“,
+„Kurz“), trifft der feste Befehl nicht; mit dem Knopf in den Einstellungen geht es auf.
+
+### Testergebnisse Schritt H2.1 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1190 Tests: 1190 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 44). Am Mac wären es rechnerisch vier weniger (zwei der neuen Tests stellen „kein Mac“ nach und werden dort übersprungen; nicht dort gelaufen) |
+| Handprüfung „Programme am Mac“ | Mit dem endgültigen Stand zweimal gelaufen (einmal nach den Gegenproben, einmal im Sammellauf), zweimal bestanden (11 Schritte, 25 Sekunden). Beide Bilder angesehen (die Liste; das Gespräch mit „Ich konnte Spotify nicht öffnen …“ und „Safari ist … ausgeschaltet.“) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 30 Handprüfungen bestanden**, in drei Teilen gestartet (14, 10 und 6; zusammen rund 17 Minuten) |
+| Tests zuerst | Die Regeln und die Tests gegen den nachgebauten Mac sind vor dem Code geschrieben und waren rot. Auch die acht Korrekturen aus dem Code-Review bekamen erst einen roten Test |
+| Gegenproben (absichtlich eingebaute Fehler) | 51 eingebaute Fehler: 14 im Browser (je eigener Bau), 21 an den Regeln, 16 gegen den nachgebauten Mac. **49 sofort entdeckt**, im Browser alle im gemeinten Schritt. Zwei erst nach Schärfen, dann entdeckt: (1) „ein falscher Typ in der Einstellungsdatei bringt die Liste durcheinander“ (die Tests gegen den nachgebauten Mac fingen es, der Regeltest nicht; er prüft jetzt auch eine Zahl und ein Objekt an der Stelle der Liste); (2) „ein neu eingetragenes Programm bleibt still ausgeschaltet“ (der Fall trat nur ein, wenn der alte Schalter noch in der Datei stand; dafür gibt es jetzt einen eigenen Test). Danach Quelltext wie vorher (verglichen), sauberer Bau, 11 Schritte bestanden |
+| Code-Review (mittlere Stufe, vor dem Commit) | Zehn Hinweise, acht umgesetzt: eigene Programme mit einem Artikel oder Füllwort im Namen („App Store“, „Die Zeit“) wurden nie getroffen; ein eigener Name konnte ein Wort von JARVIS kapern („Mail“) oder ein Apple-Programm unter englischem Namen doppeln („Notes“); „Ordner Bilder“ als eigener Name; jeder Fehler hieß „nicht gefunden“; eine von Hand geänderte Einstellungsdatei mit falschen Typen; ein falscher Kommentar; Namen mit Klammern und Ausrufezeichen waren verboten; ein abgelehnter Name schrieb die Einstellungen trotzdem neu. Bewusst gelassen: das Audit-Log wird nach dem Öffnen geschrieben und abgewartet (wie im Gateway), und zwei kleine Hilfsfunktionen stehen ähnlich schon bei Kalender und Mitteilung |
+| Sicherheitsprüfung (von Hand) | Geöffnet wird nur an einer Stelle, ohne Shell, mit festen Argumenten; die Seite und das Modell schicken nur eine Kennung, nie Name oder Pfad; ein eigener Name kann weder ein Pfad noch ein Schalter für den Befehl sein (beginnt mit Buchstabe oder Ziffer, kein Schrägstrich, kein Doppelpunkt); von Hand in die Einstellungsdatei geschriebene Pfade werden übergangen; die neue Schnittstelle prüft Host, Herkunft und den eigenen Header wie alle anderen; die Meldung des Macs wird nie gelesen oder angezeigt; im Audit-Log steht der Name aus der Liste, nie der angefragte Text; über Telegram lehnt das Gateway ab; ein Modell, das einer eingeschleusten Anweisung folgt (Terminal, ein Pfad, ein ausgeschaltetes Programm), bekommt eine Absage und der Mac keinen Aufruf. Keine neuen Daten gehen hinaus |
+| Nicht geprüft | **der Mac und das echte `open`**: ob die 19 Programme und 4 Ordner wirklich aufgehen, ob die Kennungen und Namen stimmen, Verhalten bei nicht installierten Programmen; der gesprochene Zuruf mit echtem Mikrofon; Safari; die Grenzen 2 und 5 |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** neu R-27 (Programme öffnen) in
+`docs/jarvis-2.0/02-risiken.md`. **Neue laufende Kosten:** keine.
 
 ## Bereich I – Azure vorbereiten
 
@@ -2639,8 +2716,12 @@ Danach wie geplant:
    nichts; es wurde überhört, wenn er gerade selbst „Jarvis“ sagte; die Anzeige „Ich höre zu …“ konnte hängen
    bleiben; „Danke, Jarvis“ und „Okay, danke“ galten als Weckruf oder neue Frage; zweimal „Jarvis“ wurde Teil des
    Befehls.
+32. **H2.1: gebaut, Testbereit, nur gegen einen nachgebauten Mac geprüft** (Schritt H2.1 in Bereich H): „Jarvis,
+   öffne Excel“ öffnet Programme und Ordner aus einer festen Liste (19 Programme, 4 Ordner, bis zu 12 eigene), mit
+   und ohne KI-Gehirn; in den Einstellungen lässt sich jeder Eintrag ausschalten. Nur öffnen, nichts bedienen.
+   Neue Handprüfung „Programme am Mac“, jetzt 30 Prüfungen.
    **Als Nächstes:** ein Paket, das keine Entscheidung von Benedikt braucht; Kandidaten stehen in der
-   Übersicht oben (Modelladapter, Desktop-Agent mit Regeln, Gesprächsnachbereitung). Als Frage an Benedikt
+   Übersicht oben (Modelladapter, Gesprächsnachbereitung, weitere Teile des Desktop-Agenten). Als Frage an Benedikt
    vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleibt der einmalige, nicht
    wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die weiteren Schritte für Azure (Anmeldung je Person,
    übrige Daten in die Datenbank) erst, wenn Benedikt entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

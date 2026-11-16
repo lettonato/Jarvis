@@ -80,6 +80,8 @@ export const RICHTLINIEN: Record<string, Regel> = {
   besprechung_starten: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Bildschirm", daten: "keine", kanaele: MAC }),
   kalender_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Kalender-App", daten: "keine", kanaele: MAC }),
   obsidian_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Obsidian-App", daten: "keine", kanaele: MAC }),
+  // Öffnet nur, was in den Einstellungen unter „Programme“ eingeschaltet ist; die Liste prüft oeffneZiel selbst.
+  programm_oeffnen: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Programme und Ordner am Mac", daten: "keine", kanaele: MAC }),
   web_search: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Websuche (Anthropic)", daten: "Suchbegriff", liefertFremdes: true, server: true }),
   web_fetch: gehirn({ agent: "gehirn", klasse: "A", freigabe: "nie", ziel: "Webseite (Anthropic)", daten: "Seitentext", liefertFremdes: true, server: true }),
 

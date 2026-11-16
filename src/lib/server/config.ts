@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { ApprovalLimit } from "../approval";
+import type { DesktopConfig } from "../desktop";
 import type { MailProviderId } from "../mailProviders";
 import { lies, loesche, SchluesselbundFehler, schreibe } from "./schluesselbund";
 
@@ -80,6 +81,8 @@ export type JarvisConfig = {
   elevenlabs?: ElevenlabsConfig;
   microsoft?: MicrosoftConfig;
   mitteilungen?: MitteilungenConfig;
+  // Welche Programme und Ordner JARVIS am Mac öffnen darf (src/lib/desktop.ts). Fehlt der Wert, gelten die festen.
+  desktop?: DesktopConfig;
   // Wo Schlüssel und Passwörter liegen: in dieser Datei (bisher) oder im macOS-Schlüsselbund.
   geheimnisse?: GeheimnisModus;
 };

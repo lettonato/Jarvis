@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { CloudVoiceSetup } from "../CloudVoiceSetup";
 import { useJarvis } from "../JarvisProvider";
 import { MicrosoftSetup } from "../MicrosoftSetup";
+import { ProgrammeSetup } from "../ProgrammeSetup";
 import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
 import { SicherheitsZentrale } from "../Sicherheit";
 import { TelegramSetup } from "../TelegramSetup";
@@ -63,6 +64,13 @@ function abschnitteVon(settings: Settings): Abschnitt[] {
       title: "Mitteilungen am Mac",
       text: "JARVIS kann sich auch am Mac selbst melden, ohne Handy: als Mitteilung von macOS oben rechts am Bildschirm, auch wenn das Fenster von JARVIS gerade nicht vorn ist. Dafür wird nichts installiert, und nichts verlässt den Mac.",
       inhalt: <MitteilungenSetup />,
+    },
+    {
+      id: "programme",
+      kurz: "Programme",
+      title: "Programme und Ordner am Mac",
+      text: "Sag „Jarvis, öffne Excel“ oder „Jarvis, öffne den Ordner Downloads“, und der Mac öffnet es. JARVIS öffnet nur, was hier eingeschaltet ist. Was du nicht brauchst, schaltest du aus.",
+      inhalt: <ProgrammeSetup />,
     },
     {
       id: "rueckfrage",

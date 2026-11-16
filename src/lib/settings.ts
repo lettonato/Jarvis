@@ -1,4 +1,5 @@
 import type { ApprovalLimit } from "./approval";
+import type { DesktopStatus } from "./desktop";
 import type { MailProviderId } from "./mailProviders";
 import type { StimmeStatus } from "./stimme";
 import type { TelegramStatus } from "./telegram";
@@ -21,6 +22,8 @@ export type Settings = {
   stimme: StimmeStatus;
   // Mitteilungen am Mac selbst. hinweise: die Hinweise am Tag sind eingeschaltet. moeglich: JARVIS läuft auf einem Mac.
   mitteilungen: { hinweise: boolean; moeglich: boolean };
+  // Programme und Ordner, die JARVIS am Mac auf Zuruf öffnen darf.
+  desktop: DesktopStatus;
   // Ab welchem Betrag der Desk vor einem Kauf fragt.
   approval: { limitUsd: ApprovalLimit };
   configFile: string;

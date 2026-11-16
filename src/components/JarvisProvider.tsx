@@ -220,7 +220,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Ins Gespräch gehen Outlook-Termine nur, wenn du es eingeschaltet hast: Was JARVIS hier antwortet, liest
     // das KI-Modell beim nächsten Satz mit. Die Räume zeigen weiter den ganzen Kalender.
-    latest.current = { name, market, weather, tasks, mail, desk, calendar: fuerGespraech(calendar), intel, projekte, metalle };
+    latest.current = { name, market, weather, tasks, mail, desk, calendar: fuerGespraech(calendar), intel, projekte, metalle, desktop: settings?.desktop ?? null };
     place.current = pathname;
     history.current = turns;
     brain.current = Boolean(settings?.brain.configured);
@@ -322,6 +322,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
           }
           case "openObsidian":
             await postJson("/api/aufgaben", { action: "open", what: effect.what });
+            return;
+          case "openDesktop":
+            await postJson("/api/desktop", { id: effect.id });
             return;
           // Grok braucht eine halbe Minute oder mehr; die Antwort kommt, sobald das Lagebild da ist.
           case "intel": {

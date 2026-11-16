@@ -83,7 +83,7 @@ export type Geaendert = (typeof BEREICHE)[number];
 export type AuditEintrag = {
   nr: number;
   zeit: string;
-  art: "werkzeug" | "freigabe" | "notaus" | "sperre" | "einstellung" | "desk" | "alarm" | "netz" | "projekt";
+  art: "werkzeug" | "freigabe" | "notaus" | "sperre" | "einstellung" | "desk" | "alarm" | "netz" | "projekt" | "desktop";
   agent: AgentName | "mensch" | "system";
   kanal: Kanal | Wer;
   was: string;

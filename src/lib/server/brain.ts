@@ -4,11 +4,13 @@ import { claudeFuer } from "./claude";
 import { VIEWS, viewName, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type Source, type ViewName } from "../brain";
 import { clock, dayOf, eventsOn, nextEvent, outlookLuecke, verdecktAm, type CalendarEvent, type CalendarSnapshot } from "../calendar";
 import { addDays, isoDate } from "../dates";
+import { zieleVon, zielName } from "../desktop";
 import type { MailMessage } from "../mail";
 import { dateOf, dueSoon, sortTasks, type Task } from "../tasks";
 import type { JarvisConfig } from "./config";
 import { readMail, readMessage } from "./mail";
 import { openCalendar, openUrl, readCalendar } from "./calendar";
+import { DesktopError, desktopMoeglich, oeffneZiel } from "./desktop";
 import { addNote, addTask, obsidianLink, readTasks } from "./obsidian";
 import { APPROVAL } from "../approval";
 import { SAFETY, STATUS_LABEL } from "../paper";
@@ -125,7 +127,8 @@ ${
     ? `- Den Apple-Kalender auf ${name}s Mac lesen (alle Kalender, die nächsten 31 Tage) und neue Termine eintragen.`
     : `- Eine Ansicht öffnen und eine Besprechung starten, in der ihr Mails oder fällige Aufgaben Punkt für Punkt durchgeht.
 - Den Apple-Kalender auf ${name}s Mac lesen (alle Kalender, die nächsten 31 Tage), neue Termine eintragen und die Kalender-App an einem Tag öffnen. Nach dem Eintragen zeigt die Kalender-App den Tag von selbst.
-- Obsidian öffnen: den Tresor, den JARVIS-Eingang oder die JARVIS-Notizen.`
+- Obsidian öffnen: den Tresor, den JARVIS-Eingang oder die JARVIS-Notizen.
+- Ein Programm oder einen Ordner auf dem Mac öffnen (programm_oeffnen), wenn ${name} darum bittet. Es geht nur, was ${name} in den Einstellungen unter „Programme“ eingeschaltet hat; fehlt das Werkzeug oder ein Programm in der Auswahl, sag das und verweise dorthin. Du öffnest nur, bedienen kannst du die Programme nicht.`
 }
 - Nachrichten: Intel lässt Grok von xAI morgens und am Nachmittag die Nachrichten und X zu Bitcoin, Ethereum, Solana und ${name}s Themen lesen. Das letzte Lagebild liest du kostenlos mit nachrichten_lesen. Eine Suche auf X mit Grok (nachrichten_suchen) kostet etwa ${Math.round(TYPICAL_INTEL_COST_USD * 100)} Cent und dauert eine halbe Minute; nimm sie nur, wenn ${name} ausdrücklich wissen will, was auf X dazu gesagt wird. Für alles andere reicht web_search.
 - Im Browser arbeiten (browser_auftrag): JARVIS bedient ein eigenes Chrome auf ${name}s Mac; am Mac sieht ${name} in der Browser-Ansicht live zu. Er sucht, vergleicht Angebote auf mehreren Seiten, liest Seiten, die web_fetch nicht schafft, und füllt Formulare aus. Bestellen, abschicken, bezahlen und anmelden kann der Browser nicht; den letzten Klick macht ${name} selbst. Ein Auftrag dauert ein bis drei Minuten; sag vorher kurz, dass du in den Browser gehst. Für einfache Fragen zu Fakten reicht web_search.
@@ -171,6 +174,7 @@ const STATUS: Record<string, string> = {
   termin_eintragen: "Ich trage den Termin ein",
   kalender_oeffnen: "Ich öffne den Kalender",
   obsidian_oeffnen: "Ich öffne Obsidian",
+  programm_oeffnen: "Ich öffne es am Mac",
   mails_lesen: "Ich sehe in die Post",
   antwort_entwerfen: "Ich entwerfe eine Antwort",
   mail_oeffnen: "Ich lese die Mail",
@@ -195,7 +199,7 @@ const STATUS: Record<string, string> = {
 };
 
 // Werkzeuge, die nur am Mac Sinn haben.
-const MAC_ONLY = new Set(["ansicht_oeffnen", "besprechung_starten", "kalender_oeffnen", "obsidian_oeffnen"]);
+const MAC_ONLY = new Set(["ansicht_oeffnen", "besprechung_starten", "kalender_oeffnen", "obsidian_oeffnen", "programm_oeffnen"]);
 
 const SPOKEN = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -299,6 +303,10 @@ export async function think(
   };
 
   const needVault = () => brauchtTresor(config);
+  // Was JARVIS am Mac öffnen darf. Am Handy gibt es keinen Bildschirm, auf dem sich etwas öffnen könnte.
+  const desktopZiele = zieleVon(config.desktop);
+  const programme = remote || !desktopMoeglich() ? [] : desktopZiele.filter((z) => z.an);
+  const zielMitName = (gewaehlt: unknown) => desktopZiele.find((z) => zielName(z) === gewaehlt);
   const needMail = () => brauchtPostfach(config);
   const checkDate = pruefeDatum;
 
@@ -481,6 +489,31 @@ export async function think(
         return "Geöffnet.";
       },
     }),
+    // Programme und Ordner am Mac: Zur Auswahl steht nur, was in den Einstellungen unter „Programme“ eingeschaltet
+    // ist. Ob es dann wirklich geöffnet wird, entscheidet oeffneZiel noch einmal selbst, mit dem Stand von dann.
+    ...(programme.length
+      ? [
+          betaTool({
+            name: "programm_oeffnen",
+            description: `Öffnet ein Programm oder einen Ordner auf ${name}s Mac. Es geht nur, was hier zur Auswahl steht (${name} legt das in den Einstellungen unter „Programme“ fest). Du öffnest nur: In den Programmen tippen, klicken oder lesen kannst du nicht.`,
+            inputSchema: {
+              type: "object",
+              properties: { name: { type: "string", enum: programme.map(zielName) } },
+              required: ["name"],
+              additionalProperties: false,
+            },
+            run: async ({ name }) => {
+              try {
+                await oeffneZiel(zielMitName(name)?.id);
+              } catch (e) {
+                if (e instanceof DesktopError) throw new Error(e.message);
+                throw e;
+              }
+              return "Geöffnet.";
+            },
+          }),
+        ]
+      : []),
     betaTool({
       name: "mails_lesen",
       description: "Liest die ungelesenen und markierten Mails der letzten 14 Tage aus dem Posteingang: uid, Absender, Betreff, Datum und ob sie wichtig, ungelesen, markiert oder ein Newsletter ist.",

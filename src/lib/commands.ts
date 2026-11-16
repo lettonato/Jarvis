@@ -1,5 +1,6 @@
 import { accessProblem, briefingSentence, confirmSentence, daySentence, eventFromSpeech, nextSentence, type CalendarSnapshot, type NewEvent } from "./calendar";
 import { addDays, findDate, isoDate, spokenDay, spokenDue } from "./dates";
+import { findeZiel, zielImSatz, zielName, type DesktopStatus } from "./desktop";
 import { formatEur, formatPct } from "./format";
 import { intelBriefing, intelSentence, itemsAbout, searchSentence, type IntelSnapshot } from "./intel";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
@@ -36,6 +37,8 @@ export type Effect =
   | { type: "addEvent"; event: NewEvent }
   | { type: "openCalendar"; date?: string }
   | { type: "openObsidian"; what: "tresor" | "eingang" | "notizen" }
+  // Öffnet ein Programm oder einen Ordner aus der Liste in den Einstellungen (src/lib/desktop.ts).
+  | { type: "openDesktop"; id: string }
   // Grok liest die Nachrichten neu, mit Thema gezielt dazu. Kostet etwa 40 Cent.
   | { type: "intel"; topic?: string };
 
@@ -62,6 +65,9 @@ export type CommandContext = {
   intel?: IntelSnapshot | null;
   projekte?: ProjekteSnapshot | null;
   metalle?: MetalleSnapshot | null;
+  // Die Programme und Ordner, die JARVIS am Mac öffnen darf. Fehlt die Liste (Einstellungen noch nicht geladen),
+  // gibt es den Befehl nicht.
+  desktop?: DesktopStatus | null;
   session: Session | null;
 };
 
@@ -641,6 +647,13 @@ export function decide(input: string, ctx: CommandContext, brain = false): Decis
   if (ctx.session) {
     const inSession = sessionCommand(ctx, ctx.session, text);
     if (inSession) return inSession;
+  }
+  // „Öffne Excel“: Ist der ganze Satz die Bitte um ein Ziel aus der Liste, braucht es dafür kein KI-Gehirn.
+  const ziel = ctx.desktop ? findeZiel(text, ctx.desktop.ziele) : null;
+  if (ziel) {
+    if (!ctx.desktop!.moeglich) return { reply: "Programme und Ordner öffnen kann ich nur auf dem Mac." };
+    if (!ziel.an) return { reply: `${zielName(ziel)} ist in den Einstellungen unter „Programme“ ausgeschaltet.` };
+    return { reply: `Ich öffne ${zielImSatz(ziel)}.`, effect: { type: "openDesktop", id: ziel.id } };
   }
   const short = original.split(/\s+/).length <= 4;
   const rule = RULES.find((r) => r.match.test(text));

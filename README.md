@@ -120,6 +120,15 @@ Sperrt macOS den Ordner (Tresore in Dokumente, Schreibtisch oder iCloud Drive), 
 
 **„Öffne Obsidian“**, **„Öffne meine Notizen“** oder **„Öffne den Eingang“** öffnet Obsidian an der richtigen Stelle.
 
+## Programme und Ordner am Mac öffnen
+
+**„Jarvis, öffne Safari“**, **„Starte Excel“**, **„Mach den Finder auf“** oder **„Zeig mir den Ordner Downloads“**: JARVIS öffnet Programme und Ordner aus einer festen Liste (19 übliche Programme und die Ordner Dokumente, Downloads, Schreibtisch und Bilder). Unter **Einstellungen → Programme** schaltest du einzelne Einträge aus, probierst sie mit **Öffnen** aus und trägst bis zu 12 eigene Programme ein (der Name so, wie das Programm im Ordner „Programme“ heißt).
+
+- JARVIS öffnet nur. Er bedient nichts, schließt nichts und öffnet auf diesem Weg keine einzelnen Dateien und keine Internetadressen.
+- „Öffne die Systemeinstellungen“ meint die des Mac, „Öffne die Einstellungen“ die von JARVIS. „Dokumente“ allein bleibt der Raum in JARVIS; den Ordner öffnet „Öffne den Ordner Dokumente“.
+- Über Telegram öffnet JARVIS nichts auf dem Mac. Jedes Öffnen steht im Audit-Log.
+- Bisher nur gegen einen nachgebauten Mac geprüft (Prüfliste Teil AB).
+
 ## Kalender verbinden
 
 JARVIS liest die **Kalender-App** auf deinem Mac, also alle Kalender, die dort eingerichtet sind (iCloud, Google, Exchange). Einen Schlüssel braucht es nicht.

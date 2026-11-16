@@ -2,6 +2,7 @@ import path from "node:path";
 import { connection } from "next/server";
 import { CONFIG_DIR, grokKey, readConfig, twelveKey, xBudget, type JarvisConfig } from "@/lib/server/config";
 import { brainKey } from "@/lib/server/brain";
+import { desktopStatus } from "@/lib/server/desktop";
 import { aendereEinstellung, type EinstellungAktion } from "@/lib/server/einstellungen";
 import { protokolliere } from "@/lib/server/gateway/audit";
 import { guard, readBody } from "@/lib/server/guard";
@@ -40,6 +41,7 @@ async function settings(config: JarvisConfig): Promise<Settings> {
     telegram: telegramStatus(config),
     stimme: await stimmeStatusVon(config),
     mitteilungen: { hinweise: config.mitteilungen?.hinweise === true, moeglich: mitteilungMoeglich() },
+    desktop: desktopStatus(config),
     approval: { limitUsd: approvalLimitOf(config.approval?.limitUsd) },
     configFile: path.join(CONFIG_DIR, "config.json"),
   };

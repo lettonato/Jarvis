@@ -78,6 +78,7 @@ export const HANDPRUEFUNGEN: Handpruefung[] = [
   imBrowser("vorlesen"),
   imBrowser("ausfall"),
   imBrowser("zuhoeren"),
+  imBrowser("desktop"),
   { name: "postgres", datei: "postgres-rauch.ts", braucht: ["postgres"], argumente: ohne },
   { name: "projekte-postgres", datei: "projekte-rauch.ts", braucht: ["chrome", "postgres", "bau"], argumente: mitBildern("projekte-postgres", ["--postgres"]) },
 ];

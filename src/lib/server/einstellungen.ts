@@ -19,6 +19,7 @@ import { createVault, vaultProblem } from "./obsidian";
 import { providerById } from "../mailProviders";
 import { findToken, isClock, tokenProblem } from "../telegram";
 import { isApprovalLimit, type ApprovalLimit } from "../approval";
+import { ausVon, EIGENE_HOECHSTENS, eigeneId, istFestesWort, istVergeben, programmName, zieleVon } from "../desktop";
 
 type MailInput = { provider: string; host?: string; port?: number; user: string; password?: string };
 
@@ -44,7 +45,13 @@ export type EinstellungAktion =
   | { action: "removeTwelvedata" }
   | { action: "macHinweise"; an: boolean }
   | { action: "macMitteilungProbe" }
+  | { action: "desktopSchalter"; id: string; an: boolean }
+  | { action: "desktopNeu"; name: string }
+  | { action: "desktopWeg"; id: string }
   | StimmeAktion;
+
+// Was zu den Programmen in der Datei steht, wenn es überhaupt die erwartete Form hat (sonst von vorn).
+const desktopVon = (c: JarvisConfig) => (c.desktop && typeof c.desktop === "object" && !Array.isArray(c.desktop) ? c.desktop : {});
 
 // Mehr als 20 $ am Tag sind für einen Spielgeld-Test sicher ein Tippfehler.
 const MAX_X_BUDGET_USD = 20;
@@ -227,6 +234,60 @@ export async function aendereEinstellung(body: EinstellungAktion): Promise<Einst
       ok: true,
       config: await readConfig(),
       message: "Die Mitteilung ist unterwegs und sollte oben rechts erscheinen. Kommt nichts: In den Systemeinstellungen unter Mitteilungen den „Skripteditor“ erlauben und nachsehen, ob gerade ein Fokus (Nicht stören) eingeschaltet ist.",
+    };
+  }
+
+  // Programme und Ordner, die JARVIS am Mac öffnen darf (src/lib/desktop.ts). Geprüft wird jeweils gegen den
+  // Stand im Augenblick des Speicherns, damit zwei Änderungen zugleich einander nicht überschreiben.
+  if (body.action === "desktopSchalter") {
+    const { id, an } = body;
+    if (typeof id !== "string" || typeof an !== "boolean") return nein("Ungültige Anfrage.");
+    if (!zieleVon(config.desktop).some((z) => z.id === id)) return nein("Dieses Programm gibt es nicht in der Liste.");
+    return {
+      ok: true,
+      config: await speichere((c) => {
+        const aus = new Set(ausVon(c.desktop));
+        if (an) aus.delete(id);
+        else aus.add(id);
+        c.desktop = { ...desktopVon(c), aus: [...aus] };
+      }),
+    };
+  }
+  if (body.action === "desktopNeu") {
+    const name = programmName(body.name);
+    if (!name) return nein("So kann ein Programm nicht heißen. Trag den Namen so ein, wie er im Ordner „Programme“ steht, zum Beispiel „Notion“: ohne Pfad, höchstens 60 Zeichen.");
+    if (istFestesWort(name)) return nein(`${name} steht schon in der Liste.`);
+    if (istVergeben(name)) return nein(`„${name}“ heißt in JARVIS schon etwas anderes und kann deshalb kein eigenes Programm sein.`);
+    const id = eigeneId(name);
+    let grund = "";
+    // Wird abgelehnt, bleibt die Datei, wie sie ist (null: nichts zu speichern).
+    const neu = await aendereConfig((c) => {
+      const eigene = zieleVon(c.desktop).filter((z) => z.eigen);
+      if (eigene.some((z) => z.id === id)) grund = `${name} steht schon in der Liste.`;
+      else if (eigene.length >= EIGENE_HOECHSTENS) grund = `Es gehen höchstens ${EIGENE_HOECHSTENS} eigene Programme. Entferne erst eines.`;
+      if (grund) return null;
+      // Ein früher ausgeschaltetes Programm gleichen Namens käme sonst still ausgeschaltet zurück.
+      return { ...c, desktop: { ...desktopVon(c), aus: ausVon(c.desktop).filter((x) => x !== id), eigene: [...eigene.map((z) => z.name), name] } };
+    });
+    return grund ? nein(grund) : { ok: true, config: neu, message: `${name} steht jetzt in der Liste. Mit „Öffnen“ siehst du, ob der Mac es unter diesem Namen findet.` };
+  }
+  if (body.action === "desktopWeg") {
+    const id = body.id;
+    if (typeof id !== "string") return nein("Ungültige Anfrage.");
+    const ziel = zieleVon(config.desktop).find((z) => z.id === id);
+    if (!ziel) return nein("Dieses Programm gibt es nicht in der Liste.");
+    if (!ziel.eigen) return nein("Feste Programme lassen sich nur ausschalten, nicht entfernen.");
+    return {
+      ok: true,
+      config: await speichere((c) => {
+        c.desktop = {
+          ...desktopVon(c),
+          aus: ausVon(c.desktop).filter((x) => x !== id),
+          eigene: zieleVon(c.desktop)
+            .filter((z) => z.eigen && z.id !== id)
+            .map((z) => z.name),
+        };
+      }),
     };
   }
 

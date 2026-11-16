@@ -26,6 +26,7 @@ Umgebungsvariablen.
 | `microsoft.tenantId`, `clientId`, `konto`, `extern` | Microsoft 365: Verzeichnis und Anwendung, verbundenes Konto, Schalter „Outlook-Termine auch im Gespräch und über Telegram“ (siehe `docs/jarvis-2.0/08-microsoft-365.md`) | nein |
 | `microsoft.refreshToken` | Anmeldung bei Microsoft 365 (Schlüssel zum Angemeldetbleiben); entsteht bei der Anmeldung mit Code, nie von Hand eintragen | **ja** |
 | `intel.topics`, `budgetUsd`, `auto` | Themen und Budget für Intel | nein |
+| `desktop.aus`, `desktop.eigene` | Programme und Ordner am Mac (seit Schritt H2.1): Kennungen der ausgeschalteten Einträge der festen Liste; Namen der eigenen Programme (höchstens 12). Am besten über Einstellungen → Programme ändern: Von Hand eingetragene Namen, die JARVIS nicht zulässt (Pfade, Sonderzeichen, Wörter wie „Mail“), werden übergangen | nein |
 | `approval.limitUsd` | Ab welchem Betrag der Desk vor Käufen fragt (`null` = nie) | nein |
 | `geheimnisse` | `datei` (Standard) oder `schluesselbund`; nur über Einstellungen → Sicherheit ändern | nein |
 
@@ -88,7 +89,7 @@ Alle optional. Ohne sie gilt der Wert in der Spalte „Standard“.
 | `JARVIS_PROJEKTE_DB` | nicht gesetzt | Adresse einer PostgreSQL-Datenbank (`postgres://benutzer:kennwort@rechner:5432/datenbank`). Gesetzt: Das Projektgedächtnis liegt dort statt in `projekte.json`. Enthält ein Kennwort, gehört deshalb nie in eine Datei im Repository. Außerhalb dieses Rechners immer verschlüsselt. Einzelheiten: [09-azure-vorbereitung.md](jarvis-2.0/09-azure-vorbereitung.md) |
 | `JARVIS_CHROME` | installiertes Google Chrome | Chrome-Programm für Browser-Agent und PDF |
 | `JARVIS_OSASCRIPT` | `/usr/bin/osascript` | macOS-Automation (Tests: nachgebauter Mac) |
-| `JARVIS_OPEN` | `/usr/bin/open` | Programme/Dateien öffnen (Tests: Ersatz) |
+| `JARVIS_OPEN` | `/usr/bin/open` | Programme, Ordner und Dateien öffnen (Tests: `test/mocks/open-mock.mjs`). Ist sie gesetzt, bietet JARVIS das Öffnen von Programmen auch auf einem Rechner an, der kein Mac ist; **nur für Tests** |
 | `JARVIS_SECURITY_BIN` | `/usr/bin/security` | macOS-Schlüsselbund (Tests: `test/mocks/security-mock.mjs`) |
 | `JARVIS_WEATHER_PLACE`, `JARVIS_WEATHER_LAT`, `JARVIS_WEATHER_LON` | Deggendorf, 48.84 / 12.96 | Wetter und Ort für die Websuche |
 
@@ -103,6 +104,7 @@ Alle optional. Ohne sie gilt der Wert in der Spalte „Standard“.
 | `JARVIS_BROWSER_HEADLESS` | – | `1` = Chrome nie sichtbar (Tests) |
 | `JARVIS_BROWSER_LOCAL` | – | Hosts, die der Browser trotz Heimnetz öffnen darf (**nur Tests**) |
 | `JARVIS_BROWSER_TEMPO` | 1 | Bremst den Browser-Agenten (Videos) |
+| `JARVIS_DESKTOP_FRIST_MS` | 10000 | Wie lange JARVIS beim Öffnen eines Programms auf den Mac wartet (Tests: kürzer) |
 
 `NEXT_RUNTIME`, `NEXT_PHASE` und `APPDATA` setzt Next.js bzw. Windows selbst.
 
