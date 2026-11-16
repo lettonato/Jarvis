@@ -2399,8 +2399,8 @@ Entscheidung 2 bleibt ohne Hinweis. (3) Nicht geprüft: der Mac, Safari, andere 
 | Prüfung | Ergebnis |
 |---|---|
 | `npm run pruefen` | 0 Befunde, 0 Fehler; **1126 Tests: 1126 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (keine neuen) |
-| Prüfung Ausfall mit dem neuen Schritt 10 | Dreimal gelaufen, dreimal bestanden (10 Schritte, rund 230 Sekunden) |
-| Sammellauf | **Nicht wiederholt:** Am Quelltext von JARVIS ist seit dem Sammellauf zu J15 (28 von 28) nichts geändert, nur an der Prüfung Ausfall |
+| Prüfung Ausfall mit dem neuen Schritt 10 | Dreimal gelaufen, dreimal bestanden (10 Schritte; im Sammellauf 220 Sekunden, vorher 171) |
+| Sammellauf | Der dritte Teil wiederholt (Bedienung, Vorlesen, Ausfall und die beiden zur Datenbank): **5 von 5 bestanden**. Die Teile 1 und 2 **nicht wiederholt:** Am Quelltext von JARVIS ist seit dem Sammellauf zu J15 (28 von 28) nichts geändert, nur an der Prüfung Ausfall |
 | Tests zuerst | Entfällt: Das Verhalten gab es schon, die Prüfung weist es nach. Dass sie nicht leer besteht, zeigt die Gegenprobe |
 | Gegenprobe (ein absichtlich eingebauter Fehler, eigener Bau) | „Eine abgelaufene Frist zählt nicht als keine Antwort“: **entdeckt an der gemeinten Stelle** (Schritt 10: „70 Sekunden, nachdem JARVIS hängt, steht oben immer noch kein Hinweis“). Danach Quelltext wie vorher, sauberer Bau, 10 Schritte bestanden. **Nicht durch eine Gegenprobe gedeckt:** „genau einmal“ (dafür müsste die Prüfung den Server verändern) |
 | Code-Review, Sicherheitsprüfung | Entfallen: keine Änderung am Quelltext von JARVIS. `seite.route` (Anfragen festhalten) steht nur in der Prüfung |
