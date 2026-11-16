@@ -14,8 +14,9 @@ export class ApiError extends Error {
   }
 }
 
-export async function getJson<T>(url: string): Promise<T> {
-  return parse<T>(await fetch(url, { cache: "no-store" }));
+// signal: beendet die Anfrage von außen (die geteilten Abfragen geben nach ihrer Frist auf, siehe geteilt.ts).
+export async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+  return parse<T>(await fetch(url, { cache: "no-store", signal }));
 }
 
 export async function postJson<T>(url: string, body: unknown): Promise<T> {

@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1069 von 1069 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1089 von 1089 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -2172,6 +2172,72 @@ aufblitzen (nicht gemessen). (8) Schmales Fenster und Mac sind für diesen Schri
 (die Prüfungen fragen nur Nachbauten).
 
 
+### Schritt J13: Die Zeile über der Leiste zeigt wieder die Antwort; Abfragen ohne Antwort geben auf (16. November 2026)
+
+**Warum:** Zwei vorgemerkte Grenzen. (J11, Grenze 2) Darf JARVIS das Mikrofon nicht benutzen, stand in der Zeile
+über der Leiste für immer die Meldung dazu; wer tippte, sah die Antwort nur im aufgeklappten Gespräch. (J12,
+Grenze 2) Eine Abfrage, die nie beantwortet wird, blieb für immer bei „lädt noch“.
+
+**Bestandsaufnahme zuerst:** (1) In der Zeile gewann eine Meldung immer gegen die Antwort. Bei gesperrtem Mikrofon
+fragt JARVIS den Browser bei jedem Klick und Tastendruck neu und meldet dieselben Worte noch einmal; ohne Netz für
+die Spracherkennung verschwindet die Meldung bei jedem Versuch kurz und kommt wieder. (2) Im Browser der Sandbox
+steht auf einer Seite ohne Klick erst „Klick einmal irgendwo auf die Seite, dann höre ich zu.“, nach dem ersten
+Klick „Ich darf das Mikrofon nicht benutzen. …“. (3) Bei hängenden Abfragen kam im Takt jeweils eine weitere dazu,
+und keine wurde je beendet; ein Browser lässt zu einem Server nur wenige Abfragen zugleich zu.
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J13.1 Eine Meldung zum Mikrofon oder zum Ton steht in der Zeile nur, bis das Gespräch weitergeht (eine neue Frage, eine fertig gewordene Antwort). Danach steht dort wieder die Antwort, und die kleine Überschrift der Zeile sagt „· Hinweis im Gespräch“; im aufgeklappten Gespräch steht die Meldung wie bisher | Testbereit | `src/lib/antwortzeile.ts` (neu), `AppFrame.tsx`; `test/regeln/antwortzeile-meldung.test.ts` (12 Tests); Prüfung Vorlesen, Schritt 2 |
+| J13.2 Dieselbe Meldung noch einmal ist nichts Neues: beim Weitertippen, nach dem Auf- und Zuklappen des Gesprächs, nach kurzem Verschwinden | Testbereit; das kurze Verschwinden **nur als Regel** | Regeltests; Prüfung Vorlesen, Schritt 2 (Weitertippen, Auf- und Zuklappen) |
+| J13.3 Nach dem Neuladen steht die Meldung wieder vorn: Das Gespräch von vorhin zählt nicht als „weitergegangen“ | Testbereit | Prüfung Vorlesen, Schritt 2; Regeltest |
+| J13.4 Fehler (rot) und Hinweis (ocker) haben je ihr eigenes Merkzeichen: Verschwindet ein Fehler, gilt ein alter Hinweis nicht als neu | Testbereit, **nur als Regel** | Regeltest |
+| J13.5 Jede gemeinsame Abfrage hat eine Frist: mindestens 30 Sekunden, höchstens eine Minute, je nach Takt. Danach steht „… lässt sich gerade nicht laden.“ da, und die Abfrage wird wirklich beendet. Ein schon gelesener Stand bleibt stehen | Testbereit, **nur im Browser der Sandbox** | `fristFuer` in `src/lib/geteilt.ts`, `getJson(url, signal)` in `api.ts`; `test/regeln/geteilt.test.ts` (neu 8 Tests); Prüfung Ausfall, Schritt 7 |
+| J13.6 Geht die letzte Stelle, die eine Quelle braucht (Wechsel des Raums), wird beendet, was noch unterwegs ist. Läuft schon ein jüngerer Versuch, löst eine abgelaufene Frist keinen zusätzlichen aus | Testbereit, **nur als Regel** | `geteilt.ts`; Regeltests |
+
+**Eigene Entscheidungen:** (1) Der Verweis heißt „Hinweis im Gespräch“ und steht in der kleinen Überschrift der
+Zeile neben dem Zustand („Bereit · Hinweis im Gespräch“). Die Meldungen selbst sind unverändert. (2) „Weitergegangen“
+heißt: ein neuer Zug im Gespräch, oder eine Antwort ist fertig geworden. Das zweite, weil der erste Klick auf die
+Seite eine Frage abschicken und zugleich das Mikrofon wecken kann; dessen Meldung kommt dann, während JARVIS schon
+antwortet. (3) Kommt dieselbe Meldung wieder, nachdem sie weg war, ist sie nur dann neu, wenn das Gespräch
+inzwischen weitergegangen ist. Eine Uhr braucht es dafür nicht. (4) Die Merkzeichen gehören der Leiste, nicht der
+Zeile: Die Zeile gibt es nicht, solange das Gespräch aufgeklappt ist. (5) Die Frist ist mindestens 30 Sekunden,
+weil JARVIS seinen eigenen Quellen weniger lässt (Kalender am Mac 20 Sekunden, Microsoft 15, Kurse und Wetter 8).
+(6) Aus dem Code-Review bewusst nicht übernommen: Die Regel sitzt in der Leiste und nicht in der Stimme
+(`useVoice`), weil nur die Zeile zwischen Meldung und Antwort wählen muss und ein Umbau an der Stimme mehr
+riskiert, als er bringt.
+
+**Grenzen:** (1) Kommt eine Meldung erst nach der fertigen Antwort (du verneinst die Frage des Browsers nach dem
+Mikrofon erst später; oder dein erster Klick ist ein Vorschlag wie „Meine Termine“, und die Meldung kommt nach
+der schnellen Antwort), steht sie bis zur nächsten Frage vor der Antwort. (2) Der Verweis sagt nicht, worum es
+geht. (3) Nur als Regel geprüft, nicht im Browser: das kurze Verschwinden ohne Netz, Fehler und Hinweis zugleich,
+das Beenden beim Wechsel des Raums. Der Browser der Sandbox kennt nur das gesperrte Mikrofon. (4) Ein Postfach, das
+für die erste Antwort länger als eine Minute braucht, gälte als „lässt sich gerade nicht laden“ und würde neu
+gefragt (JARVIS liest im Hintergrund weiter und merkt sich das Ergebnis); nicht nachgestellt. (5) „Neu laden“
+endet bei einer hängenden Abfrage jetzt nach der Frist, sagt aber wie bei jedem Fehlschlag nichts dazu; der alte
+Stand bleibt ohne Hinweis stehen (J12, Grenze 3, weiter offen). (6) Keine Frist haben die Abfragen außerhalb der
+gemeinsamen: eine einzelne Projektakte, der Raum Browser, die Spur der Spinne im Trading-Raum. (7) Die Regel
+„das Gespräch von vorhin zählt nicht“ wirkt im Browser heute nicht sichtbar, weil das alte Gespräch immer vor der
+ersten Meldung zurückgeholt wird; sie ist als Regeltest gedeckt und bleibt als Vorsicht. (8) Nicht geprüft: der
+Mac, Safari, VoiceOver, schmales Fenster. Ob Safari die Meldung zum Mikrofon in derselben Reihenfolge bringt, ist
+offen (Prüfliste Teil Z).
+
+### Testergebnisse Schritt J13 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1089 Tests: 1089 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 20). Am Mac wären es rechnerisch 1087 (nicht dort gelaufen) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 28 Handprüfungen bestanden**, in drei Teilen gestartet (13, 10 und 5; zusammen rund 12 Minuten). Vorlesen 56 Sekunden, Ausfall 78 Sekunden (der neue Schritt wartet die Frist von 30 Sekunden wirklich ab) |
+| Tests zuerst | Zuerst und rot gesehen: die Regeltests für die Zeile (das Modul fehlte) und für die Frist (sechs Tests rot); die Prüfung Ausfall gegen einen Bau des alten Stands (Schritt 7: „nach 45 Sekunden … Die Agenten laden noch.“); aus dem Review je einzeln die Regeltests „letzte Stelle geht“ und „kein zusätzlicher Versuch“. **Nicht zuerst rot gesehen:** die neuen Stellen der Prüfung Vorlesen gegen den alten Stand (der erste Versuch scheiterte an einer falschen Annahme der Prüfung, siehe nächste Zeile), und die Regeln zur Zeile aus dem Review (kurzes Verschwinden, Fehler und Hinweis getrennt: Regel und Test sind zusammen entstanden); für beides stehen die Gegenproben |
+| Fehler der Prüfung selbst | (1) Angenommen war, im Browser der Sandbox stehe von Anfang an „Ich darf das Mikrofon nicht benutzen“; auf einer Seite ohne Klick steht dort erst die Bitte um einen Klick. Die Prüfung klickt jetzt zuerst und wartet auf die Meldung. (2) Die gestellte Uhr der Regeltests springt bei einem großen Schritt ans Ende; eine unterwegs gestartete Abfrage bekam ihre Frist von dort. Die Tests gehen jetzt in Schritten von höchstens einem Takt. (3) Beim Anlegen hatte ich die vorhandene Datei `antwortzeile.test.ts` (vier Tests aus J7) überschrieben; vor dem ersten Lauf bemerkt, aus Git zurückgeholt, die neuen Tests stehen in einer eigenen Datei |
+| Gegenproben (19 absichtlich eingebaute Fehler: 7 im Browser mit je eigenem Bau, 12 an den Regeltests) | **18 von 19 entdeckt, jede an der gemeinten Stelle** (das Skript vergleicht die Zahl der Schritte davor und den Wortlaut der Fehlermeldung). **Einer im Browser nicht entdeckt:** „das Gespräch von vorhin zählt als weitergegangen“ ändert im Browser nichts (Grenze 7); derselbe Fehler am Regeltest wird entdeckt |
+| Code-Review (Skill `code-review`, Stufe mittel, nur diese Änderung) | zehn Hinweise, alle nachgeprüft. **Sieben eingearbeitet:** (1) nach dem Auf- und Zuklappen des Gesprächs galt die alte Meldung wieder als neu und verdeckte die Antwort; (2) eine kurz verschwundene Meldung (ohne Netz bei jedem Versuch) galt jedes Mal als neu; (5) verschwand ein Fehler, sprang ein alter Hinweis nach vorn; (6) bei hängenden Abfragen im kurzen Takt löste jede abgelaufene Frist einen zusätzlichen Versuch aus; (7) beim Wechsel des Raums blieben hängende Abfragen und ihre Uhren zurück; (9) eine leere Meldung hätte eine leere Zeile gezeigt; (10) zwei überflüssige Namen. **Drei bewusst nicht:** (3) die Frist beendet auch langsame Abfragen (Eigene Entscheidungen 5, Grenze 4); (4) „Neu laden“ meldet den Abbruch nicht (Grenze 5, war bei jedem Fehlschlag schon so); (8) die Regel an der Quelle statt in der Leiste (Eigene Entscheidungen 6) |
+| Sicherheitsprüfung (von Hand; der Skill dafür braucht den Stand bei GitHub) | Kein neuer Weg nach außen, keine neue Berechtigung, kein Schlüssel im Code. Neu ist nur, dass der Browser eigene Abfragen an JARVIS nach einer Frist beendet; dadurch bleiben weniger Verbindungen offen als vorher. Am Server ändert sich nichts. `seite.route` (Abfragen hängen lassen) steht nur in den Prüfungen |
+| Aussehen | Die Zeile ist dieselbe; neu ist nur der Zusatz in der kleinen Überschrift. Ein Bild der Zeile mit Antwort und Verweis angesehen (1280 Pixel breit). **Nicht eigens vermessen**, schmales Fenster nicht angesehen |
+| Nicht geprüft | **der Mac**, **Safari**, **VoiceOver**, echte Dienste, schmales Fenster; die Fälle aus Grenze 3 und 4 im Browser |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine
+(die Prüfungen fragen nur Nachbauten).
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -2187,7 +2253,7 @@ aufblitzen (nicht gemessen). (8) Schmales Fenster und Mac sind für diesen Schri
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Y; Teil N erst, wenn eure IT so weit ist; Teile X und Y neu seit J11 und J12). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Z; Teil N erst, wenn eure IT so weit ist; Teile X, Y und Z neu seit J11, J12 und J13). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -2325,10 +2391,13 @@ Danach wie geplant:
    Räume Aufgaben und Post zeigten bei einem Ausfall Nullen, der Kalender bot „verbinden“ an, und der
    Trading-Raum zeigte ein Konto mit 10.000 $ und „Die Spinne schläft“, gleich ob der Handel lief. Neue
    Handprüfung „Ausfall“, jetzt 28 Prüfungen.
-   **Als Nächstes:** die Zeile über der Leiste, wenn das Mikrofon nicht erlaubt ist (sie zeigt dann den Hinweis
-   statt der Antwort; J11, Grenze 2). Dann: ein Hinweis, wenn ein Raum einen alten Stand zeigt, weil JARVIS
-   inzwischen nicht mehr antwortet (J12, Grenze 3), und eine Frist für Abfragen, die nie beantwortet werden
-   (J12, Grenze 2). Als Frage an Benedikt vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter
-   Beobachtung bleibt der einmalige, nicht wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die
-   weiteren Schritte für Azure (Anmeldung je Person, übrige Daten in die Datenbank) erst, wenn Benedikt
-   entschieden hat, ob JARVIS zentral laufen soll (Frage 3).
+27. **J13: gebaut, Testbereit, nur in der Sandbox geprüft** (Schritt J13 in Bereich J): Die Zeile über der Leiste
+   zeigt nach einer Antwort wieder die Antwort, auch wenn das Mikrofon gesperrt ist; die Meldung dazu ist dann nur
+   noch als „Hinweis im Gespräch“ vermerkt. Eine Abfrage, die nie beantwortet wird, gibt JARVIS nach 30 bis 60
+   Sekunden auf und sagt, was sich nicht laden lässt; vorher blieb sie für immer offen.
+   **Als Nächstes:** ein Hinweis, wenn ein Raum einen alten Stand zeigt, weil JARVIS inzwischen nicht mehr
+   antwortet, und eine Meldung, wenn „Neu laden“ scheitert (J12, Grenze 3; J13, Grenze 5). Dann: eine Frist auch
+   für die einzelnen Abfragen (Akte, Raum Browser, Spur der Spinne; J13, Grenze 6). Als Frage an Benedikt
+   vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleibt der einmalige, nicht
+   wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die weiteren Schritte für Azure (Anmeldung je Person,
+   übrige Daten in die Datenbank) erst, wenn Benedikt entschieden hat, ob JARVIS zentral laufen soll (Frage 3).

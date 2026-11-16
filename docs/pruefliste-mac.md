@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 120 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V und W und die Punkte M11 bis M13 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 120 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y und Z und die Punkte M11 bis M13 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -357,6 +357,22 @@ nachgestellt. Für dich bleiben zwei kurze Blicke.
 |---|---|---|
 | Y1 | JARVIS starten und nacheinander die Räume Aufgaben, Post, Kalender, Trading und Agenten öffnen | Alles sieht aus wie vorher. Für einen Augenblick kann „… lädt noch.“ dastehen; danach steht der Inhalt da |
 | Y2 | Nur falls es dir begegnet: In einem Raum steht „… lässt sich gerade nicht laden.“ | Nach ein paar Sekunden bis einer Minute sollte der Inhalt von selbst kommen. Bleibt der Satz stehen, schreib mir bitte, in welchem Raum und was du vorher getan hast |
+| Y3 | Nur falls es dir begegnet: In einem Raum steht länger als eine Minute „… lädt noch.“ | Das sollte es seit Schritt J13 nicht mehr geben: Nach höchstens einer Minute ohne Antwort steht dort „… lässt sich gerade nicht laden.“. Bleibt „lädt noch“ länger stehen, schreib mir bitte, in welchem Raum |
+
+## Z. Die Zeile über der Leiste, wenn das Mikrofon gesperrt ist (Schritt J13, neu)
+
+Darf JARVIS das Mikrofon nicht benutzen, stand in der Zeile über der Leiste bisher für immer die Meldung dazu, und
+wer tippte, sah die Antwort nur im aufgeklappten Gespräch. Jetzt steht die Meldung dort nur, bis das Gespräch
+weitergeht. Zum Ausprobieren sperrst du das Mikrofon für einen Augenblick selbst: in Chrome links in der
+Adresszeile auf das Symbol klicken und das Mikrofon ausschalten (in Safari: Menü Safari, Einstellungen für diese
+Website, Mikrofon „Ablehnen“). Danach bitte wieder erlauben (Z4).
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| Z1 | Mikrofon für JARVIS sperren, die Seite neu laden, einmal irgendwo auf die Seite klicken | In der Zeile über der Leiste steht rot „Ich darf das Mikrofon nicht benutzen. …“ |
+| Z2 | „Meine Termine“ tippen, Eingabetaste. Danach ein paar Buchstaben ins Feld tippen, ohne abzuschicken | In der Zeile steht die Antwort, nicht mehr die Meldung. Klein darüber steht „· Hinweis im Gespräch“. Beim Weitertippen bleibt die Antwort stehen. Kommt die rote Meldung zurück, schreib es mir bitte |
+| Z3 | Auf die Zeile klicken, dann das Gespräch wieder zuklappen | Im aufgeklappten Gespräch steht unten die rote Meldung zum Mikrofon. Nach dem Zuklappen steht in der Zeile wieder die Antwort |
+| Z4 | Das Mikrofon wieder erlauben, die Seite neu laden | Alles wie vorher: keine rote Meldung, kein „Hinweis im Gespräch“, JARVIS hört wieder zu |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

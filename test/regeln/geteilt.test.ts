@@ -4,7 +4,8 @@
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, mock, test } from "node:test";
-import { abonniere, bild, gescheitert, ladeNeu, setze, stand } from "../../src/lib/geteilt";
+import { getJson } from "../../src/lib/api";
+import { abonniere, bild, fristFuer, gescheitert, ladeNeu, setze, stand } from "../../src/lib/geteilt";
 
 let abrufe: string[] = [];
 let antwort: unknown = { n: 1 };
@@ -249,5 +250,139 @@ describe("Geteilte Abfrage", () => {
     assert.equal(abrufe.at(-1), "/f?frisch=1");
     assert.deepEqual(stand("/f"), { n: 5 });
     ab();
+  });
+});
+
+// Eine Abfrage, die nie beantwortet wird (JARVIS hängt, das Netz verschluckt sie), hielt bisher alles auf: Der Raum
+// sagte für immer „lädt noch“, und jede weitere Abfrage im Takt blieb zusätzlich offen. Jetzt hat jede eine Frist.
+describe("Frist für Abfragen", () => {
+  // Ein Lader, der erst antwortet, wenn die Prüfung es sagt, und sich merkt, ob er abgebrochen wurde.
+  const offen: { signal: AbortSignal | undefined; antworte: (wert: unknown) => void }[] = [];
+  const haengt = (_url: string, signal?: AbortSignal) => new Promise<unknown>((antworte) => offen.push({ signal, antworte }));
+  beforeEach(() => (offen.length = 0));
+
+  test("die Frist richtet sich nach dem Takt: mindestens 30 Sekunden, höchstens eine Minute", () => {
+    assert.deepEqual([3_000, 10_000, 30_000, 45_000, 60_000, 300_000].map(fristFuer), [30_000, 30_000, 30_000, 45_000, 60_000, 60_000]);
+  });
+
+  test("eine Abfrage, die nie beantwortet wird, gilt nach der Frist als gescheitert und wird abgebrochen", async () => {
+    let meldungen = 0;
+    const ab = abonniere("/haengt", 10_000, () => meldungen++, haengt);
+    await vor(0);
+    assert.equal(offen.length, 1);
+    // In Schritten von höchstens einem Takt: Die gestellte Uhr springt sonst ans Ende, und eine unterwegs gestartete
+    // Abfrage bekäme ihre Frist von dort aus.
+    await vor(10_000);
+    await vor(10_000);
+    await vor(9_999);
+    assert.equal(gescheitert("/haengt"), false, "bis zur Frist lädt sie noch");
+    assert.equal(offen[0].signal?.aborted, false);
+    await vor(1);
+    assert.equal(gescheitert("/haengt"), true, "nach 30 Sekunden: lässt sich gerade nicht laden");
+    assert.equal(meldungen, 1, "die Stellen erfahren davon");
+    assert.equal(offen[0].signal?.aborted, true, "die hängende Abfrage wird beendet (sonst blieben immer mehr offen)");
+    // Die Abfrage, die zehn Sekunden später im Takt gestartet ist, hat ihre eigene Frist.
+    assert.equal(offen[1].signal?.aborted, false);
+    await vor(10_000);
+    assert.equal(offen[1].signal?.aborted, true);
+    // Antwortet sie irgendwann, ist der Stand da.
+    offen.at(-1)?.antworte({ n: 7 });
+    await vor(0);
+    assert.deepEqual(stand("/haengt"), { n: 7 });
+    assert.equal(gescheitert("/haengt"), false);
+    ab();
+  });
+
+  test("antwortet sie innerhalb der Frist, wird nichts abgebrochen, auch später nicht", async () => {
+    const ab = abonniere("/langsam", 300_000, () => {}, haengt);
+    await vor(0);
+    await vor(50_000);
+    offen[0].antworte({ n: 1 });
+    await vor(0);
+    assert.deepEqual(stand("/langsam"), { n: 1 });
+    await vor(120_000);
+    assert.equal(offen[0].signal?.aborted, false, "die Uhr dieser Abfrage läuft nicht weiter");
+    assert.equal(gescheitert("/langsam"), false);
+    ab();
+  });
+
+  test("hängt eine spätere Abfrage, bleibt der vorhandene Stand stehen", async () => {
+    const ab = abonniere("/spaeter", 60_000, () => {}, haengt);
+    await vor(0);
+    offen[0].antworte({ n: 1 });
+    await vor(60_000);
+    assert.equal(offen.length, 2);
+    await vor(60_000);
+    assert.equal(offen[1].signal?.aborted, true);
+    assert.deepEqual(stand("/spaeter"), { n: 1 });
+    assert.equal(gescheitert("/spaeter"), false);
+    ab();
+  });
+
+  test("„sofort neu laden“ wartet nicht für immer: Nach der Frist ist es zu Ende", async () => {
+    const ab = abonniere("/neu", 300_000, () => {}, haengt);
+    await vor(0);
+    offen[0].antworte({ n: 1 });
+    await vor(0);
+    let fertig = false;
+    void ladeNeu("/neu", "?frisch=1").then(() => (fertig = true));
+    await vor(59_999);
+    assert.equal(fertig, false);
+    await vor(1);
+    assert.equal(fertig, true);
+    assert.deepEqual(stand("/neu"), { n: 1 }, "der alte Stand bleibt");
+    ab();
+  });
+
+  test("hängt alles, bleibt es beim Takt: Eine abgelaufene Frist löst keinen zusätzlichen Versuch aus, solange ein jüngerer läuft", async () => {
+    const ab = abonniere("/takt", 10_000, () => {}, haengt);
+    await vor(0);
+    for (let i = 0; i < 6; i++) await vor(10_000);
+    // Nach einer Minute: Versuche bei 0, 10, 20, 30, 40, 50 und 60 Sekunden, keiner dazwischen.
+    assert.equal(offen.length, 7);
+    assert.equal(offen.filter((o) => !o.signal?.aborted).length, 3, "zugleich offen sind nie mehr, als in eine Frist passen");
+    ab();
+    // Mit langem Takt ist die abgelaufene Abfrage die jüngste: Dann kommt der schnelle Versuch wie bei jedem Fehlschlag.
+    offen.length = 0;
+    const ab2 = abonniere("/takt", 300_000, () => {}, haengt);
+    await vor(0);
+    await vor(60_000);
+    assert.equal(offen.length, 1);
+    await vor(5_000);
+    assert.equal(offen.length, 2, "fünf Sekunden nach der Frist");
+    ab2();
+  });
+
+  test("geht die letzte Stelle, wird beendet, was noch unterwegs ist; die Uhr dazu läuft nicht weiter", async () => {
+    const ab1 = abonniere("/weg", 10_000, () => {}, haengt);
+    const ab2 = abonniere("/weg", 10_000, () => {}, haengt);
+    await vor(0);
+    ab1();
+    assert.equal(offen[0].signal?.aborted, false, "solange noch eine Stelle zuhört, läuft die Abfrage weiter");
+    ab2();
+    assert.equal(offen[0].signal?.aborted, true, "sonst blieben beim Wechsel der Räume hängende Abfragen zurück");
+    // Wer gleich wiederkommt, beginnt frisch und erbt weder den Ausfall noch die alte Uhr.
+    const neu = abonniere("/weg", 10_000, () => {}, haengt);
+    await vor(0);
+    assert.equal(offen.length, 2);
+    await vor(10_000);
+    await vor(10_000);
+    await vor(9_999);
+    assert.equal(gescheitert("/weg"), false, "die Frist der beendeten Abfrage zählt nicht für die neue");
+    assert.equal(offen[1].signal?.aborted, false);
+    await vor(1);
+    assert.equal(gescheitert("/weg"), true);
+    neu();
+  });
+
+  test("getJson reicht den Abbruch an den Browser weiter", async () => {
+    const abbruch = new AbortController();
+    const fetchMock = mock.method(globalThis, "fetch", async () => Response.json({ n: 1 }));
+    try {
+      assert.deepEqual(await getJson("/x", abbruch.signal), { n: 1 });
+      assert.equal((fetchMock.mock.calls[0].arguments[1] as RequestInit).signal, abbruch.signal);
+    } finally {
+      fetchMock.mock.restore();
+    }
   });
 });

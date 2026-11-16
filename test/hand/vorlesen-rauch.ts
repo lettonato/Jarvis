@@ -169,6 +169,11 @@ async function main() {
     assert.equal(await zeile.getAttribute("title"), null, "kein Titel, der den Namen wiederholt");
     const name = (await zeile.ariaSnapshot()).replace(/\s+/g, " ");
     assert.ok(name.startsWith('- button "') && name.includes(hinweis.slice(-30)) && name.includes('Ganzes Gespräch zeigen"'), `der Name der Zeile enthält den Hinweis (${hinweis}) und „Ganzes Gespräch zeigen“ (${name})`);
+    // Der Browser der Prüfung hat kein Mikrofon. Erst bittet JARVIS um einen Klick (ohne den fragt mancher Browser
+    // gar nicht), nach dem Klick meldet er, dass er das Mikrofon nicht benutzen darf.
+    const zeileJetzt = async () => (await zeile.innerText()).replace(/\s+/g, " ").trim();
+    await seite.locator("main:visible h1").click();
+    await zeile.getByText("Ich darf das Mikrofon nicht benutzen.", { exact: false }).waitFor({ timeout: 15_000 }).catch(async () => assert.fail(`nach dem ersten Klick steht die Meldung zum Mikrofon nicht in der Zeile (${await zeileJetzt()})`));
     await feld.fill("Meine Termine");
     await feld.press("Enter");
     // Der Browser der Prüfung hat keine Stimme: JARVIS will drei Sekunden lang sprechen, gibt auf, und die Antwort
@@ -179,6 +184,28 @@ async function main() {
     const angesagt = (await ansage.innerText()).trim();
     assert.match(angesagt, /15 Uhr|15:00/, `die Antwort wird ganz angesagt (${angesagt})`);
     await bild("0-antwort");
+    // Die Zeile selbst zeigt jetzt die Antwort. Die Meldung zum Mikrofon steht nicht mehr davor: Vorher blieb sie
+    // für immer stehen, und wer tippte, sah die Antwort nur im aufgeklappten Gespräch. Die Überschrift der Zeile
+    // verweist auf die Meldung.
+    const mitAntwort = await zeileJetzt();
+    assert.ok(mitAntwort.includes("Besprechung Hallenneubau"), `nach der Antwort zeigt die Zeile die Antwort (${mitAntwort})`);
+    assert.ok(!mitAntwort.includes("Mikrofon nicht benutzen"), `die Meldung zum Mikrofon verdeckt die Antwort nicht mehr (${mitAntwort})`);
+    assert.ok(mitAntwort.includes("Hinweis im Gespräch"), `die Überschrift der Zeile verweist auf die Meldung (${mitAntwort})`);
+    // Bei gesperrtem Mikrofon fragt der Browser bei jedem Tastendruck neu und meldet dasselbe noch einmal. Das
+    // holt die Meldung nicht wieder nach vorn.
+    await feld.pressSequentially("Und morgen", { delay: 40 });
+    await seite.waitForTimeout(800);
+    const beimTippen = await zeileJetzt();
+    assert.ok(beimTippen.includes("Besprechung Hallenneubau") && !beimTippen.includes("Mikrofon nicht benutzen"), `beim Weitertippen bleibt die Antwort stehen (${beimTippen})`);
+    // Der Verweis stimmt: Im aufgeklappten Gespräch steht die Meldung. Und nach dem Zuklappen steht in der Zeile
+    // wieder die Antwort (die Zeile entsteht dabei neu; die Meldung gilt deshalb nicht als neu).
+    await zeile.click();
+    await seite.getByRole("region", { name: "Gespräch" }).getByText("Ich darf das Mikrofon nicht benutzen.", { exact: false }).waitFor({ timeout: 5_000 });
+    await seite.keyboard.press("Escape");
+    await zeile.waitFor({ timeout: 5_000 });
+    await seite.waitForTimeout(500);
+    const nachZuklappen = await zeileJetzt();
+    assert.ok(nachZuklappen.includes("Besprechung Hallenneubau") && !nachZuklappen.includes("Mikrofon nicht benutzen") && nachZuklappen.includes("Hinweis im Gespräch"), `nach dem Auf- und Zuklappen steht wieder die Antwort in der Zeile (${nachZuklappen})`);
     // Dieselbe Antwort noch einmal (etwa zweimal „Notiert.“) wird wieder angesagt: Es kommt ein neuer Absatz,
     // nicht derselbe Text an derselben Stelle (den überginge ein Vorleseprogramm).
     await seite.evaluate(`(() => {
@@ -193,8 +220,14 @@ async function main() {
     // Nach dem Neuladen ist das Gespräch wieder da, wird aber nicht noch einmal angesagt.
     await seite.reload();
     await feld.waitFor({ timeout: 30_000 });
+    // Das Gespräch von vorhin zählt nicht als „weitergegangen“: Nach dem Neuladen steht wieder vorn, was JARVIS
+    // zum Mikrofon meldet (zuerst die Bitte um einen Klick), nicht die Antwort von vorhin.
+    await zeile.getByText("Klick einmal irgendwo auf die Seite, dann höre ich zu.").waitFor({ timeout: 15_000 }).catch(async () => assert.fail(`nach dem Neuladen steht die Bitte um einen Klick nicht in der Zeile (${await zeileJetzt()})`));
+    assert.ok(!(await zeileJetzt()).includes("Hinweis im Gespräch"), "steht die Meldung in der Zeile, verweist die Überschrift nicht auf sie");
     await zeile.click();
     await seite.getByRole("region", { name: "Gespräch" }).getByText("Besprechung Hallenneubau").first().waitFor({ timeout: 15_000 });
+    // Der Verweis stimmt: Im aufgeklappten Gespräch steht die Meldung.
+    await seite.getByRole("region", { name: "Gespräch" }).getByText("Ich darf das Mikrofon nicht benutzen.", { exact: false }).waitFor({ timeout: 5_000 });
     await seite.keyboard.press("Escape");
     await seite.waitForTimeout(ANSAGE_WARTET_MS + 2500);
     const alt = (await ansage.innerText()).trim();
@@ -227,7 +260,7 @@ async function main() {
     const doppelt = (await laut.locator("[data-ansage]").innerText()).trim();
     assert.ok(!doppelt.includes("Besprechung"), `was JARVIS selbst spricht, wird nicht auch noch angesagt (${doppelt})`);
     await laut.close();
-    schritt("Antwort: Sie steht im Namen der Zeile über der Leiste und wird angesagt, außer JARVIS ist selbst zu hören");
+    schritt("Antwort: Sie steht in der Zeile über der Leiste (die Meldung zum Mikrofon verdeckt sie nicht mehr, auch nicht beim Weitertippen; nach dem Neuladen steht die Meldung wieder vorn) und wird angesagt, außer JARVIS ist selbst zu hören");
 
     // 3. Meldungen nach einem Klick sind als Meldung ausgezeichnet: gelungen als Hinweis, gescheitert als Warnung.
     await seite.goto(`${BASIS}/kalender`);

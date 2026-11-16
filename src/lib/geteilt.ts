@@ -2,7 +2,8 @@
 // läuft dafür nur eine Abfrage, im kürzesten gewünschten Takt, und alle sehen denselben Stand. Ohne React,
 // damit sich die Regeln prüfen lassen; der Haken dazu steht in usePolling.ts.
 
-type Lader = (url: string) => Promise<unknown>;
+// signal: Wird die Abfrage nach ihrer Frist aufgegeben, sagt das Signal es dem Lader, damit er sie wirklich beendet.
+type Lader = (url: string, signal?: AbortSignal) => Promise<unknown>;
 
 // Was eine Stelle sieht: der Stand und ob die Schnittstelle (noch nie da und zuletzt gescheitert) nicht antwortet.
 // Dasselbe Objekt, solange sich nichts ändert; so braucht der Haken in usePolling.ts nur eine Anmeldung.
@@ -27,12 +28,19 @@ type Quelle = {
   gilt: number;
   // Fehlschläge in Folge, solange es noch keinen Stand gibt: bestimmt, wann der nächste schnelle Versuch kommt.
   fehlversuche: number;
+  // Die Abfragen, die gerade unterwegs sind: Geht die letzte Stelle, werden sie beendet.
+  unterwegs: Set<AbortController>;
 };
 
 const quellen = new Map<string, Quelle>();
 
 // Wie lange nach dem soundsovielten Fehlschlag in Folge bis zum nächsten Versuch gewartet wird: 5, 15, 45 Sekunden …
 export const pauseNach = (fehlversuche: number): number => 5_000 * 3 ** fehlversuche;
+
+// Wie lange eine Abfrage höchstens unterwegs sein darf. Danach gilt sie als gescheitert und wird beendet: Sonst sagte
+// ein Raum für immer „lädt noch“, und im Takt kämen immer neue hängende Abfragen dazu (der Browser lässt nur wenige
+// zugleich zu, dann hinge alles). Mindestens 30 Sekunden (der Kalender am Mac darf 20 brauchen), höchstens eine Minute.
+export const fristFuer = (takt: number): number => Math.min(60_000, Math.max(30_000, takt));
 
 function melde(q: Quelle) {
   q.bild = { stand: q.stand, gescheitert: q.gescheitert };
@@ -41,8 +49,17 @@ function melde(q: Quelle) {
 
 async function hole(url: string, q: Quelle, zusatz = ""): Promise<void> {
   const nummer = ++q.gestartet;
+  // Aufgegeben wird eine Abfrage nach ihrer Frist, oder wenn die letzte Stelle geht (siehe abonniere).
+  const abbruch = new AbortController();
+  q.unterwegs.add(abbruch);
+  const frist = setTimeout(() => abbruch.abort(), fristFuer(q.takt));
   try {
-    const next = await q.lade(url + zusatz);
+    // Wer zuerst fertig ist: die Antwort oder das Aufgeben. So zählt auch ein Lader als gescheitert, der auf das
+    // Signal nicht hört.
+    const next = await Promise.race([
+      q.lade(url + zusatz, abbruch.signal),
+      new Promise<never>((_, aufgegeben) => abbruch.signal.addEventListener("abort", () => aufgegeben(new Error("aufgegeben")), { once: true })),
+    ]);
     // Ist inzwischen niemand mehr da, wird nichts gemerkt.
     if (quellen.get(url) !== q) return;
     // Kam inzwischen etwas Neueres (eine später gestartete Abfrage oder ein gesetzter Stand), ist diese Antwort
@@ -60,16 +77,22 @@ async function hole(url: string, q: Quelle, zusatz = ""): Promise<void> {
     if (quellen.get(url) !== q || q.stand !== null || nummer < q.gilt) return;
     // Gab es noch nie einen Stand, wartet der nächste Versuch nicht den ganzen Takt ab (bei den Terminen wären
     // das fünf Minuten „lässt sich gerade nicht laden“ nach einem einzigen Stolperer beim Start): nach 5, dann
-    // 15, dann 45 Sekunden und so fort, aber nie dichter als der Takt.
-    const pause = pauseNach(q.fehlversuche++);
-    if (pause < q.takt) {
-      if (q.erst) clearTimeout(q.erst);
-      q.erst = setTimeout(() => void hole(url, q), pause);
+    // 15, dann 45 Sekunden und so fort, aber nie dichter als der Takt. Läuft schon ein jüngerer Versuch (bei
+    // hängenden Abfragen laufen im kurzen Takt mehrere Fristen nacheinander ab), braucht es keinen dazu.
+    if (nummer === q.gestartet) {
+      const pause = pauseNach(q.fehlversuche++);
+      if (pause < q.takt) {
+        if (q.erst) clearTimeout(q.erst);
+        q.erst = setTimeout(() => void hole(url, q), pause);
+      }
     }
     // Die Stellen erfahren (einmal), dass die Schnittstelle nicht antwortet.
     if (q.gescheitert) return;
     q.gescheitert = true;
     melde(q);
+  } finally {
+    clearTimeout(frist);
+    q.unterwegs.delete(abbruch);
   }
 }
 
@@ -92,7 +115,7 @@ export function abonniere(url: string, ms: number, hoerer: () => void, lade: Lad
   let q = quellen.get(url);
   const erste = !q;
   if (!q) {
-    q = { bild: LEER, stand: null, gescheitert: false, abos: new Map(), timer: null, erst: null, takt: 0, lade, gestartet: 0, gilt: 0, fehlversuche: 0 };
+    q = { bild: LEER, stand: null, gescheitert: false, abos: new Map(), timer: null, erst: null, takt: 0, lade, gestartet: 0, gilt: 0, fehlversuche: 0, unterwegs: new Set() };
     quellen.set(url, q);
   }
   const id = Symbol(url);
@@ -107,6 +130,8 @@ export function abonniere(url: string, ms: number, hoerer: () => void, lade: Lad
     if (quelle.timer) clearInterval(quelle.timer);
     if (quelle.erst) clearTimeout(quelle.erst);
     if (quellen.get(url) === quelle) quellen.delete(url);
+    // Was noch unterwegs ist, braucht niemand mehr (die Antwort würde ohnehin verworfen).
+    for (const abbruch of [...quelle.unterwegs]) abbruch.abort();
   };
 }
 

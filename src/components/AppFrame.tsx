@@ -10,6 +10,7 @@ import { Orb } from "./Orb";
 import { RaumLink } from "./RaumLink";
 import { SicherheitsLeiste } from "./Sicherheit";
 import { ANSAGE_START, ANSAGE_WARTET_MS, ansage } from "@/lib/ansage";
+import { fortschritt, merkeBeide, MERKE_START, zeile, type Merke } from "@/lib/antwortzeile";
 import { antwortAufLetztes } from "@/lib/brain";
 import { eventsOn } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
@@ -144,28 +145,50 @@ function Mehr({ hier, marken }: { hier: Raum; marken: Record<string, Marke | und
   );
 }
 
-// Was JARVIS gerade sagt, in zwei Zeilen über der Leiste. Ein Klick klappt das ganze Gespräch auf.
-function Antwortzeile({ onOpen }: { onOpen: () => void }) {
-  const { state, session, voice } = useJarvis();
+// Was JARVIS zum Mikrofon und zum Ton meldet (ein leerer Text ist keine Meldung), und wie weit das Gespräch ist.
+function useMeldungen() {
+  const { voice } = useJarvis();
+  const { turns } = useConversation();
+  return { fehler: voice.error || null, hinweis: voice.hint || null, weit: fortschritt(turns) };
+}
+
+// Die Merkzeichen zu den Meldungen (src/lib/antwortzeile.ts). Sie gehören der Leiste und nicht der Zeile: Die Zeile
+// gibt es nicht, solange das Gespräch aufgeklappt ist, und nach dem Zuklappen gälte sonst jede alte Meldung als neu.
+// Nachgezogen werden sie beim Zeichnen (wie React es für „Stand aus Eingaben“ vorsieht): Die Zeile zeigt schon in
+// diesem Bild das Richtige.
+function useMerke(): Merke {
+  const { fehler, hinweis, weit } = useMeldungen();
+  const [merke, setMerke] = useState<Merke>(MERKE_START);
+  const nachgezogen = merkeBeide(merke, fehler, hinweis, weit);
+  if (nachgezogen !== merke) setMerke(nachgezogen);
+  return nachgezogen;
+}
+
+// Was JARVIS gerade sagt, in zwei Zeilen über der Leiste. Ein Klick klappt das ganze Gespräch auf. Was wann dort
+// steht, regelt src/lib/antwortzeile.ts: eine Meldung zum Mikrofon nur, bis das Gespräch weitergeht.
+function Antwortzeile({ merke, onOpen }: { merke: Merke; onOpen: () => void }) {
+  const { state, session } = useJarvis();
   const { turns, interim } = useConversation();
   const label = useStateLabel();
-  const last = antwortAufLetztes(turns);
-  if (!turns.length && !interim && !voice.error && !voice.hint && state === "idle" && !session) return null;
-  const [klasse, text] =
-    voice.error || voice.hint
-      ? [`line-clamp-2 ${voice.error ? "text-down" : "text-ocker"}`, voice.error ?? voice.hint]
-      : state === "listening"
-        ? ["line-clamp-2 italic text-quiet", interim || "…"]
-        : last?.live && !last.text
-          ? ["block text-quiet", last.status ? `${last.status} …` : "Denke nach …"]
-          : // Schreibt Claude eine lange Antwort, siehst du hier immer die letzten zwei Zeilen.
-            ["flex max-h-[2.9rem] flex-col justify-end overflow-hidden", last?.text ?? label];
+  const { fehler, hinweis, weit } = useMeldungen();
+  if (!turns.length && !interim && !fehler && !hinweis && state === "idle" && !session) return null;
+  const z = zeile({ fehler, hinweis, merke, weit, hoert: state === "listening", interim, last: antwortAufLetztes(turns), label });
+  const klasse = {
+    fehler: "line-clamp-2 text-down",
+    hinweis: "line-clamp-2 text-ocker",
+    hoert: "line-clamp-2 italic text-quiet",
+    denkt: "block text-quiet",
+    // Schreibt Claude eine lange Antwort, siehst du hier immer die letzten zwei Zeilen.
+    antwort: "flex max-h-[2.9rem] flex-col justify-end overflow-hidden",
+  }[z.art];
+  // Steht eine Meldung nicht mehr in der Zeile, verweist die Überschrift auf sie: Im aufgeklappten Gespräch steht sie.
+  const ueberschrift = `${sessionLabel(session) ?? label}${z.verdeckt ? " · Hinweis im Gespräch" : ""}`;
   // Immer dieselben zwei Elemente, nur Klasse und Text wechseln. Der erste Klick auf die Seite räumt den Hinweis
   // „Klick einmal irgendwo auf die Seite …“ schon beim Drücken weg; verschwände dabei das Element unter dem Zeiger,
   // gäbe es für den Browser keinen Klick, und das Gespräch klappte beim ersten Klick auf diese Zeile nicht auf.
-  const zeile = (
+  const inhalt = (
     <span className={klasse}>
-      <span>{text}</span>
+      <span>{z.text}</span>
     </span>
   );
   return (
@@ -176,8 +199,8 @@ function Antwortzeile({ onOpen }: { onOpen: () => void }) {
       className="pointer-events-auto flex w-[min(46rem,100%)] animate-[jarvis-sheet_260ms_var(--weich)] items-center gap-3 rounded-[1.1rem] bg-white/90 px-4 py-2.5 text-left text-[0.95rem] leading-snug text-schiefer shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl"
     >
       <span className="min-w-0 flex-1">
-        <span className="block text-xs font-bold text-quiet">{sessionLabel(session) ?? label}</span>
-        {zeile}
+        <span className="block text-xs font-bold text-quiet">{ueberschrift}</span>
+        {inhalt}
       </span>
       {/* Der Name des Knopfes ist sein Inhalt (was JARVIS gerade sagt) und am Ende, was der Knopf tut. Mit einem
           festen Namen läse ein Vorleseprogramm nur den und nie die Antwort; mit einem Titel dazu läse es „Ganzes
@@ -289,6 +312,7 @@ function Leiste() {
   const label = useStateLabel();
   const { draft, setDraft, inputRef, fill } = useDraft();
   const [offen, setOffen] = useState(false);
+  const merke = useMerke();
   // Im Raum „Gespräch“ steht der Verlauf an der Wand; die Leiste zeigt ihn dort nicht noch einmal.
   const imGespraech = hier.href === "/fokus";
   const dock = useRef<HTMLDivElement>(null);
@@ -338,7 +362,7 @@ function Leiste() {
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex flex-col items-center gap-3 px-3"
       style={{ viewTransitionName: "jarvis-dock", paddingBottom: "max(10px, calc((var(--boden) - 4.25rem) / 2))" }}
     >
-      {!imGespraech && (offen ? <Gespraech onClose={schliesse} onFill={fill} /> : <Antwortzeile onOpen={() => setOffen(true)} />)}
+      {!imGespraech && (offen ? <Gespraech onClose={schliesse} onFill={fill} /> : <Antwortzeile merke={merke} onOpen={() => setOffen(true)} />)}
       <Ansage still={imGespraech || offen} />
       <div className="pointer-events-auto flex h-[4.25rem] max-w-full max-sm:w-full items-center gap-[clamp(0.9rem,1.7vw,2.2rem)] rounded-full bg-white/85 pl-[clamp(1rem,1.8vw,2rem)] pr-2 shadow-[0_24px_50px_-18px_rgba(20,34,40,0.4),0_0_0_1px_rgba(31,42,46,0.06)] backdrop-blur-xl">
         {/* Im schmalen Fenster weicht der Name dem Feld zum Tippen; der Raum „Gespräch“ steht dann unter „Räume“. */}

@@ -211,6 +211,38 @@ async function main() {
       await seite.context().close();
     }
     schritt("kommt JARVIS zurück, füllt sich der Raum Aufgaben nach Sekunden von selbst, und die Scheibe zeigt echte Zahlen (3, 0, 0)");
+
+    // 7. Eine Abfrage, die nie beantwortet wird: Nach ihrer Frist (hier 30 Sekunden) gibt JARVIS sie auf, sagt, was
+    //    sich nicht laden lässt, und beendet sie. Vorher stand für immer „lädt noch“ da, und alle zehn Sekunden kam
+    //    eine weitere hängende Abfrage dazu.
+    {
+      const seite = await neueSeite();
+      const beendet: number[] = [];
+      const start = Date.now();
+      seite.on("requestfailed", (r) => {
+        if (new URL(r.url()).pathname === "/api/agenten") beendet.push(Date.now() - start);
+      });
+      const agenten = /\/api\/agenten(\?|$)/;
+      const haengt = () => undefined;
+      await seite.route(agenten, haengt);
+      await seite.goto(`${BASIS}/agenten`, { waitUntil: "domcontentloaded" });
+      const main = seite.locator("main:visible");
+      await main.locator('[data-ladestand="laedt"]', { hasText: "Die Agenten laden noch." }).waitFor({ timeout: 15_000 });
+      await seite.waitForTimeout(20_000);
+      assert.ok((await arten(seite)).includes("laedt: Die Agenten laden noch."), `nach 20 Sekunden lädt es noch (die Frist ist nicht zu knapp): ${(await arten(seite)).join(" | ")}`);
+      await main
+        .locator('[data-ladestand="gestoert"]', { hasText: "Die Agenten lassen sich gerade nicht laden." })
+        .waitFor({ timeout: 25_000 })
+        .catch(async () => assert.fail(`nach 45 Sekunden ohne Antwort steht immer noch nicht da, dass die Agenten sich nicht laden lassen. Da steht: ${(await arten(seite)).join(" | ")}`));
+      assert.ok(!(await arten(seite)).includes("laedt: Die Agenten laden noch."), "„lädt noch“ steht dann nicht mehr da");
+      assert.ok(beendet.length >= 1 && beendet[0] >= 28_000, `die hängende Abfrage ist nach ihrer Frist beendet, nicht früher (beendet nach ${beendet.join(", ")} ms)`);
+      // Antwortet JARVIS wieder, steht der Raum nach Sekunden von selbst da.
+      await seite.unroute(agenten, haengt);
+      await main.getByText("Geschätzt nach Listenpreis").waitFor({ timeout: 25_000 });
+      assert.ok(!(await arten(seite)).some((a) => a.includes("Die Agenten")), `Agenten: kein Satz mehr, wenn die Agenten da sind: ${(await arten(seite)).join(" | ")}`);
+      await seite.context().close();
+    }
+    schritt("wird eine Abfrage nie beantwortet, gibt JARVIS sie nach 30 Sekunden auf, sagt, was sich nicht laden lässt, und beendet sie; antwortet er wieder, steht der Raum von selbst da");
   } finally {
     await browser?.close();
     await server.stopLeise();
