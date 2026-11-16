@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { frage } from "./api";
 import { GRUND_TEXT, stuecke } from "./stimme";
-import { afterWake, forSpeech, isStop, looksLikeEcho, sentences, stopsSpeech } from "./voiceText";
+import { afterWake, forSpeech, isHalt, looksLikeEcho, sentences, stopsSpeech } from "./voiceText";
 
 // Sprache über die Web Speech API des Browsers: kostenlos und ohne Schlüssel.
 // Freihändig läuft das Mikrofon durchgehend und wartet auf „Jarvis“; was danach kommt, ist der Befehl.
@@ -189,6 +189,7 @@ const QUIET: VoiceState = { listening: false, waiting: false, interim: "", speak
 // Mikrofon und Stimme als kleine Maschine außerhalb von React; die Seite bekommt nur den Zustand.
 function createVoice(emit: (patch: Partial<VoiceState>) => void) {
   let onHeard: (text: string) => void = () => {};
+  let onHalt: () => void = () => {};
   let handsFree = false;
   let commanding = false;
   let rec: Recognition | null = null;
@@ -248,6 +249,7 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
     r.onend = () => {
       if (mine !== gen) return;
       rec = null;
+      verwirfHalbGehoertes();
       again();
     };
     rec = r;
@@ -273,11 +275,21 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
     restartTimer = setTimeout(start, delay);
   }
 
+  // „Jarvis, wie …“ war erst halb gehört, und der Lauf der Erkennung ist vorbei: Der Rest kommt nicht mehr. Ohne
+  // dies bliebe die Anzeige auf „Ich höre zu“ stehen, obwohl er wieder nur auf „Jarvis“ wartet.
+  function verwirfHalbGehoertes() {
+    if (!chimed) return;
+    chimed = false;
+    // Wartet er gerade ohnehin auf deinen Satz (Mikrofon-Knopf), hört er weiter zu.
+    emit(commanding ? { interim: "" } : { listening: false, interim: "" });
+  }
+
   // Neue Runde: Was noch vom Lautsprecher im Erkenner steckt, fällt weg.
   function fresh() {
     const r = rec;
     gen++;
     rec = null;
+    verwirfHalbGehoertes();
     try {
       r?.abort();
     } catch {
@@ -292,6 +304,7 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
     const r = rec;
     gen++;
     rec = null;
+    verwirfHalbGehoertes();
     try {
       r?.abort();
     } catch {
@@ -344,32 +357,41 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
         emit({ interim: text });
         return;
       }
+      // Ein Haltewort („Stopp“, „Danke“), auch mit seinem Namen dahinter: „Danke, Jarvis“ beendet das Zuhören.
+      // Nur „Jarvis“ dagegen heißt nichts, er hört ja schon zu.
+      const halt = isHalt(said, lastSpoken);
       // Der Rest seines eigenen Satzes, kurz nachdem er fertig ist, zählt nicht als Befehl.
-      const tail = now - spokeUntil < 1200 && recent.toLowerCase().includes(text.toLowerCase());
-      if (!text || tail || looksLikeEcho(text, recent)) return;
+      const tail = text !== "" && now - spokeUntil < 1200 && recent.toLowerCase().includes(text.toLowerCase());
+      if ((!text && !halt) || tail || looksLikeEcho(text, recent)) return;
       command(false);
-      if (!isStop(text)) onHeard(text);
+      if (halt) onHalt();
+      else onHeard(text);
       return;
     }
 
     // Wartet auf „Jarvis“. Sagt JARVIS selbst gerade „Jarvis“, ist das kein Weckwort.
     const rest = afterWake(said);
+    const selbst = /jarvis/i.test(recent);
+    // „Jarvis, stopp“ und auch „Danke, Jarvis“: kein Befehl und kein Weckruf, sondern anhalten.
+    const halt = rest !== null && isHalt(said, speakingText || lastSpoken);
     // „Stopp“ allein, während er spricht: sofort still, ohne dass du erst „Jarvis“ sagen musst.
     // Nur bei einem fertig gehörten Satz: „Stopp mal kurz …“ oder „das ist halt so“ sollen ihn nicht abwürgen.
-    if (rest === null && final && speakingText && stopsSpeech(final, speakingText)) {
+    // Spricht er gerade selbst von „Jarvis“, gilt das auch für „Jarvis, stopp“: Sein Name weckt ihn dann nicht,
+    // aber anhalten lässt er sich immer.
+    if ((rest === null || selbst) && final && speakingText && (halt || stopsSpeech(final, speakingText))) {
       stopSpeaking(false);
+      if (halt) onHalt();
       return;
     }
-    if (rest === null || /jarvis/i.test(recent)) {
-      if (final && chimed) {
-        chimed = false;
-        emit({ listening: false, interim: "" });
-      }
+    if (rest === null || selbst) {
+      if (final) verwirfHalbGehoertes();
       return;
     }
     // „Jarvis …“, während er spricht: Er hört auf und dir zu.
     if (speakingText) stopSpeaking(false);
     if (!final) {
+      // Bei „Danke, Jarvis“ kein Ton und kein „Ich höre zu“: Das entscheidet der fertige Satz.
+      if (halt) return;
       if (!chimed) {
         chimed = true;
         chime();
@@ -377,14 +399,16 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
       emit({ listening: true, interim: rest });
       return;
     }
-    if (!rest) {
+    if (!rest && !halt) {
       if (!chimed) chime();
       command(true);
       return;
     }
     chimed = false;
     emit({ listening: false, interim: "" });
-    if (!isStop(rest)) onHeard(rest);
+    // Was gerade läuft (auch das Nachdenken), hört auf, und er hört danach nicht zu.
+    if (halt) onHalt();
+    else onHeard(rest);
   }
 
   function failed(error: string) {
@@ -851,6 +875,9 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
     setOnHeard: (f: (text: string) => void) => {
       onHeard = f;
     },
+    setOnHalt: (f: () => void) => {
+      onHalt = f;
+    },
     setHandsFree: setHandsFreeMode,
     setCloud: (on: boolean, off: () => void) => {
       if (on !== cloud) {
@@ -873,14 +900,17 @@ function createVoice(emit: (patch: Partial<VoiceState>) => void) {
 }
 
 // cloud: Die ElevenLabs-Stimme ist eingeschaltet und darf gerade sprechen. onCloudOff: Der Server hat sie abgelehnt
-// (Tageslimit, ausgeschaltet, Not-Aus); die Seite kann dann die Einstellungen neu laden.
-export function useVoice(onHeard: (text: string) => void, cloud = false, onCloudOff?: () => void) {
+// (Tageslimit, ausgeschaltet, Not-Aus); die Seite kann dann die Einstellungen neu laden. onHalt: Du hast ein
+// Haltewort gesagt („Jarvis, stopp“, im Zuhören auch „Stopp“ oder „Danke“); die Seite hält dann an, was gerade läuft,
+// auch eine Frage, über die JARVIS noch nachdenkt.
+export function useVoice(onHeard: (text: string) => void, cloud = false, onCloudOff?: () => void, onHalt?: () => void) {
   const canListen = useSyncExternalStore(subscribe, () => recognitionCtor() !== undefined, () => false);
   const handsFree = useSyncExternalStore(subscribeHandsFree, readHandsFree, () => false);
   const [state, setState] = useState<VoiceState>(QUIET);
   const [voice] = useState(() => createVoice((patch) => setState((s) => ({ ...s, ...patch }))));
 
   useEffect(() => voice.setOnHeard(onHeard), [voice, onHeard]);
+  useEffect(() => voice.setOnHalt(onHalt ?? (() => {})), [voice, onHalt]);
 
   useEffect(() => {
     voice.setHandsFree(canListen && handsFree);

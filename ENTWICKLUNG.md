@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1126 von 1126 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1146 von 1146 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -58,7 +58,7 @@ dass seine eigenen, unkritischen Projektdaten hinein dürfen; sensible Firmen- u
 | Bereich (Auftrag vom 13.11.) | Stand | Was fehlt bis „Abgeschlossen“ |
 |---|---|---|
 | A Sicherheitsarchitektur | **Testbereit** (Sandbox) | Prüfliste auf dem Mac; unveränderliches Audit-Log und Key Vault erst mit Azure |
-| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis; **Offen** für Sprache und Oberfläche als automatische Tests | Oberflächentests im Browser; Mac-Prüfliste; zwei kleine Befunde aus den Durchsichten (siehe Schritt B5) |
+| B Bestehende Funktionen stabilisieren | **Testbereit** für Telegram, Intel, Kalender, Dokumente, Gehirn, Desk (mit Kaufpfad), Mail (IMAP), Obsidian, Gedächtnis und das Zuhören (Schritt J17, nur mit nachgebautem Mikrofon) | Oberflächentests im Browser; Mac-Prüfliste; zwei kleine Befunde aus den Durchsichten (siehe Schritt B5) |
 | C Gehirn und Projektgedächtnis | **Testbereit** (Sandbox, Testdaten): Projektakten, Vorschläge mit Bestätigung und Korrektur, Vorbereitung vor Besprechungen; Speicher wahlweise Datei oder PostgreSQL (Schritt I1); das persönliche Gedächtnis mit denselben Zusagen wie das Projektgedächtnis (Schritt C2) | Mac-Prüfliste Teile E und Q; Zuordnung von Mails; persönliches Gedächtnis in die Datenbank (erst mit Anmeldung je Person); Freigabe für echte Projektdaten |
 | E Geschäftsführungsdashboard | **Testbereit** für Tagesübersicht „Heute“, Projektübersicht, Agentenübersicht und die neue Oberfläche „Glashaus“ (zwölf Räume); **Offen** für Unternehmens- und Finanzübersicht | Mac-Prüfliste Teile F und J; Unternehmensübersicht (braucht Microsoft 365) |
 | F Agenten | **Testbereit** für die zentrale Steuerung der sechs Agenten (Zustand, Läufe, Kosten, Grenzen, Start, Pause, Sperre), den gemeinsamen Zeitplan und den Edelmetall-Agenten (nur gegen Nachbau); **Offen** für weitere Agenten | Mac-Prüfliste Teile H und K; Marktagent, Newsletter und weitere |
@@ -295,7 +295,8 @@ Die vollständige Prüfliste für den Mac steht jetzt verständlich in [docs/pru
 | Trading-Desk (Spielgeld) | ja: Regeln, Engine und der ganze Kaufpfad gegen einen nachgebauten Markt | Testbereit | `desk-kauf.test.ts` (28), `test/mocks/markt-mock.ts`; nur Spielgeld, keine Börsenanbindung; echte Marktdienste nie von hier aus abgefragt |
 | Obsidian, Gedächtnis, Dokumentablage | ja, echte Dateien im Testordner | Testbereit | `dateien.test.ts` |
 | E-Mail (IMAP) | ja, nachgebautes Postfach | Testbereit | `post.test.ts` (23), `test/mocks/imap-mock.ts`; echtes Postfach nur über die Mac-Prüfliste |
-| Sprache (Weckwort, Vorlesen), 3D-Oberfläche | **nein** | Offen | nur im Browser prüfbar |
+| Sprache (Weckwort, Zuhören, „Stopp“) | Regeln ja; der Ablauf per Handprüfung mit einem **nachgebauten Mikrofon** (seit Schritt J17) | Testbereit | `zuhoeren.test.ts` (20), `test/hand/zuhoeren-rauch.ts`; ein echtes Mikrofon nur über die Mac-Prüfliste (Teil AA) |
+| 3D-Oberfläche (frühere Landschaft) | **nein** | Offen | wird seit „Glashaus“ nicht mehr gezeigt (Frage 7) |
 
 ### Testergebnisse Schritt B1 (13. November 2026, Cloud-Sandbox, Linux, Node 22.23.4)
 
@@ -1260,7 +1261,7 @@ ElevenLabs, auch Inhalt aus Mails, Terminen und Aufgaben (R-20 in `docs/jarvis-2
 | H1.2 Vorlesen Satz für Satz über `/api/stimme`; der nächste Satz wird geholt, während der aktuelle läuft; fällt ElevenLabs aus, spricht der Mac den Rest | Testbereit (nur Nachbau) | `src/lib/useVoice.ts`; im Browser geprüft (`test/hand/stimme-rauch.ts`) |
 | H1.3 Tageslimit in Zeichen (Voreinstellung 5.000), gezählt vor dem Senden; Not-Aus hält auch die Probe | Testbereit | `sprich`, `stimmeStatus` |
 | H1.4 Fehler von ElevenLabs als eigener Satz von JARVIS (nie der Text des Dienstes), sichtbar in den Einstellungen und einmal als Hinweis | Testbereit | `fehlerText` |
-| H1.5 Unterbrechen: „Stopp“, „Halt“, „Ruhe“, „Hör auf“ ohne „Jarvis“, während er spricht; Escape und „Jarvis …“ wie bisher. Bricht auch die Wolkenstimme sofort ab | Testbereit (Regel und Escape geprüft; das gesprochene „Stopp“ nur als Regel, ohne Mikrofon) | `stopsSpeech` in `src/lib/voiceText.ts` |
+| H1.5 Unterbrechen: „Stopp“, „Halt“, „Ruhe“, „Hör auf“ ohne „Jarvis“, während er spricht; Escape und „Jarvis …“ wie bisher. Bricht auch die Wolkenstimme sofort ab | Testbereit (Regel und Escape geprüft; das gesprochene „Stopp“ seit Schritt J17 auch im Browser, mit einem nachgebauten Mikrofon) | `stopsSpeech` in `src/lib/voiceText.ts`; `test/hand/zuhoeren-rauch.ts` |
 | H1.6 Mit echtem ElevenLabs-Schlüssel am Mac prüfen | Offen (Benedikt) | Prüfliste Teil I; kostet Zeichen aus seinem Tarif |
 | H2 Desktop-Agent mit Regeln | Offen | |
 
@@ -2408,6 +2409,62 @@ Entscheidung 2 bleibt ohne Hinweis. (3) Nicht geprüft: der Mac, Safari, andere 
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
+### Schritt J17: Das Zuhören geprüft, mit einem nachgebauten Mikrofon; fünf Fehler beim Weckwort und beim Anhalten behoben (16. November 2026)
+
+**Warum:** Wie JARVIS zuhört (das Weckwort, ein Befehl per Stimme, das Zuhören nach seiner Antwort, „Stopp“), war
+bisher nirgends geprüft, außer in vier Regeln zu „Stopp“ (H1.5: „nur als Regel, ohne Mikrofon“; Bereich B:
+„Sprache: nein, Offen“). Der Browser der Sandbox hat weder Mikrofon noch Lautsprecher.
+
+**Wie geprüft wird:** Die neue Handprüfung „Zuhören“ ersetzt im Browser die Spracherkennung und die Sprachausgabe
+durch zwei Nachbauten. Was „das Mikrofon hört“, sagt die Prüfung an (erst vorläufig, dann fertig, wie Chrome es
+liefert); was JARVIS „spricht“, schreibt der Nachbau mit, Satz für Satz und mit Dauer. Alles dahinter ist echt:
+die Seite, der gebaute Server, ein Testordner als Tresor, ein nachgebauter Claude. **Nicht geprüft ist damit, ob
+ein echtes Mikrofon „Jarvis“ richtig versteht** und wie viel von seiner eigenen Stimme es aufschnappt; das geht
+nur am Mac (Prüfliste Teil AA).
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J17.1 Handprüfung „Zuhören“ (11 Schritte): Weckwort mit Ton und mitlaufendem Text; ein Befehl per Stimme bis in den Tresor; nach der Antwort hört er acht Sekunden ohne „Jarvis“ zu; sein eigenes Echo zählt nicht; „Stopp“ beim Sprechen; „Jarvis, …“ mitten in seine Antwort; nach einer getippten Frage hört er nicht von selbst zu; die Erkennung endet, kreiselt, hat kein Netz, ist verboten; mit KI-Gehirn Satz für Satz; freihändig aus (Knopf, Leertaste, bleibt nach dem Neuladen aus); der Browser erlaubt das Mikrofon erst nach einem Klick; nie laufen zwei Mikrofone zugleich | Testbereit, **nur mit nachgebautem Mikrofon** | `test/hand/zuhoeren-rauch.ts` (Port 3131); jetzt 29 Handprüfungen |
+| J17.2 Fehler behoben: „Jarvis, stopp“, während er noch nachdenkt, tat nichts; die Antwort kam trotzdem und wurde gesprochen. Jetzt hält ein gesprochenes Haltewort dasselbe an wie die Escape-Taste | Testbereit, **nur mit nachgebautem Mikrofon** | `onHalt` in `src/lib/useVoice.ts`, `halt` in `JarvisProvider.tsx`; Prüfung Schritt 9 |
+| J17.3 Fehler behoben: Sprach er gerade einen Satz, in dem „Jarvis“ vorkam, überhörte er „Jarvis, stopp“ (sein Name gilt dann nicht als Weckwort). Anhalten lässt er sich jetzt immer | Testbereit, **nur mit nachgebautem Mikrofon** | Prüfung Schritt 9 |
+| J17.4 Fehler behoben: Endete die Erkennung mitten in „Jarvis, wie …“, blieb die Anzeige auf „Ich höre zu …“ stehen, obwohl er wieder nur auf „Jarvis“ wartete | Testbereit, **nur mit nachgebautem Mikrofon** | `verwirfHalbGehoertes`; Prüfung Schritte 8 und 10 |
+| J17.5 Fehler behoben: „Danke, Jarvis“ beendete das Zuhören nach seiner Antwort nicht und weckte ihn sonst sogar auf (Ton, „Ich höre zu …“). „Okay, danke“ und „Stopp bitte“ galten als neue Frage: Ohne KI-Gehirn kam „Das verstehe ich noch nicht …“, mit KI-Gehirn ging der Dank an Claude | Testbereit (Regeln) und **nur mit nachgebautem Mikrofon** (Prüfung Schritt 6) | `isHalt` in `src/lib/voiceText.ts` |
+| J17.6 Fehler behoben: „Jarvis, Jarvis, Briefing“ (er hat beim ersten Mal nicht reagiert) gab „Jarvis, Briefing“ als Befehl weiter, nur „Jarvis, Jarvis“ sogar „Jarvis“ als Frage | Testbereit (Regeln, Prüfung Schritt 6) | `afterWake` |
+| J17.7 Regeltests für das, was bisher keinen einzigen Test hatte: Weckwort (auch „Dschawis“, „Tscharvis“ und so weiter), Haltewörter, Echo | Testbereit | `test/regeln/zuhoeren.test.ts` (20 Tests) |
+
+**Eigene Entscheidungen:** (1) Höfliche Formen sind Haltewörter: „Stopp bitte“, „Okay, stopp“, „Danke dir“, mit
+seinem Namen davor oder dahinter, auch so, wie der Erkenner ihn schreibt („Danke, Dschawis“). „Nein danke“, „Ja“
+und „Okay“ allein sind es nicht, das sind Antworten. (2) „Okay, danke“, „Super, danke“, „Passt, danke“ sind nach
+einer Antwort ein Dank. **Hat JARVIS aber gerade etwas gefragt** (sein letzter Satz endet mit einem Fragezeichen),
+sind sie eine Antwort und gehen weiter; das kam aus dem Code-Review. (3) „Stopp“ ohne „Jarvis“ hält ihn wie bisher
+nur an, während er spricht. Beim stillen Nachdenken braucht es „Jarvis, stopp“, damit ein Wort im Raum keine Frage
+abbricht. (4) Beginnt ein Befehl selbst mit „Jarvis“ („Jarvis, Jarvis-Einstellungen öffnen“), fällt auch dieses
+weg: Der Erkenner setzt kein Komma, an dem es sich unterscheiden ließe, und zweimal „Jarvis“ ist der häufigere Fall.
+
+**Grenzen:** (1) Alles hier ist nur mit dem nachgebauten Mikrofon geprüft. Offen bleibt am Mac: ob Chrome und
+Safari „Jarvis“ verstehen, wie gut das Unterdrücken des eigenen Echos mit echten Lautsprechern trägt, die Erkennung
+auf dem Mac selbst, ein Fenster im Hintergrund. (2) Solange er einen Satz mit „Jarvis“ spricht und 2,5 Sekunden
+danach, nimmt er „Jarvis, <Befehl>“ nicht an (anhalten geht). Das ist der Schutz vor seinem eigenen Echo, wie
+bisher. (3) Ein sehr schnelles Wort (innerhalb von 1,2 Sekunden nach seinem Satz), das in seinem Satz vorkam, gilt
+als Echo und wird verworfen, wie bisher. (4) Einen festen Befehl, der schon läuft (etwa eine Mail öffnen), hält
+auch „Jarvis, stopp“ nicht auf, so wenig wie die Escape-Taste; er spricht nur nicht mehr. Nicht nachgestellt.
+(5) Nicht geprüft: die ElevenLabs-Stimme zusammen mit dem Zuhören.
+
+### Testergebnisse Schritt J17 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1146 Tests: 1146 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 20). Am Mac wären es rechnerisch zwei weniger (nicht dort gelaufen) |
+| Handprüfung „Zuhören“ | Mit dem endgültigen Stand dreimal gelaufen, dreimal bestanden (11 Schritte; im Sammellauf 102 Sekunden). Drei der fünf Bilder angesehen (Zuhören, verbotenes Mikrofon, „Klick einmal …“) |
+| Sammellauf nach allen Änderungen, gegen den neu gebauten Stand | **Alle 29 Handprüfungen bestanden**, in drei Teilen gestartet (14, 10 und 5; zusammen rund 17 Minuten). Zuhören 102 Sekunden, Ausfall 213 Sekunden |
+| Tests zuerst | Die Regeln zu zweimal „Jarvis“ und zu den höflichen Haltewörtern und in der Prüfung „Danke, Jarvis“ waren vor der Korrektur rot und danach grün. Für die Fehler J17.2 bis J17.4 kam die Korrektur vor dem ersten roten Lauf; dass die Prüfung sie bemerkt, zeigt hier die Gegenprobe (jede Korrektur einzeln zurückgenommen) |
+| Gegenproben (absichtlich eingebaute Fehler, je eigener Bau) | 49 eingebaute Fehler: 17 an den Regeln, 32 im Browser (je eigener Bau). **46 sofort entdeckt**, im Browser alle im gemeinten Schritt. Drei erst nach Schärfen, dann entdeckt: (1) „der Rest nach dem Weckwort behält seine Leerzeichen“ (Regel; ein Test mit Leerzeichen am Rand fehlte); (2) „das gesprochene Haltewort hält nur die Stimme an“ (fast gleichwertig: Auch das bricht das Nachdenken ab; der Unterschied ist eine Frage, die noch nicht unterwegs ist. Die Prüfung hält jetzt eine Frage sofort an und sieht nach, dass sie nie beim KI-Gehirn ankommt); (3) „ein zweites Mikrofon startet neben dem ersten“ (der Zähler des Nachbaus begann mit jedem Neuladen neu; die Prüfung fragt jetzt nach mehreren Schritten und gleich nach „Jarvis“). Außerdem fiel „nach einem verbotenen Mikrofon versucht er es im Kreis weiter“ zuerst erst eine Prüfstelle später auf (die wachsende Pause aus dem Teil davor verdeckte es); nach einer Korrektur der Prüfung an der gemeinten. Unter den 49 sind die fünf behobenen Fehler, jeder einzeln zurückgenommen („wie vorher“): alle entdeckt. Danach Quelltext wie vorher (verglichen), sauberer Bau, 11 Schritte bestanden |
+| Code-Review (mittlere Stufe, vor dem Commit) | Acht Hinweise, alle bearbeitet: Haltewort mit verhörtem Namen („Danke, Dschawis“) zählte nicht; „Okay, danke“ verschluckte die Antwort auf eine Rückfrage; die Anzeige konnte „hört nicht zu“ sagen, obwohl der Mikrofon-Knopf noch galt; beim halb gehörten „Danke, Jarvis“ kam der Weckton; „Jarvis, stopp“ hielt je nach seinem Satz Verschiedenes an; zweimal dieselbe Rücksetzung und dieselbe Regel im Code. Der Hinweis zu „Jarvis, Jarvis neu starten“ ist bewusst nicht umgesetzt (Entscheidung 4) |
+| Sicherheitsprüfung (von Hand) | Keine neue Schnittstelle, keine neuen Daten, nichts geht hinaus. Das Mikrofon der Prüfung ist ein Nachbau; ein echtes Mikrofon wird von hier aus nie geöffnet. Das neue Anhalten ruft nur, was die Escape-Taste schon ruft |
+| Nicht geprüft | **der Mac**, **Safari**, **ein echtes Mikrofon und echte Lautsprecher**; die Fälle aus den Grenzen 2 bis 5 |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -2423,7 +2480,7 @@ Entscheidung 2 bleibt ohne Hinweis. (3) Nicht geprüft: der Mac, Safari, andere 
 
 ## Offene Fragen an Benedikt
 
-1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Z; Teil N erst, wenn eure IT so weit ist; Teile X, Y und Z neu seit J11, J12 und J13; die Punkte Y4 bis Y8 neu seit J14 und J15). Benedikt hat sie am 13. November
+1. [Prüfliste für den Mac](docs/pruefliste-mac.md) durchgehen (Teile A bis Z und AA; Teil N erst, wenn eure IT so weit ist; Teile X, Y und Z neu seit J11, J12 und J13; die Punkte Y4 bis Y8 neu seit J14 und J15; Teil AA neu seit J17). Benedikt hat sie am 13. November
    als PDF bekommen.
 2. Schlüssel nach dem Umzug neu ausstellen (Rotation)? Ändert echte Zugangsdaten, daher nur auf deine Ansage.
 3. Vor Phase 3: Gibt es ein D&S-Azure-Abonnement, und wer betreut die Unternehmens-IT? Dazu seit Schritt I1:
@@ -2575,8 +2632,14 @@ Danach wie geplant:
    Hinweis wie beim Ausfall, und eine Änderung, die gerade unterwegs ist, kommt genau einmal an, wenn er wieder
    antwortet (im Browser der Sandbox nachgestellt). Zwei Grenzen bleiben bewusst stehen: keine Frist für
    Änderungen, kein eigener Hinweis für eine einzelne Stelle, die dauerhaft scheitert.
-   **Als Nächstes:** Die Reihe zu Ausfällen (J12 bis J16) ist damit abgeschlossen, soweit sie sich ohne den Mac
-   prüfen lässt. Weiter mit einem Paket, das keine Entscheidung von Benedikt braucht; Kandidaten stehen in der
+   Die Reihe zu Ausfällen (J12 bis J16) ist damit abgeschlossen, soweit sie sich ohne den Mac prüfen lässt.
+31. **J17: gebaut, Testbereit, nur mit nachgebautem Mikrofon geprüft** (Schritt J17 in Bereich J): Das Zuhören
+   hat jetzt eine eigene Handprüfung (Weckwort, Befehl per Stimme, Zuhören nach der Antwort, „Stopp“, Fehler des
+   Mikrofons), jetzt 29 Prüfungen. Dabei fünf Fehler gefunden und behoben: „Jarvis, stopp“ beim Nachdenken tat
+   nichts; es wurde überhört, wenn er gerade selbst „Jarvis“ sagte; die Anzeige „Ich höre zu …“ konnte hängen
+   bleiben; „Danke, Jarvis“ und „Okay, danke“ galten als Weckruf oder neue Frage; zweimal „Jarvis“ wurde Teil des
+   Befehls.
+   **Als Nächstes:** ein Paket, das keine Entscheidung von Benedikt braucht; Kandidaten stehen in der
    Übersicht oben (Modelladapter, Desktop-Agent mit Regeln, Gesprächsnachbereitung). Als Frage an Benedikt
    vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleibt der einmalige, nicht
    wiederholbare Ausfall der Prüfung Gedächtnis aus J9. Die weiteren Schritte für Azure (Anmeldung je Person,

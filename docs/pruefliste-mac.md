@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 120 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y und Z und die Punkte M11 bis M13 und Y4 bis Y8 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 130 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y, Z und AA und die Punkte M11 bis M13 und Y4 bis Y8 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -378,6 +378,24 @@ Website, Mikrofon „Ablehnen“). Danach bitte wieder erlauben (Z4).
 | Z2 | „Meine Termine“ tippen, Eingabetaste. Danach ein paar Buchstaben ins Feld tippen, ohne abzuschicken | In der Zeile steht die Antwort, nicht mehr die Meldung. Klein darüber steht „· Hinweis im Gespräch“. Beim Weitertippen bleibt die Antwort stehen. Kommt die rote Meldung zurück, schreib es mir bitte |
 | Z3 | Auf die Zeile klicken, dann das Gespräch wieder zuklappen | Im aufgeklappten Gespräch steht unten die rote Meldung zum Mikrofon. Nach dem Zuklappen steht in der Zeile wieder die Antwort |
 | Z4 | Das Mikrofon wieder erlauben, die Seite neu laden | Alles wie vorher: keine rote Meldung, kein „Hinweis im Gespräch“, JARVIS hört wieder zu |
+
+## AA. Zuhören mit dem echten Mikrofon (Schritt J17, neu)
+
+Wie JARVIS zuhört, ist in der Sandbox nur mit einem nachgebauten Mikrofon geprüft. Ob dein Mikrofon „Jarvis“
+versteht und wie viel es von seiner eigenen Stimme aufschnappt, zeigt sich nur bei dir. Freihändig muss an sein
+(im aufgeklappten Gespräch steht „Hört auf „Jarvis““). Mit Kopfhörern ist es am einfachsten; bitte einmal auch
+mit den Lautsprechern des Mac.
+
+| Nr. | Was du tust | Was du sehen solltest |
+|---|---|---|
+| AA1 | „Jarvis“ sagen, kurz warten, dann „Meine Aufgaben“ | Nach „Jarvis“ kommt ein kurzer Doppelton, und unten steht „Ich höre zu …“. Danach antwortet er |
+| AA2 | Nach seiner Antwort, ohne „Jarvis“: „Wie ist das Wetter?“ | Er antwortet. Nach jeder Antwort auf einen gesprochenen Satz hört er etwa acht Sekunden weiter zu |
+| AA3 | Nach einer Antwort: „Okay, danke“ oder „Danke, Jarvis“ | Er hört auf zuzuhören (unten steht wieder „Sag „Jarvis““) und antwortet nicht darauf |
+| AA4 | „Jarvis, Jarvis, Briefing“ (zweimal sein Name) | Er beginnt das Briefing. Im Gespräch steht „Briefing“, nicht „Jarvis, Briefing“ |
+| AA5 | Während er das Briefing spricht: „Stopp bitte“ | Er verstummt sofort und hört danach nicht von selbst zu |
+| AA6 | Mit KI-Gehirn: per Stimme etwas fragen, wofür er im Web nachsehen muss. Solange „Denke nach …“ dasteht: „Jarvis, stopp“ | Das Nachdenken hört auf, es kommt keine Antwort mehr. Bisher kam sie trotzdem |
+| AA7 | Mit den Lautsprechern des Mac (ohne Kopfhörer): ihn etwas Längeres sagen lassen und nichts sagen | Er spricht zu Ende, ohne sich selbst zu unterbrechen, und nimmt seinen eigenen Satz danach nicht als neue Frage. Tut er es doch, schreib mir bitte, was er gerade gesagt hat |
+| AA8 | Nur falls es dir begegnet: Unten steht dauerhaft „Ich höre zu …“, obwohl du nichts gesagt hast | Das sollte nicht mehr vorkommen. Schreib mir bitte, was du vorher getan hast |
 
 ## D. Zugangsdaten in den Schlüsselbund (Schritt 2.3)
 

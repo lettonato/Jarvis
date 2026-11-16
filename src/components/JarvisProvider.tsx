@@ -197,6 +197,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   // Kam der letzte Satz per Stimme, hört JARVIS nach seiner Antwort gleich weiter zu.
   const byVoice = useRef(false);
   const heard = useRef<(text: string) => void>(() => {});
+  const halt = useRef<() => void>(() => {});
   const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null, calendar: null, intel: null });
   // Hast du nach den Nachrichten gefragt, sagt JARVIS Bescheid, sobald Grok fertig ist.
   const announce = useRef<{ focus: string | null; since: string } | null>(null);
@@ -212,6 +213,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     useCallback((text: string) => heard.current(text), []),
     settings?.stimme?.aktiv === true,
     cloudOff,
+    useCallback(() => halt.current(), []),
   );
   const name = settings?.name ?? "Benedikt";
 
@@ -574,6 +576,11 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     brainAbort.current?.abort();
     stopSpeaking();
   }, [stopSpeaking]);
+
+  // Ein gesprochenes Haltewort („Jarvis, stopp“) hält dasselbe an wie die Escape-Taste.
+  useEffect(() => {
+    halt.current = stop;
+  }, [stop]);
 
   const toggle = useCallback(() => {
     if (listening) stopListening();
