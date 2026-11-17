@@ -1,7 +1,7 @@
 # Prüfliste für deinen Mac
 
 Diese Punkte kann nur ein Mensch am Mac prüfen. Solange sie offen sind, stehen die Schritte in
-`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 150 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y, Z, AA, AB und AC und die Punkte M11 bis M13 und Y4 bis Y8 sind neu).
+`ENTWICKLUNG.md` auf „Testbereit“ und nicht auf „Abgeschlossen“. Du brauchst etwa 150 Minuten (Teil N geht erst, wenn eure IT so weit ist; die Teile P, Q, R, S, T, U, V, W, X, Y, Z, AA, AB und AC und die Punkte M11 bis M13, Y4 bis Y8, Z5 und AB12 sind neu).
 Schreib mir einfach die Nummern, die geklappt haben, und bei den anderen, was du gesehen hast
 (ein Bildschirmfoto reicht).
 
@@ -378,6 +378,7 @@ Website, Mikrofon „Ablehnen“). Danach bitte wieder erlauben (Z4).
 | Z2 | „Meine Termine“ tippen, Eingabetaste. Danach ein paar Buchstaben ins Feld tippen, ohne abzuschicken | In der Zeile steht die Antwort, nicht mehr die Meldung. Klein darüber steht „· Hinweis im Gespräch“. Beim Weitertippen bleibt die Antwort stehen. Kommt die rote Meldung zurück, schreib es mir bitte |
 | Z3 | Auf die Zeile klicken, dann das Gespräch wieder zuklappen | Im aufgeklappten Gespräch steht unten die rote Meldung zum Mikrofon. Nach dem Zuklappen steht in der Zeile wieder die Antwort |
 | Z4 | Das Mikrofon wieder erlauben, die Seite neu laden | Alles wie vorher: keine rote Meldung, kein „Hinweis im Gespräch“, JARVIS hört wieder zu |
+| Z5 | Vor Z4, solange das Mikrofon noch gesperrt ist: ins leere Eingabefeld sehen; dann das Gespräch aufklappen und „Neues Gespräch“ wählen (Schritt J18, neu) | Im Feld steht „Schreib hier, was du brauchst“, nicht „Sag „Jarvis“ oder tippe“. Im leeren Gespräch steht „Schreib mir unten. …“, keine Aufforderung zu sprechen. Nach Z4 steht im Feld wieder „Sag „Jarvis“ oder tippe“ |
 
 ## AA. Zuhören mit dem echten Mikrofon (Schritt J17, neu)
 
@@ -416,6 +417,7 @@ nicht. JARVIS öffnet nur. Er bedient nichts und schließt nichts.
 | AB9 | Als eigenes Programm „Mail“ und danach „../Geheim“ eintragen | Beides wird abgelehnt, mit einem Satz, warum. Der Text bleibt im Feld stehen |
 | AB10 | Mit KI-Gehirn: „Ich möchte gleich eine Tabelle bauen, mach mir dafür bitte das passende Programm auf“ | Er öffnet Excel, ohne nachzufragen. Unter Sicherheit → Audit-Log steht der Aufruf, ebenso die Punkte von eben („Öffnen: Safari“) |
 | AB11 | In Telegram: „Öffne Safari“ | Auf dem Mac geht nichts auf; JARVIS sagt, dass er das nur am Mac kann oder dass er dafür kein Werkzeug hat |
+| AB12 | Ins Feld tippen: „Jarvis, öffne Safari“, danach „Hey Jarvis, Wochenbericht“ (Schritt J18, neu) | Safari geht auf und er sagt „Ich öffne Safari.“; danach kommt der Wochenbericht. Beides wie ohne „Jarvis“ davor, kein „Das verstehe ich noch nicht“ |
 
 ## AC. Wochenbericht (Schritt G5, neu)
 

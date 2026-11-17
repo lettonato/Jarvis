@@ -28,7 +28,7 @@ Die Sicherheitsarchitektur (Schritte 2.1 bis 2.6), das Projektgedächtnis (Schri
 „Heute“ (Schritt E1), die ersten proaktiven Routinen (Schritt G1: Projekte im Morgenbriefing,
 Tagesabschluss), die Agentensteuerung (Schritt F1) und die ElevenLabs-Stimme mit Unterbrechen (Schritt H1,
 Benedikts Wunsch vom 13. November) und das Kostenbuch mit der Modellwahl an einer Stelle (Schritt J1) sind
-gebaut und in der Sandbox geprüft: 1219 von 1219 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
+gebaut und in der Sandbox geprüft: 1226 von 1226 automatischen Tests bestehen, 0 übersprungen, 0 bekannte Lücken als TODO (seit Schritt B2 auch die Post gegen ein nachgebautes
 Postfach und der Kaufpfad des Spielgeld-Desks gegen einen nachgebauten Markt). Die ElevenLabs-Stimme ist nur gegen einen nachgebauten
 Dienst geprüft, nie gegen das echte ElevenLabs; sie ist aus, bis Benedikt am Mac seinen Schlüssel einträgt.
 Seit Schritt E2 hat JARVIS das neue Aussehen „Glashaus“ (Benedikts Wahl vom 13. November): zwölf helle Räume
@@ -1303,8 +1303,8 @@ Kalender steht, ist über die Regeln geprüft, nicht über den laufenden Server:
 dem echten Heute, die Tests gegen Telegram rechnen mit einem festen Datum. (7) Die Zeitumstellung (Sommerzeit) ist
 nicht nachgestellt. (8) Mit KI-Gehirn gilt der feste Befehl wie alle festen Befehle nur für kurze Sätze (bis vier
 Wörter); „Kannst du mir bitte den Wochenbericht geben“ beantwortet dann Claude mit seinen Werkzeugen, nicht dieser
-Bericht. (9) Getippt mit „Jarvis, “ davor trifft der feste Befehl nicht (so ist es auch bei „Jarvis, öffne Safari“);
-gesprochen wird das Weckwort vorher abgetrennt. Vorgemerkt als Kleinigkeit für beide Befehle.
+Bericht. (9) Getippt mit „Jarvis, “ davor traf der feste Befehl nicht (so war es auch bei „Jarvis, öffne Safari“);
+gesprochen wird das Weckwort vorher abgetrennt. **Behoben in Schritt J18** für alle festen Befehle.
 
 ### Testergebnisse Schritt G5 (16. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium, PostgreSQL 16)
 
@@ -2617,6 +2617,66 @@ auch „Jarvis, stopp“ nicht auf, so wenig wie die Escape-Taste; er spricht nu
 
 **Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
 
+### Schritt J18: Zwei vorgemerkte Kleinigkeiten: getippt mit „Jarvis, “ davor; das Eingabefeld bei gesperrtem Mikrofon (16. November 2026)
+
+**Warum:** Beides war in früheren Schritten aufgefallen und vorgemerkt. (1) Gesprochen trennt JARVIS das Weckwort
+ab, bevor er den Satz versteht. Getippt blieb es stehen: „Jarvis, öffne Safari“ und „Jarvis, Wochenbericht“ kamen
+ohne KI-Gehirn als „Das verstehe ich noch nicht“ zurück, mit KI-Gehirn gingen sie an Claude statt an den festen
+Befehl (G5, Grenze 9). (2) Durfte JARVIS das Mikrofon nicht benutzen, stand im Eingabefeld trotzdem „Sag „Jarvis“
+oder tippe“ und im leeren Gespräch „Sag „Jarvis“ und dann, was du brauchst“ oder „Tippe aufs Mikrofon …“ (J13).
+
+| Aufgabe | Zustand | Beleg / Hinweis |
+|---|---|---|
+| J18.1 Getippt mit „Jarvis, “ davor gilt ein fester Befehl wie gesprochen: „Jarvis, öffne Safari“, „jarvis wochenbericht“, „Hey Jarvis, öffne Safari.“, „Jarvis: Briefing“; auch das Wort einer laufenden Besprechung („Jarvis, erledigt“) | Testbereit | `ohneAnrede` in `src/lib/voiceText.ts`, `decide` in `src/lib/commands.ts`; `test/regeln/anrede.test.ts` (5 Tests); Prüfung „Programme am Mac“, Schritt 2 |
+| J18.2 Ist das Mikrofon gesperrt (oder meldet die Spracherkennung einen Fehler), steht im Eingabefeld „Schreib hier, was du brauchst“ und im leeren Gespräch „Schreib mir unten. …“; keine Aufforderung zu sprechen. Ist das Mikrofon wieder frei, steht wieder „Sag „Jarvis“ oder tippe“ | Testbereit, **nur im Browser der Sandbox** (der kennt nur das gesperrte und das nachgebaute Mikrofon) | `eingabeText`, `leerText` in `src/lib/voiceText.ts`, `Console.tsx`; `anrede.test.ts` (2 Tests); Prüfungen „Zuhören“ (Schritt 8) und „Gespräch“ (Schritt 11) |
+
+**Eigene Entscheidungen:** (1) Als Anrede gilt „Jarvis“ am Anfang des Satzes, auch nach „Hey“, „He“, „Hallo“, „Hi“,
+„Ok“, „Okay“, „Guten Morgen“, „Guten Tag“, „Guten Abend“, „Moin“ oder „Servus“, mit Komma, Doppelpunkt,
+Ausrufezeichen, drei Punkten oder ohne, und auch zweimal hintereinander („Jarvis, Jarvis, öffne Safari“). Nur als
+ganzes Wort („Jarvisprojekt öffnen“ und „Jarvis-Einstellungen“ bleiben stehen), nie mitten im Satz („Notiere
+Jarvis updaten“), und „Jarvis“ allein oder nur mit Gruß („Guten Morgen, Jarvis“) bleibt, was es war. Die verhörten
+Schreibweisen der Spracherkennung („Dschawis“) gelten getippt nicht. (2) Ohne KI-Gehirn: Ist der Satz ohne Anrede
+kein fester Befehl, gilt er so, wie er dasteht. „Hallo Jarvis, wie geht’s?“ bleibt damit ein Gruß und bringt das
+Briefing, statt „Das verstehe ich noch nicht“. (3) Mit KI-Gehirn zählt die Anrede nicht zu den vier Wörtern, bis zu
+denen ein Satz als fester Befehl gilt: „Jarvis, zeig mir meinen Wochenbericht“ ist getippt jetzt ein fester Befehl,
+wie gesprochen. **Das ändert einen Fall:** „Hallo Jarvis, wie geht’s?“ brachte mit KI-Gehirn bisher das Briefing,
+wenn der Apostroph der geschwungene war, den der Mac beim Tippen setzt (vier Wörter, das Wort „Hallo“ traf den Gruß); jetzt geht die Frage an Claude, wie gesprochen. Ein anderer
+Auftrag („Jarvis, schreib einen Wochenbericht für Projekt Alpha“) geht unverändert an das KI-Gehirn, und zwar so,
+wie er getippt wurde. (4) Das Eingabefeld richtet sich nach jeder Meldung der Spracherkennung, nicht nur nach dem
+verbotenen Mikrofon: Auch bei „kein Netz“ lädt es nicht zum Sprechen ein, solange die Meldung dasteht; sie
+verschwindet, sobald die Erkennung wieder läuft.
+
+**Grenzen:** (1) Das gilt für das Gespräch am Mac. In Telegram gibt es die Anrede nicht; dort gelten die Befehle
+mit Schrägstrich und das KI-Gehirn wie bisher. (2) Mit KI-Gehirn kann ein kurzer Satz **über** JARVIS, der mit
+seinem Namen beginnt, jetzt einen festen Befehl treffen: „Jarvis zeigt falschen Bitcoin Kurs“ (fünf Wörter, ohne
+den Namen vier) bringt die Kurse, statt an Claude zu gehen. Gesprochen ist das seit jeher so, und mit vier Wörtern
+(„Jarvis zeigt falschen Kurs“) war es auch getippt schon so; die Grenze ist um ein Wort verschoben. Aus dem
+Code-Review, bewusst so gelassen. (3) Ohne KI-Gehirn bringt „Hey Jarvis, <etwas Unbekanntes>“ das Briefing und
+„Jarvis, <etwas Unbekanntes>“ ein „Das verstehe ich noch nicht“. Das liegt an der Gruß-Regel, die „Hey“ überall
+im Satz erkennt, und ist ohne den Namen dasselbe („Hey, wie hoch ist der Großglockner?“); nicht geändert. (4) Wer
+etwas meint, das mit „Jarvis“ als eigenem Wort beginnt („Jarvis neu starten“ als Notiz), schreibt „Notiere …“
+davor; so ist es gesprochen auch (J17, Entscheidung 4). (5) Solange eine Meldung der Spracherkennung dasteht, nennt
+das leere Gespräch auch den Mikrofon-Knopf nicht, obwohl ein Klick darauf bei einem vorübergehenden Fehler wieder
+ginge; die Meldung selbst sagt, was los ist. Wartet der Browser nur auf den ersten Klick (Hinweis „Klick einmal
+irgendwo auf die Seite …“), steht im Feld weiter „Sag „Jarvis“ oder tippe“: Der Klick ins Feld genügt schon.
+(6) Geprüft im Chromium der Sandbox mit gesperrtem und mit nachgebautem Mikrofon, **nicht am Mac und nicht in
+Safari** (Prüfliste Z5 und AB12).
+
+### Testergebnisse Schritt J18 (16. und 17. November 2026, Cloud-Sandbox, Linux, Node 22.23.4, Chromium)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run pruefen` | 0 Befunde, 0 Fehler; **1226 Tests: 1226 bestanden, 0 fehlgeschlagen, 0 übersprungen, 0 TODO** (neu 7), am endgültigen Stand zweimal, jeder Lauf in eine Datei geschrieben |
+| Tests zuerst | Von den 7 neuen Tests waren 5 vor der Änderung rot. Die Fälle aus dem Code-Review („He Jarvis“, zweimal „Jarvis“, „Guten Morgen Jarvis, …“, drei Punkte, Hinweis der Besprechung) waren vor der Korrektur rot und danach grün |
+| Handprüfungen „Zuhören“, „Gespräch“, „Programme am Mac“ | bestanden (je 11 Schritte), am endgültigen Stand gegen einen frischen Bau |
+| Gegenproben (absichtlich eingebaute Fehler) | Erster Durchgang 14 von 14 entdeckt; zwei davon im Browser zuerst nicht eindeutig an der gemeinten Stelle (in „Zuhören“ hatte ich die Zahl der Schritte davor falsch angesetzt; in „Gespräch“ traf der gesuchte Satz auch ein längeres Stück Text). Prüfung geschärft, wiederholt: beide an der gemeinten Stelle. Nach dem Code-Review zweiter Durchgang am geänderten Code: **17 von 17 entdeckt**, alle an der gemeinten Stelle. Danach Quelltext wie vorher (verglichen), sauberer Bau, alle drei Prüfungen bestanden |
+| Code-Review (mittlere Stufe, vor dem Commit) | Sieben Hinweise. Umgesetzt: getippt galten „He Jarvis“, zweimal „Jarvis“ und drei Punkte nicht, obwohl sie gesprochen gelten (die Liste der Wörter davor steht jetzt nur noch einmal da); „Guten Morgen Jarvis, öffne Safari“ brachte das Briefing; ein Satz ohne Befehl lief zweimal durch alle Regeln (jetzt getrennt: Befehl suchen, dann erst „verstehe ich nicht“). Ein Platzhalter in diesen Unterlagen war noch nicht ersetzt. Bewusst nicht umgesetzt, mit Grund in den Grenzen 2, 3 und 5: Satz über JARVIS mit seinem Namen vorne, „Hey“ mit unbekannter Frage, Mikrofon-Knopf bei einer Meldung |
+| Sicherheitsprüfung (von Hand) | Keine neue Schnittstelle, keine neuen Daten, nichts geht hinaus. Nur Textregeln und zwei Sätze in der Oberfläche. Der Not-Aus geht weiter allem vor, auch mit Anrede davor |
+| Sammellauf aller 31 Handprüfungen | **noch nicht gelaufen**; folgt nach dem Commit (Ergebnis in „Nächste Schritte“) |
+| Nicht geprüft | **der Mac**, **Safari**, ein echtes Mikrofon |
+
+**Was gesichert wurde:** siehe „Sicherung“. **Sicherheitsrisiken:** keine neuen. **Neue laufende Kosten:** keine.
+
 ## Phase 3 bis 10
 
 | Phase | Zustand | Hinweis |
@@ -2800,6 +2860,9 @@ Danach wie geplant:
    einmal in der Woche von selbst per Telegram (vorgeschlagen Freitag 16:00 Uhr, ab Werk aus). Ohne KI-Modell.
    Neue Handprüfung „Wochenbericht“, jetzt 31 Prüfungen. Offen für Benedikt: Prüfliste Teil AC, vor allem, ob die
    abgehakten Aufgaben in seinem Tresor ein Datum tragen (sonst zählt JARVIS sie nicht).
+34. **J18: gebaut, Testbereit, nur in der Sandbox geprüft** (Schritt J18 in Bereich J): Getippt mit „Jarvis, “
+   davor gilt ein fester Befehl wie gesprochen („Jarvis, öffne Safari“, „Hey Jarvis, Wochenbericht“). Ist das
+   Mikrofon gesperrt, fordert das Eingabefeld nicht mehr zum Sprechen auf. Neu in der Prüfliste: Z5, AB12.
    **Als Nächstes:** ein Paket, das keine Entscheidung von Benedikt braucht; Kandidaten stehen in der
    Übersicht oben (Modelladapter, Gesprächsnachbereitung, weitere Teile des Desktop-Agenten). Als Frage an Benedikt
    vorgemerkt, nicht gebaut: ein Schalter „JARVIS ohne Stimme“. Unter Beobachtung bleiben der einmalige, nicht

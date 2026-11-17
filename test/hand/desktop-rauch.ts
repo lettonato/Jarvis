@@ -139,8 +139,11 @@ async function main() {
     assert.equal(await frage("Kannst du mir bitte den Ordner Downloads öffnen?"), "Ich öffne den Ordner Downloads.");
     assert.deepEqual(geoeffnet(), [["-b", "com.apple.Safari"], ["-a", "Microsoft Excel"], [path.join(os.homedir(), "Downloads")]]);
     assert.equal(new URL(seite.url()).pathname, "/einstellungen", "der Raum bleibt, wie er ist");
+    // Getippt mit der Anrede davor gilt dasselbe wie gesprochen.
+    assert.equal(await frage("Jarvis, öffne den Rechner"), "Ich öffne den Rechner.");
+    assert.deepEqual(geoeffnet().at(-1), ["-b", "com.apple.calculator"]);
     assert.equal(anGehirn, 0);
-    schritt("„Öffne Safari“, „Starte Excel“ und „… den Ordner Downloads öffnen?“ gehen als Kennung, Name und Pfad an den Mac; der Raum bleibt");
+    schritt("„Öffne Safari“, „Starte Excel“ und „… den Ordner Downloads öffnen?“ gehen als Kennung, Name und Pfad an den Mac, auch mit „Jarvis, “ davor; der Raum bleibt");
 
     // ---------- 3. Alte Befehle bleiben, was sie waren; ein Programm, das der Mac nicht hat ----------
     const geladen = seite.waitForResponse((r) => r.url().endsWith("/api/einstellungen") && r.ok(), { timeout: 30_000 });
@@ -149,7 +152,7 @@ async function main() {
     await geladen;
     // „Dokumente“ allein meint weiter den Raum in JARVIS (ohne KI-Gehirn kennt JARVIS dafür keinen festen Befehl).
     assert.match(await frage("Öffne Dokumente"), /^Das verstehe ich noch nicht\./);
-    assert.equal(geoeffnet().length, 3, "„Öffne Dokumente“ öffnet nichts am Mac");
+    assert.equal(geoeffnet().length, 4, "„Öffne Dokumente“ öffnet nichts am Mac");
     assert.equal(await frage("Öffne den Ordner Dokumente"), "Ich öffne den Ordner Dokumente.");
     assert.deepEqual(geoeffnet().at(-1), [path.join(os.homedir(), "Documents")]);
     // Die Systemeinstellungen sind die des Macs, die Einstellungen die von JARVIS.
@@ -158,7 +161,7 @@ async function main() {
     assert.equal(new URL(seite.url()).pathname, "/");
     assert.equal(await frage("Öffne die Einstellungen"), "Ich öffne die Einstellungen.");
     await seite.waitForURL(`${BASIS}/einstellungen`);
-    assert.equal(geoeffnet().length, 5, "„Öffne die Einstellungen“ öffnet nichts am Mac");
+    assert.equal(geoeffnet().length, 6, "„Öffne die Einstellungen“ öffnet nichts am Mac");
     // Der Satz kommt erst, wenn der Mac geantwortet hat: Scheitert das Öffnen, behauptet JARVIS nichts.
     assert.equal(await frage("Öffne Spotify"), "Ich konnte Spotify nicht öffnen. Vielleicht ist das Programm auf diesem Mac nicht installiert.");
     assert.ok(!(await verlauf()).some((z) => z.text === "Ich öffne Spotify."), "kein „Ich öffne Spotify.“");

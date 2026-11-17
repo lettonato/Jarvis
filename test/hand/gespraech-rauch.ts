@@ -386,6 +386,12 @@ async function main() {
     // Neues Gespräch: Der Verlauf ist weg, auch nach dem Neuladen, und Claude bekommt ihn nicht mehr.
     await gespraech.getByRole("button", { name: "Neues Gespräch" }).click();
     assert.deepEqual(await verlauf(), []);
+    // Im leeren Gespräch steht, wie es weitergeht. Dieser Browser hat kein Mikrofon freigegeben (der Satz dazu
+    // steht da): Dann lädt JARVIS nicht zum Sprechen ein, weder hier noch im Eingabefeld.
+    await gespraech.getByText(/Ich darf das Mikrofon nicht benutzen/).waitFor({ timeout: 5000 });
+    await gespraech.getByText("Schreib mir unten. Ich kann dir alles beantworten, im Web nachsehen und mir Dinge über dich merken.", { exact: true }).waitFor({ timeout: 5000 });
+    assert.equal(await gespraech.getByText(/Sag „Jarvis“ und dann/).count(), 0);
+    assert.equal(await feld.getAttribute("placeholder"), "Schreib hier, was du brauchst");
     await seite.reload();
     await feld.waitFor({ timeout: 30_000 });
     claude.drehbuch([{ text: "Guten Tag, Benedikt." }]);

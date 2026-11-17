@@ -10,6 +10,7 @@ import type { MetalleSnapshot } from "./metalle";
 import { SAFETY, type DeskSnapshot } from "./paper";
 import type { ProjekteSnapshot } from "./projekte";
 import { abschlussSatz, projektSatz, tagesabschluss } from "./routinen";
+import { ohneAnrede } from "./voiceText";
 import { wocheSatz, wochenbericht } from "./woche";
 import { tageslage, type TagesDaten } from "./heute";
 import { dateOf, dueSoon, type Task, type TasksSnapshot } from "./tasks";
@@ -648,6 +649,28 @@ const GREETING = /^(hallo|hey|hi|servus|moin|grüß dich|grüß gott|guten tag|g
 // in einer Besprechung; längere Sätze, Fragen zu allgemeinen Themen und Grüße beantwortet Claude.
 // null heißt: frag das KI-Gehirn.
 export function decide(input: string, ctx: CommandContext, brain = false): Decision | null {
+  // Getippt mit „Jarvis, “ davor gilt dasselbe wie gesprochen (dort trennt die Spracherkennung das Weckwort schon
+  // ab): Es zählt der Satz ohne die Anrede. Ohne KI-Gehirn gilt, wenn das kein fester Befehl ist, noch der Satz,
+  // wie er dasteht: So bleibt „Hallo Jarvis, wie geht’s?“ dort ein Gruß und kein „Das verstehe ich noch nicht“.
+  const ohne = ohneAnrede(input);
+  const fest = festerBefehl(ohne, ctx, brain);
+  if (fest || brain) return fest;
+  return (ohne === input.trim() ? null : festerBefehl(input, ctx, false)) ?? nichtVerstanden(ctx);
+}
+
+function nichtVerstanden(ctx: CommandContext): Decision {
+  if (ctx.session) {
+    const hint = ctx.session.kind === "aufgaben" ? "Sag erledigt, verschieben auf einen Tag, weiter oder beenden." : "Sag vorlesen, Aufgabe, gelesen, weiter oder beenden.";
+    return { reply: `Das habe ich nicht verstanden. ${hint}` };
+  }
+  return {
+    reply:
+      "Das verstehe ich noch nicht. Sag zum Beispiel Briefing, meine Mails, meine Aufgaben, notiere etwas bis Freitag, oder frag nach Wetter und Kursen. Freie Sätze verstehe ich, sobald in den Einstellungen das KI-Gehirn eingerichtet ist.",
+  };
+}
+
+// Der feste Befehl in diesem Satz; null, wenn keiner greift.
+function festerBefehl(input: string, ctx: CommandContext, brain: boolean): Decision | null {
   const original = input.trim().replace(/[.!?]+$/, "");
   const text = original.toLowerCase();
   // Der Not-Aus geht vor, auch mitten in einer Besprechung; die endet dann.
@@ -667,16 +690,7 @@ export function decide(input: string, ctx: CommandContext, brain = false): Decis
   const rule = RULES.find((r) => r.match.test(text));
   const talk =
     brain && (GREETING.test(text.replace(/[,.!?]/g, "").replace(/\s+/g, " ")) || rule?.talk === "immer" || (rule?.talk === "frage" && QUESTION.test(input.trim().toLowerCase())));
-  if (rule && !talk && (!brain || short)) return rule.run(ctx, text, original);
-  if (brain) return null;
-  if (ctx.session) {
-    const hint = ctx.session.kind === "aufgaben" ? "Sag erledigt, verschieben auf einen Tag, weiter oder beenden." : "Sag vorlesen, Aufgabe, gelesen, weiter oder beenden.";
-    return { reply: `Das habe ich nicht verstanden. ${hint}` };
-  }
-  return {
-    reply:
-      "Das verstehe ich noch nicht. Sag zum Beispiel Briefing, meine Mails, meine Aufgaben, notiere etwas bis Freitag, oder frag nach Wetter und Kursen. Freie Sätze verstehe ich, sobald in den Einstellungen das KI-Gehirn eingerichtet ist.",
-  };
+  return rule && !talk && (!brain || short) ? rule.run(ctx, text, original) : null;
 }
 
 // Was nur die Seite weiß (Wetter, Kurse), als Lagezeilen für das KI-Gehirn.

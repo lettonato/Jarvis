@@ -1,8 +1,9 @@
 // Was die Spracherkennung hört und was JARVIS sagt, als reine Textregeln (ohne Browser, damit testbar).
 
 // „Jarvis“ hört der deutsche Erkenner auch als Jarwis, Dschawis oder Tscharvis.
+const VORWEG = "hey|hallo|hi|ok|okay|he";
 const WECKWORT =
-  "(?:(?:hey|hallo|hi|ok|okay|he)[\\s,]+)?(?:jarvis|jarwis|jervis|jarvi|javis|jaavis|dschawis|dschavis|dschärvis|tschawis|tscharvis|tscharwis|scharvis|scharwis|charvis|chavis)(?=$|[\\s,.!?:;-])[\\s,.!?:;-]*";
+  `(?:(?:${VORWEG})[\\s,]+)?(?:jarvis|jarwis|jervis|jarvi|javis|jaavis|dschawis|dschavis|dschärvis|tschawis|tscharvis|tscharwis|scharvis|scharwis|charvis|chavis)(?=$|[\\s,.!?:;-])[\\s,.!?:;-]*`;
 const WAKE = new RegExp(`(?:^|[\\s,.!?])${WECKWORT}`, "i");
 const WAKE_AGAIN = new RegExp(`^${WECKWORT}`, "i");
 const WAKE_ALL = new RegExp(`(?:^|[\\s,.!?])${WECKWORT}`, "gi");
@@ -19,6 +20,30 @@ export function afterWake(heard: string): string | null {
 }
 
 export const hasWake = (heard: string) => afterWake(heard) !== null;
+
+// Getippt: „Jarvis, öffne Safari“ ohne die Anrede. Nur der Name selbst (getippt verhört sich niemand) und nur ganz
+// am Anfang, auch nach einem Gruß und auch zweimal; ein Bindestrich dahinter („Jarvis-Projekt“) ist keine Anrede.
+// Bleibt ohne sie nichts übrig, bleibt der Satz, wie er ist.
+const ANREDE = new RegExp(`^(?:(?:${VORWEG}|guten morgen|guten tag|guten abend|moin|servus)[\\s,]+)?jarvis(?=[\\s,.!?:;…])[\\s,.!?:;…]*`, "i");
+export function ohneAnrede(text: string): string {
+  const ganz = text.trim();
+  let rest = ganz;
+  for (let m = ANREDE.exec(rest); m; m = ANREDE.exec(rest)) rest = rest.slice(m[0].length);
+  return rest.trim() || ganz;
+}
+
+// Was im Eingabefeld und im leeren Gespräch steht. gesperrt: Die Spracherkennung meldet gerade einen Fehler (das
+// Mikrofon ist nicht erlaubt oder nicht da, es fehlt das Netz); solange die Meldung dasteht, fordert JARVIS nicht
+// zum Sprechen auf, auch nicht über den Mikrofon-Knopf. Der Grund steht als Meldung daneben.
+export type Hoeren = { canListen: boolean; handsFree: boolean; gesperrt: boolean };
+const KANN = "Ich kann dir alles beantworten, im Web nachsehen und mir Dinge über dich merken.";
+export const eingabeText = (h: Hoeren) => (h.canListen && h.handsFree && !h.gesperrt ? "Sag „Jarvis“ oder tippe" : "Schreib hier, was du brauchst");
+export function leerText(h: Hoeren): string {
+  if (!h.canListen) return "Schreib mir unten. Sprechen geht in Chrome und Safari.";
+  if (h.gesperrt) return `Schreib mir unten. ${KANN}`;
+  if (h.handsFree) return `Sag „Jarvis“ und dann, was du brauchst. Oder schreib mir unten. ${KANN}`;
+  return `Tippe aufs Mikrofon, drück die Leertaste oder schreib mir. ${KANN}`;
+}
 
 const glatt = (text: string) => text.replace(/[.!?,]+/g, " ").replace(/\s+/g, " ").trim();
 

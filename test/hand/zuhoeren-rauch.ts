@@ -450,14 +450,16 @@ async function main() {
     await pause(2500);
     assert.equal((await ohr()).gestartet, vorVerbot, "nach dem Verbot versucht er es nicht von selbst weiter");
     assert.equal(await zustand(), "Bereit", "und behauptet nicht, er höre zu");
+    assert.equal(await feld().getAttribute("placeholder"), "Schreib hier, was du brauchst", "das Eingabefeld fordert nicht zum Sprechen auf, solange das Mikrofon gesperrt ist");
     await bild("3-mikrofon-verboten");
     await setze("window.__ohr.fehlerBeimStart = null");
     await seite.locator("h1").first().click();
     await warte(async () => (await ohr()).laufend === 1, "nach einem Klick läuft das Mikrofon wieder", 5000);
     await warte(async () => (await gespraech().getByText(/Ich darf das Mikrofon nicht benutzen/).count()) === 0, "der Satz zum Verbot verschwindet");
     await ist("Sag „Jarvis“");
+    assert.equal(await feld().getAttribute("placeholder"), "Sag „Jarvis“ oder tippe", "geht das Mikrofon wieder, lädt das Feld wieder zum Sprechen ein");
     await einMikrofon("mit allen Ausfällen");
-    schritt("endet die Erkennung, geht sie wieder an; sie kreiselt nicht; kein Netz und ein verbotenes Mikrofon stehen als Satz da, ein Klick versucht es neu");
+    schritt("endet die Erkennung, geht sie wieder an; sie kreiselt nicht; kein Netz und ein verbotenes Mikrofon stehen als Satz da, das Eingabefeld sagt dann „Schreib hier“, ein Klick versucht es neu");
 
     // ---------- 9. Mit KI-Gehirn: Antwort Satz für Satz, sein eigener Name, „Jarvis, stopp“ beim Nachdenken ----------
     await neuesGespraech();

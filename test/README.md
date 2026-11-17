@@ -26,6 +26,9 @@ npm run pruefen     # Lint, Typprüfung und Tests
   ohne Freigabe, Projektnamen ohne den Schalter), die Zurufe am Mac und am Handy und wann er von selbst fällig
   ist (auch über Mitternacht). Dass er über den Zeitplan wirklich einmal in der Woche aufs Handy geht, prüft
   `test/module/hinweise.test.ts`.
+  `anrede.test.ts` prüft die Anrede vor einem getippten Satz („Jarvis, öffne Safari“ ist derselbe feste Befehl wie
+  ohne „Jarvis“, mit und ohne KI-Gehirn; was ohne die Anrede kein Befehl ist, gilt, wie es dasteht) und was
+  Eingabefeld und leeres Gespräch sagen, wenn das Mikrofon gesperrt ist.
   `claude-zugang.test.ts` prüft, dass nur `src/lib/server/claude.ts` eine Verbindung zu Claude aufbaut und
   jede Rolle ihre Wartezeit und Wiederholungen behält.
   `geteilt.test.ts` prüft die geteilten Abfragen der Oberfläche (eine Abfrage für mehrere Stellen, keine

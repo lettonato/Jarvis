@@ -6,6 +6,7 @@ import { useConversation, useJarvis, type Turn } from "./JarvisProvider";
 import type { AvatarState } from "@/lib/avatar";
 import type { Session } from "@/lib/commands";
 import type { Source } from "@/lib/brain";
+import { eingabeText, leerText } from "@/lib/voiceText";
 
 // Das Gespräch mit JARVIS: Verlauf, Mikrofon, Eingabefeld und Vorschläge zum Antippen.
 // Während einer Besprechung zeigen die Vorschläge die passenden Antworten (Erledigt, Weiter …).
@@ -242,7 +243,7 @@ export function Composer({ inputRef, draft, setDraft, big = false, vorn }: { inp
         rows={1}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder={voice.canListen && voice.handsFree ? "Sag „Jarvis“ oder tippe" : "Schreib hier, was du brauchst"}
+        placeholder={eingabeText({ canListen: voice.canListen, handsFree: voice.handsFree, gesperrt: Boolean(voice.error) })}
         aria-label="Nachricht an JARVIS"
         className={`min-w-0 flex-1 resize-none bg-transparent px-2.5 text-[0.95rem] leading-5 text-kalk placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:text-[#9fb0b5] focus:outline-none ${big ? "py-3" : "py-2.5"}`}
       />
@@ -394,12 +395,6 @@ function useStickToBottom() {
   return { ref, away, toBottom };
 }
 
-function emptyText(handsFree: boolean, canListen: boolean): string {
-  if (handsFree) return "Sag „Jarvis“ und dann, was du brauchst. Oder schreib mir unten. Ich kann dir alles beantworten, im Web nachsehen und mir Dinge über dich merken.";
-  if (canListen) return "Tippe aufs Mikrofon, drück die Leertaste oder schreib mir. Ich kann dir alles beantworten, im Web nachsehen und mir Dinge über dich merken.";
-  return "Schreib mir unten. Sprechen geht in Chrome und Safari.";
-}
-
 // Der Verlauf. `limit` zeigt nur die letzten Nachrichten, etwa in der Übersicht.
 export function Messages({ limit, className = "" }: { limit?: number; className?: string }) {
   const { turns, interim } = useConversation();
@@ -421,7 +416,7 @@ export function Messages({ limit, className = "" }: { limit?: number; className?
         className="h-full overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,black_14px)] [scrollbar-color:rgba(31,42,46,0.25)_transparent] [scrollbar-width:thin]"
       >
         <div className="space-y-4 px-1 py-2" aria-live="polite">
-          {shown.length === 0 && !interim && <p className="text-sm leading-relaxed text-quiet">{emptyText(voice.handsFree, voice.canListen)}</p>}
+          {shown.length === 0 && !interim && <p className="text-sm leading-relaxed text-quiet">{leerText({ canListen: voice.canListen, handsFree: voice.handsFree, gesperrt: Boolean(voice.error) })}</p>}
           {shown.map((t) => (
             <Message key={t.id} turn={t} />
           ))}
