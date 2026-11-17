@@ -34,7 +34,8 @@ type Shared = {
 const holder = globalThis as typeof globalThis & { __jarvisCommodities?: Shared };
 const shared: Shared = (holder.__jarvisCommodities ??= { pick: {}, quotes: {}, fetchedAt: 0, note: null });
 
-async function getTwelve<T>(pathAndQuery: string, apiKey: string): Promise<T> {
+// Auch der Edelmetall-Agent fragt hierüber (src/lib/server/metalle.ts).
+export async function getTwelve<T>(pathAndQuery: string, apiKey: string): Promise<T> {
   const res = await fetch(`${TWELVEDATA}${pathAndQuery}`, {
     cache: "no-store",
     signal: AbortSignal.timeout(TIMEOUT_MS),

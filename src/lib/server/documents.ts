@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { claudeFuer } from "./claude";
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import os from "node:os";
@@ -8,8 +9,12 @@ import { checkDocument, docCaption, DOC_LIMITS, fileStem, hostLabel, type DocJob
 import { openFile } from "./calendar";
 import { CONFIG_DIR, readConfig, type JarvisConfig } from "./config";
 import { renderDocument } from "./document-html";
+import { durchGateway, GatewaySperre } from "./gateway/gateway";
+import { agentSperre } from "./gateway/zustand";
 import { notify } from "./notify";
 import { htmlToPdf, PdfError } from "./pdf";
+import { bucheClaude } from "./kosten";
+import { MODELLE } from "../modelle";
 
 // Der Analyst: Er bekommt ein Thema und deine Wünsche, recherchiert mit Claude im Web (Suchen und Seiten
 // lesen laufen bei Anthropic) und gibt am Ende ein Dokument über das Werkzeug dokument_abgeben ab. JARVIS
@@ -17,8 +22,9 @@ import { htmlToPdf, PdfError } from "./pdf";
 // Mac und schickt es aufs Handy. Es läuft immer nur ein Dokument zur Zeit, im Hintergrund.
 // Der Stand (welche Dokumente, wie weit) liegt in ~/.jarvis/dokumente.json.
 
-const MODEL = "claude-opus-5-5";
-const MODEL_NAME = "Claude Opus 5.5";
+// Welches Modell der Analyst nimmt, steht an einer Stelle: src/lib/modelle.ts.
+const MODEL = MODELLE.analyst.id;
+const MODEL_NAME = MODELLE.analyst.name;
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 const SUBMIT = "dokument_abgeben";
 const FILE = path.join(CONFIG_DIR, "dokumente.json");
@@ -30,9 +36,6 @@ const KEEP_STEPS = 80;
 // So oft geht es höchstens hin und her (Pausen bei langen Suchen und Nachbesserungen mitgezählt).
 const MAX_TURNS = 14;
 
-// Listenpreise von Claude Opus 5.5 in Dollar je Million Token, eine Websuche kostet einen Cent.
-const PRICE = { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5, search: 0.01 };
-
 export class DocError extends Error {}
 
 type State = { jobs: DocJob[] };
@@ -41,6 +44,8 @@ type Shared = {
   loading: Promise<State> | null;
   saving: Promise<void>;
   running: { job: DocJob; abort: AbortController; done: Promise<void> } | null;
+  // Das zuletzt gestartete Dokument, bis einschließlich Speichern und Meldung. running ist schon vorher wieder frei.
+  last?: Promise<void>;
 };
 const holder = globalThis as typeof globalThis & { __jarvisDocs?: Shared };
 const shared: Shared = (holder.__jarvisDocs ??= { state: null, loading: null, saving: Promise.resolve(), running: null });
@@ -85,8 +90,8 @@ export async function documentsSnapshot(): Promise<DocsSnapshot> {
   return { configured: hasKey(config), folder: docsDir(), running: shared.running?.job ?? null, jobs: state.jobs };
 }
 
-// Nur für Tests: warten, bis das laufende Dokument fertig ist.
-export const documentDone = () => shared.running?.done ?? Promise.resolve();
+// Nur für Tests: warten, bis das zuletzt gestartete Dokument ganz fertig ist, samt Speichern und Meldung.
+export const documentDone = () => shared.last ?? Promise.resolve();
 
 function step(job: DocJob, text: string) {
   job.steps = [...job.steps, { at: new Date().toISOString(), text }].slice(-KEEP_STEPS);
@@ -99,6 +104,8 @@ export async function startDocument(config: JarvisConfig, apiKey: string, input:
   const thema = clean(input.thema, 140);
   const auftrag = typeof input.auftrag === "string" ? input.auftrag.trim().slice(0, 4000) : "";
   if (!thema) throw new DocError("Worüber soll das Dokument gehen?");
+  const sperre = await agentSperre("analyst");
+  if (sperre) throw new DocError(sperre);
   const state = await load();
   if (shared.running) throw new DocError(`Ich schreibe gerade an „${shared.running.job.thema}“. Wenn das fertig ist, fange ich das nächste an.`);
   const job: DocJob = {
@@ -128,6 +135,7 @@ export async function startDocument(config: JarvisConfig, apiKey: string, input:
   const abort = new AbortController();
   const done = work(job, config, apiKey, abort).catch((e) => console.error("Dokument:", e));
   shared.running = { job, abort, done };
+  shared.last = done;
   await save(state);
   return job;
 }
@@ -339,12 +347,6 @@ const SUBMIT_TOOL = {
   },
 } satisfies Anthropic.Beta.BetaTool;
 
-export function costOf(u: Anthropic.Beta.BetaUsage | undefined): number {
-  if (!u) return 0;
-  const tokens = u.input_tokens * PRICE.input + u.output_tokens * PRICE.output + (u.cache_read_input_tokens ?? 0) * PRICE.cacheRead + (u.cache_creation_input_tokens ?? 0) * PRICE.cacheWrite;
-  return tokens / 1e6 + (u.server_tool_use?.web_search_requests ?? 0) * PRICE.search;
-}
-
 // Hängt einen Satz an die letzte Nachricht von JARVIS an (nur, wenn die letzte Nachricht von JARVIS ist).
 function appendNote(messages: Anthropic.Beta.BetaMessageParam[], note: string) {
   const last = messages.at(-1);
@@ -357,13 +359,16 @@ function appendNote(messages: Anthropic.Beta.BetaMessageParam[], note: string) {
 }
 
 async function research(job: DocJob, apiKey: string, signal: AbortSignal): Promise<Dokument> {
-  const client = new Anthropic({ apiKey, timeout: 15 * 60_000, maxRetries: 2 });
+  const client = claudeFuer("analyst", apiKey);
   const today = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     { role: "user", content: `Heute ist ${today}.\n\n<auftrag>\nThema: ${job.thema}\n${job.auftrag}\n</auftrag>` },
   ];
   let nudges = 0;
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    // Not-Aus oder Sperre halten den Analysten vor jedem Schritt an.
+    const sperre = await agentSperre("analyst");
+    if (sperre) throw new DocError(sperre);
     const searchesLeft = DOC_LIMITS.searches - job.searches;
     const fetchesLeft = DOC_LIMITS.fetches - job.pagesRead;
     const spent = job.costUsd >= DOC_LIMITS.maxUsd || (searchesLeft <= 0 && fetchesLeft <= 0);
@@ -410,8 +415,13 @@ async function research(job: DocJob, apiKey: string, signal: AbortSignal): Promi
         step(job, `Liest: ${typeof input.url === "string" ? hostLabel(input.url) : "eine Seite"}`);
       }
     });
-    const message = await stream.finalMessage();
-    job.costUsd += costOf(message.usage);
+    const message = await stream.finalMessage().catch(async (e) => {
+      // Abgebrochen oder Zeit abgelaufen: Was bis dahin lief, berechnet Anthropic trotzdem. Sicher bekannt ist die Eingabe.
+      job.costUsd += await bucheClaude("analyst", "analyst", stream.currentMessage);
+      throw e;
+    });
+    // Die Preise stehen in src/lib/modelle.ts; gebucht wird beim Analysten, und das Dokument merkt sich seine Summe.
+    job.costUsd += await bucheClaude("analyst", "analyst", message);
     if (message.stop_reason === "refusal") throw new DocError("Zu diesem Thema schreibt Claude kein Dokument.");
     if (message.stop_reason === "max_tokens") throw new DocError("Das Dokument ist zu lang geworden. Versuch es mit einem engeren Thema.");
     messages.push({ role: "assistant", content: message.content });
@@ -421,6 +431,10 @@ async function research(job: DocJob, apiKey: string, signal: AbortSignal): Promi
     const calls = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
     const submitted = calls.filter((c) => c.name === SUBMIT).at(-1);
     if (submitted) {
+      // Auch die Abgabe geht durch das Security Gateway (protokolliert, beim Not-Aus gesperrt).
+      await durchGateway({ werkzeug: SUBMIT, agent: "analyst", kanal: job.from === "telegram" ? "telegram" : "mac", eingabe: { thema: job.thema }, fremd: true }, async () => true).catch((e) => {
+        throw e instanceof GatewaySperre ? new DocError(e.message) : e;
+      });
       const checked = checkDocument(submitted.input);
       if (checked.ok) return checked.doc;
       job.phase = "schreibt";

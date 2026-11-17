@@ -50,7 +50,7 @@ export const MODULES: JarvisModule[] = [
     href: "/post",
     side: "links",
     about:
-      "Schaut in deinen Posteingang, trennt wichtige Mails von Newslettern und liest sie dir vor. Aus einer Mail macht er auf Zuruf eine Aufgabe. Antworten entwirft er ab Phase 2 mit dem KI-Gehirn.",
+      "Schaut in deinen Posteingang, trennt wichtige Mails von Newslettern und liest sie dir vor. Aus einer Mail macht er auf Zuruf eine Aufgabe. Mit dem KI-Gehirn entwirft er auf Zuruf eine Antwort; abschicken tust du sie selbst.",
   },
   {
     id: "kalender",
@@ -125,7 +125,7 @@ export const MODULES: JarvisModule[] = [
     href: "/intel",
     side: "rechts",
     about:
-      "Grok von xAI liest morgens und am Nachmittag die Nachrichten und X zu Bitcoin, Ethereum, Solana und deinen eigenen Themen. JARVIS sagt dir im Briefing, was davon zählt, und sucht auf Zuruf gezielt zu einem Thema. Bei einem ernsten Ereignis, etwa einem Börsen-Hack oder einem Ausfall von Solana, warnt Intel den Trading-Desk: Der kauft dann ein paar Stunden nichts Neues. Kaufen lassen kann Intel ihn nie. Ist dein Handy über Telegram gekoppelt, kommt die Warnung auch dorthin.",
+      "Grok von xAI liest morgens und am Nachmittag die Nachrichten und X zu Bitcoin, Ethereum, Solana und deinen eigenen Themen. JARVIS sagt dir im Briefing, was davon zählt, und sucht auf Zuruf gezielt zu einem Thema. Bei einem ernsten Ereignis, etwa einem Börsen-Hack oder einem Ausfall von Solana, warnt Intel den Trading-Desk: Der kauft dann ein paar Stunden nichts Neues. Kaufen lassen kann Intel ihn nie. Ist dein Handy über Telegram gekoppelt, kommt die Warnung auch dorthin. Im selben Raum steht das Lagebild für Gold und Silber: Tageskurse, nach festen Regeln eingeordnet, ohne KI-Modell und ohne Prognose.",
   },
   {
     id: "cognition",

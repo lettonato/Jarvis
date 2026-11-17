@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useJarvis } from "../JarvisProvider";
+import { Antwortentwuerfe } from "../Antwortentwuerfe";
 import { MailSetup } from "../setup";
-import { Button, Notice, PageHeader, Panel } from "../ui";
+import { Scheibe, Scheiben, ScheibenZeile } from "../Raum";
+import { Button, Ladestand, Notice, PageHeader, Panel } from "../ui";
 import { addDays, isoDate } from "@/lib/dates";
 import type { MailItem } from "@/lib/mail";
 import { useNow } from "@/lib/useNow";
@@ -21,7 +23,7 @@ function when(iso: string, now: Date | null): string {
 }
 
 export function MailView() {
-  const { mail, session, reloadMail, ask } = useJarvis();
+  const { mail, session, reloadMail, ask, ausfall } = useJarvis();
   const now = useNow();
   const current = session?.kind === "post" ? session.ids[session.index] : null;
 
@@ -29,7 +31,7 @@ export function MailView() {
     return (
       <Shell>
         <Panel className="max-w-2xl">
-          <h2 className="mb-1 text-sm font-bold uppercase tracking-widest text-sky-100">Postfach verbinden</h2>
+          <h2 className="mb-1 text-sm font-bold text-schiefer">Postfach verbinden</h2>
           <p className="mb-4 text-sm text-quiet">
             JARVIS schaut in deinen Posteingang, sagt dir, welche Mails wichtig sind, liest sie dir vor und macht auf Zuruf Aufgaben daraus. Er löscht nichts und
             verschickt nichts.
@@ -40,15 +42,19 @@ export function MailView() {
     );
   }
 
+  // Lässt sich das Postfach gerade nicht lesen, zeigt der Raum nur die Meldung und die Entwürfe: keine Nullen,
+  // kein „Schön ruhig heute“ und kein Knopf zum Durchgehen. Alles, was vom Inhalt des Postfachs lebt, fragt hiernach.
+  // Dasselbe gilt, solange das Postfach noch nicht gelesen ist (lädt noch, oder JARVIS antwortet nicht).
+  const lesbar = mail != null && !mail.error;
   const important = (mail?.items ?? []).filter((m) => m.important);
   const bulk = (mail?.items ?? []).filter((m) => !m.important);
 
   return (
     <Shell
-      subtitle={mail?.account ? `Posteingang ${mail.account} · letzte 14 Tage` : "lädt …"}
+      subtitle={mail?.account ? `Posteingang ${mail.account}, letzte 14 Tage` : undefined}
       actions={
         <>
-          {mail && mail.importantUnread > 0 && (
+          {lesbar && mail && mail.importantUnread > 0 && (
             <Button tone="primary" icon="fokus" onClick={() => ask("Meine Mails")}>
               Mit JARVIS durchgehen
             </Button>
@@ -59,28 +65,44 @@ export function MailView() {
         </>
       }
     >
-      {mail?.error && <Notice tone="error">{mail.error}</Notice>}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Stat label="Neue wichtige" value={mail?.importantUnread ?? 0} alert />
-        <Stat label="Ungelesen gesamt" value={mail?.unread ?? 0} />
-        <Stat label="Newsletter und Co." value={mail?.bulkUnread ?? 0} />
-      </div>
-      <Panel>
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-[0.25em] text-sky-300">Wichtig · {important.length}</h2>
-        {mail && important.length === 0 && <p className="py-2 text-sm text-quiet">Keine wichtigen Mails. Schön ruhig heute.</p>}
-        <ul className="divide-y divide-sky-300/10">
-          {important.map((m) => (
-            <MailRow key={m.uid} mail={m} now={now} active={m.uid === current} />
-          ))}
-        </ul>
-      </Panel>
-      {bulk.length > 0 && (
+      {!mail && <Ladestand quelle="post" aus={ausfall.mail} />}
+      {mail?.error && (
+        <>
+          <Notice tone="error">{mail.error}</Notice>
+          <p className="text-sm text-quiet">Was im Postfach liegt, weiß JARVIS gerade nicht. Mit „Neu laden“ versucht er es noch einmal.</p>
+        </>
+      )}
+      {lesbar && (
+        <Scheiben>
+          <Scheibe titel="Auf einen Blick">
+            <ul>
+              <ScheibenZeile wert={mail.importantUnread}>Neue wichtige</ScheibenZeile>
+              {/* Die Zahl kommt vom Postfach und zählt alles, nicht nur die 14 Tage der Liste; darum heißt sie so. */}
+              <ScheibenZeile wert={mail.unread}>Ungelesen im ganzen Posteingang</ScheibenZeile>
+              <ScheibenZeile wert={mail.bulkUnread}>Newsletter und Co.</ScheibenZeile>
+            </ul>
+          </Scheibe>
+        </Scheiben>
+      )}
+      <Antwortentwuerfe />
+      {lesbar && (
+        <Panel>
+          <h2 className="mb-2 text-xs font-bold text-see">Wichtig <span className="font-medium text-quiet">{important.length}</span></h2>
+          {important.length === 0 && <p className="py-2 text-sm text-quiet">Keine wichtigen Mails. Schön ruhig heute.</p>}
+          <ul className="divide-y divide-schiefer/10">
+            {important.map((m) => (
+              <MailRow key={m.uid} mail={m} now={now} active={m.uid === current} />
+            ))}
+          </ul>
+        </Panel>
+      )}
+      {lesbar && bulk.length > 0 && (
         <Panel>
           <details>
-            <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.25em] text-sky-300/80">
-              Newsletter und Benachrichtigungen · {bulk.length}
+            <summary className="cursor-pointer text-xs font-bold text-see/80">
+              Newsletter und Benachrichtigungen <span className="font-medium text-quiet">{bulk.length}</span>
             </summary>
-            <ul className="mt-2 divide-y divide-sky-300/10">
+            <ul className="mt-2 divide-y divide-schiefer/10">
               {bulk.map((m) => (
                 <MailRow key={m.uid} mail={m} now={now} active={m.uid === current} />
               ))}
@@ -103,17 +125,9 @@ function Shell({ children, subtitle, actions }: { children: ReactNode; subtitle?
   );
 }
 
-function Stat({ label, value, alert }: { label: string; value: number; alert?: boolean }) {
-  return (
-    <Panel className="px-3 py-3 sm:px-4">
-      <p className="text-[9px] uppercase tracking-widest text-quiet sm:text-[10px]">{label}</p>
-      <p className={`text-2xl font-bold ${alert && value > 0 ? "text-pink-300" : "text-sky-50"}`}>{value}</p>
-    </Panel>
-  );
-}
 
 function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; active: boolean }) {
-  const { run, discuss, mailText, spotlight, tasks } = useJarvis();
+  const { run, discuss, ask, mailText, spotlight, tasks, settings } = useJarvis();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -158,23 +172,23 @@ function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; acti
   return (
     <li
       ref={row}
-      className={`rounded-lg px-2 py-2.5 transition ${active ? "bg-sky-400/15 shadow-[0_0_0_1px_rgba(125,211,252,0.7),0_0_24px_rgba(56,189,248,0.3)]" : ""}`}
+      className={`rounded-lg px-2 py-2.5 transition ${active ? "bg-gletscher/15" : ""}`}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <button type="button" onClick={read} className="flex min-w-0 flex-1 items-start gap-3 text-left">
-          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${mail.unread ? "bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.9)]" : "bg-transparent"}`} />
+          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${mail.unread ? "bg-gletscher" : "bg-transparent"}`} />
           <span className="min-w-0">
             <span className="flex items-baseline gap-2">
-              <span className={`truncate text-sm ${mail.unread ? "font-bold text-sky-50" : "text-sky-100/80"}`}>{sender}</span>
-              {mail.flagged && <span className="text-[10px] text-pink-300">★ markiert</span>}
-              <span className="ml-auto shrink-0 text-[11px] text-quiet">{when(mail.date, now)}</span>
+              <span className={`truncate text-sm ${mail.unread ? "font-bold text-schiefer" : "text-schiefer/80"}`}>{sender}</span>
+              {mail.flagged && <span className="text-xs text-down">★ markiert</span>}
+              <span className="ml-auto shrink-0 text-xs text-quiet">{when(mail.date, now)}</span>
             </span>
-            <span className="block truncate text-[13px] text-quiet">{mail.subject}</span>
+            <span className="block truncate text-sm text-quiet">{mail.subject}</span>
           </span>
         </button>
         <div className="flex shrink-0 flex-wrap gap-1.5 pl-5 sm:pl-0">
           {active ? (
-            <span className="rounded-full border border-sky-300/50 px-2 py-1 text-[10px] uppercase tracking-widest text-sky-200">JARVIS bespricht das</span>
+            <span className="rounded-full border border-schiefer/50 px-2 py-1 text-xs text-stein">JARVIS bespricht das</span>
           ) : (
             mail.important &&
             mail.unread && (
@@ -182,6 +196,12 @@ function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; acti
                 Besprechen
               </Button>
             )
+          )}
+          {settings?.brain.configured && mail.important && (
+            // Nur die Nummer der Mail geht in die Frage: Absender und Betreff stammen von Dritten.
+            <Button small onClick={() => ask(`Entwirf mir eine Antwort auf diese Mail (uid ${mail.uid}).`)}>
+              Antwort entwerfen
+            </Button>
           )}
           {tasks?.configured && (
             <Button
@@ -201,7 +221,7 @@ function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; acti
             <a
               href={`message://${encodeURIComponent(mail.messageId)}`}
               title="In Apple Mail öffnen (wenn das Postfach dort eingerichtet ist)"
-              className="hidden items-center rounded-lg border border-sky-300/30 bg-sky-400/5 px-2 py-1 text-[11px] font-bold text-sky-100 hover:bg-sky-400/15 sm:inline-flex"
+              className="hidden items-center rounded-full border border-schiefer/25 px-3 py-1 text-xs font-semibold text-schiefer transition-colors hover:border-schiefer/70 hover:bg-schiefer/5 sm:inline-flex"
             >
               In Mail öffnen
             </a>
@@ -209,7 +229,7 @@ function MailRow({ mail, now, active }: { mail: MailItem; now: Date | null; acti
         </div>
       </div>
       {(open || active) && busy && !text && <p className="mt-2 pl-5 text-xs text-quiet">Lade die Mail …</p>}
-      {showText && <pre className="mt-2 max-h-80 overflow-y-auto whitespace-pre-wrap rounded-lg border border-sky-300/15 bg-desk/60 p-3 pl-5 font-sans text-[13px] leading-relaxed text-sky-50/90">{text.text || "Kein lesbarer Text."}</pre>}
+      {showText && <pre className="mt-2 max-h-80 overflow-y-auto whitespace-pre-wrap rounded-lg border border-schiefer/15 bg-desk/60 p-3 pl-5 font-sans text-sm leading-relaxed text-schiefer/90">{text.text || "Kein lesbarer Text."}</pre>}
       {note && <p className={`mt-1 pl-5 text-xs ${note.tone === "ok" ? "text-up" : "text-down"}`}>{note.text}</p>}
     </li>
   );

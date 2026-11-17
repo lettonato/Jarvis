@@ -43,8 +43,10 @@ import {
 import { SOFT_FILTERS, SOFT_KEYS, type SoftKey } from "../../thresholds";
 import { brainKey, explainBrainError } from "../brain";
 import { CONFIG_DIR, grokKey, readConfig, twelveKey, xBudget } from "../config";
+import { agentSperre } from "../gateway/zustand";
 import { intelWarning } from "../intel";
 import { notify } from "../notify";
+import { bucheBetrag } from "../kosten";
 import { writeVaultFile } from "../obsidian";
 import { judgeByRules, judgeWithClaude, type ChiefInput, type Verdict } from "./chief";
 import { commodityNote, commodityQuotes, freshCommodity, refreshCommodities } from "./commodities";
@@ -782,7 +784,7 @@ async function hunt(state: State, now: Date) {
       verdicts = await judgeWithClaude(key!, survivors);
     } catch (e) {
       for (const s of survivors) trace(s.candidate, "chief", "warn", "Claude antwortet nicht, in dieser Runde kein Kauf");
-      log(state, "Chief", `Claude antwortet nicht: ${explainBrainError(e)} Ich kaufe in dieser Runde nichts`, "warn");
+      log(state, "Chief", `Claude antwortet nicht: ${explainBrainError(e)} Ich kaufe in dieser Runde nichts.`, "warn");
       return;
     }
   } else {
@@ -848,6 +850,7 @@ async function readXFor(state: State, apiKey: string, c: Candidate, now: Date): 
     const x = await readX(apiKey, c, now);
     state.day.xSpentUsd += x.costUsd;
     state.stats.xCostUsd += x.costUsd;
+    void bucheBetrag("desk", "grok", x.costUsd, now);
     state.stats.xReads++;
     state.stats.postsRead += Math.max(0, x.posts);
     log(state, "Crawler", xLine(c, x));
@@ -856,6 +859,7 @@ async function readXFor(state: State, apiKey: string, c: Candidate, now: Date): 
     const cost = e instanceof GrokError ? e.costUsd : 0;
     state.day.xSpentUsd += cost;
     state.stats.xCostUsd += cost;
+    void bucheBetrag("desk", "grok", cost, now);
     const why = e instanceof Error ? e.message : String(e);
     trace(c, "x", "warn", `X nicht gelesen: ${why}. Also kein Kauf`);
     state.verdicts[c.address] = { at: now.toISOString(), stage: "nicht_geprueft", text: `X nicht gelesen: ${why}` };
@@ -911,6 +915,8 @@ export async function tick(now = new Date()) {
   try {
     const state = await load();
     if (state.status === "aus" || state.status === "notaus") return;
+    // Zentraler Not-Aus oder gesperrter Desk: kein Agent arbeitet, auch nicht Scan, Crawler oder Chief.
+    if (await agentSperre("desk")) return;
     await rollDay(state, now);
     expireApprovals(state, now);
     const before = state.day.trades;
@@ -964,6 +970,11 @@ export type DeskAction = { action: "start" | "pause" | "weiter" | "notaus" | "al
 export class DeskError extends Error {}
 
 export async function control(input: DeskAction, now = new Date()): Promise<string> {
+  // Starten und Fortsetzen nur, solange weder der zentrale Not-Aus steht noch der Desk gesperrt ist.
+  if (input.action === "start" || input.action === "weiter") {
+    const sperre = await agentSperre("desk");
+    if (sperre) throw new DeskError(sperre);
+  }
   const state = await load();
   let message: string;
   switch (input.action) {

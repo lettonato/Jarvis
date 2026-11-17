@@ -1,0 +1,72 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><link rel="stylesheet" href="fonts.css">
+<style>
+:root{--wand:#D5D9D6;--licht:#FCFAF2;--tinte:#1B292E;--see:#2B7680;--sonne:#F2A31B;--rot:#CC4326}
+body{background:var(--wand);color:var(--tinte);font-family:Manrope,sans-serif;position:relative}
+.wand{position:absolute;inset:0;background:linear-gradient(100deg,#DDE0DD 0%,#D3D7D4 55%,#C6CBC8 100%)}
+.lichtfeld{position:absolute;left:110px;top:92px;width:1400px;height:790px;transform-origin:50% 50%;filter:blur(1.6px)}
+.lichtfeld div{position:absolute;background:linear-gradient(160deg,#FFFEF8,#FBF6E6);box-shadow:0 0 26px rgba(255,250,232,.9)}
+.laub{position:absolute;left:0;top:0;width:760px;height:520px;opacity:.10;filter:blur(9px)}
+.zellen{position:absolute;left:110px;top:92px;width:1400px;height:790px}
+.zelle{position:absolute;padding:34px 40px 0 64px}
+.zelle h3{font-size:19px;font-weight:700;margin-bottom:12px;color:#33454B}
+.zeit{font-family:Fraunces,serif;font-variation-settings:"SOFT" 100,"WONK" 0;font-weight:560;font-size:214px;line-height:.86;letter-spacing:-.035em;margin:2px 0 0 -8px}
+.was{font-family:Fraunces,serif;font-variation-settings:"SOFT" 100;font-weight:500;font-size:40px;line-height:1.08;letter-spacing:-.015em;margin-top:16px;white-space:nowrap}
+.zelle p{font-size:21px;line-height:1.5;color:#35464C;margin-top:12px;max-width:470px}
+.z{display:flex;gap:12px;font-size:21px;line-height:1.3;font-weight:600;padding:7px 0}
+.z span:first-child{font-variant-numeric:tabular-nums;min-width:62px;color:#55676D;font-weight:500}
+.z small{margin-left:auto;font-size:18px;font-weight:700;white-space:nowrap}
+.z a{margin-left:auto;font-size:18px;font-weight:800;color:var(--see)}
+.z i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--sonne);margin:9px 4px 0 0}.z i.r{background:var(--rot)}
+.jetzt{color:#0E5560}.plus{color:#117043}.minus{color:var(--rot)}
+.schlitz{position:absolute;left:1606px;top:0;width:236px;height:1080px;background-size:cover;background-position:62% 40%;box-shadow:inset 26px 0 30px -14px rgba(10,22,28,.75),inset -6px 0 12px -6px rgba(10,22,28,.4)}
+.laibung{position:absolute;left:1588px;top:0;width:18px;height:1080px;background:linear-gradient(90deg,#B8BEBB,#EEF0EC)}
+.leiste{position:absolute;left:174px;top:968px;display:flex;align-items:center;gap:40px;font-size:20px;font-weight:600;color:#5F7076;white-space:nowrap}
+.leiste .marke{font-family:Fraunces,serif;font-variation-settings:"SOFT" 100;font-weight:600;font-size:32px;color:var(--tinte);margin-right:8px}
+.leiste b{color:var(--tinte);font-weight:800;border-bottom:3px solid var(--sonne);padding-bottom:5px}
+.feld{position:absolute;left:1010px;top:952px;display:flex;align-items:center;gap:14px;height:56px;width:500px;padding:0 20px;border-radius:28px;background:var(--licht);box-shadow:0 0 30px rgba(255,250,232,.95),0 14px 30px -18px rgba(20,34,40,.5);font-size:19px;font-weight:600;color:#3F5157}
+.feld i{width:14px;height:14px;border-radius:50%;background:var(--sonne);box-shadow:0 0 0 6px rgba(242,163,27,.22)}
+.probe{position:absolute;left:174px;top:44px;font-size:17px;font-weight:600;color:#6B7B80}
+.name{position:absolute;left:0;right:330px;top:330px;text-align:center;font-family:Fraunces,serif;font-variation-settings:"SOFT" 100;font-weight:560;font-size:250px;letter-spacing:-.035em;line-height:1;display:none}
+.f2 .zellen{opacity:.16}.f2 .probe,.f3 .probe{display:none}
+.f3 .zellen{display:none}.f3 .name{display:block}.f3 .wand{filter:brightness(.9)}
+</style>
+<body class="f1"><script>document.body.className="f"+(new URLSearchParams(location.search).get("f")||1)</script>
+<div class="wand"></div>
+<div class="lichtfeld"></div>
+<svg class="laub" viewBox="0 0 760 520"><g fill="#1B292E"><ellipse cx="90" cy="60" rx="120" ry="26" transform="rotate(28 90 60)"/><ellipse cx="210" cy="40" rx="110" ry="22" transform="rotate(52 210 40)"/><ellipse cx="60" cy="190" rx="130" ry="24" transform="rotate(12 60 190)"/><ellipse cx="330" cy="30" rx="90" ry="18" transform="rotate(70 330 30)"/><ellipse cx="150" cy="150" rx="100" ry="20" transform="rotate(40 150 150)"/><ellipse cx="40" cy="320" rx="100" ry="20" transform="rotate(-8 40 320)"/><ellipse cx="260" cy="130" rx="70" ry="14" transform="rotate(60 260 130)"/></g></svg>
+<div class="zellen"></div>
+<div class="name">Projekte</div>
+<div class="laibung"></div><div class="schlitz"></div>
+<div class="probe">Beispieldaten, 11:40 Uhr</div>
+<div class="leiste"></div><div class="feld"><i></i>Sag „Jarvis“ oder schreib hier</div>
+<script>
+const f=document.body.className, neu=f==="f4";
+document.querySelector(".schlitz").style.backgroundImage=`url(../../public/welt/${f==="f3"||neu?"browser":"post"}.webp)`;
+const akt=f==="f1"?"Heute":neu?"Projekte":"";
+document.querySelector(".leiste").innerHTML=`<span class="marke">Jarvis</span>`+["Heute","Projekte","Firma","Märkte","Agenten"].map(x=>x===akt?`<b>${x}</b>`:`<span>${x}</span>`).join("");
+const L=document.querySelector(".lichtfeld"), Z=document.querySelector(".zellen"), H=790;
+function raster(felder,winkel,schub=0){
+ const t=Math.tan(winkel*Math.PI/180);
+ L.style.transform=`translateX(${schub}px) skewX(${winkel}deg)`;
+ L.innerHTML=felder.map(c=>`<div style="left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px"></div>`).join("");
+ Z.innerHTML=felder.map(c=>{const dx=(c.y+c.h/2-H/2)*t+schub;return `<div class="zelle" style="left:${c.x+dx}px;top:${c.y}px;width:${c.w}px;height:${c.h}px">${c.html||""}</div>`}).join("");
+}
+const heute=[
+ {x:0,y:0,w:640,h:450,html:`<h3>Freitag, 13. November. Als Nächstes:</h3><div class="zeit">14:00</div><div class="was">Besprechung Hallenneubau</div><p>Statik und Angebot Stahlbau liegen bereit. Drei Punkte sind noch offen.</p>`},
+ {x:662,y:0,w:380,h:450,html:`<h3>Termine heute</h3><div class="z"><span>09:00</span>Bauleitung</div><div class="z jetzt"><span>14:00</span>Hallenneubau</div><div class="z"><span>16:30</span>Steuerberater</div>`},
+ {x:1064,y:0,w:336,h:450,html:`<h3>Märkte</h3><div class="z">Gold<small class="plus">+0,8 %</small></div><div class="z">Bitcoin<small class="minus">−1,2 %</small></div><div class="z">Desk<small class="plus">+2,4 %</small></div>`},
+ {x:0,y:472,w:640,h:318,html:`<h3>Wartet auf dein Ja</h3><div class="z"><i></i>Termin mit dem Steuerberater bestätigen<a>Ansehen</a></div><div class="z"><i></i>Antwort an die Bauleitung senden<a>Ansehen</a></div><div class="z"><i class="r"></i>Eine Aufgabe ist seit gestern überfällig<a>Ansehen</a></div>`},
+ {x:662,y:472,w:380,h:318,html:`<h3>Projekte</h3><div class="z">Hallenneubau<small>3 Tage</small></div><div class="z">KI-Dashboard<small>läuft</small></div><div class="z">Lagerumbau<small>geplant</small></div>`},
+ {x:1064,y:472,w:336,h:318,html:`<h3>Agenten</h3><div class="z">Marktbeobachter<small>läuft</small></div><div class="z">Postsortierer<small>fertig</small></div><div class="z">Morgenbericht<small>07:00</small></div>`}];
+const projekte=[
+ {x:0,y:0,w:820,h:450,html:`<h3>Projekte. Am dringendsten:</h3><div class="zeit" style="font-size:136px;line-height:.95;margin-left:-4px">Hallenneubau</div><div class="was">Frist in 3 Tagen</div><p style="max-width:640px">Der Bauantrag ist eingereicht. Das Angebot für den Stahlbau fehlt noch, die Statik ist in Prüfung.</p>`},
+ {x:842,y:0,w:558,h:450,html:`<h3>Nächste Schritte</h3><div class="z"><i class="r"></i>Angebot Stahlbau nachfassen<a>bis Montag</a></div><div class="z"><i></i>Statik freigeben<a>bis Dienstag</a></div><div class="z"><i></i>Besprechung heute um 14:00<a>Vorbereitet</a></div>`},
+ {x:0,y:472,w:400,h:318,html:`<h3>Alle Projekte</h3><div class="z jetzt">Hallenneubau<small>3 Tage</small></div><div class="z">KI-Dashboard<small>läuft</small></div><div class="z">Lagerumbau<small>geplant</small></div>`},
+ {x:422,y:472,w:400,h:318,html:`<h3>Was Jarvis dazu weiß</h3><div class="z">12 Notizen</div><div class="z">7 Dateien</div><div class="z">4 Entscheidungen</div>`},
+ {x:842,y:472,w:558,h:318,html:`<h3>Zuletzt</h3><div class="z">Der Statiker hat geantwortet</div><div class="z">Plan Stand C ist abgelegt</div>`}];
+if(f==="f1") raster(heute,-10);
+if(f==="f2") raster(heute,-34,330);
+if(f==="f3") raster([{x:250,y:-120,w:210,h:1100},{x:482,y:-120,w:560,h:1100},{x:1064,y:-120,w:150,h:1100}],-20,-40);
+if(f==="f4") raster(projekte,-6);
+</script>
+</body></html>

@@ -1,11 +1,18 @@
-import { accessProblem, clock, eventsOn, type CalendarSnapshot } from "./calendar";
+import { accessProblem, clock, eventsOn, outlookLuecke, outlookSatz, verdecktAm, type CalendarSnapshot } from "./calendar";
 import { deskSentence } from "./commands";
 import { isoDate } from "./dates";
 import { intelBriefing, type IntelSnapshot } from "./intel";
 import { importantMails, type MailSnapshot } from "./mail";
+import type { MarketSnapshot } from "./market";
+import { kursLage, marktAbsatz } from "./marktlage";
+import type { MetalleSnapshot } from "./metalle";
 import type { DeskSnapshot } from "./paper";
-import { dateOf, dueSoon, type TasksSnapshot } from "./tasks";
+import type { ProjekteSnapshot } from "./projekte";
+import { projekteAbsatz } from "./routinen";
+import { tageslage } from "./heute";
+import { aufgabenUnlesbar, dateOf, dueSoon, TRESOR_UNLESBAR, type TasksSnapshot } from "./tasks";
 import type { WeatherSnapshot } from "./weather";
+import type { WochenPlan } from "./woche";
 
 // JARVIS auf dem Handy über Telegram: Du legst dir bei Telegram einen eigenen Bot an, JARVIS liest dessen
 // Nachrichten und antwortet nur dir. Hier stehen die Texte und Regeln ohne Netz, damit sie testbar sind;
@@ -25,9 +32,17 @@ export type TelegramStatus = {
   prefs: TelegramPrefs;
 };
 
-export type TelegramPrefs = { trades: boolean; warnings: boolean; reminders: boolean; briefing: string | null };
+// projekte: Projektnamen und -inhalte dürfen aufs Handy: die Vorbereitung vor einem Termin, der zu einem Projekt
+// gehört, und die Namen im Briefing und im Tagesabschluss. Aus, bis du es einschaltest: Damit gehen Projektinhalte
+// über Telegram, also über einen Dienst außer Haus. Ohne den Schalter nennt JARVIS dort nur Zahlen.
+// abschluss: Uhrzeit für den Tagesabschluss am Abend oder null. Aus, bis du eine Uhrzeit einstellst.
+// hinweise: Hinweise am Tag (src/lib/hinweise.ts). Aus, bis du sie einschaltest.
+// woche: Wochentag und Uhrzeit für den Wochenbericht (src/lib/woche.ts) oder null. Aus, bis du ihn einschaltest.
+export type TelegramPrefs = { trades: boolean; warnings: boolean; reminders: boolean; projekte: boolean; briefing: string | null; abschluss: string | null; hinweise: boolean; woche: WochenPlan | null };
 
-export const TELEGRAM_DEFAULTS: TelegramPrefs = { trades: true, warnings: true, reminders: true, briefing: "07:30" };
+export const TELEGRAM_DEFAULTS: TelegramPrefs = { trades: true, warnings: true, reminders: true, projekte: false, briefing: "07:30", abschluss: null, hinweise: false, woche: null };
+// Die Uhrzeit, die die Einstellungen beim Einschalten des Tagesabschlusses vorschlagen.
+export const ABSCHLUSS_VORSCHLAG = "18:00";
 
 // So viele Minuten vor einem Termin erinnert JARVIS dich.
 export const REMINDER_MINUTES = 15;
@@ -70,6 +85,8 @@ export const pairLink = (bot: string, code: string) => `https://t.me/${bot}?star
 // Erscheint im Telegram-Menü unter „/“.
 export const COMMANDS = [
   { command: "briefing", description: "Was heute ansteht" },
+  { command: "abschluss", description: "Was offen blieb und was morgen kommt" },
+  { command: "woche", description: "Wochenbericht: erledigt, offen, die nächsten sieben Tage" },
   { command: "handel", description: "Stand des Spielgeld-Handels" },
   { command: "pause", description: "Handel pausieren, der Stop-Loss bleibt" },
   { command: "weiter", description: "Handel fortsetzen" },
@@ -78,7 +95,7 @@ export const COMMANDS = [
 ];
 
 // Was eine Nachricht ohne KI-Gehirn bedeutet. Alles andere geht an Claude.
-export type TelegramCommand = "briefing" | "handel" | "pause" | "weiter" | "notaus" | "hilfe";
+export type TelegramCommand = "briefing" | "abschluss" | "woche" | "handel" | "pause" | "weiter" | "notaus" | "hilfe";
 
 export function commandOf(text: string): TelegramCommand | null {
   const t = text.trim().toLowerCase();
@@ -90,6 +107,8 @@ export function commandOf(text: string): TelegramCommand | null {
   // Ein einzelnes „Stopp“ hält den Handel an. Pause statt Not-Aus, damit der Stop-Loss weiter aufpasst.
   if (/^(stopp?|halt)[.!]*$/.test(t)) return "pause";
   if (/^(briefing|lage)[.!?]*$/.test(t)) return "briefing";
+  if (/^(abschluss|tagesabschluss|feierabend)[.!?]*$/.test(t)) return "abschluss";
+  if (/^(woche|wochenbericht|wochenrückblick|wochenabschluss)[.!?]*$/.test(t)) return "woche";
   return null;
 }
 
@@ -101,6 +120,8 @@ export function helpText(name: string, brain: boolean): string {
     `Hallo ${name}, hier ist JARVIS. ${free}`,
     "",
     "/briefing – was heute ansteht",
+    "/abschluss – was heute offen blieb und was morgen kommt",
+    "/woche – Wochenbericht: was erledigt ist, was liegt, was die nächsten sieben Tage bringen",
     "/handel – Stand des Spielgeld-Handels",
     "/pause – keine neuen Käufe, der Stop-Loss bleibt (oder einfach „Stopp“)",
     "/weiter – Handel fortsetzen",
@@ -120,13 +141,19 @@ export type BriefingInput = {
   tasks: TasksSnapshot | null;
   intel: IntelSnapshot | null;
   desk: DeskSnapshot | null;
+  // Das Projektgedächtnis. projektNamen: ob Namen und Inhalte genannt werden dürfen (Schalter „projekte“).
+  projekte?: ProjekteSnapshot | null;
+  projektNamen?: boolean;
+  // Die großen Kryptokurse und der Stand des Edelmetall-Agenten, für den Absatz „Märkte“.
+  market?: Pick<MarketSnapshot, "majors"> | null;
+  metalle?: MetalleSnapshot | null;
 };
 
 const DAY = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
 const MAX_LINES = 5;
 
 // Das Briefing fürs Handy: kurze Absätze, Termine und Mails als Liste.
-export function briefingMessage({ name, now, weather, calendar, mail, tasks, intel, desk }: BriefingInput): string {
+export function briefingMessage({ name, now, weather, calendar, mail, tasks, intel, desk, projekte, projektNamen, market, metalle }: BriefingInput): string {
   const today = isoDate(now);
   const hour = now.getHours();
   const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
@@ -143,12 +170,17 @@ export function briefingMessage({ name, now, weather, calendar, mail, tasks, int
     if (problem) parts.push(`Kalender: ${problem}`);
     else {
       const rest = eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime());
-      if (rest.length === 0) parts.push("Kalender: heute frei.");
+      // Outlook-Termine, die nicht fürs Handy freigegeben sind: nur ihre Zahl.
+      const verdeckt = verdecktAm(calendar, today, now.getTime());
+      if (rest.length === 0) parts.push(verdeckt > 0 ? `Kalender: heute nur Outlook, ${outlookSatz(verdeckt, true)}. Am Mac steht alles im Raum Kalender.` : "Kalender: heute frei.");
       else {
         const lines = rest.slice(0, MAX_LINES).map((e) => `• ${e.allDay ? "ganztägig" : clock(e.start)} ${e.title}${e.location ? `, ${e.location}` : ""}`);
         if (rest.length > MAX_LINES) lines.push(`• und ${rest.length - MAX_LINES} weitere`);
+        if (verdeckt > 0) lines.push(`• ${outlookSatz(verdeckt)}`);
         parts.push(`Termine heute:\n${lines.join("\n")}`);
       }
+      // Fehlt Outlook gerade, steht das dabei: „frei“ gilt dann nur für das, was JARVIS lesen konnte.
+      if (outlookLuecke(calendar)) parts[parts.length - 1] += `\n${outlookLuecke(calendar)}`;
     }
   }
 
@@ -165,7 +197,8 @@ export function briefingMessage({ name, now, weather, calendar, mail, tasks, int
     }
   }
 
-  if (tasks?.configured && !tasks.error) {
+  if (aufgabenUnlesbar(tasks)) parts.push(`Aufgaben: ${TRESOR_UNLESBAR}`);
+  else if (tasks?.configured) {
     const soon = dueSoon(tasks.tasks, today);
     const overdue = soon.filter((t) => dateOf(t)! < today).length;
     const dueToday = soon.filter((t) => dateOf(t) === today);
@@ -177,6 +210,16 @@ export function briefingMessage({ name, now, weather, calendar, mail, tasks, int
     }
   }
 
+  if (projekte) {
+    // Nur die Projekte zählen hier; alles andere steht oben schon.
+    const lage = tageslage({ calendar: null, tasks: null, mail: null, projekte, desk: null, intel: null, documents: null, freigabenOffen: 0, notaus: false }, now);
+    const absatz = projekteAbsatz(lage, projekte.vorschlaege.length, projektNamen === true);
+    if (absatz) parts.push(absatz);
+  }
+
+  // Nur starke Bewegungen und Marken. Den Desk und die Warnung von Intel nennen die Sätze darunter selbst.
+  const maerkte = marktAbsatz(kursLage(market ?? null, metalle ?? null), today);
+  if (maerkte) parts.push(maerkte);
   const news = intelBriefing(intel, now);
   if (news) parts.push(news);
   const trading = deskSentence(desk, true);

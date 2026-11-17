@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { DeskError, answerApproval, control, deskSnapshot, startDesk, type DeskAction } from "@/lib/server/desk/engine";
+import { protokolliere } from "@/lib/server/gateway/audit";
 import { guard, readBody } from "@/lib/server/guard";
 
 const ACTIONS = new Set(["start", "pause", "weiter", "notaus", "verkaufen", "alle_verkaufen", "zuruecksetzen"]);
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
   startDesk();
   try {
     const message = body.action === "rueckfrage" ? await answerApproval(body.id, body.ja, "app") : await control(body);
+    await protokolliere({ art: "desk", agent: "mensch", kanal: "mac", was: body.action === "rueckfrage" ? `Kauf-Rückfrage ${body.ja ? "ja" : "nein"}` : `Desk: ${body.action}`, ergebnis: "ausgefuehrt" });
     return Response.json({ ...(await deskSnapshot()), message });
   } catch (e) {
     if (e instanceof DeskError) return Response.json({ error: e.message }, { status: 409 });

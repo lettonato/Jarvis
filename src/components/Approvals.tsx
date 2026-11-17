@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { HoloLink } from "./HoloLink";
+import { RaumLink } from "./RaumLink";
 import { useJarvis } from "./JarvisProvider";
 import { postJson } from "@/lib/api";
 import { APPROVAL, assetLabel, secondsLeft, type Approval } from "@/lib/approval";
@@ -52,12 +52,12 @@ export function ApprovalPanel({ desk }: { desk: DeskSnapshot }) {
   const done = (desk.approvals ?? []).filter((a) => a.state !== "offen").slice(0, 3);
   if (open.length === 0 && !note) return null;
   return (
-    <section className="rounded-md border-2 border-amber-400/70 bg-amber-400/10 p-3 shadow-[0_0_24px_rgba(251,191,36,0.15)]" aria-live="polite">
+    <section className="rounded-md border-2 border-sonne/70 bg-sonne/10 p-3" aria-live="polite">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-amber-200">
+        <h2 className="text-sm font-bold text-ocker">
           {open.length === 1 ? "JARVIS fragt vor einem Kauf" : open.length > 1 ? `JARVIS fragt vor ${open.length} Käufen` : "Rückfrage"}
         </h2>
-        <p className="text-[11px] text-amber-100/70">
+        <p className="text-xs text-schiefer/70">
           {desk.approvalPhone ? "Dieselbe Frage ist auf deinem Handy. Was du zuerst beantwortest, gilt." : "Kein Handy gekoppelt, die Frage steht nur hier."}
         </p>
       </div>
@@ -65,9 +65,9 @@ export function ApprovalPanel({ desk }: { desk: DeskSnapshot }) {
         {open.map((a) => {
           const left = now ? secondsLeft(a, now.getTime()) : APPROVAL.timeoutMinutes * 60;
           return (
-            <li key={a.id} className="flex flex-col gap-2 rounded border border-amber-300/30 bg-desk/70 p-3 sm:flex-row sm:items-center">
+            <li key={a.id} className="flex flex-col gap-2 rounded border border-sonne/30 bg-desk/70 p-3 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
-                <p className="text-base font-bold text-ink">
+                <p className="text-base font-bold text-schiefer">
                   {a.url ? (
                     <a href={a.url} target="_blank" rel="noreferrer" className="hover:underline">
                       {assetLabel(a)}
@@ -76,10 +76,10 @@ export function ApprovalPanel({ desk }: { desk: DeskSnapshot }) {
                     assetLabel(a)
                   )}{" "}
                   für {formatUsd(a.usd)} kaufen?
-                  <span className="ml-2 align-middle text-[10px] font-normal uppercase tracking-wider text-quiet">Spielgeld</span>
+                  <span className="ml-2 align-middle text-xs font-normal text-quiet">Spielgeld</span>
                 </p>
                 <p className="mt-0.5 text-xs text-quiet">Warum: {a.why}</p>
-                <p className={`mt-1 text-[11px] tabular-nums ${left < 120 ? "text-amber-300" : "text-amber-100/70"}`}>
+                <p className={`mt-1 text-xs tabular-nums ${left < 120 ? "text-ocker" : "text-schiefer/70"}`}>
                   {left > 0 ? `Noch ${countdown(left)} Minuten, ohne Antwort kaufe ich nicht.` : "Abgelaufen, gekauft wird nicht."}
                 </p>
               </div>
@@ -88,7 +88,7 @@ export function ApprovalPanel({ desk }: { desk: DeskSnapshot }) {
                   type="button"
                   disabled={busy !== null || left === 0}
                   onClick={() => answer(a, true)}
-                  className="rounded bg-up/90 px-4 py-2 text-sm font-bold text-desk hover:bg-up disabled:opacity-50"
+                  className="rounded-full bg-up px-4 py-2 text-sm font-bold text-white hover:bg-up/90 disabled:opacity-50"
                 >
                   {busy === a.id ? "Prüfe …" : "Ja, kaufen"}
                 </button>
@@ -96,7 +96,7 @@ export function ApprovalPanel({ desk }: { desk: DeskSnapshot }) {
                   type="button"
                   disabled={busy !== null || left === 0}
                   onClick={() => answer(a, false)}
-                  className="rounded border border-line bg-panel px-4 py-2 text-sm font-bold hover:bg-panel-2 disabled:opacity-50"
+                  className="rounded-full border border-line bg-panel px-4 py-2 text-sm font-bold hover:bg-panel-2 disabled:opacity-50"
                 >
                   Nein
                 </button>
@@ -105,9 +105,9 @@ export function ApprovalPanel({ desk }: { desk: DeskSnapshot }) {
           );
         })}
       </ul>
-      {note && <p className={`mt-2 text-xs ${note.tone === "ok" ? "text-up" : "text-amber-200"}`}>{note.text}</p>}
+      {note && <p className={`mt-2 text-xs ${note.tone === "ok" ? "text-up" : "text-ocker"}`}>{note.text}</p>}
       {done.length > 0 && (
-        <ul className="mt-2 space-y-0.5 text-[11px] text-quiet">
+        <ul className="mt-2 space-y-0.5 text-xs text-quiet">
           {done.map((a) => (
             <li key={a.id}>
               {assetLabel(a)}, {formatUsd(a.usd)}: {a.result}
@@ -130,29 +130,29 @@ export function ApprovalBar() {
   if (pathname === "/trading" || (open.length === 0 && !note)) return null;
   const a = open[0];
   return (
-    <div className="mx-2 mb-2 rounded-lg border border-amber-400/60 bg-desk/95 px-3 py-2 text-sm shadow-lg sm:mx-5" role="status">
+    <div className="rounded-2xl border-l-4 border-sonne bg-white/92 px-4 py-2.5 text-sm shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl" role="status">
       {a ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="font-bold text-amber-200">🟡 Rückfrage</span>
+          <span className="font-bold text-ocker">Rückfrage</span>
           <span className="min-w-0 flex-1">
             Soll ich <b>{assetLabel(a)}</b> für {formatUsd(a.usd)} kaufen?
             <span className="ml-2 text-xs tabular-nums text-quiet">{now ? `noch ${countdown(secondsLeft(a, now.getTime()))}` : ""}</span>
             {open.length > 1 && <span className="ml-2 text-xs text-quiet">und {open.length - 1} weitere</span>}
           </span>
           <span className="flex gap-2">
-            <button type="button" disabled={busy !== null} onClick={() => answer(a, true)} className="rounded bg-up/90 px-3 py-1 text-xs font-bold text-desk hover:bg-up disabled:opacity-50">
+            <button type="button" disabled={busy !== null} onClick={() => answer(a, true)} className="rounded-full bg-up px-3.5 py-1 text-xs font-bold text-white hover:bg-up/90 disabled:opacity-50">
               {busy === a.id ? "Prüfe …" : "Ja, kaufen"}
             </button>
-            <button type="button" disabled={busy !== null} onClick={() => answer(a, false)} className="rounded border border-line px-3 py-1 text-xs font-bold hover:bg-panel-2 disabled:opacity-50">
+            <button type="button" disabled={busy !== null} onClick={() => answer(a, false)} className="rounded-full border border-line px-3.5 py-1 text-xs font-bold hover:bg-panel-2 disabled:opacity-50">
               Nein
             </button>
-            <HoloLink href="/trading" className="rounded px-2 py-1 text-xs text-sky-300 hover:underline">
+            <RaumLink href="/trading" className="rounded px-2 py-1 text-xs text-see hover:underline">
               Ansehen
-            </HoloLink>
+            </RaumLink>
           </span>
         </div>
       ) : (
-        note && <p className={note.tone === "ok" ? "text-up" : "text-amber-200"}>{note.text}</p>
+        note && <p className={note.tone === "ok" ? "text-up" : "text-ocker"}>{note.text}</p>
       )}
     </div>
   );
@@ -161,11 +161,11 @@ export function ApprovalBar() {
 export function ApprovalRule({ desk }: { desk: DeskSnapshot }) {
   const limit = desk.approvalLimit;
   return (
-    <p className="text-[11px] text-quiet">
+    <p className="text-xs text-quiet">
       Rückfrage vor Käufen:{" "}
-      <HoloLink href="/einstellungen#rueckfrage" className="text-sky-300 hover:underline">
+      <RaumLink href="/einstellungen#rueckfrage" className="text-see hover:underline">
         {limit === null ? "aus, der Desk kauft selbst" : `${limit === 0 ? "bei jedem Kauf" : `ab ${limit} $`}${desk.approvalPhone ? ", per Telegram und hier" : ", hier in JARVIS"}`}
-      </HoloLink>
+      </RaumLink>
     </p>
   );
 }

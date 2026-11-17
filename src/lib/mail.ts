@@ -25,6 +25,7 @@ export type MailSnapshot = {
   error?: string;
 };
 
-export type MailMessage = { uid: number; from: string; subject: string; date: string; text: string };
+// fromAddress: die Adresse des Absenders, so wie das Postfach sie nennt (für einen Antwortentwurf).
+export type MailMessage = { uid: number; from: string; fromAddress?: string; subject: string; date: string; text: string };
 
 export const importantMails = (snap: MailSnapshot | null) => (snap?.items ?? []).filter((m) => m.important);

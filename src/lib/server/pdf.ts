@@ -1,5 +1,6 @@
 // Macht aus einer fertigen Seite ein PDF, mit dem Chrome auf dem Mac (wie der Browser-Agent, aber ohne
-// Fenster und ohne dein Profil). Skripte sind aus, und die Seite darf nichts aus dem Netz laden.
+// Fenster und ohne dein Profil). Skripte sind aus, und die Seite darf nichts aus dem Netz laden: Jede Anfrage
+// wird abgebrochen, und Chrome kann hier keinen Namen auflösen.
 
 export class PdfError extends Error {}
 
@@ -13,7 +14,7 @@ export async function htmlToPdf(html: string, title: string): Promise<Buffer> {
   const exe = process.env.JARVIS_CHROME;
   let browser;
   try {
-    browser = await chromium.launch({ ...(exe ? { executablePath: exe } : { channel: "chrome" }), headless: true });
+    browser = await chromium.launch({ ...(exe ? { executablePath: exe } : { channel: "chrome" }), headless: true, args: ["--host-resolver-rules=MAP * ~NOTFOUND", "--disable-quic"] });
   } catch (e) {
     const text = e instanceof Error ? e.message : String(e);
     throw new PdfError(/not found|executable doesn't exist|ENOENT/i.test(text) ? "Für das PDF brauche ich Google Chrome auf deinem Mac." : `Chrome ließ sich nicht starten: ${text.split("\n")[0].slice(0, 160)}`);

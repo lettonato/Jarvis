@@ -12,7 +12,7 @@ fi
 # Beim ersten Start und nach einem Update (neue package.json) fehlende Pakete installieren.
 if [ ! -d node_modules ] || [ package.json -nt node_modules/.package-lock.json ]; then
   echo "Installiere Pakete, das dauert beim ersten Mal ein bis zwei Minuten ..."
-  if ! npm install; then
+  if ! npm ci --no-audit --no-fund; then
     read -r -p "Die Installation ist fehlgeschlagen. Enter zum Schließen ..."
     exit 1
   fi

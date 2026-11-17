@@ -1,10 +1,18 @@
 import { accessProblem, briefingSentence, confirmSentence, daySentence, eventFromSpeech, nextSentence, type CalendarSnapshot, type NewEvent } from "./calendar";
 import { addDays, findDate, isoDate, spokenDay, spokenDue } from "./dates";
+import { findeZiel, zielImSatz, zielName, type DesktopStatus } from "./desktop";
 import { formatEur, formatPct } from "./format";
 import { intelBriefing, intelSentence, itemsAbout, searchSentence, type IntelSnapshot } from "./intel";
 import { importantMails, type MailItem, type MailSnapshot } from "./mail";
 import type { MarketSnapshot } from "./market";
+import { kursLage, marktHinweis, marktlage, marktSatz } from "./marktlage";
+import type { MetalleSnapshot } from "./metalle";
 import { SAFETY, type DeskSnapshot } from "./paper";
+import type { ProjekteSnapshot } from "./projekte";
+import { abschlussSatz, projektSatz, tagesabschluss } from "./routinen";
+import { ohneAnrede } from "./voiceText";
+import { wocheSatz, wochenbericht } from "./woche";
+import { tageslage, type TagesDaten } from "./heute";
 import { dateOf, dueSoon, type Task, type TasksSnapshot } from "./tasks";
 import type { WeatherSnapshot } from "./weather";
 
@@ -31,6 +39,8 @@ export type Effect =
   | { type: "addEvent"; event: NewEvent }
   | { type: "openCalendar"; date?: string }
   | { type: "openObsidian"; what: "tresor" | "eingang" | "notizen" }
+  // Öffnet ein Programm oder einen Ordner aus der Liste in den Einstellungen (src/lib/desktop.ts).
+  | { type: "openDesktop"; id: string }
   // Grok liest die Nachrichten neu, mit Thema gezielt dazu. Kostet etwa 40 Cent.
   | { type: "intel"; topic?: string };
 
@@ -55,6 +65,11 @@ export type CommandContext = {
   desk: DeskSnapshot | null;
   calendar?: CalendarSnapshot | null;
   intel?: IntelSnapshot | null;
+  projekte?: ProjekteSnapshot | null;
+  metalle?: MetalleSnapshot | null;
+  // Die Programme und Ordner, die JARVIS am Mac öffnen darf. Fehlt die Liste (Einstellungen noch nicht geladen),
+  // gibt es den Befehl nicht.
+  desktop?: DesktopStatus | null;
   session: Session | null;
 };
 
@@ -111,6 +126,25 @@ function scanSentence(market: MarketSnapshot | null): string {
   const passed = market.scan.candidates.filter((c) => c.passed);
   const best = passed[0] ? ` Am stärksten gehandelt wird gerade ${passed[0].symbol}.` : "";
   return `Ich habe ${market.scan.scanned} neue Solana-Coins gescannt. ${passed.length} bestehen die harten Filter.${best}`;
+}
+
+// Was JARVIS im Gespräch über den Tag weiß. Freigaben und Not-Aus kennt nur die Sicherheitszentrale.
+const tagesDaten = (ctx: CommandContext): TagesDaten => ({
+  calendar: ctx.calendar ?? null,
+  tasks: ctx.tasks,
+  mail: ctx.mail,
+  projekte: ctx.projekte ?? null,
+  desk: ctx.desk,
+  intel: ctx.intel ?? null,
+  documents: null,
+  freigabenOffen: 0,
+  notaus: false,
+});
+
+// Projekte im Briefing: nur, wenn eines dich braucht oder Vorschläge warten. Vertrauliche werden nie genannt.
+function projekteSentence(ctx: CommandContext): string {
+  if (!ctx.projekte) return "";
+  return projektSatz(tageslage(tagesDaten(ctx), ctx.now), ctx.projekte.vorschlaege.length);
 }
 
 function mailSentence(mail: MailSnapshot | null): string {
@@ -171,6 +205,8 @@ function prompt(ctx: CommandContext, s: Session): string {
 }
 
 function startTasks(ctx: CommandContext, intro: string): Decision {
+  // Lässt sich der Tresor nicht lesen, steht der Grund schon im Satz davor; „nichts fällig“ wäre dann geraten.
+  if (ctx.tasks?.error) return { reply: intro.trim(), navigate: "/aufgaben", session: null };
   const soon = dueSoon(ctx.tasks?.tasks ?? [], today(ctx));
   if (soon.length === 0) return { reply: `${intro} Bis nächste Woche ist nichts fällig.`.trim(), navigate: "/aufgaben", session: null };
   const session: Session = { kind: "aufgaben", ids: soon.map((t) => t.id), index: 0, done: 0 };
@@ -232,9 +268,13 @@ function sessionCommand(ctx: CommandContext, s: Session, text: string): Decision
 
   const mail = findMail(ctx, s.ids[s.index]);
   if (!mail) return advance(ctx, s, "");
-  if (has(text, /vorles|\blies\b|lesen|was schreibt|worum geht|inhalt/)) {
+  // „lesen“ nur als eigenes Wort (auch „durchlesen“, „nachlesen“, „weiterlesen“): „gelesen“ heißt „als gelesen
+  // markieren“ und steht weiter unten. „vorgelesen“ will vorgelesen bekommen.
+  if (has(text, /vorles|vorgelesen|\blies\b|\b(?:durch|nach|weiter)?lesen\b|was schreibt|worum geht|inhalt/)) {
     return { reply: `${sender(mail)} schreibt:`, effect: { type: "readMail", uid: mail.uid }, after: "Soll ich daraus eine Aufgabe machen, oder gehen wir weiter?" };
   }
+  // „ungelesen“ und „nicht (als) gelesen“ heißen das Gegenteil von „gelesen“: nichts anfassen, weitergehen.
+  if (has(text, /ungelesen|\b(?:nicht|kein\w*)\b[^.!?]*\bgelesen/)) return advance(ctx, s, "Bleibt ungelesen.");
   if (has(text, /aufgabe\b|notier|to-?do|erinner|antworten|beantworten|^ja\b|mach das|gerne/)) {
     const date = findDate(text, today(ctx))?.iso ?? addDays(today(ctx), 1);
     const decision = advance(ctx, { ...s, done: s.done + 1 }, `Notiert: ${sender(mail)} antworten, bis ${spokenDay(date, today(ctx))}.`);
@@ -272,6 +312,17 @@ function taskFromSpeech(input: string, day: string): { text: string; due?: strin
 // „Trag morgen um 9 Zahnarzt ein“, „neuer Termin …“, „schreib in den Kalender: …“, „Termin am Freitag um 3 mit Max“.
 const ADD_EVENT =
   /^(?:bitte\s+)?trage?\b.*\bein$|termine?\s+(?:eintragen|anlegen)|\bneue[nr]?\s+termin|\b(?:in\s+(?:den|meinen)|ins)\s+kalender\b.*(?:\bein$|eintragen|schreiben|:)|^(?:bitte\s+)?(?:schreib|setz|leg|mach|erstell|plan)\w*\b.{0,20}\btermin|^termin\s+(?:am|um|für|morgen|übermorgen|heute|nächste)/;
+
+// „… in den Kalender Arbeit …“: Nennt der Satz einen Kalender, den es gibt, kommt sein Name aus dem Satz heraus
+// (sonst stünde er im Titel) und wird das Ziel. Der längste passende Name gewinnt („Arbeit Baustelle“ vor „Arbeit“).
+function genannterKalender(satz: string, kalender: { name: string }[]): { name: string; rest: string } | null {
+  const namen = kalender.map((k) => k.name.trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+  for (const name of namen) {
+    const muster = new RegExp(`(?:\\bin\\s+(?:den|meinen|dem)|\\bim|\\bins)\\s+kalender\\s+[„"“”']?${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[„"“”']?(?![\\p{L}\\p{N}])`, "iu");
+    if (muster.test(satz)) return { name, rest: satz.replace(muster, " ") };
+  }
+  return null;
+}
 
 const CALENDAR_QUERY =
   /termin|kalender|was (habe|hab) ich (heute|morgen|übermorgen|am|nächste|diese)|was steht (heute|morgen|übermorgen|am \S+|nächste[nr]? \S+)( so)? an|wie sieht (mein|der) (tag|morgen|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag) aus|bin ich .{0,20}(frei|verplant)|hab(e)? ich .{0,25}zeit/;
@@ -315,6 +366,15 @@ function newsAbout(ctx: CommandContext, topic: string, search: boolean): Decisio
 }
 
 // ---------- Regeln ----------
+
+// Für Briefing und Tagesabschluss: nur starke Bewegungen und Marken am Markt, sonst nichts. Desk und Intel
+// haben dort ihre eigenen Sätze. Kryptokurse, die der Mac länger nicht neu geholt hat (Deckel zu, keine
+// Verbindung), sind keine Neuigkeit mehr und bleiben weg.
+const KURSE_FRISCH_MS = 15 * 60_000;
+function marktBewegung(ctx: CommandContext): string {
+  const frisch = ctx.market && ctx.now.getTime() - Date.parse(ctx.market.fetchedAt) <= KURSE_FRISCH_MS;
+  return marktHinweis(kursLage(frisch ? ctx.market : null, ctx.metalle ?? null), today(ctx));
+}
 
 // talk: Mit KI-Gehirn beantwortet Claude das besser, bei einer Frage („frage“) oder immer („immer“).
 type Rule = { match: RegExp; run: (ctx: CommandContext, text: string, original: string) => Decision; talk?: "frage" | "immer" };
@@ -363,6 +423,7 @@ const RULES: Rule[] = [
     match: /(öffne|öffnen|starte|starten)\w*\b.{0,30}\bkalender|kalender(-?app)?\b.{0,12}\b(öffnen|starten)/,
     run: (ctx, text) => {
       if (ctx.calendar?.access === "kein-mac") return { reply: accessProblem(ctx.calendar)! };
+      if (ctx.calendar?.nurLesen) return { reply: "Die Kalender-App gibt es nur auf dem Mac. Deine Outlook-Termine siehst du im Raum Kalender.", navigate: "/kalender" };
       const date = findDate(text, today(ctx))?.iso;
       const day = date && date !== today(ctx) ? ` für ${spokenDay(date, today(ctx))}` : "";
       return { reply: `Ich öffne deinen Kalender${day}.`, effect: { type: "openCalendar", date }, navigate: "/kalender" };
@@ -380,14 +441,19 @@ const RULES: Rule[] = [
   {
     match: ADD_EVENT,
     run: (ctx, text, original) => {
-      const event = eventFromSpeech(original, ctx.now);
+      // Ein genannter Kalender gilt fest. Bleibt ohne ihn kein Titel übrig, war der Name der Titel.
+      const genannt = genannterKalender(original, ctx.calendar?.calendars ?? []);
+      const imGenannten = genannt ? eventFromSpeech(genannt.rest, ctx.now) : null;
+      const event = imGenannten && genannt ? { ...imGenannten, calendar: genannt.name } : eventFromSpeech(original, ctx.now);
       if (!event) {
         if (/^termin\b/.test(text)) return calendarQuery(ctx, text);
         return { reply: "Wann und was soll ich eintragen? Sag zum Beispiel: Trag morgen um 9 Uhr Zahnarzt ein." };
       }
+      // Nur Outlook, kein Mac-Kalender: lesen ja, eintragen nein. JARVIS schreibt nichts nach Outlook.
+      if (ctx.calendar?.nurLesen) return { reply: "Eintragen kann ich nur in den Kalender am Mac. Outlook lese ich nur.", navigate: "/kalender" };
       const blocked = ctx.calendar?.access === "ok" || ctx.calendar?.access === "nur-schreiben" ? null : accessProblem(ctx.calendar ?? null);
       if (blocked) return { reply: blocked, navigate: "/kalender" };
-      return { reply: confirmSentence(event, today(ctx), ctx.calendar?.target), effect: { type: "addEvent", event }, navigate: "/kalender" };
+      return { reply: confirmSentence(event, today(ctx), event.calendar ?? ctx.calendar?.target), effect: { type: "addEvent", event }, navigate: "/kalender" };
     },
   },
   {
@@ -397,6 +463,22 @@ const RULES: Rule[] = [
   {
     match: CALENDAR_QUERY,
     run: (ctx, text) => calendarQuery(ctx, text),
+  },
+  {
+    // Die Marktlage aus dem, was JARVIS schon hat (src/lib/marktlage.ts): Krypto, Edelmetalle, Spielgeld-Desk.
+    // Nur das eigene Wort („Marktlage“, nicht „Arbeitsmarktlage“), und nicht, wenn es um Nachrichten oder eine Suche geht.
+    match: /^(?!.*(nachrichten|news|neuigkeiten|lagebild|recherch|\bsuch)).*((?<![a-zäöüß-])(markt(übersicht|überblick|lage)|finanz(übersicht|überblick))(?![a-zäöüß])|wie (stehen|laufen|sind) die märkte)/,
+    run: (ctx) => ({ reply: marktSatz(marktlage({ market: ctx.market, metalle: ctx.metalle ?? null, desk: ctx.desk, intel: ctx.intel ?? null })), navigate: "/intel" }),
+  },
+  {
+    match: /tagesübersicht|tagesüberblick|\bmein tag\b|heute im überblick/,
+    run: () => ({ reply: "Hier ist dein Tag im Überblick.", navigate: "/heute" }),
+  },
+  {
+    // Nur wer die Ansicht selbst meint („Projekte“, „zeig mir die Projekte“), landet dort. Ein Satz, in dem das
+    // Wort Projekt bloß vorkommt („Mails zum Projekt Alpha“), gehört den anderen Regeln oder dem KI-Gehirn.
+    match: /^(?:(?:zeige?|öffne|gehe?)\s+(?:mir\s+)?)?(?:(?:zu|zum|zur|auf|in)\s+)?(?:(?:die|den|das|der|meine|meinen|alle)\s+)?(?:projekt|projekte|projekten|projektübersicht|projektgedächtnis)(?:\s+(?:zeigen|öffnen|ansehen|bitte))*$/,
+    run: () => ({ reply: "Hier sind die Projekte und was dazu festgehalten ist.", navigate: "/projekte" }),
   },
   {
     match: /\b(fokus|nur (dich|jarvis)|zeig dich)\b/,
@@ -412,7 +494,7 @@ const RULES: Rule[] = [
   },
   {
     match: /\bagenten\b|\bmodule\b/,
-    run: () => ({ reply: "Hier sind alle meine Agenten und was sie können.", navigate: "/agenten" }),
+    run: () => ({ reply: "Hier ist die Agentensteuerung: was jeder Agent gerade tut, und darunter, was sie können.", navigate: "/agenten" }),
   },
   {
     match: REFRESH_NEWS,
@@ -444,24 +526,41 @@ const RULES: Rule[] = [
     },
   },
   {
+    // Der Wochenbericht: was diese Woche erledigt wurde, was liegt, was in den nächsten sieben Tagen kommt.
+    // Nur die Bitte um den Bericht selbst, als ganzer Satz: „Schreib einen Wochenbericht für Projekt Alpha“ oder
+    // „Notiere Wochenbericht abgeben“ ist ein anderer Auftrag.
+    match: /^((bitte )?(gib|zeig|sag|lies|bring|schick) (mir )?(bitte )?)?((den|meinen|einen) )?(wochenbericht|wochenrückblick|wochenabschluss)(,? (bitte|vor|jetzt))*$|^wie (war|lief) (meine|die|diese) woche$/,
+    run: (ctx) => ({ reply: wocheSatz(wochenbericht(tagesDaten(ctx), ctx.now), ctx.name), navigate: "/heute" }),
+  },
+  {
+    // Der Tagesabschluss: was offen blieb und was morgen kommt. Freigaben und Not-Aus zeigt die Ansicht „Heute“.
+    match: /tagesabschluss|feierabend|tagesrückblick|was (ist|blieb) heute (offen|liegen)/,
+    run: (ctx) => ({ reply: [abschlussSatz(tagesabschluss(tagesDaten(ctx), ctx.now), ctx.name), marktBewegung(ctx)].filter(Boolean).join(" "), navigate: "/heute" }),
+  },
+  {
     match: /guten morgen|guten tag|guten abend|\bhallo\b|\bhey\b|\bservus\b|briefing|was steht an|was gibt.{0,3} neues|\blage\b|lagebericht/,
     run: (ctx) => {
       const hour = ctx.now.getHours();
       const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
-      const w = ctx.weather ? `Draußen hat es ${Math.round(ctx.weather.temperature)} Grad, ${ctx.weather.description}.` : "";
+      // Beispieldaten (keine Verbindung zum Wetterdienst) sagt JARVIS im Briefing nicht als Wetter an.
+      const w = ctx.weather?.source === "live" ? `Draußen hat es ${Math.round(ctx.weather.temperature)} Grad, ${ctx.weather.description}.` : "";
       const intro = [
         `${greeting}, ${ctx.name}.`,
         w,
         briefingSentence(ctx.calendar ?? null, today(ctx)),
         intelBriefing(ctx.intel ?? null, ctx.now),
+        marktBewegung(ctx),
         mailSentence(ctx.mail),
         taskSentence(ctx.tasks, today(ctx)),
+        projekteSentence(ctx),
         deskSentence(ctx.desk, true),
       ]
         .filter(Boolean)
         .join(" ");
       const mails = ctx.mail?.configured && !ctx.mail.error ? ctx.mail.importantUnread : 0;
       const tasks = ctx.tasks?.configured ? dueSoon(ctx.tasks.tasks, today(ctx)).length : 0;
+      // Ein Tresor, der sich nicht lesen lässt, steht schon mit seinem Grund im Briefing.
+      if (mails === 0 && ctx.mail?.configured && ctx.tasks?.configured && ctx.tasks.error) return { reply: intro };
       if (mails > 0) return startMail(ctx, `${intro} Fangen wir mit den Mails an.`, "aufgaben");
       if (tasks > 0) return startTasks(ctx, `${intro} Gehen wir die Punkte durch.`);
       const setup = !ctx.mail?.configured || !ctx.tasks?.configured ? " In den Einstellungen verbindest du dein Postfach und Obsidian, dann sage ich dir hier jeden Morgen, was ansteht." : " Es liegt nichts Dringendes an.";
@@ -550,20 +649,16 @@ const GREETING = /^(hallo|hey|hi|servus|moin|grüß dich|grüß gott|guten tag|g
 // in einer Besprechung; längere Sätze, Fragen zu allgemeinen Themen und Grüße beantwortet Claude.
 // null heißt: frag das KI-Gehirn.
 export function decide(input: string, ctx: CommandContext, brain = false): Decision | null {
-  const original = input.trim().replace(/[.!?]+$/, "");
-  const text = original.toLowerCase();
-  // Der Not-Aus geht vor, auch mitten in einer Besprechung; die endet dann.
-  if (EMERGENCY.match.test(text)) return { ...EMERGENCY.run(ctx, text, original), ...(ctx.session ? { session: null } : {}) };
-  if (ctx.session) {
-    const inSession = sessionCommand(ctx, ctx.session, text);
-    if (inSession) return inSession;
-  }
-  const short = original.split(/\s+/).length <= 4;
-  const rule = RULES.find((r) => r.match.test(text));
-  const talk =
-    brain && (GREETING.test(text.replace(/[,.!?]/g, "").replace(/\s+/g, " ")) || rule?.talk === "immer" || (rule?.talk === "frage" && QUESTION.test(input.trim().toLowerCase())));
-  if (rule && !talk && (!brain || short)) return rule.run(ctx, text, original);
-  if (brain) return null;
+  // Getippt mit „Jarvis, “ davor gilt dasselbe wie gesprochen (dort trennt die Spracherkennung das Weckwort schon
+  // ab): Es zählt der Satz ohne die Anrede. Ohne KI-Gehirn gilt, wenn das kein fester Befehl ist, noch der Satz,
+  // wie er dasteht: So bleibt „Hallo Jarvis, wie geht’s?“ dort ein Gruß und kein „Das verstehe ich noch nicht“.
+  const ohne = ohneAnrede(input);
+  const fest = festerBefehl(ohne, ctx, brain);
+  if (fest || brain) return fest;
+  return (ohne === input.trim() ? null : festerBefehl(input, ctx, false)) ?? nichtVerstanden(ctx);
+}
+
+function nichtVerstanden(ctx: CommandContext): Decision {
   if (ctx.session) {
     const hint = ctx.session.kind === "aufgaben" ? "Sag erledigt, verschieben auf einen Tag, weiter oder beenden." : "Sag vorlesen, Aufgabe, gelesen, weiter oder beenden.";
     return { reply: `Das habe ich nicht verstanden. ${hint}` };
@@ -572,6 +667,30 @@ export function decide(input: string, ctx: CommandContext, brain = false): Decis
     reply:
       "Das verstehe ich noch nicht. Sag zum Beispiel Briefing, meine Mails, meine Aufgaben, notiere etwas bis Freitag, oder frag nach Wetter und Kursen. Freie Sätze verstehe ich, sobald in den Einstellungen das KI-Gehirn eingerichtet ist.",
   };
+}
+
+// Der feste Befehl in diesem Satz; null, wenn keiner greift.
+function festerBefehl(input: string, ctx: CommandContext, brain: boolean): Decision | null {
+  const original = input.trim().replace(/[.!?]+$/, "");
+  const text = original.toLowerCase();
+  // Der Not-Aus geht vor, auch mitten in einer Besprechung; die endet dann.
+  if (EMERGENCY.match.test(text)) return { ...EMERGENCY.run(ctx, text, original), ...(ctx.session ? { session: null } : {}) };
+  if (ctx.session) {
+    const inSession = sessionCommand(ctx, ctx.session, text);
+    if (inSession) return inSession;
+  }
+  // „Öffne Excel“: Ist der ganze Satz die Bitte um ein Ziel aus der Liste, braucht es dafür kein KI-Gehirn.
+  const ziel = ctx.desktop ? findeZiel(text, ctx.desktop.ziele) : null;
+  if (ziel) {
+    if (!ctx.desktop!.moeglich) return { reply: "Programme und Ordner öffnen kann ich nur auf dem Mac." };
+    if (!ziel.an) return { reply: `${zielName(ziel)} ist in den Einstellungen unter „Programme“ ausgeschaltet.` };
+    return { reply: `Ich öffne ${zielImSatz(ziel)}.`, effect: { type: "openDesktop", id: ziel.id } };
+  }
+  const short = original.split(/\s+/).length <= 4;
+  const rule = RULES.find((r) => r.match.test(text));
+  const talk =
+    brain && (GREETING.test(text.replace(/[,.!?]/g, "").replace(/\s+/g, " ")) || rule?.talk === "immer" || (rule?.talk === "frage" && QUESTION.test(input.trim().toLowerCase())));
+  return rule && !talk && (!brain || short) ? rule.run(ctx, text, original) : null;
 }
 
 // Was nur die Seite weiß (Wetter, Kurse), als Lagezeilen für das KI-Gehirn.

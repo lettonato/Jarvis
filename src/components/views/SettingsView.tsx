@@ -1,147 +1,239 @@
 "use client";
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { CloudVoiceSetup } from "../CloudVoiceSetup";
 import { useJarvis } from "../JarvisProvider";
+import { MicrosoftSetup } from "../MicrosoftSetup";
+import { ProgrammeSetup } from "../ProgrammeSetup";
 import { CalendarSetup, MailSetup, VaultSetup } from "../setup";
+import { SicherheitsZentrale } from "../Sicherheit";
 import { TelegramSetup } from "../TelegramSetup";
-import { Button, inputClass, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
 import { APPROVAL, APPROVAL_CHOICES, type ApprovalLimit } from "@/lib/approval";
-import type { MemoryFact } from "@/lib/brain";
+import type { MemoryStand } from "@/lib/brain";
 import { COMMODITY_RULES } from "@/lib/commodities";
+import { HINWEIS_REGELN } from "@/lib/hinweise";
 import { SAFETY } from "@/lib/paper";
 import type { Settings } from "@/lib/settings";
-import { PHOTOS, readWorldStyle, saveWorldStyle, type WorldStyle } from "@/lib/photos";
-import { chooseQuality, QUALITY_LABEL, QUALITY_SHOWN_EVENT, readQuality, readQualityChoice, type QualityChoice, type QualityLevel } from "@/lib/quality";
+import { MODELLE } from "@/lib/modelle";
+import { PHOTOS } from "@/lib/photos";
+import { RAEUME } from "@/lib/raeume";
 import { VOICE_KEY } from "@/lib/useVoice";
 
 // Einstellungen: wie JARVIS dich nennt, welcher Obsidian-Tresor und welches Postfach, welche Stimme.
 
+// Ein Abschnitt der Einstellungen. Sprungleiste und Abschnitte kommen aus derselben Liste: So zeigt jeder Eintrag
+// der Leiste auf einen Abschnitt, den es gibt. Die ids stehen auch in Links aus anderen Räumen
+// (etwa /einstellungen#rohstoffe) und bleiben deshalb, wie sie sind.
+type Abschnitt = { id: string; kurz: string; title: string; text?: string; zeigen?: boolean; inhalt: ReactNode };
+
+function abschnitteVon(settings: Settings): Abschnitt[] {
+  const alle: Abschnitt[] = [
+    {
+      id: "du",
+      kurz: "Du",
+      title: "Du",
+      inhalt: <NameForm />,
+    },
+    {
+      id: "gehirn",
+      kurz: "KI-Gehirn",
+      title: "KI-Gehirn (Claude)",
+      text: "Mit dem KI-Gehirn redest du mit JARVIS wie mit Claude: Er beantwortet jede Frage, sieht bei Aktuellem im Web nach und versteht freie Sätze wie „Was muss ich bis Freitag noch erledigen?“, „Fass mir die Mail von Anna zusammen“ oder „Schieb den Zahnarzt auf nächsten Dienstag“. Kurze Befehle wie Briefing oder Weiter erledigt er weiter sofort selbst.",
+      inhalt: <BrainSetup />,
+    },
+    {
+      id: "gedaechtnis",
+      kurz: "Gedächtnis",
+      title: "Was JARVIS über dich weiß",
+      text: "Erzählst du JARVIS etwas, das länger gilt (Vorlieben, Namen, Umstände), merkt er es sich hier und weiß es im nächsten Gespräch noch. Du kannst auch sagen „Merk dir, dass …“ oder „Vergiss, dass …“. Das Gedächtnis liegt nur auf diesem Mac.",
+      zeigen: settings.brain.configured,
+      inhalt: <MemorySetup />,
+    },
+    {
+      id: "handy",
+      kurz: "Handy",
+      title: "Handy (Telegram)",
+      text: "Über Telegram hast du JARVIS auch unterwegs dabei: Er schickt dir morgens das Briefing, erinnert dich an Termine, meldet Warnungen und Trades, und du kannst ihm schreiben wie in der App. Dafür legst du dir bei Telegram einen eigenen Bot an. JARVIS antwortet nur deinem Handy, und dein Mac bleibt von außen unerreichbar.",
+      inhalt: <TelegramSetup />,
+    },
+    {
+      id: "mitteilungen",
+      kurz: "Mitteilungen",
+      title: "Mitteilungen am Mac",
+      text: "JARVIS kann sich auch am Mac selbst melden, ohne Handy: als Mitteilung von macOS oben rechts am Bildschirm, auch wenn das Fenster von JARVIS gerade nicht vorn ist. Dafür wird nichts installiert, und nichts verlässt den Mac.",
+      inhalt: <MitteilungenSetup />,
+    },
+    {
+      id: "programme",
+      kurz: "Programme",
+      title: "Programme und Ordner am Mac",
+      text: "Sag „Jarvis, öffne Excel“ oder „Jarvis, öffne den Ordner Downloads“, und der Mac öffnet es. JARVIS öffnet nur, was hier eingeschaltet ist. Was du nicht brauchst, schaltest du aus.",
+      inhalt: <ProgrammeSetup />,
+    },
+    {
+      id: "rueckfrage",
+      kurz: "Rückfrage",
+      title: "Rückfrage vor Käufen",
+      text: `Ab dieser Grenze kauft der Trading-Desk nicht selbst. JARVIS fragt dich per Telegram mit Ja/Nein-Knöpfen und oben in JARVIS, und kauft erst nach deinem Ja. Ohne Antwort verfällt die Frage nach ${APPROVAL.timeoutMinutes} Minuten, dann wird nicht gekauft.`,
+      inhalt: <ApprovalSetup />,
+    },
+    {
+      id: "crawler",
+      kurz: "Grok",
+      title: "Grok: Crawler auf X und Intel",
+      text: "Wie im GrokBot-Video liest der Crawler vor jedem Kauf, was auf X über den Coin geschrieben wird, und prüft das X-Konto des Projekts. Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben. Mit demselben Schlüssel liest Intel die Nachrichten und X für dein Briefing; Themen und Budget dafür stellst du in der Intel-Ansicht ein.",
+      inhalt: <CrawlerSetup />,
+    },
+    {
+      id: "rohstoffe",
+      kurz: "Rohstoffe",
+      title: "Rohstoffe: Gold, Silber, Öl",
+      text: "Neben den Memecoins handelt der Spielgeld-Desk auch Gold, Silber und Öl. Dort folgt er dem Trend: Er kauft, wenn der Kurs seit Stunden nach oben zieht, und steigt mit einem Nachlauf-Stop aus, sobald es kippt. Die Kurse kommen von Twelve Data; der kostenlose Plan reicht.",
+      inhalt: <CommoditySetup />,
+    },
+    {
+      id: "obsidian",
+      kurz: "Obsidian",
+      title: "Obsidian",
+      text: "Aus diesem Tresor liest JARVIS deine Aufgaben. Neue Aufgaben landen in JARVIS/Eingang.md, Notizen in JARVIS/Notizen.md.",
+      inhalt: <VaultSetup />,
+    },
+    {
+      id: "kalender",
+      kurz: "Kalender",
+      title: "Kalender",
+      text: "JARVIS liest die Kalender-App auf deinem Mac und trägt neue Termine auf Zuruf ein. Ändern oder löschen kann er nichts. Einen Schlüssel braucht es nicht, nur einmal die Freigabe von macOS.",
+      inhalt: <CalendarSetup />,
+    },
+    {
+      id: "microsoft",
+      kurz: "Microsoft 365",
+      title: "Microsoft 365: Termine aus Outlook",
+      text: "JARVIS liest deine Termine aus Outlook und zeigt sie im Raum Kalender. Er trägt dort nichts ein, ändert und löscht nichts, und Mails, Dateien oder Teams liest er darüber nicht. Als privat oder vertraulich markierte Termine zeigt er ohne Titel und Ort.",
+      inhalt: <MicrosoftSetup />,
+    },
+    {
+      id: "email",
+      kurz: "E-Mail",
+      title: "E-Mail",
+      text: "JARVIS liest deinen Posteingang über IMAP. Er löscht nichts und verschickt nichts; markieren als gelesen geht nur auf deinen Zuruf.",
+      inhalt: <MailSetup />,
+    },
+    {
+      id: "sprache",
+      kurz: "Sprache",
+      title: "Sprache",
+      text: "Sag „Jarvis“ und dann, was du brauchst, zum Beispiel „Jarvis, wie läuft der Handel?“. Nach seiner Antwort hört er noch ein paar Sekunden zu, da reicht die nächste Frage ohne „Jarvis“. Unterbrechen kannst du ihn jederzeit: Sag einfach „Stopp“, drück Escape oder sprich ihn mit „Jarvis“ neu an.",
+      inhalt: <HandsFreeSetup />,
+    },
+    {
+      id: "aussehen",
+      kurz: "Aussehen",
+      title: "Aussehen",
+      text: "Jeder Raum hat ein eigenes Fenster mit eigener Aussicht. Beim Wechsel fährt die Kamera seitlich in den nächsten Raum. Alle Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu.",
+      inhalt: <Aussicht />,
+    },
+    {
+      id: "stimme",
+      kurz: "Stimme",
+      title: "Stimme",
+      text: "So klingt JARVIS, wenn er dir antwortet. Die Stimme des Macs kostet nichts und bleibt auf dem Mac.",
+      inhalt: (
+        <>
+          <VoicePicker />
+          <div className="mt-4 border-t border-schiefer/10 pt-4">
+            <CloudVoiceSetup />
+          </div>
+        </>
+      ),
+    },
+    {
+      id: "sicherheit",
+      kurz: "Sicherheit",
+      title: "Sicherheit",
+      text: "Jedes Werkzeug, das eine KI benutzt, läuft durch das Security Gateway: Es prüft nach festen Regeln, fragt dich vor Änderungen und schreibt alles ins Audit-Log.",
+      inhalt: <SicherheitsZentrale />,
+    },
+    {
+      id: "datenschutz",
+      kurz: "Datenschutz",
+      title: "Datenschutz",
+      inhalt: <Datenschutz configFile={settings.configFile} />,
+    },
+  ];
+  return alle.filter((a) => a.zeigen !== false);
+}
+
 export function SettingsView() {
-  const { settings } = useJarvis();
+  const { settings, ausfall } = useJarvis();
+  const abschnitte = settings ? abschnitteVon(settings) : [];
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
       <PageHeader icon="einstellungen" title="Einstellungen" subtitle="Alles bleibt auf deinem Mac." />
       {!settings ? (
-        <p className="text-sm text-quiet">Lade Einstellungen …</p>
+        <Ladestand quelle="einstellungen" aus={ausfall.settings} />
       ) : (
         <>
-          <Section title="Du">
-            <NameForm />
-          </Section>
-          <Section
-            id="gehirn"
-            title="KI-Gehirn (Claude)"
-            text="Mit dem KI-Gehirn redest du mit JARVIS wie mit Claude: Er beantwortet jede Frage, sieht bei Aktuellem im Web nach und versteht freie Sätze wie „Was muss ich bis Freitag noch erledigen?“, „Fass mir die Mail von Anna zusammen“ oder „Schieb den Zahnarzt auf nächsten Dienstag“. Kurze Befehle wie Briefing oder Weiter erledigt er weiter sofort selbst."
-          >
-            <BrainSetup />
-          </Section>
-          {settings.brain.configured && (
-            <Section
-              id="gedaechtnis"
-              title="Was JARVIS über dich weiß"
-              text="Erzählst du JARVIS etwas, das länger gilt (Vorlieben, Namen, Umstände), merkt er es sich hier und weiß es im nächsten Gespräch noch. Du kannst auch sagen „Merk dir, dass …“ oder „Vergiss, dass …“. Das Gedächtnis liegt nur auf diesem Mac."
-            >
-              <MemorySetup />
+          <nav aria-label="Abschnitte der Einstellungen" className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+            {abschnitte.map((a) => (
+              <a key={a.id} href={`#${a.id}`} className="griff font-medium text-see underline-offset-4 hover:underline focus-visible:underline">
+                {a.kurz}
+              </a>
+            ))}
+          </nav>
+          {abschnitte.map((a) => (
+            <Section key={a.id} id={a.id} title={a.title} text={a.text}>
+              {a.inhalt}
             </Section>
-          )}
-          <Section
-            id="handy"
-            title="Handy (Telegram)"
-            text="Über Telegram hast du JARVIS auch unterwegs dabei: Er schickt dir morgens das Briefing, erinnert dich an Termine, meldet Warnungen und Trades, und du kannst ihm schreiben wie in der App. Dafür legst du dir bei Telegram einen eigenen Bot an. JARVIS antwortet nur deinem Handy, und dein Mac bleibt von außen unerreichbar."
-          >
-            <TelegramSetup />
-          </Section>
-          <Section
-            id="rueckfrage"
-            title="Rückfrage vor Käufen"
-            text={`Ab dieser Grenze kauft der Trading-Desk nicht selbst. JARVIS fragt dich per Telegram mit Ja/Nein-Knöpfen und oben in JARVIS, und kauft erst nach deinem Ja. Ohne Antwort verfällt die Frage nach ${APPROVAL.timeoutMinutes} Minuten, dann wird nicht gekauft.`}
-          >
-            <ApprovalSetup />
-          </Section>
-          <Section
-            id="crawler"
-            title="Grok: Crawler auf X und Intel"
-            text="Wie im GrokBot-Video liest der Crawler vor jedem Kauf, was auf X über den Coin geschrieben wird, und prüft das X-Konto des Projekts. Gelesen werden nur Coins, die Blockchain und Projektseite schon bestanden haben. Mit demselben Schlüssel liest Intel die Nachrichten und X für dein Briefing; Themen und Budget dafür stellst du in der Intel-Ansicht ein."
-          >
-            <CrawlerSetup />
-          </Section>
-          <Section
-            id="rohstoffe"
-            title="Rohstoffe: Gold, Silber, Öl"
-            text="Neben den Memecoins handelt der Spielgeld-Desk auch Gold, Silber und Öl. Dort folgt er dem Trend: Er kauft, wenn der Kurs seit Stunden nach oben zieht, und steigt mit einem Nachlauf-Stop aus, sobald es kippt. Die Kurse kommen von Twelve Data; der kostenlose Plan reicht."
-          >
-            <CommoditySetup />
-          </Section>
-          <Section title="Obsidian" text="Aus diesem Tresor liest JARVIS deine Aufgaben. Neue Aufgaben landen in JARVIS/Eingang.md, Notizen in JARVIS/Notizen.md.">
-            <VaultSetup />
-          </Section>
-          <Section
-            id="kalender"
-            title="Kalender"
-            text="JARVIS liest die Kalender-App auf deinem Mac und trägt neue Termine auf Zuruf ein. Ändern oder löschen kann er nichts. Einen Schlüssel braucht es nicht, nur einmal die Freigabe von macOS."
-          >
-            <CalendarSetup />
-          </Section>
-          <Section title="E-Mail" text="JARVIS liest deinen Posteingang über IMAP. Er löscht nichts und verschickt nichts; markieren als gelesen geht nur auf deinen Zuruf.">
-            <MailSetup />
-          </Section>
-          <Section
-            id="sprache"
-            title="Sprache"
-            text="Sag „Jarvis“ und dann, was du brauchst, zum Beispiel „Jarvis, wie läuft der Handel?“. Nach seiner Antwort hört er noch ein paar Sekunden zu, da reicht die nächste Frage ohne „Jarvis“. „Jarvis, stopp“ unterbricht ihn."
-          >
-            <HandsFreeSetup />
-          </Section>
-          <Section
-            id="aussehen"
-            title="Aussehen"
-            text="Hinter JARVIS liegt eine Landschaft, und bei jedem Wechsel der Ansicht fliegst du in die nächste. Wähle das gerechnete Gebirge oder echte Fotos. Gilt für diesen Browser."
-          >
-            <WorldStylePicker />
-            <WorldQualityPicker />
-          </Section>
-          <Section title="Stimme">
-            <VoicePicker />
-          </Section>
-          <Section title="Sicherheit">
-            <ul className="space-y-1.5 text-sm text-sky-50/85">
-              <li>
-                Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
-                ihn zur Erkennung an Google, Safari an Apple. Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
-              </li>
-              <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, und für Intel deine Themen. Sonst nichts von dir.</li>
-              <li>
-                Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben,
-                Mails), verschlüsselt an Anthropic. Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche; Links aus deinen Mails ruft er nicht auf. Claude kann
-                keine Mails schreiben oder löschen und ändert Aufgaben nur, wenn du es sagst.
-              </li>
-              <li>
-                Mit Telegram holt JARVIS die Nachrichten an deinen Bot selbst bei Telegram ab; dafür muss niemand an deinen Mac heran. Was ihr schreibt, läuft über die
-                Server von Telegram und ist dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem einen gekoppelten Chat und kann auch von dort keine Mails
-                schreiben oder löschen.
-              </li>
-              <li>
-                Der Browser-Agent bedient ein eigenes Chrome-Profil, getrennt von deinem normalen Chrome. Er kauft, bestellt, sendet und meldet sich nirgends an, tippt keine
-                Passwörter oder Zahlungsdaten und öffnet keine Seiten in deinem Heimnetz. Den letzten Klick machst immer du.
-              </li>
-              <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
-              <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
-              <li>
-                Deine Einstellungen samt Mail-Passwort liegen in <code className="text-sky-200">{settings.configFile}</code>, lesbar nur für deinen Benutzer.
-              </li>
-            </ul>
-          </Section>
+          ))}
         </>
       )}
     </main>
   );
 }
 
+function Datenschutz({ configFile }: { configFile: string }) {
+  return (
+    <ul className="space-y-1.5 text-sm text-schiefer/85">
+      <li>
+        Freihändig hört der Browser dauerhaft mit, damit er „Jarvis“ erkennt. Hat Chrome das deutsche Sprachpaket, bleibt der Ton auf dem Mac; sonst schickt Chrome
+        ihn zur Erkennung an Google, Safari an Apple. Ausschalten mit dem Schalter oder „Jarvis, Mikrofon aus“.
+      </li>
+      <li>
+        Mit eingeschalteter ElevenLabs-Stimme geht jeder Satz, den JARVIS laut vorliest, zum Vertonen an ElevenLabs, auch wenn er aus Mails, Terminen oder
+        Aufgaben stammt. Ausgeschaltet oder ohne Schlüssel spricht der Mac, und nichts davon verlässt ihn.
+      </li>
+      <li>Mit Grok gehen Name, Symbol, Adresse und Konten der geprüften Coins an xAI, und für Intel deine Themen. Sonst nichts von dir.</li>
+      <li>
+        Mit KI-Gehirn gehen deine Frage, die letzten Sätze des Gesprächs, was JARVIS sich über dich gemerkt hat, und das, was Claude dafür nachliest (Aufgaben,
+        Mails), verschlüsselt an Anthropic. Sucht Claude im Web, gehen nur seine Suchbegriffe an die Suche; Links aus deinen Mails ruft er nicht auf. Claude kann
+        keine Mails schreiben oder löschen; Änderungen an Aufgaben, Terminen, Mails und Gedächtnis führt JARVIS erst nach deinem Ja per Knopf aus.
+      </li>
+      <li>
+        Mit Telegram holt JARVIS die Nachrichten an deinen Bot selbst bei Telegram ab; dafür muss niemand an deinen Mac heran. Was ihr schreibt, läuft über die
+        Server von Telegram und ist dort nicht Ende-zu-Ende verschlüsselt. JARVIS antwortet nur dem einen gekoppelten Chat und kann auch von dort keine Mails
+        schreiben oder löschen.
+      </li>
+      <li>
+        Der Browser-Agent bedient ein eigenes Chrome-Profil, getrennt von deinem normalen Chrome. Er kauft, bestellt, sendet und meldet sich nirgends an, tippt keine
+        Passwörter oder Zahlungsdaten und öffnet keine Seiten in deinem Heimnetz. Den letzten Klick machst immer du.
+      </li>
+      <li>JARVIS läuft nur auf diesem Mac (127.0.0.1). Andere Geräte im WLAN erreichen ihn nicht.</li>
+      <li>Webseiten, die du im Browser offen hast, können JARVIS nicht fernsteuern und deine Daten nicht lesen.</li>
+      <li>
+        Deine Einstellungen liegen in <code className="text-stein">{configFile}</code>, lesbar nur für deinen Benutzer. Schlüssel und Mail-Passwort
+        stehen dort im Klartext, bis du sie unter Sicherheit in den macOS-Schlüsselbund umziehst.
+      </li>
+    </ul>
+  );
+}
+
 function Section({ id, title, text, children }: { id?: string; title: string; text?: string; children: ReactNode }) {
   return (
     <Panel id={id}>
-      <h2 className="text-sm font-bold uppercase tracking-[0.25em] text-sky-100">{title}</h2>
+      <h2 className="text-sm font-bold text-schiefer">{title}</h2>
       {text && <p className="mt-1 text-xs text-quiet">{text}</p>}
       <div className="mt-3">{children}</div>
     </Panel>
@@ -172,7 +264,7 @@ function NameForm() {
           Speichern
         </Button>
       </div>
-      {state && <Notice tone={state.tone}>{state.text}</Notice>}
+      {state && <Notice meldung tone={state.tone}>{state.text}</Notice>}
     </form>
   );
 }
@@ -209,10 +301,10 @@ function BrainSetup() {
       {brain?.configured && (
         <Notice tone="ok">{brain.hint ? `Verbunden mit dem Schlüssel ${brain.hint}.` : "Verbunden über ANTHROPIC_API_KEY."} JARVIS versteht jetzt auch freie Sätze.</Notice>
       )}
-      <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+      <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
         <li>
           Auf{" "}
-          <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+          <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
             platform.claude.com
           </a>{" "}
           anmelden oder ein Konto anlegen.
@@ -230,12 +322,12 @@ function BrainSetup() {
           aria-label="Claude-Schlüssel"
           className={inputClass}
         />
-        <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+        <Button type="submit" tone="primary" fest disabled={busy || !key.trim()}>
           {busy ? "Prüfe …" : "Prüfen und speichern"}
         </Button>
       </div>
       <p className="text-xs text-quiet">
-        JARVIS nutzt Claude Opus 5.5. Eine Frage kostet meist ein bis drei Cent, je nachdem, wie viel er dafür nachlesen muss; sucht er im Web, kommt etwa ein Cent
+        JARVIS nutzt {MODELLE.gespraech.name}. Eine Frage kostet meist ein bis drei Cent, je nachdem, wie viel er dafür nachlesen muss; sucht er im Web, kommt etwa ein Cent
         pro Suche dazu. Der Schlüssel bleibt in deiner Einstellungsdatei auf diesem Mac.
       </p>
       {brain?.hint && (
@@ -243,7 +335,7 @@ function BrainSetup() {
           Schlüssel entfernen
         </Button>
       )}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
     </form>
   );
 }
@@ -251,7 +343,7 @@ function BrainSetup() {
 const SINCE = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" });
 
 function MemorySetup() {
-  const { memory, setMemory } = useJarvis();
+  const { memory, memoryError, setMemory, reloadMemory, ausfall } = useJarvis();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
@@ -261,7 +353,7 @@ function MemorySetup() {
     setBusy(true);
     setError(null);
     try {
-      setMemory((await postJson<{ facts: MemoryFact[] }>("/api/gedaechtnis", body)).facts);
+      setMemory(await postJson<MemoryStand>("/api/gedaechtnis", body));
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -276,7 +368,37 @@ function MemorySetup() {
     if (await send({ action: "merken", text })) setText("");
   };
 
-  if (!memory) return <p className="text-sm text-quiet">Lade …</p>;
+  if (!memory) return <Ladestand quelle="gedaechtnis" aus={ausfall.memory} />;
+  // Die Datei ist beschädigt oder nicht lesbar: JARVIS ersetzt sie nicht von selbst. Beiseitelegen gibt es nur für
+  // eine beschädigte Datei; es zerstört nichts und behält, was sich darin noch lesen lässt.
+  if (memoryError) {
+    const kaputt = memoryError.beschaedigt;
+    return (
+      <div className="space-y-3 text-sm">
+        <Notice tone="error">{kaputt ? "Die Datei des Gedächtnisses ist beschädigt. JARVIS lässt sie unverändert." : memoryError.fehler}</Notice>
+        <p className="text-xs text-quiet">Solange das so ist, merkt sich JARVIS nichts Neues. Deine Gespräche gehen weiter, nur ohne das Gedächtnis.</p>
+        {kaputt ? (
+          <>
+            <p className="text-quiet">
+              {kaputt.lesbar > 0
+                ? `${kaputt.lesbar === 1 ? "Ein Eintrag lässt" : `${kaputt.lesbar} Einträge lassen`} sich daraus noch lesen. Beim Beiseitelegen übernimmt JARVIS ${kaputt.lesbar === 1 ? "ihn" : "sie"}.`
+                : "Daraus lässt sich nichts mehr lesen. Nach dem Beiseitelegen fängt JARVIS leer an."}{" "}
+              Gelöscht wird nichts: Die Datei bleibt unter neuem Namen im selben Ordner liegen.
+            </p>
+            <p className="break-all text-xs text-quiet">Datei: {kaputt.datei}</p>
+            <Button tone="danger" disabled={busy} onClick={() => send({ action: "beiseite" })}>
+              {kaputt.lesbar > 0 ? "Datei beiseitelegen und Lesbares behalten" : "Datei beiseitelegen und leer anfangen"}
+            </Button>
+          </>
+        ) : (
+          <Button disabled={busy} onClick={reloadMemory}>
+            Noch einmal versuchen
+          </Button>
+        )}
+        {error && <Notice meldung tone="error">{error}</Notice>}
+      </div>
+    );
+  }
   return (
     <div className="space-y-3 text-sm">
       {memory.length === 0 ? (
@@ -285,9 +407,9 @@ function MemorySetup() {
         <ul className="divide-y divide-line rounded-lg border border-line">
           {[...memory].reverse().map((f) => (
             <li key={f.id} className="flex items-start gap-3 px-3 py-2">
-              <span className="min-w-0 flex-1 text-sky-50/90">
+              <span className="min-w-0 flex-1 text-schiefer/90">
                 {f.text}
-                <span className="ml-2 text-[11px] text-quiet">seit {SINCE.format(new Date(f.at))}</span>
+                <span className="ml-2 text-xs text-quiet">seit {SINCE.format(new Date(f.at))}</span>
               </span>
               <Button small tone="ghost" disabled={busy} onClick={() => send({ action: "vergessen", id: f.id })} title="Diesen Eintrag vergessen">
                 Vergessen
@@ -305,7 +427,7 @@ function MemorySetup() {
       {memory.length > 0 &&
         (sure ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-red-200">Wirklich alles vergessen?</span>
+            <span className="text-down">Wirklich alles vergessen?</span>
             <Button tone="danger" disabled={busy} onClick={() => send({ action: "alles" }).then(() => setSure(false))}>
               Ja, alles vergessen
             </Button>
@@ -316,7 +438,7 @@ function MemorySetup() {
             Alles vergessen
           </Button>
         ))}
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
     </div>
   );
 }
@@ -363,10 +485,10 @@ function CrawlerSetup() {
         </Notice>
       )}
       <form onSubmit={submit} className="space-y-3">
-        <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+        <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
           <li>
             Auf{" "}
-            <a href="https://console.x.ai" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+            <a href="https://console.x.ai" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
               console.x.ai
             </a>{" "}
             anmelden, am einfachsten mit deinem X-Konto.
@@ -384,7 +506,7 @@ function CrawlerSetup() {
             aria-label="xAI-Schlüssel"
             className={inputClass}
           />
-          <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+          <Button type="submit" tone="primary" fest disabled={busy || !key.trim()}>
             {busy ? "Prüfe …" : "Prüfen und speichern"}
           </Button>
         </div>
@@ -410,7 +532,7 @@ function CrawlerSetup() {
           Schlüssel entfernen
         </Button>
       )}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
     </div>
   );
 }
@@ -446,10 +568,10 @@ function CommoditySetup() {
     <div className="space-y-3 text-sm">
       {info?.configured && <Notice tone="ok">{info.hint ? `Verbunden mit dem Schlüssel ${info.hint}.` : "Verbunden über TWELVEDATA_API_KEY."} Der Desk schaut alle 6 Minuten auf Gold, Silber und Öl.</Notice>}
       <form onSubmit={submit} className="space-y-3">
-        <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+        <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
           <li>
             Auf{" "}
-            <a href="https://twelvedata.com" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+            <a href="https://twelvedata.com" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
               twelvedata.com
             </a>{" "}
             kostenlos registrieren. Der Plan „Basic“ kostet nichts, eine Karte brauchst du nicht.
@@ -466,12 +588,12 @@ function CommoditySetup() {
             aria-label="Twelve-Data-Schlüssel"
             className={inputClass}
           />
-          <Button type="submit" tone="primary" disabled={busy || !key.trim()}>
+          <Button type="submit" tone="primary" fest disabled={busy || !key.trim()}>
             {busy ? "Prüfe …" : "Prüfen und speichern"}
           </Button>
         </div>
       </form>
-      <ul className="space-y-1 text-xs text-sky-50/85">
+      <ul className="space-y-1 text-xs text-schiefer/85">
         <li>· Je Rohstoff höchstens {COMMODITY_RULES.tradeShare * 100} % des Kontos, zusammen also höchstens {COMMODITY_RULES.tradeShare * 300} %.</li>
         <li>· Gold kommt als Feinunze. Liefert dein Plan Silber und Öl nicht direkt, nimmt der Desk die US-Fonds SLV und USO. Die handeln nur zur Börsenzeit in New York (15:30 bis 22 Uhr).</li>
         <li>· Ist ein Markt zu, wird dort weder gekauft noch verkauft. Am Wochenende ruhen alle drei.</li>
@@ -482,7 +604,65 @@ function CommoditySetup() {
           Schlüssel entfernen
         </Button>
       )}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
+    </div>
+  );
+}
+
+// Hinweise am Tag als Mitteilung von macOS. Der Schalter ist unabhängig vom Handy; die Probe zeigt, ob macOS
+// die Mitteilung auch wirklich anzeigt (Erlaubnis, Fokus), denn das kann JARVIS selbst nicht sehen.
+function MitteilungenSetup() {
+  const { settings, setSettings } = useJarvis();
+  const m = settings?.mitteilungen;
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  async function send(body: object) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const next = await postJson<Settings & { message?: string }>("/api/einstellungen", body);
+      setSettings(next);
+      setMessage(next.message ? { tone: "ok", text: next.message } : null);
+    } catch (e) {
+      setMessage({ tone: "error", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!m) return null;
+  return (
+    <div className="space-y-3 text-sm">
+      {!m.moeglich && <Notice tone="error">Mitteilungen gibt es nur auf dem Mac. JARVIS läuft gerade auf einem anderen Rechner.</Notice>}
+      <label className="flex items-start gap-3 text-schiefer/85">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 shrink-0 accent-gletscher"
+          checked={m.hinweise}
+          disabled={busy || (!m.moeglich && !m.hinweise)}
+          onChange={(e) => send({ action: "macHinweise", an: e.target.checked })}
+        />
+        <span>
+          Hinweise am Tag: wenn in einem Projekt etwas überfällig wird, eine Rückmeldung fehlt oder am Nachmittag noch etwas von heute offen ist
+          <span className="block text-xs text-quiet">
+            Aus, bis du es willst. Nur zwischen {HINWEIS_REGELN.vonStunde} und {HINWEIS_REGELN.bisStunde} Uhr, höchstens {HINWEIS_REGELN.hoechstensJeTag} am Tag, jedes Ding nur einmal. Unabhängig vom
+            Handy: Du kannst beides einschalten oder nur eines.
+          </span>
+        </span>
+      </label>
+      <ul className="space-y-1 text-xs text-schiefer/85">
+        <li>
+          · In der Mitteilung stehen immer nur Zahlen, zum Beispiel „Eine Aufgabe ist überfällig“. Projektnamen und Aufgaben stehen dort nie, weil eine Mitteilung
+          auch auf dem Sperrbildschirm oder beim Teilen des Bildschirms zu sehen ist. Die Einzelheiten zeigt der Raum Heute.
+        </li>
+        <li>· Ob eine Mitteilung erscheint, entscheidet macOS: Sie muss für den „Skripteditor“ erlaubt sein, und ein Fokus (Nicht stören) hält sie zurück.</li>
+        <li>· Ein Klick auf die Mitteilung öffnet nicht JARVIS; macOS öffnet dabei meist den Skripteditor. Das lässt sich ohne Zusatzprogramm nicht ändern.</li>
+      </ul>
+      <Button disabled={busy || !m.moeglich} onClick={() => send({ action: "macMitteilungProbe" })}>
+        {busy ? "Einen Moment …" : "Mitteilung zur Probe zeigen"}
+      </Button>
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
     </div>
   );
 }
@@ -523,7 +703,7 @@ function ApprovalSetup() {
               disabled={busy}
               onClick={() => choose(c.value)}
               className={`rounded-lg border px-3 py-2 text-xs font-bold transition disabled:opacity-50 ${
-                on ? "border-sky-300/80 bg-sky-400/20 text-sky-50 shadow-[0_0_18px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 text-sky-200/80 hover:border-sky-300/50"
+                on ? "border-schiefer/80 bg-gletscher/20 text-schiefer" : "border-schiefer/20 bg-gletscher/5 text-stein/80 hover:border-schiefer/50"
               }`}
             >
               {c.label}
@@ -540,13 +720,13 @@ function ApprovalSetup() {
             ? "Mit dieser Grenze fragt JARVIS also vor jedem Kauf. Schnelle Chancen sind manchmal weg, bis du antwortest."
             : "Mit dieser Grenze kauft der Desk kleinere Coins selbst; größere Käufe brauchen dein Ja."}
       </p>
-      <ul className="space-y-1 text-xs text-sky-50/85">
+      <ul className="space-y-1 text-xs text-schiefer/85">
         <li>· Freigeben kannst nur du mit den Knöpfen, nicht das KI-Gehirn und nicht per Sprache.</li>
         <li>· Nach deinem Ja prüft der Desk noch einmal den Kurs: Ist er seit der Frage um mehr als 5 % gestiegen, kauft er nicht.</li>
         <li>· Verkäufe wie Stop-Loss und Gewinnmitnahme fragen nie nach, dort kostet Warten Geld.</li>
         <li>· {settings?.telegram.paired ? "Die Frage kommt auf dein gekoppeltes Handy." : "Ohne gekoppeltes Handy siehst du die Frage nur hier in JARVIS."}</li>
       </ul>
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
     </div>
   );
 }
@@ -556,8 +736,8 @@ function HandsFreeSetup() {
   if (!voice.canListen) return <p className="text-sm text-quiet">Dieser Browser kann nicht zuhören. Öffne JARVIS in Chrome oder Safari.</p>;
   return (
     <div className="space-y-2">
-      <label className="flex items-center gap-3 text-sm text-sky-50/85">
-        <input type="checkbox" checked={voice.handsFree} onChange={(e) => voice.setHandsFree(e.target.checked)} className="h-4 w-4 accent-sky-400" />
+      <label className="flex items-center gap-3 text-sm text-schiefer/85">
+        <input type="checkbox" checked={voice.handsFree} onChange={(e) => voice.setHandsFree(e.target.checked)} className="h-4 w-4 accent-gletscher" />
         Freihändig: auf „Jarvis“ hören, ohne Knopf
       </label>
       <p className="text-xs text-quiet">
@@ -571,133 +751,23 @@ function HandsFreeSetup() {
   );
 }
 
-const STYLES: { id: WorldStyle; title: string; text: string; preview: string }[] = [
-  {
-    id: "gebirge",
-    title: "Gebirge (3D)",
-    text: "Gerechnete Landschaft mit Gitter, Nordlicht und Holo-Tafeln. Jede Ansicht hat ihre eigene.",
-    preview: "/welt/vorschau-gebirge.webp",
-  },
-  {
-    id: "fotos",
-    title: "Echte Fotos",
-    text: "Zehn echte Landschaftsfotos, eins je Ansicht, leicht abgedunkelt. Beim Wechsel fliegst du ins Bild hinein.",
-    preview: "/welt/vorschau-fotos.webp",
-  },
-];
-
-function WorldStylePicker() {
-  const [style, setStyle] = useState<WorldStyle | null>(null);
-
-  useEffect(() => {
-    const first = setTimeout(() => setStyle(readWorldStyle()), 0);
-    return () => clearTimeout(first);
-  }, []);
-
-  const choose = (next: WorldStyle) => {
-    setStyle(next);
-    saveWorldStyle(next);
-  };
-
+// Die Aussicht jedes Raums ist ein Foto unter freier Lizenz. Der Nachweis steht offen da, nicht versteckt.
+function Aussicht() {
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Landschaft hinter JARVIS">
-        {STYLES.map((s) => {
-          const on = style === s.id;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => choose(s.id)}
-              className={`overflow-hidden rounded-xl border text-left transition ${
-                on ? "border-sky-300/80 bg-sky-400/15 shadow-[0_0_24px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 hover:border-sky-300/50"
-              }`}
-            >
-              <span aria-hidden className="block h-28 w-full bg-cover bg-center" style={{ backgroundImage: `url(${s.preview})` }} />
-              <span className="block p-3">
-                <span className="flex items-center justify-between gap-2 text-sm font-bold text-sky-50">
-                  {s.title}
-                  {on && <span className="rounded-full border border-sky-300/50 px-2 py-0.5 text-[10px] uppercase tracking-widest text-sky-200">Aktiv</span>}
-                </span>
-                <span className="mt-1 block text-xs text-quiet">{s.text}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <details className="text-xs text-quiet">
-        <summary className="cursor-pointer text-sky-200/80">Bildnachweis der Fotos</summary>
-        <p className="mt-2">Alle Fotos stehen unter freien Creative-Commons-Lizenzen und stammen aus den Hintergrundbildern von Ubuntu.</p>
-        <ul className="mt-1.5 space-y-0.5">
-          {Object.values(PHOTOS).map((p) => (
-            <li key={p.src}>
-              {p.title}: {p.author}, {p.license}
-            </li>
-          ))}
-        </ul>
-      </details>
-    </div>
-  );
-}
-
-const QUALITY_CHOICES: { id: QualityChoice; title: string; text: string }[] = [
-  { id: "auto", title: "Automatisch", text: "Passt sich deinem Rechner an. Gewechselt wird nur im Flug, damit nichts springt." },
-  { id: 2, title: "Hoch", text: "Gestochen scharf, mit Leuchten. Braucht die meiste Grafikleistung." },
-  { id: 1, title: "Mittel", text: "Etwas weicher, mit Leuchten." },
-  { id: 0, title: "Einfach", text: "Ohne Leuchten, für ältere Rechner." },
-];
-
-// Wie fein die Landschaft gerechnet wird. Flackert oder ruckelt es, hilft eine feste Stufe.
-function WorldQualityPicker() {
-  const [choice, setChoice] = useState<QualityChoice | null>(null);
-  const [shown, setShown] = useState<QualityLevel | null>(null);
-
-  useEffect(() => {
-    const first = setTimeout(() => {
-      setChoice(readQualityChoice());
-      setShown(readQuality().level);
-    }, 0);
-    const onShown = (e: Event) => setShown((e as CustomEvent<QualityLevel>).detail);
-    window.addEventListener(QUALITY_SHOWN_EVENT, onShown);
-    return () => {
-      clearTimeout(first);
-      window.removeEventListener(QUALITY_SHOWN_EVENT, onShown);
-    };
-  }, []);
-
-  const choose = (next: QualityChoice) => {
-    setChoice(next);
-    if (next !== "auto") setShown(next);
-    chooseQuality(next);
-  };
-
-  return (
-    <div className="mt-4 space-y-2">
-      <p className="text-xs font-bold uppercase tracking-widest text-sky-200/80">Bildqualität</p>
-      <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Bildqualität der Landschaft">
-        {QUALITY_CHOICES.map((q) => {
-          const on = choice === q.id;
-          return (
-            <button
-              key={String(q.id)}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => choose(q.id)}
-              className={`flex flex-col justify-start rounded-lg border p-2.5 text-left transition ${
-                on ? "border-sky-300/80 bg-sky-400/20 shadow-[0_0_18px_rgba(56,189,248,0.25)]" : "border-sky-300/20 bg-sky-400/5 hover:border-sky-300/50"
-              }`}
-            >
-              <span className="block text-xs font-bold text-sky-50">{q.title}</span>
-              <span className="mt-0.5 block text-[11px] leading-snug text-quiet">{q.text}</span>
-            </button>
-          );
-        })}
-      </div>
-      {choice === "auto" && shown !== null && <p className="text-xs text-quiet">Zurzeit: {QUALITY_LABEL[shown]}.</p>}
-    </div>
+    <ul className="divide-y divide-schiefer/10 text-sm">
+      {RAEUME.map((r) => {
+        const foto = PHOTOS[r.foto as keyof typeof PHOTOS];
+        return (
+          <li key={r.href} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+            <span className="w-32 shrink-0 font-bold text-schiefer">{r.name}</span>
+            <span className="min-w-0 flex-1 text-stein">{foto.title}</span>
+            <span className="text-xs text-quiet">
+              Foto: {foto.author}, {foto.license}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

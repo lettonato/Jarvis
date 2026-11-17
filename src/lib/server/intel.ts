@@ -6,6 +6,8 @@ import {
   BASE_TOPICS,
   DEFAULT_INTEL_BUDGET_USD,
   TYPICAL_INTEL_COST_USD,
+  budgetReicht,
+  MAX_INTEL_BUDGET_USD,
   WARNING_HOURS,
   cleanTopics,
   type IntelItem,
@@ -13,9 +15,11 @@ import {
   type IntelReport,
   type IntelSnapshot,
 } from "../intel";
-import { CONFIG_DIR, grokKey, readConfig, writeConfig, type JarvisConfig } from "./config";
+import { aendereConfig, CONFIG_DIR, grokKey, readConfig, type JarvisConfig } from "./config";
 import { askGrok, GrokError } from "./desk/grok";
+import { agentSperre } from "./gateway/zustand";
 import { notify } from "./notify";
+import { bucheBetrag } from "./kosten";
 
 // Intel: Grok liest Nachrichten im Web und Beiträge auf X und schreibt ein kurzes Lagebild. Morgens ab
 // 6 Uhr und acht Stunden später noch einmal von selbst (bis 22 Uhr), sonst auf Zuruf, immer innerhalb des
@@ -25,7 +29,6 @@ const FILE = path.join(CONFIG_DIR, "intel.json");
 const HOUR = 3_600_000;
 // Nach einem Fehlschlag frühestens nach einer halben Stunde wieder von selbst.
 const RETRY_MS = 30 * 60_000;
-const CHECK_MS = 5 * 60_000;
 const DAY_START = 6;
 const DAY_END = 22;
 const TIMEOUT_MS = 180_000;
@@ -37,17 +40,19 @@ type State = {
   day: { date: string; spentUsd: number };
   lastTryAt: string | null;
   error: string | null;
+  // Die letzte Warnung an den Desk, getrennt vom Lagebild: Sie gilt ihre sechs Stunden, auch wenn inzwischen ein
+  // neues Lagebild ohne Warnung da ist. Die Seite und das Handy haben „bis … Uhr“ zugesagt.
+  warnung?: { text: string; at: string } | null;
 };
 
 type Shared = {
   state: State | null;
   loading: Promise<State> | null;
   saving: Promise<void>;
-  timer: ReturnType<typeof setInterval> | null;
   running: { focus: string | null; since: string; done: Promise<IntelReport> } | null;
 };
 const holder = globalThis as typeof globalThis & { __jarvisIntel?: Shared };
-const shared: Shared = (holder.__jarvisIntel ??= { state: null, loading: null, saving: Promise.resolve(), timer: null, running: null });
+const shared: Shared = (holder.__jarvisIntel ??= { state: null, loading: null, saving: Promise.resolve(), running: null });
 
 const freshState = (): State => ({ report: null, search: null, day: { date: isoDate(new Date()), spentUsd: 0 }, lastTryAt: null, error: null });
 
@@ -80,15 +85,19 @@ const spentToday = (state: State, now: Date) => (state.day.date === isoDate(now)
 function addCost(state: State, usd: number, now: Date) {
   if (state.day.date !== isoDate(now)) state.day = { date: isoDate(now), spentUsd: 0 };
   state.day.spentUsd += usd;
+  // Das Tagesbudget bleibt hier; das Kostenbuch zählt nur mit, für die Übersicht aller Agenten.
+  void bucheBetrag("intel", "grok", usd, now);
 }
 
-// Die neueste Warnung aus Lagebild oder Suche, solange sie gilt.
+// Die neueste Warnung, solange sie gilt: die gemerkte, oder (bei einem Stand von früher) die im Lagebild oder in
+// der Suche. Ein späteres Lagebild ohne Warnung hebt sie nicht auf; Intel bremst den Desk, er gibt ihn nicht frei.
 function activeWarning(state: State, now: Date): IntelSnapshot["warning"] {
-  const reports = [state.report, state.search].filter((r): r is IntelReport => Boolean(r?.deskWarning));
-  const latest = reports.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+  const warnungen = [state.report, state.search].filter((r): r is IntelReport => Boolean(r?.deskWarning)).map((r) => ({ text: r.deskWarning!, at: r.at }));
+  if (state.warnung) warnungen.push(state.warnung);
+  const latest = warnungen.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
   if (!latest) return null;
   const until = Date.parse(latest.at) + WARNING_HOURS * HOUR;
-  return until > now.getTime() ? { text: latest.deskWarning!, at: latest.at, until: new Date(until).toISOString() } : null;
+  return until > now.getTime() ? { text: latest.text, at: latest.at, until: new Date(until).toISOString() } : null;
 }
 
 // Für den Trading-Desk: Gibt es gerade eine Warnung, kauft er nichts Neues.
@@ -124,7 +133,7 @@ export async function intelSnapshot(now = new Date()): Promise<IntelSnapshot> {
     topics: intelTopics(config),
     auto: config.intel?.auto !== false,
     warning: activeWarning(state, now),
-    nextAt: next && intelBudget(config) - spentToday(state, next) >= TYPICAL_INTEL_COST_USD ? next.toISOString() : null,
+    nextAt: next && budgetReicht(intelBudget(config) - spentToday(state, next)) ? next.toISOString() : null,
   };
 }
 
@@ -135,12 +144,14 @@ export class IntelError extends Error {}
 export async function refreshIntel(focus: string | null, opts: { wait?: boolean; now?: Date } = {}): Promise<IntelReport | null> {
   const now = opts.now ?? new Date();
   const config = await readConfig();
+  const sperre = await agentSperre("intel");
+  if (sperre) throw new IntelError(sperre);
   const key = grokKey(config);
   if (!key) throw new IntelError("Für Intel fehlt der xAI-Schlüssel. Den trägst du in den Einstellungen unter „Crawler auf X“ ein.");
   if (shared.running) throw new IntelError(shared.running.focus ? `Ich suche gerade schon zu ${shared.running.focus}.` : "Ich lese die Nachrichten gerade schon.");
   const state = await load();
   const left = intelBudget(config) - spentToday(state, now);
-  if (left < TYPICAL_INTEL_COST_USD) {
+  if (!budgetReicht(left)) {
     throw new IntelError(`Das Intel-Budget von ${intelBudget(config).toLocaleString("de-DE", { minimumFractionDigits: 2 })} $ für heute ist aufgebraucht. Morgen lese ich weiter.`);
   }
   const topic = focus ? cleanTopics([focus])[0] ?? focus.trim().slice(0, 40) : null;
@@ -149,8 +160,13 @@ export async function refreshIntel(focus: string | null, opts: { wait?: boolean;
     .then(async (report) => {
       addCost(state, report.costUsd, now);
       const before = activeWarning(state, new Date());
+      // Was das abgelöste Lagebild (oder die abgelöste Suche) gewarnt hat, wird gemerkt, bevor es verschwindet;
+      // das fängt auch einen Stand von früher auf, in dem noch keine Warnung gemerkt ist.
+      const abgeloest = topic ? state.search : state.report;
+      if (abgeloest?.deskWarning && !(state.warnung && Date.parse(state.warnung.at) >= Date.parse(abgeloest.at))) state.warnung = { text: abgeloest.deskWarning, at: abgeloest.at };
       if (topic) state.search = report;
       else state.report = report;
+      if (report.deskWarning) state.warnung = { text: report.deskWarning, at: report.at };
       state.error = null;
       await save(state);
       // Eine neue Warnung kommt aufs Handy; dieselbe Warnung im nächsten Lagebild nicht noch einmal.
@@ -174,21 +190,16 @@ export async function refreshIntel(focus: string | null, opts: { wait?: boolean;
   return null;
 }
 
-// Liest von selbst, wenn es Zeit ist: tagsüber, im Budget, und nicht gleich nach einem Fehlschlag.
-export async function autoIntel(now = new Date()) {
-  if (shared.running || !inDaytime(now)) return;
+// Ist es Zeit, von selbst zu lesen? Tagsüber, im Budget, und nicht gleich nach einem Fehlschlag. Den Takt dazu
+// gibt der gemeinsame Zeitplan (zeitplan-aufgaben.ts).
+export async function intelFaellig(now = new Date()): Promise<boolean> {
+  if (shared.running || !inDaytime(now)) return false;
+  if (await agentSperre("intel")) return false;
   const state = await load();
   const config = await readConfig();
   const next = nextAuto(state, config, now);
-  if (!next || next.getTime() > now.getTime()) return;
-  if (intelBudget(config) - spentToday(state, now) < TYPICAL_INTEL_COST_USD) return;
-  await refreshIntel(null, { now }).catch(() => {});
-}
-
-export function startIntel() {
-  if (shared.timer) return;
-  shared.timer = setInterval(() => void autoIntel(), CHECK_MS);
-  setTimeout(() => void autoIntel(), 20_000);
+  if (!next || next.getTime() > now.getTime()) return false;
+  return budgetReicht(intelBudget(config) - spentToday(state, now));
 }
 
 const SYSTEM = `Du bist Intel, der Nachrichten-Agent eines persönlichen Assistenten. Du stellst ein kurzes Lagebild zusammen, das morgens im Briefing vorgelesen wird.
@@ -308,15 +319,18 @@ async function runIntel(apiKey: string, topics: string[], focus: string | null, 
 }
 
 export async function saveIntelSettings(input: { topics?: unknown; budgetUsd?: unknown; auto?: unknown }): Promise<void> {
-  const config = await readConfig();
-  const intel = { ...config.intel };
-  if (input.topics !== undefined) intel.topics = cleanTopics(input.topics);
+  // Erst prüfen, dann in einem Zug lesen, ändern, speichern: So überschreibt das hier nichts, was gerade
+  // woanders gespeichert wird.
+  let budget: number | undefined;
   if (input.budgetUsd !== undefined) {
-    const budget = Math.round(Number(input.budgetUsd) * 100) / 100;
-    if (!(budget >= TYPICAL_INTEL_COST_USD && budget <= 10)) throw new IntelError(`Bitte ein Tagesbudget zwischen ${TYPICAL_INTEL_COST_USD.toLocaleString("de-DE", { minimumFractionDigits: 2 })} und 10 Dollar eintragen.`);
-    intel.budgetUsd = budget;
+    budget = Math.round(Number(input.budgetUsd) * 100) / 100;
+    if (!(budget >= TYPICAL_INTEL_COST_USD && budget <= MAX_INTEL_BUDGET_USD)) throw new IntelError(`Bitte ein Tagesbudget zwischen ${TYPICAL_INTEL_COST_USD.toLocaleString("de-DE", { minimumFractionDigits: 2 })} und ${MAX_INTEL_BUDGET_USD} Dollar eintragen.`);
   }
-  if (input.auto !== undefined) intel.auto = input.auto === true;
-  config.intel = intel;
-  await writeConfig(config);
+  await aendereConfig((config) => {
+    const intel = { ...config.intel };
+    if (input.topics !== undefined) intel.topics = cleanTopics(input.topics);
+    if (budget !== undefined) intel.budgetUsd = budget;
+    if (input.auto !== undefined) intel.auto = input.auto === true;
+    return { ...config, intel };
+  });
 }

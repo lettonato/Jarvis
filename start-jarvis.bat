@@ -11,7 +11,7 @@ if errorlevel 1 (
 
 if not exist node_modules\imapflow (
   echo Installiere Pakete, das dauert beim ersten Mal ein bis zwei Minuten ...
-  call npm install
+  call npm ci --no-audit --no-fund
   if errorlevel 1 (
     echo Die Installation ist fehlgeschlagen.
     pause

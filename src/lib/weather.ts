@@ -35,6 +35,12 @@ type OpenMeteo = {
   };
 };
 
+// Das Wetter jetzt in einem kurzen Satz, für den Kopf von „Heute“. Ohne Verbindung zum Wetterdienst liefert
+// getWeather Beispieldaten; die sind kein Wetter und stehen hier nicht.
+export function wetterKurz(w: WeatherSnapshot | null): string {
+  return w && w.source === "live" ? `${Math.round(w.temperature)}\u00a0°C, ${w.description} in ${w.place}.` : "";
+}
+
 // WMO-Wettercodes, wie Open-Meteo sie liefert.
 export function describeWeather(code: number): string {
   if (code === 0) return "klarer Himmel";
@@ -52,7 +58,7 @@ export function describeWeather(code: number): string {
 export async function getWeather(): Promise<WeatherSnapshot> {
   try {
     const url =
-      `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+      `${process.env.OPEN_METEO_URL ?? "https://api.open-meteo.com"}/v1/forecast?latitude=${LAT}&longitude=${LON}` +
       "&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code" +
       "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=4" +
       "&timezone=Europe%2FBerlin";

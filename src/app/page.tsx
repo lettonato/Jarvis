@@ -1,10 +1,11 @@
-import { CommandCenter } from "@/components/CommandCenter";
-import { HoloView } from "@/components/HoloView";
+import { RaumSeite } from "@/components/Raum";
+import { TodayView } from "@/components/views/TodayView";
 
+// Der Eingangsraum des Glashauses ist „Heute“.
 export default function Home() {
   return (
-    <HoloView>
-      <CommandCenter />
-    </HoloView>
+    <RaumSeite ort="/">
+      <TodayView />
+    </RaumSeite>
   );
 }

@@ -1,3 +1,5 @@
+import { privateName } from "./netzregeln";
+
 // Der Browser-Agent: JARVIS bedient ein eigenes Chrome-Fenster auf deinem Mac, sucht, liest, klickt und
 // füllt Formulare aus. Den letzten Klick (Bestellen, Absenden, Bezahlen) machst immer du. Hier stehen die
 // festen Regeln ohne Netz, damit sie testbar sind; den Browser steuert src/lib/server/browser.ts.
@@ -61,18 +63,10 @@ export const BROWSER_RULES = [
 
 const host = (url: URL) => url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
 
-function privateHost(name: string): boolean {
-  if (name === "localhost" || name.endsWith(".localhost") || /\.(local|lan|home|internal|intranet|box|fritz\.box)$/.test(name)) return true;
-  // Ohne Punkt ist es ein Name im eigenen Netz, kein Ort im Internet.
-  if (!name.includes(".") && !name.includes(":")) return true;
-  const v4 = name.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])];
-    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
-  }
-  if (name.includes(":")) return name === "::1" || name === "::" || /^f[cd]/.test(name) || name.startsWith("fe80") || name.startsWith("::ffff:");
-  return false;
-}
+// Heimnetz-Namen und interne IP-Adressen nach den gemeinsamen Netzregeln (src/lib/netzregeln.ts). Namen,
+// die erst über DNS auf eine interne Adresse zeigen, prüft der Server zusätzlich bei jeder Anfrage
+// (adresseProblem in src/lib/server/netz.ts).
+const privateHost = (name: string) => privateName(name);
 
 // Darf JARVIS diese Adresse öffnen? Null heißt ja, sonst der Grund. allow (Host mit Port) nur für Tests.
 export function urlProblem(raw: string, allow: string[] = []): string | null {

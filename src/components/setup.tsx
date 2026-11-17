@@ -2,8 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { useJarvis } from "./JarvisProvider";
-import { Button, inputClass, Notice } from "./ui";
-import { getJson, postJson } from "@/lib/api";
+import { Button, inputClass, Ladestand, Notice } from "./ui";
+import { getJson, LANGE_FRIST_MS, postJson } from "@/lib/api";
 import type { CalendarSnapshot } from "@/lib/calendar";
 import { MAIL_PROVIDERS, providerById } from "@/lib/mailProviders";
 import type { Settings } from "@/lib/settings";
@@ -78,7 +78,7 @@ export function VaultSetup() {
           </Button>
         </div>
       )}
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
     </div>
   );
 }
@@ -162,7 +162,7 @@ export function MailSetup() {
           />
         </label>
       </div>
-      <p className="rounded-lg border border-sky-300/15 bg-desk/50 px-3 py-2 text-xs text-sky-100/80">{info.hint}</p>
+      <p className="rounded-lg border border-schiefer/15 bg-desk/50 px-3 py-2 text-xs text-schiefer/80">{info.hint}</p>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" tone="primary" disabled={busy || !user.trim()}>
           {busy ? "Prüfe Verbindung …" : saved ? "Speichern und prüfen" : "Verbinden"}
@@ -173,8 +173,8 @@ export function MailSetup() {
           </Button>
         )}
       </div>
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
-      <p className="text-[11px] text-quiet">Das Passwort bleibt auf deinem Mac in {settings?.configFile ?? "~/.jarvis/config.json"} und wird nie hochgeladen.</p>
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
+      <p className="text-xs text-quiet">Das Passwort bleibt auf deinem Mac in {settings?.configFile ?? "~/.jarvis/config.json"} und wird nie hochgeladen.</p>
     </form>
   );
 }
@@ -182,7 +182,7 @@ export function MailSetup() {
 // Der Apple-Kalender braucht keinen Schlüssel, nur die Freigabe von macOS. Ein Klick löst die
 // Rückfrage aus; danach wählst du, in welchen Kalender JARVIS neue Termine einträgt.
 export function CalendarSetup() {
-  const { calendar, setCalendar } = useJarvis();
+  const { calendar, setCalendar, ausfall } = useJarvis();
   const [busy, setBusy] = useState<"zugriff" | "ziel" | "einstellungen" | "laden" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -202,7 +202,8 @@ export function CalendarSetup() {
     setBusy("laden");
     setError(null);
     try {
-      setCalendar(await getJson<CalendarSnapshot>("/api/kalender?force=1"));
+      // Der Kalender am Mac und Outlook zusammen dürfen länger brauchen als eine gewöhnliche Abfrage.
+      setCalendar(await getJson<CalendarSnapshot>("/api/kalender?force=1", undefined, LANGE_FRIST_MS));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -210,7 +211,7 @@ export function CalendarSetup() {
     }
   }
 
-  if (!calendar) return <p className="text-sm text-quiet">Lade Kalender …</p>;
+  if (!calendar) return <Ladestand quelle="kalender" aus={ausfall.calendar} />;
   const writable = calendar.calendars.filter((c) => c.writable);
 
   return (
@@ -223,8 +224,8 @@ export function CalendarSetup() {
       {calendar.access === "offen" && (
         <>
           <p className="text-quiet">
-            Ein Klick, dann fragt macOS einmal, ob <b className="text-sky-100">Terminal</b> auf deine Kalender zugreifen darf (JARVIS läuft im Terminal). Wähle dort{" "}
-            <b className="text-sky-100">Erlauben</b> bzw. <b className="text-sky-100">Vollzugriff</b>.
+            Ein Klick, dann fragt macOS einmal, ob <b className="text-schiefer">Terminal</b> auf deine Kalender zugreifen darf (JARVIS läuft im Terminal). Wähle dort{" "}
+            <b className="text-schiefer">Erlauben</b> bzw. <b className="text-schiefer">Vollzugriff</b>.
           </p>
           <Button tone="primary" icon="kalender" disabled={busy !== null} onClick={() => send("zugriff")}>
             {busy === "zugriff" ? "Warte auf deine Antwort am Mac …" : "Kalender verbinden"}
@@ -266,7 +267,7 @@ export function CalendarSetup() {
           </select>
         </label>
       )}
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
     </div>
   );
 }

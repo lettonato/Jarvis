@@ -8,6 +8,9 @@ export type Notice =
   // Eine Rückfrage mit Ja/Nein-Knöpfen, und später, was aus ihr wurde (die Knöpfe verschwinden dann).
   | { kind: "rueckfrage"; id: string; text: string }
   | { kind: "rueckfrage_ende"; id: string; text: string }
+  // Eine Freigabe des Security Gateways (src/lib/server/gateway/freigaben.ts), ebenfalls mit Ja und Nein.
+  | { kind: "freigabe"; id: string; text: string }
+  | { kind: "freigabe_ende"; id: string; text: string }
   // Ein fertiges Dokument kommt als Datei, ein gescheitertes nur als Text.
   | { kind: "dokument"; text: string; file: string | null };
 

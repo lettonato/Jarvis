@@ -2,19 +2,25 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import type { Ausfall } from "@/lib/heute";
 import type { AvatarState } from "@/lib/avatar";
-import { ApiError, getJson, postJson, postStream } from "@/lib/api";
-import { holoTypes } from "@/lib/holo";
-import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type Source } from "@/lib/brain";
-import type { CalendarSnapshot } from "@/lib/calendar";
+import { ApiError, getJson, LANGE_FRIST_MS, postJson, postStream } from "@/lib/api";
+import { alsSatz } from "@/lib/format";
+import { fahrtArten } from "@/lib/raeume";
+import { VIEWS, type BrainEvent, type BrainReply, type BrainRequest, type BrainTurn, type MemoryFact, type MemoryStand, type Source } from "@/lib/brain";
+import { erinnerungsSatz, fuerGespraech, type CalendarSnapshot } from "@/lib/calendar";
 import { decide, discuss as discussDecision, situation, startSession, type CommandContext, type Decision, type Effect, type Session } from "@/lib/commands";
 import { intelSentence, searchSentence, type IntelSnapshot } from "@/lib/intel";
+import type { MetalleSnapshot } from "@/lib/metalle";
 import { docDoneSentence, type DocsSnapshot } from "@/lib/documents";
 import type { MailMessage, MailSnapshot } from "@/lib/mail";
 import type { MarketSnapshot } from "@/lib/market";
 import type { DeskSnapshot } from "@/lib/paper";
+import type { ProjekteSnapshot } from "@/lib/projekte";
+import { enthaeltFremdes } from "@/lib/herkunft";
 import type { Settings } from "@/lib/settings";
 import type { TasksSnapshot } from "@/lib/tasks";
+import { setze } from "@/lib/geteilt";
 import { usePolling } from "@/lib/usePolling";
 import { setHandsFree, useVoice } from "@/lib/useVoice";
 import { takeSentences } from "@/lib/voiceText";
@@ -24,7 +30,13 @@ import type { WeatherSnapshot } from "@/lib/weather";
 // über allen Seiten. Wechselst du die Ansicht, redet er einfach weiter.
 
 // live: Claude schreibt noch; status: was JARVIS gerade tut, etwa „Ich suche im Web“.
-export type Turn = { id: number; who: "du" | "jarvis"; text: string; live?: boolean; status?: string; sources?: Source[] };
+// fremd: Für diese Antwort hat JARVIS Text von Dritten gelesen; der Server fragt danach bei Änderungen nach.
+// alt: aus dem gespeicherten Gespräch zurückgeholt (wird nicht mitgespeichert und nicht noch einmal angesagt).
+export type Turn = { id: number; who: "du" | "jarvis"; text: string; live?: boolean; status?: string; sources?: Source[]; fremd?: boolean; alt?: boolean };
+
+// Alles, was die Leertaste selbst bedient, wenn es markiert ist.
+const BEDIENBAR = 'input, textarea, select, button, a, summary, label, [contenteditable=true], [role=button], [role=menuitem], [role=checkbox], [role=switch], [role=tab], [tabindex]:not([tabindex="-1"])';
+
 
 type Jarvis = {
   name: string;
@@ -42,6 +54,8 @@ type Jarvis = {
   // Der Spielgeld-Desk: Kontostand, Positionen, Protokoll.
   desk: DeskSnapshot | null;
   setDesk: (d: DeskSnapshot) => void;
+  // Welche Abfragen an JARVIS selbst von Anfang an scheitern: Dort steht dann nicht „lädt noch“.
+  ausfall: Ausfall;
   // Der Apple-Kalender auf dem Mac.
   calendar: CalendarSnapshot | null;
   setCalendar: (c: CalendarSnapshot) => void;
@@ -49,15 +63,24 @@ type Jarvis = {
   // Intel: das Lagebild aus Nachrichten und X.
   intel: IntelSnapshot | null;
   setIntel: (i: IntelSnapshot) => void;
+  // Edelmetalle: derselbe Stand wie in der Ansicht der Edelmetalle (eine geteilte Abfrage).
+  metalle: MetalleSnapshot | null;
   // Dokumente, die der Analyst schreibt oder geschrieben hat.
   documents: DocsSnapshot | null;
   setDocuments: (d: DocsSnapshot) => void;
+  // Das Projektgedächtnis: bestätigte Projekte und Vorschläge, die auf dein Ja warten.
+  projekte: ProjekteSnapshot | null;
+  setProjekte: (p: ProjekteSnapshot) => void;
   mailText: Record<number, MailMessage>;
   // Die Mails, die Claude zuletzt geöffnet hat; n zählt mit, damit dieselbe Mail wieder aufklappt.
   spotlight: { uids: number[]; n: number };
   // Was JARVIS sich über dich gemerkt hat.
   memory: MemoryFact[] | null;
-  setMemory: (m: MemoryFact[]) => void;
+  // Lässt sich das Gedächtnis nicht lesen: der feste Satz dazu und, bei einer beschädigten Datei, was die Seite
+  // zum Beiseitelegen braucht. Sonst null.
+  memoryError: Pick<MemoryStand, "fehler" | "beschaedigt"> | null;
+  setMemory: (stand: MemoryStand) => void;
+  reloadMemory: () => void;
   state: AvatarState;
   session: Session | null;
   ask: (text: string) => void;
@@ -72,6 +95,10 @@ type Jarvis = {
     waiting: boolean;
     // Die Erkennung läuft auf dem Mac selbst.
     local: boolean;
+    // JARVIS will gerade sprechen (auch während das Mikrofon offen ist) …
+    spricht: boolean;
+    // … und ist dabei wirklich zu hören (nicht nur „Spreche …“).
+    hoerbar: boolean;
     error: string | null;
     hint: string | null;
     toggle: () => void;
@@ -121,7 +148,7 @@ function storedTurns(): Turn[] {
     return raw
       .filter((t): t is Turn => (t?.who === "du" || t?.who === "jarvis") && typeof t?.text === "string" && t.text.trim() !== "")
       .slice(-KEEP_TURNS)
-      .map((t) => ({ id: turnId++, who: t.who, text: t.text, sources: Array.isArray(t.sources) ? t.sources : undefined }));
+      .map((t) => ({ id: turnId++, who: t.who, text: t.text, alt: true, sources: Array.isArray(t.sources) ? t.sources : undefined, ...(t.fremd === true ? { fremd: true } : {}) }));
   } catch {
     return [];
   }
@@ -143,16 +170,23 @@ function speakable(text: string): string {
 export function JarvisProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: market } = usePolling<MarketSnapshot>("/api/market", 30_000);
-  const { data: weather } = usePolling<WeatherSnapshot>("/api/weather", 10 * 60_000);
-  const { data: tasks, reload: reloadTasks, set: setTasks } = usePolling<TasksSnapshot>("/api/aufgaben", 60_000);
-  const { data: mail, reload: loadMail, set: setMail } = usePolling<MailSnapshot>("/api/post", 2 * 60_000);
-  const { data: settings, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
-  const { data: desk, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 10_000);
-  const { data: calendar, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
-  const { data: intel, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
-  const { data: documents, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
-  const { data: memoryData, set: setMemoryData } = usePolling<{ facts: MemoryFact[] }>("/api/gedaechtnis", 10 * 60_000);
+  const { data: market, failed: marketAus } = usePolling<MarketSnapshot>("/api/market", 30_000);
+  const { data: weather, failed: weatherAus } = usePolling<WeatherSnapshot>("/api/weather", 10 * 60_000);
+  const { data: tasks, failed: tasksAus, reload: reloadTasks, set: setTasks } = usePolling<TasksSnapshot>("/api/aufgaben", 60_000);
+  const { data: mail, failed: mailAus, reload: loadMail, set: setMail } = usePolling<MailSnapshot>("/api/post", 2 * 60_000);
+  const { data: settings, failed: settingsAus, reload: reloadSettings, set: setSettings } = usePolling<Settings>("/api/einstellungen", 30 * 60_000);
+  const { data: desk, failed: deskAus, set: setDesk } = usePolling<DeskSnapshot>("/api/handel", 10_000);
+  const { data: calendar, failed: calendarAus, reload: loadCalendar, set: setCalendar } = usePolling<CalendarSnapshot>("/api/kalender", 5 * 60_000);
+  const { data: intel, failed: intelAus, reload: loadIntel, set: setIntel } = usePolling<IntelSnapshot>("/api/intel", 60_000);
+  const { data: metalle, failed: metalleAus } = usePolling<MetalleSnapshot>("/api/metalle", 300_000);
+  const { data: documents, failed: documentsAus, reload: loadDocuments, set: setDocuments } = usePolling<DocsSnapshot>("/api/dokumente", 60_000);
+  const { data: projekte, failed: projekteAus, set: setProjekte } = usePolling<ProjekteSnapshot>("/api/projekte", 60_000);
+  const { data: memoryData, failed: memoryAus, reload: loadMemory, set: setMemoryData } = usePolling<MemoryStand>("/api/gedaechtnis", 10 * 60_000);
+  // Je Abfrage: Sie hat noch nie geantwortet, und der letzte Versuch ist gescheitert (usePolling, failed).
+  const ausfall = useMemo<Ausfall>(
+    () => ({ calendar: calendarAus, tasks: tasksAus, mail: mailAus, projekte: projekteAus, desk: deskAus, intel: intelAus, documents: documentsAus, market: marketAus, metalle: metalleAus, weather: weatherAus, settings: settingsAus, memory: memoryAus }),
+    [calendarAus, tasksAus, mailAus, projekteAus, deskAus, intelAus, documentsAus, marketAus, metalleAus, weatherAus, settingsAus, memoryAus],
+  );
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [session, setSessionState] = useState<Session | null>(null);
@@ -163,6 +197,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   // Kam der letzte Satz per Stimme, hört JARVIS nach seiner Antwort gleich weiter zu.
   const byVoice = useRef(false);
   const heard = useRef<(text: string) => void>(() => {});
+  const halt = useRef<() => void>(() => {});
   const latest = useRef<Omit<CommandContext, "now" | "session">>({ name: "Benedikt", market: null, weather: null, tasks: null, mail: null, desk: null, calendar: null, intel: null });
   // Hast du nach den Nachrichten gefragt, sagt JARVIS Bescheid, sobald Grok fertig ist.
   const announce = useRef<{ focus: string | null; since: string } | null>(null);
@@ -172,13 +207,20 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   // Die laufende Antwort von Claude; eine neue Frage oder „Stopp“ bricht sie ab.
   const brainAbort = useRef<AbortController | null>(null);
 
-  const { canListen, handsFree, listening, waiting, interim, local, speaking, error, hint, listen, stopListening, speak, speakStream, stopSpeaking } = useVoice(
+  // Die ElevenLabs-Stimme spricht nur, wenn der Server sie als aktiv meldet; lehnt er ab, lädt die Seite den Zustand neu.
+  const cloudOff = useCallback(() => void reloadSettings(), [reloadSettings]);
+  const { canListen, handsFree, listening, waiting, interim, local, speaking, hoerbar, error, hint, listen, stopListening, speak, speakStream, stopSpeaking } = useVoice(
     useCallback((text: string) => heard.current(text), []),
+    settings?.stimme?.aktiv === true,
+    cloudOff,
+    useCallback(() => halt.current(), []),
   );
   const name = settings?.name ?? "Benedikt";
 
   useEffect(() => {
-    latest.current = { name, market, weather, tasks, mail, desk, calendar, intel };
+    // Ins Gespräch gehen Outlook-Termine nur, wenn du es eingeschaltet hast: Was JARVIS hier antwortet, liest
+    // das KI-Modell beim nächsten Satz mit. Die Räume zeigen weiter den ganzen Kalender.
+    latest.current = { name, market, weather, tasks, mail, desk, calendar: fuerGespraech(calendar), intel, projekte, metalle, desktop: settings?.desktop ?? null };
     place.current = pathname;
     history.current = turns;
     brain.current = Boolean(settings?.brain.configured);
@@ -191,7 +233,10 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
 
   const addTurn = useCallback((who: Turn["who"], text: string, extra: Partial<Turn> = {}) => {
     const id = turnId++;
-    setTurns((prev) => [...prev, { id, who, text, ...extra }].slice(-KEEP_TURNS));
+    // Was JARVIS selbst zusammensetzt (Briefing, Besprechung, Erinnerung) und dabei Text von Dritten nennt,
+    // gilt als fremd, damit der Server danach bei Änderungen nachfragt. Antworten des KI-Gehirns (live) kennzeichnet der Server.
+    const fremd = who === "jarvis" && !extra.live && !extra.fremd && enthaeltFremdes(text, latest.current);
+    setTurns((prev) => [...prev, { id, who, text, ...extra, ...(fremd ? { fremd: true } : {}) }].slice(-KEEP_TURNS));
     return id;
   }, []);
 
@@ -221,7 +266,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!restored.current) return;
     try {
-      const keep = turns.filter((t) => !t.live && t.text.trim()).map(({ who, text, sources }) => ({ who, text, sources }));
+      const keep = turns.filter((t) => !t.live && t.text.trim()).map(({ who, text, sources, fremd }) => ({ who, text, sources, ...(fremd ? { fremd: true } : {}) }));
       localStorage.setItem(TURNS_KEY, JSON.stringify(keep.slice(-KEEP_TURNS)));
     } catch {
       // Ohne Speicher hält das Gespräch bis zum Neuladen.
@@ -252,7 +297,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
             setMail(await postJson<MailSnapshot>("/api/post", { action: "seen", uid: effect.uid }));
             return;
           case "readMail": {
-            const message = await getJson<MailMessage>(`/api/post?uid=${effect.uid}`);
+            // Das Postfach darf sich Zeit lassen (wie bei der Übersicht: eine Minute).
+            const message = await getJson<MailMessage>(`/api/post?uid=${effect.uid}`, undefined, LANGE_FRIST_MS);
             setMailText((prev) => ({ ...prev, [effect.uid]: message }));
             return speakable(message.text);
           }
@@ -276,6 +322,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
           }
           case "openObsidian":
             await postJson("/api/aufgaben", { action: "open", what: effect.what });
+            return;
+          case "openDesktop":
+            await postJson("/api/desktop", { id: effect.id });
             return;
           // Grok braucht eine halbe Minute oder mehr; die Antwort kommt, sobald das Lagebild da ist.
           case "intel": {
@@ -304,27 +353,34 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     [speak, listen],
   );
 
+  // still: Der Befehl wurde von einem neueren Satz überholt (siehe handle). Er wird ausgeführt und steht im
+  // Gespräch, aber er spricht nicht, hört nicht zu und nimmt „Denke nach …“ nicht weg: Das alles gehört schon
+  // dem neueren Satz, und wer jetzt spräche, bräche dessen Antwort ab.
   const execute = useCallback(
-    async (d: Decision) => {
+    async (d: Decision, still = false) => {
+      const sag = (text: string) => {
+        if (!still) speakThenMaybeListen(text);
+      };
       let said = "";
       if (d.effect) {
         try {
           said = (await run(d.effect)) ?? "";
         } catch (e) {
-          setThinking(false);
+          if (!still) setThinking(false);
           const message = e instanceof Error ? e.message : String(e);
           addTurn("jarvis", message);
-          speakThenMaybeListen(message);
+          sag(message);
           return;
         }
       }
-      setThinking(false);
+      if (!still) setThinking(false);
       if (d.session !== undefined) setSession(d.session);
-      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: holoTypes(place.current, d.navigate) });
+      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: fahrtArten(place.current, d.navigate) });
       const first = [d.reply, said].filter(Boolean).join(" ");
-      if (first) addTurn("jarvis", first);
+      // Der vorgelesene Text einer Mail stammt immer von Dritten.
+      if (first) addTurn("jarvis", first, said && d.effect?.type === "readMail" ? { fremd: true } : {});
       if (d.after) addTurn("jarvis", d.after);
-      speakThenMaybeListen([first, d.after].filter(Boolean).join(" "));
+      sag([first, d.after].filter(Boolean).join(" "));
     },
     [run, addTurn, setSession, router, speakThenMaybeListen],
   );
@@ -383,8 +439,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
             pending = rest;
             ready.forEach((sentence) => speech.push(sentence));
           } else if (event.type === "navigate") {
-            if (event.href !== place.current) router.push(event.href, { transitionTypes: holoTypes(place.current, event.href) });
-          } else if (event.type === "error") throw new Error(event.error);
+            if (event.href !== place.current) router.push(event.href, { transitionTypes: fahrtArten(place.current, event.href) });
+          } else if (event.type === "herkunft") updateTurn(id, { fremd: true });
+          else if (event.type === "error") throw new Error(event.error);
           else result = event.reply;
         }
       } catch (e) {
@@ -410,7 +467,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         return;
       }
       speech.push(takeSentences(pending, true).ready.join(" "));
-      updateTurn(id, { live: false, status: undefined, text: result.reply, sources: result.sources });
+      updateTurn(id, { live: false, status: undefined, text: result.reply, sources: result.sources, ...(result.fremd ? { fremd: true } : {}) });
 
       if (result.tasks) setTasks(result.tasks);
       if (result.mail) setMail(result.mail);
@@ -419,6 +476,9 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       if (result.intel) setIntel(result.intel);
       if (result.memory) setMemoryData({ facts: result.memory });
       if (result.documents) setDocuments(result.documents);
+      if (result.projekte) setProjekte(result.projekte);
+      // Die Post-Ansicht zeigt einen neuen Antwortentwurf sofort (sie fragt /api/entwuerfe selbst ab).
+      if (result.entwuerfe) setze("/api/entwuerfe", result.entwuerfe);
       if (result.opened) {
         const opened = result.opened;
         setMailText((prev) => ({ ...prev, ...Object.fromEntries(opened.map((m) => [m.uid, m])) }));
@@ -429,7 +489,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         tasks: result.tasks ?? ctx.tasks,
         mail: result.mail ?? ctx.mail,
         desk: result.desk ?? ctx.desk,
-        calendar: result.calendar ?? ctx.calendar,
+        calendar: result.calendar ? fuerGespraech(result.calendar) : ctx.calendar,
         intel: result.intel ?? ctx.intel,
       };
       // Führt Claude dich während einer Besprechung in eine andere Ansicht, endet die Besprechung.
@@ -438,11 +498,12 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
         ? startSession(fresh, result.session, result.reply)
         : { reply: result.reply, navigate: result.navigate, ...(leaves ? { session: null } : {}) };
       if (d.session !== undefined) setSession(d.session);
-      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: holoTypes(place.current, d.navigate) });
+      if (d.navigate && d.navigate !== place.current) router.push(d.navigate, { transitionTypes: fahrtArten(place.current, d.navigate) });
       // Was die Besprechung noch anhängt, kommt dazu, etwa „Bis nächste Woche ist nichts fällig“ oder der erste Punkt.
       const more = d.reply.startsWith(result.reply) ? d.reply.slice(result.reply.length).trim() : "";
       if (more) {
-        updateTurn(id, { text: `${result.reply} ${more}` });
+        // Der Anhang der Besprechung (etwa die erste Mail) kann Text von Dritten nennen, auch wenn Claudes Antwort es nicht tat.
+        updateTurn(id, { text: `${result.reply} ${more}`, ...(enthaeltFremdes(more, latest.current) ? { fremd: true } : {}) });
         speech.push(more);
       }
       if (d.after) {
@@ -451,27 +512,45 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       }
       speech.end(listenAfter);
     },
-    [context, addTurn, updateTurn, speakStream, listen, router, setSession, setTasks, setMail, setDesk, setCalendar, setIntel, setMemoryData, setDocuments],
+    [context, addTurn, updateTurn, speakStream, listen, router, setSession, setTasks, setMail, setDesk, setCalendar, setIntel, setMemoryData, setDocuments, setProjekte],
   );
 
+  // Sätze, die abgeschickt, aber noch nicht in Arbeit sind: die Uhr, die sie startet, und der Satz dazu.
+  const pending = useRef(new Map<ReturnType<typeof setTimeout>, string>());
   const handle = useCallback(
     (text: string, fromVoice: boolean) => {
       const clean = text.trim();
       if (!clean) return;
+      // Kommt ein Satz, während der davor noch wartet (ein doppelter Klick, zwei Sätze der Spracheingabe):
+      // Derselbe Satz noch einmal zählt nicht. Sonst geht der wartende nicht verloren und nicht doppelt los: Ein
+      // fester Befehl wird jetzt gleich ausgeführt (still: Er steht im Gespräch, gesprochen wird die Antwort auf den
+      // neuen Satz), eine Frage an das KI-Gehirn entfällt, die neue löst sie ab.
+      const wartende = [...pending.current];
+      if (wartende.some(([, satz]) => satz === clean)) return;
+      pending.current.clear();
+      for (const [uhr, satz] of wartende) {
+        clearTimeout(uhr);
+        const vorher = decide(satz, context(), brain.current);
+        if (vorher) void execute(vorher, true);
+      }
       byVoice.current = fromVoice;
       // Eine neue Frage beendet die alte Antwort.
       brainAbort.current?.abort();
       const earlier = history.current
         .filter((t) => !t.live && t.text.trim())
         .slice(-24)
-        .map(({ who, text }) => ({ who, text }));
+        .map(({ who, text, fremd }) => ({ who, text, ...(fremd ? { fremd: true } : {}) }));
       addTurn("du", clean);
       setThinking(true);
-      setTimeout(() => {
+      // Einen Augenblick später geht es los. Nach „Anhalten“ in diesem Augenblick geht der Satz nicht mehr los
+      // (siehe stop); im Gespräch bleibt er stehen, wie eine Frage, die beim Nachdenken angehalten wurde.
+      const wartet = setTimeout(() => {
+        pending.current.delete(wartet);
         const decision = decide(clean, context(), brain.current);
         if (decision) execute(decision);
         else askBrain(clean, earlier);
       }, 350);
+      pending.current.set(wartet, clean);
     },
     [addTurn, execute, context, askBrain],
   );
@@ -491,9 +570,20 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   );
 
   const stop = useCallback(() => {
+    // Auch was gerade erst abgeschickt wurde und noch nicht unterwegs ist: Es geht nicht mehr los.
+    if (pending.current.size) {
+      for (const uhr of pending.current.keys()) clearTimeout(uhr);
+      pending.current.clear();
+      setThinking(false);
+    }
     brainAbort.current?.abort();
     stopSpeaking();
   }, [stopSpeaking]);
+
+  // Ein gesprochenes Haltewort („Jarvis, stopp“) hält dasselbe an wie die Escape-Taste.
+  useEffect(() => {
+    halt.current = stop;
+  }, [stop]);
 
   const toggle = useCallback(() => {
     if (listening) stopListening();
@@ -504,9 +594,11 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const typing = target?.closest("input, textarea, select, button, a, [contenteditable=true]");
+      // Die Leertaste gehört dem, was markiert ist (Feld, Knopf, Verweis, Aufklapper). Nur wenn nichts markiert
+      // ist, schaltet sie das Mikrofon.
+      const bedient = target?.closest(BEDIENBAR);
       if (e.key === "Escape") stop();
-      if (e.code !== "Space" || typing || e.repeat || !canListen) return;
+      if (e.code !== "Space" || bedient || e.repeat || !canListen) return;
       e.preventDefault();
       toggle();
     };
@@ -529,9 +621,16 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       if (!due) return;
       reminded.current.add(due.id);
       const minutes = Math.round((due.start - now) / 60_000);
-      const text = minutes <= 1 ? `Jetzt beginnt ${due.title}.` : `In ${minutes} Minuten: ${due.title}.`;
+      const { text, mitTitel } = erinnerungsSatz(due, minutes, calendar.outlook?.extern === true);
       addTurn("jarvis", text);
       speak(text);
+      if (!mitTitel) return;
+      // Gehört der Termin zu einem Projekt, blendet JARVIS ein, was dazu festgehalten ist.
+      void getJson<{ vorbereitung: { projekt: string; text: string; fremd: boolean }[] }>(`/api/projekte?termin=${encodeURIComponent(due.title)}`)
+        .then(({ vorbereitung }) => {
+          for (const v of vorbereitung) addTurn("jarvis", v.text, v.fremd ? { fremd: true } : {});
+        })
+        .catch(() => {});
     };
     const first = setTimeout(check, 2000);
     const timer = setInterval(check, 30_000);
@@ -555,7 +654,7 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
     announce.current = null;
     const result = asked.focus ? intel.search : intel.report;
     const done = result && Date.parse(result.at) >= Date.parse(asked.since) - 1000;
-    const text = done ? (asked.focus ? searchSentence(result) : intelSentence(intel, new Date())) : `Das hat nicht geklappt. ${intel.error ?? "Grok hat nicht geantwortet."}`;
+    const text = done ? (asked.focus ? searchSentence(result) : intelSentence(intel, new Date())) : `Das hat nicht geklappt. ${alsSatz(intel.error ?? "Grok hat nicht geantwortet.")}`;
     addTurn("jarvis", text);
     speak(text);
   }, [intel, addTurn, speak]);
@@ -600,23 +699,29 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setSettings,
       desk,
       setDesk,
+      ausfall,
       calendar,
       setCalendar,
       reloadCalendar: () => loadCalendar("?force=1"),
       intel,
       setIntel,
+      metalle,
       documents,
       setDocuments,
+      projekte,
+      setProjekte,
       mailText,
       spotlight,
       memory: memoryData?.facts ?? null,
-      setMemory: (facts: MemoryFact[]) => setMemoryData({ facts }),
+      memoryError: memoryData?.fehler ? { fehler: memoryData.fehler, beschaedigt: memoryData.beschaedigt } : null,
+      setMemory: setMemoryData,
+      reloadMemory: () => void loadMemory(),
       state,
       session,
       ask,
       discuss,
       run,
-      voice: { canListen, handsFree, listening, waiting, local, error, hint, toggle, stopSpeaking, setHandsFree },
+      voice: { canListen, handsFree, listening, waiting, local, spricht: speaking, hoerbar, error, hint, toggle, stopSpeaking, setHandsFree },
       stop,
     }),
     [
@@ -634,17 +739,22 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       setSettings,
       desk,
       setDesk,
+      ausfall,
       calendar,
       setCalendar,
       loadCalendar,
       intel,
       setIntel,
+      metalle,
       documents,
       setDocuments,
+      projekte,
+      setProjekte,
       mailText,
       spotlight,
       memoryData,
       setMemoryData,
+      loadMemory,
       state,
       session,
       ask,
@@ -655,6 +765,8 @@ export function JarvisProvider({ children }: { children: ReactNode }) {
       listening,
       waiting,
       local,
+      speaking,
+      hoerbar,
       error,
       hint,
       toggle,

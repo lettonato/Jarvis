@@ -1,7 +1,9 @@
 import { execFile } from "node:child_process";
 import { addDays, isoDate } from "../dates";
-import { eventTimes, READ_DAYS, type CalendarAccess, type CalendarEvent, type CalendarSnapshot, type NewEvent } from "../calendar";
-import { readConfig } from "./config";
+import { eventTimes, fuerGespraech, READ_DAYS, type CalendarAccess, type CalendarEvent, type CalendarSnapshot, type NewEvent } from "../calendar";
+import { OUTLOOK_KALENDER } from "../microsoft";
+import { aendereConfig, readConfig } from "./config";
+import { outlookTermine } from "./microsoft";
 
 // Der Apple-Kalender auf dem Mac, über EventKit, dieselbe Schnittstelle, die auch die Kalender-App
 // nutzt. Damit sieht JARVIS alle Kalender, die dort eingerichtet sind (iCloud, Google, Exchange).
@@ -89,10 +91,20 @@ function read(from, to) {
 
 function add(data) {
   const store = $.EKEventStore.alloc.init;
+  // Der genannte Kalender, wenn man in ihn eintragen darf: zuerst genau so geschrieben, sonst ohne Rücksicht auf
+  // Groß- und Kleinschreibung („arbeit“ meint „Arbeit“).
   let target = null;
+  let aehnlich = null;
+  const gesucht = String(data.calendar || "").trim();
   for (const c of calendars(store).list) {
-    if (data.calendar && text(c.title) === data.calendar && c.allowsContentModifications) target = c;
+    if (!gesucht || !c.allowsContentModifications) continue;
+    const name = String(text(c.title)).trim();
+    if (name === gesucht) target = c;
+    else if (!aehnlich && name.toLowerCase() === gesucht.toLowerCase()) aehnlich = c;
   }
+  if (!target) target = aehnlich;
+  // Ein ausdrücklich verlangter Kalender (fest) wird nie still durch einen anderen ersetzt.
+  if (!target && data.calendar && data.fest) return { fehler: "Den Kalender „" + gesucht + "“ gibt es nicht oder er ist schreibgeschützt." };
   if (!target) target = store.defaultCalendarForNewEvents;
   if (isNil(target)) return { fehler: "Ich finde keinen Kalender, in den ich eintragen darf." };
   const ev = $.EKEvent.eventWithEventStore(store);
@@ -193,15 +205,47 @@ const accessOf = (r: ScriptResult): CalendarAccess => (r.zugriff === "gesperrt" 
 
 let cache: { at: number; snap: CalendarSnapshot } | null = null;
 let pending: Promise<CalendarSnapshot> | null = null;
+// Zählt hoch, sobald der gemerkte Kalender nicht mehr gilt (Microsoft 365 verbunden, getrennt, Schalter).
+// Wer einen Kalender länger aufhebt (Telegram für die Erinnerungen), merkt sich den Stand dazu.
+let stand = 0;
+export const kalenderStand = () => stand;
 const CACHE_MS = 60_000;
 
-async function load(mode: "lesen" | "fragen"): Promise<CalendarSnapshot> {
+const gleich = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+
+// Steht das Firmenkonto auch in der Kalender-App des Macs, kommt derselbe Termin zweimal: einmal über den Mac,
+// einmal über Outlook. Gleicher Titel, gleicher Beginn, gleiches Ende: Es bleibt der Eintrag des Macs.
+export function ohneDoppelte(mac: CalendarEvent[], outlook: CalendarEvent[]): CalendarEvent[] {
+  const da = new Set(mac.map((e) => `${e.start}|${e.end}|${e.allDay}|${gleich(e.title)}`));
+  return outlook.filter((e) => !da.has(`${e.start}|${e.end}|${e.allDay}|${gleich(e.title)}`));
+}
+
+// Der Kalender des Macs und, wenn Microsoft 365 verbunden ist, die Termine aus Outlook dazu (nur gelesen).
+async function load(mode: "lesen" | "fragen", force = false): Promise<CalendarSnapshot> {
   const today = isoDate(new Date());
   const to = addDays(today, READ_DAYS);
-  const base = { events: [], calendars: [], target: null, from: today, to };
-  if (!onMac()) return { ...base, access: "kein-mac", error: "Den Apple-Kalender gibt es nur auf dem Mac." };
   const from = new Date(`${today}T00:00:00`).getTime();
   const until = new Date(`${to}T23:59:59`).getTime();
+  const [mac, outlook] = await Promise.all([loadMac(mode, today, to, from, until), outlookTermine(from, until, { force }).catch(() => null)]);
+  if (!outlook) return mac;
+  const kopf = { konto: outlook.konto, extern: outlook.extern, ...(outlook.fehler ? { fehler: outlook.fehler } : {}), ...(outlook.unvollstaendig ? { unvollstaendig: true as const } : {}) };
+  // Ohne Mac (oder ohne Kalender-App) gilt der Kalender als lesbar, sobald Outlook Termine liefert. Eintragen
+  // geht dann trotzdem nicht: Das sagt nurLesen.
+  const nurOutlook = mac.access === "kein-mac" && !outlook.fehler;
+  return {
+    ...mac,
+    access: nurOutlook ? "ok" : mac.access,
+    error: nurOutlook ? undefined : mac.error,
+    events: [...mac.events, ...ohneDoppelte(mac.events, outlook.events)].sort((a, b) => a.start - b.start),
+    calendars: [...mac.calendars, { name: OUTLOOK_KALENDER, writable: false }],
+    outlook: kopf,
+    ...(nurOutlook ? { nurLesen: true as const } : {}),
+  };
+}
+
+async function loadMac(mode: "lesen" | "fragen", today: string, to: string, from: number, until: number): Promise<CalendarSnapshot> {
+  const base = { events: [], calendars: [], target: null, from: today, to };
+  if (!onMac()) return { ...base, access: "kein-mac", error: "Den Apple-Kalender gibt es nur auf dem Mac." };
   let r: ScriptResult;
   try {
     r = await eventKit([mode, String(from), String(until)], mode === "fragen" ? 100_000 : 20_000);
@@ -222,19 +266,39 @@ async function load(mode: "lesen" | "fragen"): Promise<CalendarSnapshot> {
   };
 }
 
-export async function readCalendar({ force = false } = {}): Promise<CalendarSnapshot> {
+// Der ganze Kalender, mit allen Outlook-Terminen. Nur für den Bildschirm am Mac (Schnittstelle /api/kalender).
+// Alles, was den Mac verlassen kann, nimmt readCalendar.
+export async function readCalendarGanz({ force = false } = {}): Promise<CalendarSnapshot> {
   if (!force && cache && Date.now() - cache.at < CACHE_MS) return cache.snap;
-  if (pending) return pending;
-  pending = load("lesen")
-    .then((snap) => {
-      cache = { at: Date.now(), snap };
-      return snap;
-    })
-    .finally(() => {
-      pending = null;
-    });
-  return pending;
+  const lauf = stand;
+  if (!pending) {
+    const p: Promise<CalendarSnapshot> = load("lesen", force)
+      .then((snap) => {
+        // Hat sich inzwischen etwas an Microsoft 365 geändert, ist dieser Stand schon alt: nicht merken.
+        if (lauf === stand) cache = { at: Date.now(), snap };
+        return snap;
+      })
+      .finally(() => {
+        if (pending === p) pending = null;
+      });
+    pending = p;
+  }
+  const snap = await pending;
+  // Wurde während des Lesens getrennt oder der Schalter umgelegt, gilt das Gelesene nicht mehr: noch einmal.
+  return lauf === stand ? snap : readCalendarGanz({ force: true });
 }
+
+// Nach einer Änderung an Microsoft 365 (verbunden, getrennt, Schalter) und in Tests: neu lesen. Ein Lesen, das
+// gerade läuft, zählt nicht mehr.
+export function vergissKalender(): void {
+  stand++;
+  cache = null;
+  pending = null;
+}
+
+// Der Kalender für das Gespräch mit dem KI-Modell und für Telegram: Outlook-Termine sind nur dabei, wenn du es
+// in den Einstellungen eingeschaltet hast. Das ist der übliche Weg; den ganzen Kalender liest nur readCalendarGanz.
+export const readCalendar = async (o: { force?: boolean } = {}): Promise<CalendarSnapshot> => fuerGespraech(await readCalendarGanz(o));
 
 // Fragt macOS nach dem Zugriff. Die Rückfrage erscheint auf dem Mac; JARVIS wartet bis zu 90 Sekunden.
 export async function requestAccess(): Promise<CalendarSnapshot> {
@@ -266,20 +330,21 @@ export function checkEvent(input: NewEvent): NewEvent {
   };
 }
 
-// Trägt einen neuen Termin ein. Ohne Kalendernamen nimmt JARVIS den aus den Einstellungen,
-// sonst den Standardkalender des Macs.
+// Trägt einen neuen Termin ein. Ohne Kalendernamen nimmt JARVIS den aus den Einstellungen; gibt es den nicht
+// mehr oder ist er schreibgeschützt, den Standardkalender des Macs (die Antwort nennt, wo der Termin gelandet ist).
+// Ein ausdrücklich genannter Kalender gilt dagegen fest: Geht es dort nicht, wird nichts eingetragen.
 export async function addEvent(input: NewEvent): Promise<{ snapshot: CalendarSnapshot; calendar: string; event: NewEvent }> {
   const event = checkEvent(input);
   if (!onMac()) throw new CalendarError("Den Apple-Kalender gibt es nur auf dem Mac.");
   const { calendar } = await readConfig();
   const times = eventTimes(event);
-  const r = await eventKit(["neu", JSON.stringify({ title: event.title, location: event.location ?? "", calendar: event.calendar ?? calendar?.target ?? "", ...times })]).catch(
+  const r = await eventKit(["neu", JSON.stringify({ title: event.title, location: event.location ?? "", calendar: event.calendar ?? calendar?.target ?? "", fest: Boolean(event.calendar), ...times })]).catch(
     (e: unknown): ScriptResult => ({ zugriff: "fehler", fehler: e instanceof Error ? e.message : String(e) }),
   );
   if (r.zugriff === "offen") throw new CalendarError("Dein Kalender ist noch nicht verbunden. Tippe in der Kalender-Ansicht auf „Kalender verbinden“.");
   if (!r.gespeichert) throw new CalendarError(r.fehler && r.zugriff !== "fehler" ? r.fehler : (explain(r) ?? "Der Termin wurde nicht gespeichert."));
   cache = null;
-  return { snapshot: await readCalendar({ force: true }), calendar: r.kalender_name ?? "", event };
+  return { snapshot: await readCalendarGanz({ force: true }), calendar: r.kalender_name ?? "", event };
 }
 
 // Öffnet die Kalender-App am gewünschten Tag. Darf JARVIS die App nicht steuern, öffnet er sie nur.
@@ -309,4 +374,16 @@ export async function openUrl(url: string): Promise<void> {
 export async function openFile(file: string, reveal = false): Promise<void> {
   if (!onMac()) throw new CalendarError("Das geht nur auf dem Mac.");
   await run(OPEN(), reveal ? ["-R", file] : [file], 10_000);
+}
+
+// In welchen Kalender neue Termine kommen (leer: der übliche). In einem Zug gelesen, geändert und gespeichert,
+// damit das hier nichts überschreibt, was gerade woanders gespeichert wird. Ob es den Kalender gibt und ob
+// JARVIS dort eintragen darf, prüft vorher, wer das hier aufruft.
+export async function speichereKalenderZiel(name: string): Promise<void> {
+  await aendereConfig((config) => {
+    const neu = { ...config };
+    if (name) neu.calendar = { target: name };
+    else delete neu.calendar;
+    return neu;
+  });
 }

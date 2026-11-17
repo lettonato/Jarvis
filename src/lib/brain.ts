@@ -1,14 +1,18 @@
 import type { CalendarSnapshot } from "./calendar";
 import type { DocsSnapshot } from "./documents";
+import type { EntwuerfeSnapshot } from "./entwuerfe";
 import type { IntelSnapshot } from "./intel";
 import type { MailMessage, MailSnapshot } from "./mail";
 import type { DeskSnapshot } from "./paper";
+import type { ProjekteSnapshot } from "./projekte";
 import type { TasksSnapshot } from "./tasks";
 
 // Das KI-Gehirn: Claude führt das Gespräch. Hier steht, was die Seite an den Server schickt und was
 // zurückkommt; die Arbeit macht src/lib/server/brain.ts.
 
-export type BrainTurn = { who: "du" | "jarvis"; text: string };
+// fremd: In dieser Antwort hat JARVIS Text von Dritten gelesen (Mail, Webseite, Termin, Grok). Solange so ein
+// Satz im Gesprächsverlauf steht, gilt das ganze Gespräch als fremd beeinflusst, und das Gateway fragt nach.
+export type BrainTurn = { who: "du" | "jarvis"; text: string; fremd?: boolean };
 
 export type BrainRequest = {
   text: string;
@@ -26,12 +30,17 @@ export type BrainRequest = {
 
 // Ein Eintrag im Gedächtnis von JARVIS.
 export type MemoryFact = { id: string; text: string; at: string };
+// Was die Seite vom Gedächtnis erfährt. fehler: der feste Satz, wenn es sich nicht lesen lässt. beschaedigt: Die Datei
+// ist beschädigt und lässt sich beiseitelegen; dabei steht, welche es ist und wie viele Einträge noch lesbar sind.
+export type MemoryStand = { facts: MemoryFact[]; fehler?: string; beschaedigt?: { datei: string; lesbar: number } };
 
 // Eine Webseite, aus der Claude etwas hat.
 export type Source = { title: string; url: string };
 
 export type BrainReply = {
   reply: string;
+  // Ob in dieser Antwort oder im Verlauf davor Text von Dritten im Spiel war.
+  fremd?: boolean;
   // Woher Claude sein Wissen aus dem Web hat.
   sources?: Source[];
   // Das Gedächtnis, wenn Claude sich etwas gemerkt oder etwas vergessen hat.
@@ -52,6 +61,10 @@ export type BrainReply = {
   intel?: IntelSnapshot;
   // Die Dokumente, wenn Claude dem Analysten einen Auftrag gegeben hat.
   documents?: DocsSnapshot;
+  // Das Projektgedächtnis, wenn Claude etwas vorgeschlagen hat (der Vorschlag wartet dann auf dein Ja).
+  projekte?: ProjekteSnapshot;
+  // Die Antwortentwürfe, wenn Claude einen angelegt hat. Verschickt wird davon nichts.
+  entwuerfe?: EntwuerfeSnapshot;
 };
 
 // Der Server schickt die Antwort Stück für Stück, eine Zeile JSON pro Ereignis.
@@ -62,12 +75,15 @@ export type BrainEvent =
   | { type: "text"; text: string }
   // JARVIS führt dich schon während der Antwort in eine Ansicht, etwa in den Browser, wenn er dort loslegt.
   | { type: "navigate"; href: string }
+  // Ab jetzt ist Text von Dritten im Gespräch. Kommt sofort, damit es auch bei einer unterbrochenen Antwort gilt.
+  | { type: "herkunft"; fremd: true }
   | { type: "done"; reply: BrainReply }
   | { type: "error"; error: string };
 
 export const VIEWS = {
   fokus: "/fokus",
   uebersicht: "/",
+  heute: "/heute",
   aufgaben: "/aufgaben",
   kalender: "/kalender",
   post: "/post",
@@ -75,6 +91,7 @@ export const VIEWS = {
   intel: "/intel",
   browser: "/browser",
   dokumente: "/dokumente",
+  projekte: "/projekte",
   agenten: "/agenten",
   einstellungen: "/einstellungen",
 } as const;
@@ -83,3 +100,10 @@ export type ViewName = keyof typeof VIEWS;
 
 export const viewName = (path: string): ViewName | undefined =>
   (Object.keys(VIEWS) as ViewName[]).find((v) => VIEWS[v] === path.split(/[?#]/)[0]);
+
+// Welche Antwort die Zeile über der Leiste zeigt: die auf das zuletzt Gesagte, wenn sie läuft oder etwas sagt.
+// Eine angehaltene, leere zählt nicht, und eine ältere Antwort auch nicht: Sonst stünde nach einer angehaltenen
+// Frage die Antwort auf die Frage davor da, als wäre sie die neue.
+export function antwortAufLetztes<T extends { who: "du" | "jarvis"; text: string; live?: boolean }>(turns: readonly T[]): T | undefined {
+  return turns.slice(turns.findLastIndex((t) => t.who === "du") + 1).findLast((t) => t.who === "jarvis" && (t.live === true || t.text.trim() !== ""));
+}

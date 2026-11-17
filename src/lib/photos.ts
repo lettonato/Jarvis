@@ -8,6 +8,8 @@ export type Photo = { src: string; title: string; author: string; license: "CC B
 export const PHOTOS: Record<BiomeId, Photo> = {
   uebersicht: { src: "/welt/uebersicht.webp", title: "Bergsee unter Wolken", author: "the5sheepdev", license: "CC BY-SA 4.0" },
   fokus: { src: "/welt/fokus.webp", title: "Milchstraße über dem See", author: "Kristopher Roller", license: "CC BY-SA 4.0" },
+  // Heute teilt sich das Foto mit der Übersicht.
+  heute: { src: "/welt/uebersicht.webp", title: "Bergsee unter Wolken", author: "the5sheepdev", license: "CC BY-SA 4.0" },
   aufgaben: { src: "/welt/aufgaben.webp", title: "Reisterrassen von Banaue", author: "Jean-Daniel Bancal", license: "CC BY-SA 4.0" },
   kalender: { src: "/welt/kalender.webp", title: "Almwiese mit Heustadel", author: "Luca Reichmann", license: "CC BY 4.0" },
   post: { src: "/welt/post.webp", title: "Gipfel des Kangchendzönga", author: "Pushkar Deshpande", license: "CC BY 4.0" },
@@ -15,6 +17,8 @@ export const PHOTOS: Record<BiomeId, Photo> = {
   trading: { src: "/welt/trading.webp", title: "Lichtspuren bei Nacht", author: "Giridhar Mahadevan", license: "CC BY-SA 4.0" },
   intel: { src: "/welt/intel.webp", title: "Sonnenaufgang am Brauneck", author: "Uday Nakade", license: "CC BY-SA 4.0" },
   dokumente: { src: "/welt/dokumente.webp", title: "Felswände der Dolomiten", author: "Felix Hartlieb", license: "CC BY 4.0" },
+  // Die Projekte teilen sich vorerst das Foto der Einstellungen; ein eigenes kommt mit dem Dashboard.
+  projekte: { src: "/welt/einstellungen.webp", title: "Berge bei Krasnaja Poljana", author: "Alexander Lyubavin", license: "CC BY-SA 4.0" },
   agenten: { src: "/welt/agenten.webp", title: "Milchstraße über dem Wald", author: "Jeff Morgan", license: "CC BY 4.0" },
   einstellungen: { src: "/welt/einstellungen.webp", title: "Berge bei Krasnaja Poljana", author: "Alexander Lyubavin", license: "CC BY-SA 4.0" },
 };

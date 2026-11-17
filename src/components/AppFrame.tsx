@@ -1,221 +1,462 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ApprovalBar, openApprovals } from "./Approvals";
 import { Chips, Composer, HandsFreeSwitch, Messages, NewConversation, sessionLabel, useDraft, useStateLabel } from "./Console";
-import { HoloLink } from "./HoloLink";
-import { Holo } from "./HoloView";
-import { Icon, type IconName } from "./icons";
+import { Icon } from "./icons";
 import { useConversation, useJarvis } from "./JarvisProvider";
 import { Orb } from "./Orb";
+import { RaumLink } from "./RaumLink";
+import { SicherheitsLeiste } from "./Sicherheit";
+import { ANSAGE_START, ANSAGE_WARTET_MS, ansage } from "@/lib/ansage";
+import { fortschritt, merkeBeide, MERKE_START, zeile, type Merke } from "@/lib/antwortzeile";
+import { antwortAufLetztes } from "@/lib/brain";
 import { eventsOn } from "@/lib/calendar";
 import { isoDate } from "@/lib/dates";
-import { formatClock } from "@/lib/format";
+import { verbindungsSatz } from "@/lib/ladestand";
+import { RAEUME, raumVon, type Raum } from "@/lib/raeume";
 import { dateOf, dueSoon } from "@/lib/tasks";
 import { useNow } from "@/lib/useNow";
-import { World } from "./world/World";
+import { useVerbindung } from "@/lib/usePolling";
 
-// Der Rahmen um alle Ansichten: oben die Navigation, unten in den Arbeitsansichten der kleine JARVIS,
-// mit dem du jederzeit weitersprichst. Ein Klick auf JARVIS führt in den Fokus, wo nur er zu sehen ist.
+// Der Rahmen um alle Räume: unten auf dem Boden die Leiste mit den Räumen und dem Feld für JARVIS, oben die
+// Hinweise, die nicht warten können (Not-Aus, Freigaben, Rückfragen), und hinter dem Raum die dunkle Wand,
+// die bei der Kamerafahrt vorbeizieht. Die Räume selbst bringt jede Seite mit (src/components/Raum.tsx).
 
-type Tab = { href: string; label: string; icon: IconName; badge?: { value: number; alert: boolean } };
+type Marke = { zahl: number; dringend: boolean };
 
-function useTabs(): Tab[] {
-  const { tasks, mail, calendar, intel, desk, documents } = useJarvis();
+// Die kleinen Zahlen an den Räumen: was dort gerade auf dich wartet.
+function useMarken(): Record<string, Marke | undefined> {
+  const { tasks, mail, calendar, intel, desk, documents, projekte } = useJarvis();
   const now = useNow();
   const today = now ? isoDate(now) : null;
   const events = now && today && calendar?.access === "ok" ? eventsOn(calendar.events, today).filter((e) => e.allDay || e.end > now.getTime()).length : 0;
   const soon = today && tasks?.configured ? dueSoon(tasks.tasks, today) : [];
   const overdue = today ? soon.filter((t) => dateOf(t)! < today).length : 0;
   const important = mail?.configured && !mail.error ? mail.importantUnread : 0;
-  return [
-    { href: "/fokus", label: "JARVIS", icon: "fokus" },
-    { href: "/", label: "Übersicht", icon: "uebersicht" },
-    { href: "/aufgaben", label: "Aufgaben", icon: "aufgaben", badge: soon.length ? { value: soon.length, alert: overdue > 0 } : undefined },
-    { href: "/kalender", label: "Kalender", icon: "kalender", badge: events ? { value: events, alert: false } : undefined },
-    { href: "/post", label: "Post", icon: "post", badge: important ? { value: important, alert: true } : undefined },
-    { href: "/browser", label: "Browser", icon: "browser" },
-    { href: "/dokumente", label: "Dokumente", icon: "dokumente", badge: documents?.running ? { value: 1, alert: false } : undefined },
-    { href: "/trading", label: "Trading", icon: "trading", badge: openApprovals(desk).length ? { value: openApprovals(desk).length, alert: true } : undefined },
-    { href: "/intel", label: "Intel", icon: "intel", badge: intel?.warning ? { value: 1, alert: true } : undefined },
-    { href: "/agenten", label: "Agenten", icon: "agenten" },
-  ];
+  const fragen = openApprovals(desk).length;
+  return {
+    "/aufgaben": soon.length ? { zahl: soon.length, dringend: overdue > 0 } : undefined,
+    "/kalender": events ? { zahl: events, dringend: false } : undefined,
+    "/post": important ? { zahl: important, dringend: true } : undefined,
+    "/dokumente": documents?.running ? { zahl: 1, dringend: false } : undefined,
+    "/projekte": projekte?.vorschlaege.length ? { zahl: projekte.vorschlaege.length, dringend: false } : undefined,
+    "/trading": fragen ? { zahl: fragen, dringend: true } : undefined,
+    "/intel": intel?.warning ? { zahl: 1, dringend: true } : undefined,
+  };
 }
 
-function Clock() {
-  const now = useNow(1000);
-  return <span className="rounded bg-panel-2 px-2 py-1 font-bold tabular-nums text-sky-100">{now ? formatClock(now) : "--:--:--"}</span>;
-}
+// Wie viele Räume die Leiste selbst zeigt, hängt von der Breite ab; der Rest steht unter „Mehr“.
+const IMMER = 5;
+const BREIT = 8;
+const sichtbar = (i: number) => (i < IMMER ? "hidden lg:flex" : i < BREIT ? "hidden xl:flex" : "hidden");
+const imMenue = (i: number) => (i < IMMER ? "lg:hidden" : i < BREIT ? "xl:hidden" : "");
 
-function NavBar() {
-  const pathname = usePathname();
-  const { market, weather, state } = useJarvis();
-  const label = useStateLabel();
-  const tabs = useTabs();
-  const demo = market?.majors.source === "demo" || weather?.source === "demo";
+function Zahl({ marke }: { marke?: Marke }) {
+  if (!marke) return null;
   return (
-    <header
-      className="pointer-events-auto sticky top-0 z-30 shrink-0 border-b border-sky-300/10 bg-gradient-to-b from-desk/90 to-desk/55"
-      style={{ viewTransitionName: "jarvis-nav" }}
+    <span className={`grid h-[1.3rem] min-w-[1.3rem] place-items-center rounded-full px-1 text-[0.72rem] font-bold leading-none ${marke.dringend ? "bg-rot text-white" : "bg-sonne text-schiefer"}`}>
+      {marke.zahl}
+    </span>
+  );
+}
+
+function Mehr({ hier, marken }: { hier: Raum; marken: Record<string, Marke | undefined> }) {
+  const [offen, setOffen] = useState(false);
+  // Mit einer Pfeiltaste geöffnet: Die Markierung springt gleich auf den ersten oder letzten Eintrag.
+  const [start, setStart] = useState<"erster" | "letzter" | null>(null);
+  const knopf = useRef<HTMLButtonElement>(null);
+  const liste = useRef<HTMLUListElement>(null);
+  const hinten = RAEUME.findIndex((r) => r.href === hier.href) >= BREIT;
+  // Die Einträge, die bei dieser Breite zu sehen sind (die übrigen stehen schon in der Leiste).
+  const eintraege = () => [...(liste.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])].filter((e) => e.offsetParent !== null);
+  useEffect(() => {
+    if (!offen || !start) return;
+    const e = eintraege();
+    (start === "erster" ? e[0] : e.at(-1))?.focus();
+  }, [offen, start]);
+  const schliesse = () => {
+    setOffen(false);
+    setStart(null);
+  };
+  // Bedienung mit der Tastatur wie bei jedem Menü: Pfeile, Pos1 und Ende wandern, Escape schließt und setzt die
+  // Markierung zurück auf den Knopf.
+  const taste = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      if (!offen) return;
+      // Nur das Menü schließen; JARVIS redet weiter (Escape unterbricht ihn sonst).
+      e.stopPropagation();
+      schliesse();
+      knopf.current?.focus();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+    if (!offen) {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+      setStart(e.key === "ArrowDown" ? "erster" : "letzter");
+      setOffen(true);
+      return;
+    }
+    e.preventDefault();
+    const alle = eintraege();
+    if (alle.length === 0) return;
+    const jetzt = alle.indexOf(document.activeElement as HTMLElement);
+    const ziel = e.key === "Home" ? 0 : e.key === "End" ? alle.length - 1 : e.key === "ArrowDown" ? (jetzt + 1) % alle.length : (jetzt <= 0 ? alle.length : jetzt) - 1;
+    alle[ziel].focus();
+  };
+  return (
+    <div
+      className="relative"
+      onKeyDown={taste}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) schliesse();
+      }}
     >
-      <div className="flex items-center gap-3 px-3 py-2 sm:px-5">
-        <HoloLink href="/fokus" className="group flex shrink-0 items-center gap-2.5" aria-label="JARVIS im Fokus">
-          <Orb state={state} className="h-9 w-9" />
-          <span className="hidden sm:block">
-            <span className="block text-base font-bold leading-tight tracking-[0.35em] text-sky-100 group-hover:text-white">JARVIS</span>
-            <span className="block text-[9px] uppercase tracking-[0.3em] text-quiet">{label}</span>
-          </span>
-        </HoloLink>
-        <nav className="-mx-1 flex min-w-0 flex-1 gap-1 overflow-x-auto xl:gap-0.5 px-1 [scrollbar-width:none] sm:justify-center" aria-label="Ansichten">
-          {tabs.map((t) => {
-            const active = pathname === t.href;
-            return (
-              <HoloLink
-                key={t.href}
-                href={t.href}
-                aria-current={active ? "page" : undefined}
-                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest transition xl:px-1.5 xl:tracking-wider 2xl:tracking-widest ${
-                  active ? "border-transparent text-sky-50" : "border-transparent text-sky-200/70 hover:border-sky-300/30 hover:text-sky-100"
-                }`}
+      <button
+        ref={knopf}
+        type="button"
+        onClick={() => (offen ? schliesse() : setOffen(true))}
+        aria-expanded={offen}
+        aria-haspopup="menu"
+        className={`flex items-center gap-1 text-[1.05rem] transition-colors hover:text-schiefer ${hinten ? "font-bold text-schiefer" : "font-medium text-quiet"}`}
+      >
+        <span className="lg:hidden">Räume</span>
+        <span className="hidden lg:inline">{hinten ? hier.name : "Mehr"}</span>
+        <Icon name="hoch" className={`h-4 w-4 transition-transform ${offen ? "" : "rotate-180"}`} />
+      </button>
+      {offen && (
+        <ul ref={liste} role="menu" aria-label="Räume" className="absolute bottom-full left-1/2 mb-5 max-h-[calc(100dvh-8rem)] min-w-[13rem] -translate-x-1/2 overflow-y-auto max-sm:left-0 max-sm:translate-x-0 animate-[jarvis-sheet_220ms_var(--weich)] rounded-md bg-white/95 p-2 shadow-[0_24px_50px_-18px_rgba(20,34,40,0.5)] backdrop-blur-xl">
+          {RAEUME.map((r, i) => (
+            <li key={r.href} role="none" className={imMenue(i)}>
+              <RaumLink
+                href={r.href}
+                role="menuitem"
+                aria-current={r.href === hier.href ? "page" : undefined}
+                className={`flex items-center justify-between gap-4 rounded px-3 py-2 text-[1.05rem] hover:bg-schiefer/5 ${r.href === hier.href ? "font-bold text-schiefer" : "font-medium text-stein"}`}
               >
-                {active && <ActiveGlow />}
-                <Icon name={t.icon} className="relative h-4 w-4" />
-                <span className={`relative ${active ? "" : "sr-only xl:not-sr-only"}`}>{t.label}</span>
-                {t.badge && (
-                  <span className={`relative grid min-w-5 place-items-center rounded-full px-1.5 text-[10px] leading-5 ${t.badge.alert ? "bg-frame text-white" : "bg-sky-400/30 text-sky-50"}`}>
-                    {t.badge.value}
-                  </span>
-                )}
-              </HoloLink>
-            );
-          })}
-        </nav>
-        <div className="flex shrink-0 items-center gap-2 text-[11px] tracking-widest">
-          {demo && <span className="hidden rounded bg-amber-500/15 px-2 py-1 text-amber-300 md:inline">BEISPIELDATEN</span>}
-          <span className="hidden lg:inline">
-            <Clock />
-          </span>
-          <HoloLink
-            href="/einstellungen"
-            aria-label="Einstellungen"
-            aria-current={pathname === "/einstellungen" ? "page" : undefined}
-            className={`relative grid h-8 w-8 place-items-center rounded-lg border transition ${
-              pathname === "/einstellungen" ? "border-transparent text-sky-50" : "border-sky-300/20 text-sky-200/80 hover:text-sky-50"
-            }`}
-          >
-            {pathname === "/einstellungen" && <ActiveGlow />}
-            <Icon name="einstellungen" className="relative h-4 w-4" />
-          </HoloLink>
-        </div>
-      </div>
-      <ApprovalBar />
-    </header>
+                {r.name}
+                <Zahl marke={marken[r.href]} />
+              </RaumLink>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
-// Der Leuchtrahmen um die aktive Ansicht. Er gleitet beim Wechsel zum nächsten Reiter.
-function ActiveGlow() {
-  return (
-    <span
-      aria-hidden
-      className="absolute inset-0 rounded-lg border border-sky-300/60 bg-sky-400/15 shadow-[0_0_14px_rgba(56,189,248,0.3)]"
-      style={{ viewTransitionName: "nav-aktiv" }}
-    />
-  );
+// Was JARVIS zum Mikrofon und zum Ton meldet (ein leerer Text ist keine Meldung), und wie weit das Gespräch ist.
+function useMeldungen() {
+  const { voice } = useJarvis();
+  const { turns } = useConversation();
+  return { fehler: voice.error || null, hinweis: voice.hint || null, weit: fortschritt(turns) };
 }
 
-// Unten in Aufgaben, Post, Trading, Agenten und Einstellungen: JARVIS ist klein dabei und spricht weiter.
-// Beim Wechsel zwischen diesen Ansichten bleibt er stehen; der Kopf fliegt in den Fokus, wenn du ihn antippst.
-// Der Pfeil klappt das ganze Gespräch auf.
-function Dock() {
-  const { state, session, voice } = useJarvis();
+// Die Merkzeichen zu den Meldungen (src/lib/antwortzeile.ts). Sie gehören der Leiste und nicht der Zeile: Die Zeile
+// gibt es nicht, solange das Gespräch aufgeklappt ist, und nach dem Zuklappen gälte sonst jede alte Meldung als neu.
+// Nachgezogen werden sie beim Zeichnen (wie React es für „Stand aus Eingaben“ vorsieht): Die Zeile zeigt schon in
+// diesem Bild das Richtige.
+function useMerke(): Merke {
+  const { fehler, hinweis, weit } = useMeldungen();
+  const [merke, setMerke] = useState<Merke>(MERKE_START);
+  const nachgezogen = merkeBeide(merke, fehler, hinweis, weit);
+  if (nachgezogen !== merke) setMerke(nachgezogen);
+  return nachgezogen;
+}
+
+// Was JARVIS gerade sagt, in zwei Zeilen über der Leiste. Ein Klick klappt das ganze Gespräch auf. Was wann dort
+// steht, regelt src/lib/antwortzeile.ts: eine Meldung zum Mikrofon nur, bis das Gespräch weitergeht.
+function Antwortzeile({ merke, onOpen }: { merke: Merke; onOpen: () => void }) {
+  const { state, session } = useJarvis();
   const { turns, interim } = useConversation();
   const label = useStateLabel();
-  const { draft, setDraft, inputRef, fill } = useDraft();
-  const [open, setOpen] = useState(false);
-  const last = turns.findLast((t) => t.who === "jarvis");
-  const line =
-    voice.error || voice.hint ? (
-      <p className={`line-clamp-2 text-sm ${voice.error ? "text-down" : "text-amber-200"}`}>{voice.error ?? voice.hint}</p>
-    ) : state === "listening" ? (
-      <p className="line-clamp-2 text-sm italic text-quiet">{interim || "…"}</p>
-    ) : last?.live && !last.text ? (
-      <p className="text-sm text-sky-300/90">{last.status ? `${last.status} …` : "Denke nach …"}</p>
-    ) : (
-      // Schreibt Claude eine lange Antwort, siehst du hier immer die letzten zwei Zeilen.
-      <div className="flex h-10 flex-col justify-end overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_8px)]">
-        <p className="text-sm leading-5 text-sky-100">{last?.text ?? "Ich bin hier. Sprich mit mir oder schreib unten, was ich tun soll."}</p>
-      </div>
-    );
+  const { fehler, hinweis, weit } = useMeldungen();
+  if (!turns.length && !interim && !fehler && !hinweis && state === "idle" && !session) return null;
+  const z = zeile({ fehler, hinweis, merke, weit, hoert: state === "listening", interim, last: antwortAufLetztes(turns), label });
+  const klasse = {
+    fehler: "line-clamp-2 text-down",
+    hinweis: "line-clamp-2 text-ocker",
+    hoert: "line-clamp-2 italic text-quiet",
+    denkt: "block text-quiet",
+    // Schreibt Claude eine lange Antwort, siehst du hier immer die letzten zwei Zeilen.
+    antwort: "flex max-h-[2.9rem] flex-col justify-end overflow-hidden",
+  }[z.art];
+  // Steht eine Meldung nicht mehr in der Zeile, verweist die Überschrift auf sie: Im aufgeklappten Gespräch steht sie.
+  const ueberschrift = `${sessionLabel(session) ?? label}${z.verdeckt ? " · Hinweis im Gespräch" : ""}`;
+  // Immer dieselben zwei Elemente, nur Klasse und Text wechseln. Der erste Klick auf die Seite räumt den Hinweis
+  // „Klick einmal irgendwo auf die Seite …“ schon beim Drücken weg; verschwände dabei das Element unter dem Zeiger,
+  // gäbe es für den Browser keinen Klick, und das Gespräch klappte beim ersten Klick auf diese Zeile nicht auf.
+  const inhalt = (
+    <span className={klasse}>
+      <span>{z.text}</span>
+    </span>
+  );
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 px-2 sm:px-4" style={{ viewTransitionName: "jarvis-dock" }}>
-      <div className="mx-auto max-w-6xl rounded-t-2xl border border-b-0 border-sky-300/25 bg-panel shadow-[0_-10px_40px_rgba(9,11,24,0.8)]">
-        {open && (
-          <div className="animate-[jarvis-sheet_260ms_cubic-bezier(0.16,1,0.3,1)] border-b border-line px-3 pt-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-sky-300">Gespräch</p>
-              <NewConversation />
-            </div>
-            <Messages className="h-[min(52vh,480px)]" />
-          </div>
-        )}
-        <div className="p-3">
-          <div className="flex items-center gap-3">
-            <HoloLink href="/fokus" aria-label="JARVIS im Fokus öffnen" title="JARVIS im Fokus">
-              <Holo name="jarvis-kopf">
-                <span className="block">
-                  <Orb state={state} className="h-12 w-12" />
-                </span>
-              </Holo>
-            </HoloLink>
-            <button type="button" onClick={() => setOpen(!open)} className="min-w-0 flex-1 text-left" aria-expanded={open} aria-label={open ? "Gespräch zuklappen" : "Ganzes Gespräch zeigen"}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-sky-300">{sessionLabel(session) ?? `JARVIS · ${label}`}</p>
-              {line}
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpen(!open)}
-              aria-hidden
-              tabIndex={-1}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line text-sky-200 transition-colors hover:border-sky-300/50 hover:text-sky-50"
+    <button
+      type="button"
+      onClick={onOpen}
+      data-antwortzeile
+      className="pointer-events-auto flex w-[min(46rem,100%)] animate-[jarvis-sheet_260ms_var(--weich)] items-center gap-3 rounded-[1.1rem] bg-white/90 px-4 py-2.5 text-left text-[0.95rem] leading-snug text-schiefer shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-bold text-quiet">{ueberschrift}</span>
+        {inhalt}
+      </span>
+      {/* Der Name des Knopfes ist sein Inhalt (was JARVIS gerade sagt) und am Ende, was der Knopf tut. Mit einem
+          festen Namen läse ein Vorleseprogramm nur den und nie die Antwort; mit einem Titel dazu läse es „Ganzes
+          Gespräch zeigen“ zweimal (als Name und als Beschreibung). */}
+      <span className="sr-only">Ganzes Gespräch zeigen</span>
+      <Icon name="hoch" className="h-4 w-4 shrink-0 text-quiet" />
+    </button>
+  );
+}
+
+// Sagt einem Vorleseprogramm an, was JARVIS antwortet und was er zum Mikrofon meldet, solange das Gespräch
+// zugeklappt ist. still: Das Gespräch ist aufgeklappt (oder man steht im Raum „Gespräch“); dort sagt der Verlauf
+// selbst an, hier bleibt es dann ruhig. Die Regeln stehen in src/lib/ansage.ts.
+function Ansage({ still }: { still: boolean }) {
+  const { voice } = useJarvis();
+  const { turns } = useConversation();
+  const { spricht, hoerbar } = voice;
+  const stand = useRef(ANSAGE_START);
+  // Die laufende Wartezeit und wofür sie läuft: Ändert sich am Gespräch nur anderes (du tippst schon die nächste
+  // Frage, die nächste Antwort entsteht Wort für Wort), läuft sie weiter und beginnt nicht jedes Mal neu.
+  const wartet = useRef<{ auf: string; uhr: ReturnType<typeof setTimeout> } | null>(null);
+  // Mit der Nummer der Antwort: Dieselben Worte ein zweites Mal (etwa „Notiert.“) geben einen neuen Absatz, und
+  // nur den sagt ein Vorleseprogramm wieder an.
+  const [angesagt, setAngesagt] = useState<{ id: number; text: string }[]>([]);
+  useEffect(() => {
+    const faellig = ansage(turns, spricht, hoerbar, stand.current);
+    stand.current = faellig.stand;
+    const auf = faellig.texte.map((t) => `${t.id}:${t.text.length}`).join(",");
+    if (wartet.current?.auf === auf) return;
+    if (wartet.current) clearTimeout(wartet.current.uhr);
+    wartet.current = null;
+    if (!faellig.texte.length) return;
+    // Kurz warten: Beginnt JARVIS in dieser Zeit selbst zu sprechen, läuft dieser Effekt neu und sagt nichts an.
+    const uhr = setTimeout(() => {
+      wartet.current = null;
+      stand.current = { ...stand.current, bis: faellig.texte[faellig.texte.length - 1].id };
+      setAngesagt(faellig.texte);
+    }, ANSAGE_WARTET_MS);
+    wartet.current = { auf, uhr };
+  }, [turns, spricht, hoerbar]);
+  useEffect(
+    () => () => {
+      if (wartet.current) clearTimeout(wartet.current.uhr);
+    },
+    [],
+  );
+  const meldung = voice.error ?? voice.hint;
+  // Nach „Neues Gespräch“ steht hier nichts Altes mehr.
+  const da = angesagt.filter((a) => turns.some((t) => t.id === a.id));
+  return (
+    <div className="sr-only" aria-live={still ? "off" : "polite"} data-ansage>
+      {da.map((a) => (
+        <p key={a.id}>{a.text}</p>
+      ))}
+      {meldung && <p key="meldung">{meldung}</p>}
+    </div>
+  );
+}
+
+function Gespraech({ onClose, onFill }: { onClose: () => void; onFill: (text: string) => void }) {
+  const { session, state } = useJarvis();
+  const flaeche = useRef<HTMLElement>(null);
+  // Die Zeile, die das Gespräch aufgeklappt hat, gibt es jetzt nicht mehr. Stand die Markierung dort (Tastatur),
+  // steht sie jetzt im Gespräch, damit die Tab-Taste hier weitergeht und nicht am Anfang der Seite.
+  useEffect(() => {
+    if (document.activeElement === document.body) flaeche.current?.focus();
+  }, []);
+  return (
+    <section
+      ref={flaeche}
+      tabIndex={-1}
+      aria-label="Gespräch"
+      onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        // Arbeitet JARVIS gerade (hört zu, denkt nach, spricht), gilt Escape ihm: Es unterbricht ihn (das macht
+        // JarvisProvider), und das Gespräch bleibt stehen, denn man liest gerade darin. Sonst klappt Escape nur zu
+        // und erreicht JARVIS nicht, wie beim Menü der Räume.
+        if (state !== "idle") return;
+        e.stopPropagation();
+        onClose();
+      }}
+      className="pointer-events-auto w-[min(46rem,100%)] animate-[jarvis-sheet_260ms_var(--weich)] rounded-2xl bg-white/95 px-5 pb-4 pt-3 shadow-[0_30px_60px_-20px_rgba(12,28,40,0.5)] backdrop-blur-xl focus:outline-none"
+    >
+      {/* Im schmalen Fenster stehen Überschrift und „zuklappen“ oben, die beiden Schalter darunter. */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-schiefer/15 pb-2">
+        <h2 className="min-w-0 flex-1 truncate text-base font-bold">{sessionLabel(session) ?? "Gespräch"}</h2>
+        <div className="flex items-center gap-2 max-sm:order-3 max-sm:basis-full">
+          <NewConversation />
+          <HandsFreeSwitch />
+        </div>
+        <button type="button" onClick={onClose} aria-label="Gespräch zuklappen" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-quiet hover:bg-schiefer/5 hover:text-schiefer">
+          <Icon name="runter" className="h-4 w-4" />
+        </button>
+      </div>
+      <Messages className="h-[min(52vh,30rem)]" />
+      <div className="mt-2">
+        <Chips onFill={onFill} scroll />
+      </div>
+    </section>
+  );
+}
+
+// Die Leiste auf dem Boden: der Name, die Räume, das Feld für JARVIS. Sie bleibt bei jeder Kamerafahrt stehen.
+function Leiste() {
+  const pathname = usePathname();
+  const hier = raumVon(pathname);
+  const marken = useMarken();
+  const { state } = useJarvis();
+  const label = useStateLabel();
+  const { draft, setDraft, inputRef, fill } = useDraft();
+  const [offen, setOffen] = useState(false);
+  const merke = useMerke();
+  // Im Raum „Gespräch“ steht der Verlauf an der Wand; die Leiste zeigt ihn dort nicht noch einmal.
+  const imGespraech = hier.href === "/fokus";
+  const dock = useRef<HTMLDivElement>(null);
+  // Nach dem Zuklappen steht die Markierung wieder auf der Zeile, die das Gespräch aufklappt (sie entsteht erst
+  // mit dem nächsten Bild neu). Gibt es die Zeile nicht (nach „Neues Gespräch“ ist nichts mehr zu zeigen), steht
+  // sie im Feld für JARVIS; sonst begänne die Tab-Taste wieder oben auf der Seite.
+  const schliesse = () => {
+    setOffen(false);
+    requestAnimationFrame(() => (dock.current?.querySelector<HTMLElement>("[data-antwortzeile]") ?? dock.current?.querySelector<HTMLElement>("textarea"))?.focus());
+  };
+  // Das aufgeklappte Gespräch liegt über der Seite. Wandert die Markierung mit der Tastatur aus Gespräch und Leiste
+  // hinaus auf die Seite, klappt es zu: Sonst läge, was markiert ist, dahinter. Ein Mausklick neben das Gespräch
+  // schließt es nicht; die Markierung bleibt, wo sie hinging.
+  useEffect(() => {
+    if (!offen) return;
+    // Nur die Tab-Taste zählt (:focus-visible taugt nicht: In einem Feld zum Tippen gilt es auch nach einem
+    // Mausklick). Tippt jemand nach einem Klick in ein Feld der Seite und wechselt kurz das Fenster, kommt die
+    // Markierung beim Zurückkommen wieder in dasselbe Feld: Das ist kein Wandern, das Gespräch bleibt offen.
+    let mitTab = false;
+    const taste = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Tab" && !e.metaKey && !e.altKey && !e.ctrlKey) mitTab = true;
+    };
+    const anders = () => {
+      mitTab = false;
+    };
+    const hinaus = (e: FocusEvent) => {
+      const ziel = e.target as HTMLElement | null;
+      if (mitTab && ziel && !dock.current?.contains(ziel)) setOffen(false);
+    };
+    document.addEventListener("keydown", taste, true);
+    document.addEventListener("pointerdown", anders, true);
+    window.addEventListener("blur", anders);
+    document.addEventListener("focusin", hinaus);
+    return () => {
+      document.removeEventListener("keydown", taste, true);
+      document.removeEventListener("pointerdown", anders, true);
+      window.removeEventListener("blur", anders);
+      document.removeEventListener("focusin", hinaus);
+    };
+  }, [offen]);
+  return (
+    <div
+      ref={dock}
+      // Ein eigener Bereich mit Namen: Antwort, Räume und das Feld für JARVIS stehen sonst außerhalb von allem.
+      role="region"
+      aria-label="Leiste"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex flex-col items-center gap-3 px-3"
+      style={{ viewTransitionName: "jarvis-dock", paddingBottom: "max(10px, calc((var(--boden) - 4.25rem) / 2))" }}
+    >
+      {!imGespraech && (offen ? <Gespraech onClose={schliesse} onFill={fill} /> : <Antwortzeile merke={merke} onOpen={() => setOffen(true)} />)}
+      <Ansage still={imGespraech || offen} />
+      <div className="pointer-events-auto flex h-[4.25rem] max-w-full max-sm:w-full items-center gap-[clamp(0.9rem,1.7vw,2.2rem)] rounded-full bg-white/85 pl-[clamp(1rem,1.8vw,2rem)] pr-2 shadow-[0_24px_50px_-18px_rgba(20,34,40,0.4),0_0_0_1px_rgba(31,42,46,0.06)] backdrop-blur-xl">
+        {/* Im schmalen Fenster weicht der Name dem Feld zum Tippen; der Raum „Gespräch“ steht dann unter „Räume“. */}
+        <RaumLink href="/fokus" aria-label="Gespräch mit JARVIS" className="griff text-[1.45rem] font-extrabold leading-none text-schiefer [font-stretch:66%] max-sm:hidden">
+          JARVIS
+        </RaumLink>
+        <nav aria-label="Räume" className="flex items-center gap-[clamp(0.9rem,1.7vw,2.2rem)] whitespace-nowrap">
+          {RAEUME.map((r, i) => (
+            <RaumLink
+              key={r.href}
+              href={r.href}
+              aria-current={r.href === hier.href ? "page" : undefined}
+              className={`${sichtbar(i)} items-center gap-1.5 text-[1.05rem] transition-colors hover:text-schiefer ${r.href === hier.href ? "font-bold text-schiefer" : "font-medium text-quiet"}`}
             >
-              <Icon name="hoch" className={`h-4 w-4 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
-            </button>
-            <div className="hidden sm:block">
-              <HandsFreeSwitch />
-            </div>
-          </div>
-          <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:items-end">
-            <div className="min-w-0 lg:flex-1 lg:pb-2.5">
-              <Chips onFill={fill} scroll />
-            </div>
-            <div className="lg:w-[460px]">
-              <Composer inputRef={inputRef} draft={draft} setDraft={setDraft} />
-            </div>
-          </div>
+              {r.name}
+              <Zahl marke={marken[r.href]} />
+            </RaumLink>
+          ))}
+          <Mehr key={pathname} hier={hier} marken={marken} />
+        </nav>
+        <div className="w-[clamp(13rem,23vw,24rem)] min-w-0 shrink max-sm:w-auto max-sm:flex-1">
+          <Composer
+            inputRef={inputRef}
+            draft={draft}
+            setDraft={setDraft}
+            vorn={
+              <span className="grid h-10 w-9 shrink-0 place-items-center" title={label}>
+                <Orb state={state} className="h-6 w-6" />
+                <span className="sr-only" role="status">
+                  {label}
+                </span>
+              </span>
+            }
+          />
         </div>
       </div>
     </div>
   );
 }
 
-export function AppFrame({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const dock = pathname !== "/" && pathname !== "/fokus";
-  // In Übersicht und Fokus passt alles genau in den Bildschirm: Nur das Gespräch scrollt, das Eingabefeld bleibt unten.
-  const fit = pathname === "/fokus" || pathname === "/";
-  // In der Übersicht gehen Maus und Finger durch die Seite hindurch an die Felsen in der 3D-Welt;
-  // nur Navigation und Konsole fangen sie selbst.
-  const stage = pathname === "/";
+// Oben in jedem Raum: was nicht warten kann. Ohne Not-Aus, Freigabe oder Rückfrage ist hier nichts zu sehen.
+// Antwortet JARVIS nicht mehr, zeigen die Räume weiter, was sie zuletzt gelesen haben. Das steht dann hier, oben in
+// jeder Ansicht, und verschwindet mit der ersten Antwort. Die Stelle gibt es immer (für ein Vorleseprogramm, das nur
+// ansagt, was in einer vorhandenen Stelle neu erscheint); sichtbar ist sie nur mit dem Satz.
+function Verbindungshinweis() {
+  const { aus, seit } = useVerbindung();
+  return (
+    <div role="status" data-verbindung={aus ? "aus" : "da"} className={aus ? undefined : "sr-only"}>
+      {aus && <Verbindungssatz seit={seit} />}
+    </div>
+  );
+}
+
+// Der Satz dazu. Die Uhr läuft nur mit, solange er dasteht: damit nach Mitternacht „gestern“ dabeisteht.
+function Verbindungssatz({ seit }: { seit: number | null }) {
+  const jetzt = useNow();
+  return <p className="rounded-2xl border-l-4 border-ocker bg-white/92 px-4 py-2.5 text-sm text-schiefer shadow-[0_24px_50px_-18px_rgba(20,34,40,0.45)] backdrop-blur-xl">{verbindungsSatz(seit, jetzt?.getTime() ?? seit ?? 0)}</p>;
+}
+
+function Hinweise() {
+  const { market, weather } = useJarvis();
+  const demo = market?.majors.source === "demo" || weather?.source === "demo";
   return (
     <>
-      <World />
-      <div className={`relative z-10 flex flex-col ${fit ? "h-dvh flex-none overflow-hidden" : "min-h-full flex-1"} ${stage ? "pointer-events-none" : ""}`}>
-        <NavBar />
-        <div className={`flex min-h-0 flex-1 flex-col ${dock ? "pb-40 lg:pb-32" : ""}`}>{children}</div>
-        {dock && <Dock />}
+      <div className="fixed left-1/2 top-3 z-30 w-[min(54rem,calc(100vw-1.5rem))] -translate-x-1/2 space-y-2" style={{ viewTransitionName: "jarvis-hinweise" }}>
+        <Verbindungshinweis />
+        <SicherheitsLeiste />
+        <ApprovalBar />
       </div>
+      {demo && <p className="pointer-events-none fixed right-4 top-3 z-20 hidden text-xs font-medium text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.6)] lg:block">Beispieldaten</p>}
+    </>
+  );
+}
+
+function Zwischenwand() {
+  const pathname = usePathname();
+  const name = raumVon(pathname).name;
+  // Der Name füllt die Wand: kurze Namen groß, lange so, dass sie noch hineinpassen.
+  return (
+    <div className="zwischenwand" aria-hidden style={{ fontSize: `${Math.min(7.8, 60 / name.length)}vw` }}>
+      {name}
+    </div>
+  );
+}
+
+export function AppFrame({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <Zwischenwand />
+      {children}
+      <Hinweise />
+      <Leiste />
     </>
   );
 }

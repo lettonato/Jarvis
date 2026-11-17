@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useJarvis } from "./JarvisProvider";
 import { Button, inputClass, Notice } from "./ui";
 import { getJson, postJson } from "@/lib/api";
+import { HINWEIS_REGELN } from "@/lib/hinweise";
 import type { Settings } from "@/lib/settings";
-import { findToken, pairLink, tokenProblem, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
+import { ABSCHLUSS_VORSCHLAG, findToken, pairLink, tokenProblem, REMINDER_MINUTES, TELEGRAM_DEFAULTS, type TelegramPrefs } from "@/lib/telegram";
+import { WOCHE_VORSCHLAG, WOCHENTAGE } from "@/lib/woche";
 
 // Einstellungen → Handy: Bot-Schlüssel eintragen, Handy koppeln, festlegen, was aufs Handy kommt.
 
@@ -41,15 +43,24 @@ export function TelegramSetup() {
   const waiting = Boolean(tg?.configured && !tg.paired);
   useEffect(() => {
     if (!waiting) return;
+    // Solange eine Abfrage unterwegs ist, kommt keine weitere dazu (hängt JARVIS, stauten sie sich sonst).
+    let unterwegs = false;
+    const abbruch = new AbortController();
     const timer = setInterval(() => {
-      getJson<Settings>("/api/einstellungen")
+      if (unterwegs) return;
+      unterwegs = true;
+      getJson<Settings>("/api/einstellungen", abbruch.signal)
         .then((next) => {
           if (next.telegram.paired) setMessage(null);
           if (next.telegram.paired || next.telegram.code !== tg?.code) setSettings(next);
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => (unterwegs = false));
     }, 3_000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      abbruch.abort();
+    };
   }, [waiting, tg?.code, setSettings]);
 
   if (!tg) return null;
@@ -76,11 +87,11 @@ export function TelegramSetup() {
         </>
       )}
       {tg.error && <Notice tone="error">{tg.error}</Notice>}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      {message && <Notice meldung tone={message.tone}>{message.text}</Notice>}
       {tg.configured && (
         <p className="text-xs text-quiet">
           Bot-Schlüssel {tg.hint} ·{" "}
-          <button type="button" disabled={busy} onClick={() => send({ action: "removeTelegram" })} className="text-red-200 underline hover:text-red-100 disabled:opacity-40">
+          <button type="button" disabled={busy} onClick={() => send({ action: "removeTelegram" })} className="text-down underline hover:text-down disabled:opacity-40">
             Bot entfernen
           </button>
         </p>
@@ -97,14 +108,14 @@ function TokenForm({ busy, onSave }: { busy: boolean; onSave: (token: string) =>
   };
   return (
     <form onSubmit={submit} className="space-y-3">
-      <ol className="list-decimal space-y-1 pl-5 text-sky-50/85">
+      <ol className="list-decimal space-y-1 pl-5 text-schiefer/85">
         <li>Telegram auf dem Handy installieren und ein Konto anlegen, falls du noch keins hast.</li>
         <li>
           In Telegram den{" "}
-          <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+          <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
             BotFather
           </a>{" "}
-          öffnen (der mit dem blauen Haken) und ihm <code className="text-sky-200">/newbot</code> schicken.
+          öffnen (der mit dem blauen Haken) und ihm <code className="text-stein">/newbot</code> schicken.
         </li>
         <li>Einen Namen wählen, zum Beispiel „Jarvis“, und einen Benutzernamen, der auf „bot“ endet, zum Beispiel „benedikt_jarvis_bot“.</li>
         <li>Der BotFather schickt dir einen Schlüssel wie 123456789:AAH… Den hier einfügen.</li>
@@ -127,7 +138,7 @@ function TokenForm({ busy, onSave }: { busy: boolean; onSave: (token: string) =>
           aria-label="Bot-Schlüssel von Telegram"
           className={`${inputClass} font-mono`}
         />
-        <Button type="submit" tone="primary" disabled={busy || !token.trim()}>
+        <Button type="submit" tone="primary" fest disabled={busy || !token.trim()}>
           {busy ? "Prüfe …" : "Prüfen und speichern"}
         </Button>
       </div>
@@ -143,9 +154,9 @@ function TokenForm({ busy, onSave }: { busy: boolean; onSave: (token: string) =>
 // Schon beim Tippen sagen, ob das wie ein ganzer Schlüssel aussieht, und sonst, woran es hakt. Er hat rund 46 Zeichen.
 function TokenCheck({ text }: { text: string }) {
   const found = findToken(text);
-  if (found) return <p className="text-xs text-emerald-300">Sieht aus wie ein Bot-Schlüssel ({found.length} Zeichen).</p>;
+  if (found) return <p className="text-xs text-up">Sieht aus wie ein Bot-Schlüssel ({found.length} Zeichen).</p>;
   return (
-    <p className="text-xs text-amber-200">
+    <p className="text-xs text-ocker">
       Noch kein gültiger Schlüssel ({text.trim().length} Zeichen, meist sind es 46). {tokenProblem(text)}
     </p>
   );
@@ -159,15 +170,15 @@ function Pairing({ bot, code, until, busy, onRenew }: { bot: string; code: strin
       {link && code && (
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <QrCode text={link} />
-          <ol className="list-decimal space-y-1.5 pl-5 text-sky-50/85">
+          <ol className="list-decimal space-y-1.5 pl-5 text-schiefer/85">
             <li>Halte die Kamera deines Handys auf den Code und tippe auf den Link.</li>
             <li>In Telegram öffnet sich dein Bot. Tippe unten auf „Starten“.</li>
             <li>
-              Oder schick dem Bot diesen Code: <span className="font-mono text-base font-bold tracking-[0.2em] text-sky-50">{code}</span>
+              Oder schick dem Bot diesen Code: <span className="font-mono text-base font-bold text-schiefer">{code}</span>
             </li>
             <li className="text-xs text-quiet">
               Der Code gilt bis {until ? CLOCK.format(new Date(until)) : "gleich"} Uhr.{" "}
-              <a href={link} target="_blank" rel="noreferrer" className="text-sky-300 underline hover:text-sky-100">
+              <a href={link} target="_blank" rel="noreferrer" className="text-see underline hover:text-schiefer">
                 Mit Telegram am Mac öffnen
               </a>
             </li>
@@ -175,7 +186,7 @@ function Pairing({ bot, code, until, busy, onRenew }: { bot: string; code: strin
         </div>
       )}
       <p className="flex items-center gap-2 text-xs text-quiet">
-        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-sky-300" aria-hidden />
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-gletscher" aria-hidden />
         Warte auf dein Handy …
         <Button small disabled={busy} onClick={onRenew}>
           Neuer Code
@@ -206,8 +217,23 @@ function QrCode({ text }: { text: string }) {
 
 function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean; onChange: (p: Partial<TelegramPrefs>) => void }) {
   const [time, setTime] = useState(prefs.briefing ?? TELEGRAM_DEFAULTS.briefing!);
-  const box = "h-4 w-4 accent-sky-400";
-  const row = "flex items-center gap-3 text-sky-50/85";
+  const [abend, setAbend] = useState(prefs.abschluss ?? ABSCHLUSS_VORSCHLAG);
+  const [woche, setWoche] = useState(prefs.woche ?? WOCHE_VORSCHLAG);
+  // Den Wochentag übernimmt JARVIS sofort, die Uhrzeit beim Verlassen des Feldes (wie bei den anderen Uhrzeiten).
+  // Ein geleertes Uhrzeitfeld geht nie hinaus: Dann gilt die zuletzt gespeicherte Uhrzeit, sonst der Vorschlag.
+  const mitZeit = (w: typeof woche) => (w.zeit ? w : { ...w, zeit: prefs.woche?.zeit ?? WOCHE_VORSCHLAG.zeit });
+  const wocheTag = (tag: number) => {
+    const neu = mitZeit({ ...woche, tag });
+    setWoche(neu);
+    if (prefs.woche !== null) onChange({ woche: neu });
+  };
+  const wocheAn = (an: boolean) => {
+    const neu = mitZeit(woche);
+    setWoche(neu);
+    onChange({ woche: an ? neu : null });
+  };
+  const box = "h-4 w-4 accent-gletscher";
+  const row = "flex items-center gap-3 text-schiefer/85";
   return (
     <fieldset className="space-y-2" disabled={busy}>
       <legend className="mb-1 text-xs text-quiet">Was aufs Handy kommt</legend>
@@ -222,6 +248,22 @@ function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean;
       <label className={row}>
         <input type="checkbox" className={box} checked={prefs.reminders} onChange={(e) => onChange({ reminders: e.target.checked })} />
         Erinnerung {REMINDER_MINUTES} Minuten vor jedem Termin
+      </label>
+      <label className={row}>
+        <input type="checkbox" className={box} checked={prefs.projekte} onChange={(e) => onChange({ projekte: e.target.checked })} />
+        <span>
+          Projekte beim Namen: Vorbereitung vor Terminen, die zu einem Projekt gehören, und Projektnamen im Briefing, in den Hinweisen am Tag, im Tagesabschluss und im Wochenbericht
+          <span className="block text-xs text-quiet">Aus, bis du es willst: Namen, Entscheidungen und offene Punkte gehen dann über Telegram. Ohne den Haken nennt JARVIS dort nur Zahlen. Vertrauliche Projekte nie.</span>
+        </span>
+      </label>
+      <label className={row}>
+        <input type="checkbox" className={box} checked={prefs.hinweise} onChange={(e) => onChange({ hinweise: e.target.checked })} />
+        <span>
+          Hinweise am Tag: wenn in einem Projekt etwas überfällig wird, eine Rückmeldung fehlt oder am Nachmittag noch etwas von heute offen ist
+          <span className="block text-xs text-quiet">
+            Aus, bis du es willst. Nur zwischen {HINWEIS_REGELN.vonStunde} und {HINWEIS_REGELN.bisStunde} Uhr, höchstens {HINWEIS_REGELN.hoechstensJeTag} am Tag, jedes Ding nur einmal. Projektnamen stehen darin nur mit dem Haken darüber, sonst nur Zahlen.
+          </span>
+        </span>
       </label>
       <div className={`${row} flex-wrap`}>
         <label className="flex items-center gap-3">
@@ -239,6 +281,52 @@ function Prefs({ prefs, busy, onChange }: { prefs: TelegramPrefs; busy: boolean;
           />
           <span className="text-xs text-quiet">Uhr</span>
         </span>
+      </div>
+      <div className={`${row} flex-wrap`}>
+        <label className="flex items-center gap-3">
+          <input type="checkbox" className={box} checked={prefs.abschluss !== null} onChange={(e) => onChange({ abschluss: e.target.checked ? abend : null })} />
+          Tagesabschluss jeden Abend um
+        </label>
+        <span className="flex items-center gap-2">
+          <input
+            type="time"
+            value={abend}
+            onChange={(e) => setAbend(e.target.value)}
+            onBlur={() => prefs.abschluss !== null && abend && abend !== prefs.abschluss && onChange({ abschluss: abend })}
+            aria-label="Uhrzeit für den Tagesabschluss"
+            className={`${inputClass} w-32`}
+          />
+          <span className="text-xs text-quiet">Uhr: was offen blieb, was morgen kommt, was auf dich wartet</span>
+        </span>
+      </div>
+      <div className={`${row} flex-wrap`} data-wochenbericht>
+        <label className="flex items-center gap-3">
+          <input type="checkbox" className={box} checked={prefs.woche !== null} onChange={(e) => wocheAn(e.target.checked)} />
+          Wochenbericht jeden
+        </label>
+        {/* Feste Breiten über die Hülle: Die Felder selbst füllen ihre Hülle (inputClass). */}
+        <span className="w-36 shrink-0">
+          <select value={woche.tag} onChange={(e) => wocheTag(Number(e.target.value))} aria-label="Wochentag für den Wochenbericht" className={inputClass}>
+            {WOCHENTAGE.map((name, i) => (
+              <option key={name} value={i + 1}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </span>
+        um
+        <span className="w-32 shrink-0">
+          <input
+            type="time"
+            value={woche.zeit}
+            onChange={(e) => setWoche({ ...woche, zeit: e.target.value })}
+            onBlur={() => prefs.woche !== null && woche.zeit && woche.zeit !== prefs.woche.zeit && onChange({ woche })}
+            aria-label="Uhrzeit für den Wochenbericht"
+            className={inputClass}
+          />
+        </span>
+        <span className="text-xs text-quiet">Uhr</span>
+        <p className="basis-full pl-7 text-xs text-quiet">Was erledigt ist, was liegt, was die nächsten sieben Tage bringen. Auch auf Zuruf: „Wochenbericht“, am Handy /woche.</p>
       </div>
     </fieldset>
   );

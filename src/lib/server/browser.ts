@@ -1,9 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
+import { claudeFuer } from "./claude";
 import path from "node:path";
 import type { BrowserContext, CDPSession, Frame, Locator, Page } from "playwright-core";
+import { durchGateway, GatewaySperre } from "./gateway/gateway";
+import { agentSperre } from "./gateway/zustand";
 import { clickProblem, enterProblem, hostLabel, MAX_MINUTES, MAX_STEPS, typeProblem, urlProblem, type BrowserStatus, type BrowserStep, type BrowserTask, type ElementInfo } from "../browser";
 import { CONFIG_DIR, type JarvisConfig } from "./config";
+import { adresseProblem } from "./netz";
+import { starteSchleuse, type Schleuse } from "./netzschleuse";
+import { protokolliere } from "./gateway/audit";
+import { bucheClaude } from "./kosten";
+import { MODELLE } from "../modelle";
 
 // Der Browser-Agent. JARVIS startet ein eigenes Chrome mit eigenem Profil (Anmeldungen bleiben darin
 // gespeichert, getrennt von deinem normalen Chrome) und lässt Claude es bedienen. Chrome läuft dabei ohne
@@ -13,10 +21,29 @@ import { CONFIG_DIR, type JarvisConfig } from "./config";
 // keine für Mails, Kalender oder Handel. Bevor geklickt oder getippt wird, prüft der Code die festen Regeln
 // aus src/lib/browser.ts; im Zweifel wird nicht geklickt.
 
-const MODEL = "claude-opus-5-5";
+const MODEL = MODELLE.browser.id;
 const PROFILE_DIR = path.join(CONFIG_DIR, "browser-profil");
 // Nur für Tests: einzelne lokale Seiten (Host mit Port) erlauben, einen bestimmten Chrome und eine eigene Suchseite nehmen.
 const ALLOW_LOCAL = (process.env.JARVIS_BROWSER_LOCAL ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+
+// Namensauflösung je Host, eine Minute gemerkt, damit nicht jedes Bild einer Seite neu fragt.
+const dnsCache = new Map<string, { at: number; problem: string | null }>();
+async function dnsProblem(raw: string): Promise<string | null> {
+  let host: string;
+  try {
+    const url = new URL(raw);
+    if (ALLOW_LOCAL.includes(url.host)) return null;
+    host = url.hostname;
+  } catch {
+    return "Das ist keine Webadresse.";
+  }
+  const hit = dnsCache.get(host);
+  if (hit && Date.now() - hit.at < 60_000) return hit.problem;
+  const problem = await adresseProblem(raw);
+  dnsCache.set(host, { at: Date.now(), problem });
+  if (dnsCache.size > 500) dnsCache.delete(dnsCache.keys().next().value!);
+  return problem;
+}
 const SEARCH_URL = process.env.JARVIS_SEARCH_URL ?? "https://duckduckgo.com/html/?kl=de-de&q=";
 // Nur für Tests ohne Bildschirm: auch beim Übernehmen kein sichtbares Fenster.
 const NEVER_VISIBLE = process.env.JARVIS_BROWSER_HEADLESS === "1";
@@ -33,6 +60,9 @@ export class BrowserError extends Error {}
 type Shared = {
   context: BrowserContext | null;
   launching: Promise<BrowserContext> | null;
+  // Die Netzschleuse, über die Chrome jede Verbindung aufbaut (einmal je Lauf von JARVIS).
+  schleuse?: Promise<Schleuse> | null;
+  gemeldet?: Map<string, number>;
   // Ob Chrome gerade mit sichtbarem Fenster läuft (nach „Selbst übernehmen“).
   visible: boolean;
   // Die Kennung von Chrome ohne „Headless“, damit Seiten JARVIS wie ein normales Chrome behandeln.
@@ -110,6 +140,29 @@ async function watch(p: Page) {
   }
 }
 
+// Chrome verbindet nur über die Netzschleuse (netzschleuse.ts). Sie prüft jede Adresse und verbindet genau
+// zur geprüften. Startet sie nicht, startet auch Chrome nicht. Gesperrte Ziele kommen ins Audit-Log,
+// je Ziel höchstens einmal in zehn Minuten, damit eine Seite mit vielen Bildern das Log nicht flutet.
+function schleuse(): Promise<Schleuse> {
+  shared.schleuse ??= starteSchleuse({
+    erlaubt: ALLOW_LOCAL,
+    gesperrt: ({ host, port, grund, intern }) => {
+      // Ins Audit-Log kommen nur Versuche, ins Heimnetz oder auf diesen Rechner zu gelangen, keine Tippfehler.
+      if (!intern) return;
+      const merk = (shared.gemeldet ??= new Map());
+      const jetzt = Date.now();
+      if (jetzt - (merk.get(host) ?? 0) < 600_000) return;
+      merk.set(host, jetzt);
+      if (merk.size > 300) merk.delete(merk.keys().next().value!);
+      void protokolliere({ art: "netz", agent: "browser", kanal: "intern", was: "Netzschleuse", ergebnis: "abgelehnt", grund, daten: { host, port } }).catch(() => {});
+    },
+  }).catch((e) => {
+    shared.schleuse = null;
+    throw new BrowserError(`Der Netzschutz für den Browser startet nicht (${e instanceof Error ? e.message : String(e)}). Ohne ihn öffne ich kein Chrome.`);
+  });
+  return shared.schleuse;
+}
+
 async function launch(visible = false): Promise<BrowserContext> {
   let chromium;
   try {
@@ -119,6 +172,7 @@ async function launch(visible = false): Promise<BrowserContext> {
   }
   const exe = process.env.JARVIS_CHROME;
   const headless = NEVER_VISIBLE || !visible;
+  const proxy = await schleuse();
   const open = (userAgent: string | null) =>
     chromium.launchPersistentContext(PROFILE_DIR, {
       ...(exe ? { executablePath: exe } : { channel: "chrome" }),
@@ -128,7 +182,18 @@ async function launch(visible = false): Promise<BrowserContext> {
       locale: "de-DE",
       timezoneId: "Europe/Berlin",
       acceptDownloads: false,
-      args: ["--no-first-run", "--no-default-browser-check", "--window-size=1300,960"],
+      // Alles läuft über die Netzschleuse, auch Adressen auf diesem Rechner („<-loopback>“).
+      proxy: { server: proxy.server, username: proxy.username, password: proxy.password, bypass: "<-loopback>" },
+      args: [
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--window-size=1300,960",
+        // Chrome löst keinen Namen selbst auf; das macht nur die Schleuse. Und keine Direktverbindungen an ihr vorbei.
+        "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1",
+        "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+        "--webrtc-ip-handling-policy=disable_non_proxied_udp",
+        "--disable-quic",
+      ],
     });
   let context: BrowserContext;
   try {
@@ -148,9 +213,14 @@ async function launch(visible = false): Promise<BrowserContext> {
     throw new BrowserError(explainLaunch(e));
   }
   // Auch Bilder, Skripte und Weiterleitungen einer Seite erreichen nichts im Heimnetz.
+  // Dazu wird jeder Name aufgelöst: Zeigt er auf eine interne Adresse (etwa 192.168.178.1.nip.io), wird gesperrt.
   await context.route(
-    (url) => /^https?:$/.test(url.protocol) && urlProblem(url.href, ALLOW_LOCAL) !== null,
-    (route) => route.abort("blockedbyclient"),
+    (url) => /^https?:$/.test(url.protocol),
+    async (route) => {
+      const href = route.request().url();
+      if (urlProblem(href, ALLOW_LOCAL) !== null || (await dnsProblem(href)) !== null) return route.abort("blockedbyclient");
+      return route.continue();
+    },
   );
   context.on("page", (page) => {
     wire(page);
@@ -527,7 +597,9 @@ type TaskOptions = { from: BrowserTask["from"]; signal?: AbortSignal; onStep?: (
 
 // Ein Auftrag im Browser, etwa „Such mir Winterreifen 205/55 R16 und vergleich drei Angebote“.
 // Liefert das Ergebnis als Text. Immer nur einer zur Zeit.
-export function runBrowserTask(config: JarvisConfig, apiKey: string, auftrag: string, opts: TaskOptions): Promise<string> {
+export async function runBrowserTask(config: JarvisConfig, apiKey: string, auftrag: string, opts: TaskOptions): Promise<string> {
+  const sperre = await agentSperre("browser");
+  if (sperre) throw new BrowserError(sperre);
   if (shared.task?.state === "laeuft")
     return Promise.reject(new BrowserError(`Ich bin gerade schon im Browser unterwegs („${shared.task.auftrag.slice(0, 60)}“). Warte kurz oder halte den Auftrag in der Browser-Ansicht an.`));
   const run = runTask(config, apiKey, auftrag, opts);
@@ -620,7 +692,7 @@ async function runTask(config: JarvisConfig, apiKey: string, auftrag: string, op
         inputSchema: { type: "object", properties: { adresse: { type: "string", description: "z. B. https://www.idealo.de" } }, required: ["adresse"], additionalProperties: false },
         run: async ({ adresse }) => {
           const url = /^[a-z]+:/i.test(adresse.trim()) ? adresse.trim() : `https://${adresse.trim()}`;
-          const problem = urlProblem(url, ALLOW_LOCAL);
+          const problem = urlProblem(url, ALLOW_LOCAL) ?? (await dnsProblem(url));
           if (problem) return blocked(problem, hostLabel(url));
           return act(async (p) => {
             step(`Öffne ${hostLabel(url)}`, { url });
@@ -718,21 +790,43 @@ async function runTask(config: JarvisConfig, apiKey: string, auftrag: string, op
       }),
     ];
 
-    const runner = new Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 }).beta.messages.toolRunner(
+    // Jede Aktion läuft durch das Security Gateway: Es protokolliert sie und hält den Agenten beim Not-Aus
+    // sofort an. Was eine Webseite dem Agenten sagt, gilt immer als fremd.
+    const kanal = opts.from === "telegram" ? "telegram" : "mac";
+    const geprueft = tools.map((t) => ({
+      ...t,
+      run: async (input: never) => {
+        try {
+          return await durchGateway({ werkzeug: t.name, agent: "browser", kanal, eingabe: (input ?? {}) as Record<string, unknown>, fremd: true }, async () => t.run(input));
+        } catch (e) {
+          if (e instanceof GatewaySperre) {
+            step(`Gesperrt: ${e.message}`, { blocked: true });
+            if (e.ursache === "notaus" || e.ursache === "gesperrt") abort.abort();
+          }
+          throw e;
+        }
+      },
+    })) as typeof tools;
+
+    const runner = claudeFuer("browser", apiKey).beta.messages.toolRunner(
       {
         model: MODEL,
         max_tokens: 8000,
         output_config: { effort: "medium" },
         cache_control: { type: "ephemeral" },
         system: [{ type: "text", text: systemPrompt(config.name, opts.from === "telegram"), cache_control: { type: "ephemeral" } }],
-        tools,
+        tools: geprueft,
         messages: [{ role: "user", content: `Auftrag von ${config.name}:\n${auftrag.slice(0, 2000)}\n\nDas Fenster zeigt gerade:\n${await readPage(first)}` }],
         max_iterations: MAX_STEPS + 2,
       },
       { signal: abort.signal },
     );
     let final: Anthropic.Beta.BetaMessage | null = null;
-    for await (const message of runner) final = message;
+    for await (const message of runner) {
+      final = message;
+      // Jeder Schritt ist eine eigene Anfrage an Claude und kommt ins Kostenbuch.
+      await bucheClaude("browser", "browser", message);
+    }
 
     const text = (final?.content ?? [])
       .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")

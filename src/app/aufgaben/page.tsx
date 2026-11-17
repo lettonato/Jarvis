@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { TasksView } from "@/components/views/TasksView";
-import { HoloView } from "@/components/HoloView";
+import { RaumSeite } from "@/components/Raum";
 
 export const metadata: Metadata = { title: "JARVIS · Aufgaben" };
 
 export default function TasksPage() {
   return (
-    <HoloView>
+    <RaumSeite ort="/aufgaben">
       <TasksView />
-    </HoloView>
+    </RaumSeite>
   );
 }

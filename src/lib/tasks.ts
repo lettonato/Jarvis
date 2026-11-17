@@ -21,8 +21,17 @@ export type TasksSnapshot = {
   vault?: { name: string; path: string };
   tasks: Task[];
   doneToday: number;
+  // Was in den letzten zwei Wochen erledigt wurde (Tag und Text), für den Wochenbericht. Nur Aufgaben, an denen
+  // ein Erledigt-Datum steht („✅ 2026-11-13“), wie Obsidian Tasks es setzt.
+  erledigt?: { am: string; text: string }[];
   error?: string;
 };
+
+// Ein Tresor, der sich nicht lesen lässt (am Mac etwa ohne Freigabe für den Ordner Dokumente), ist nicht dasselbe
+// wie „keine Aufgaben“: Dann sind sie unbekannt. Der genaue Grund steht in snapshot.error; dies ist der kurze Satz
+// für Übersichten und Nachrichten.
+export const TRESOR_UNLESBAR = "Der Obsidian-Tresor lässt sich gerade nicht lesen.";
+export const aufgabenUnlesbar = (t: TasksSnapshot | null | undefined): boolean => Boolean(t?.configured && t.error);
 
 export type TaskGroup = { id: "ueberfaellig" | "heute" | "woche" | "spaeter" | "offen"; title: string; tasks: Task[] };
 

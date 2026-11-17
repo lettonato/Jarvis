@@ -19,7 +19,9 @@ export async function POST(request: Request) {
   if (!apiKey) return Response.json({ error: "Das KI-Gehirn ist noch nicht eingerichtet. Den Schlüssel trägst du in den Einstellungen ein." }, { status: 409 });
   const input: BrainRequest = {
     text: body.text,
-    history: Array.isArray(body.history) ? body.history.filter((t) => t && typeof t.text === "string" && (t.who === "du" || t.who === "jarvis")) : [],
+    history: Array.isArray(body.history)
+      ? body.history.filter((t) => t && typeof t.text === "string" && (t.who === "du" || t.who === "jarvis")).map((t) => ({ who: t.who, text: t.text, ...(t.fremd === true ? { fremd: true } : {}) }))
+      : [],
     view: typeof body.view === "string" ? body.view : "/",
     focus: body.focus && (body.focus.kind === "post" || body.focus.kind === "aufgaben") ? body.focus : null,
     extra: Array.isArray(body.extra) ? body.extra.filter((l): l is string => typeof l === "string") : [],

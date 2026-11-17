@@ -3,6 +3,8 @@
 // auf dem Mac und, wenn dein Handy gekoppelt ist, auch in Telegram. Hier stehen die Form eines Dokuments,
 // die Prüfung dessen, was Claude abgibt, und die Sätze für JARVIS; die Arbeit macht src/lib/server/documents.ts.
 
+import { anzahl } from "./format";
+
 // Feste Grenzen pro Dokument, damit eine Recherche nicht ausufert.
 export const DOC_LIMITS = {
   searches: 24,
@@ -254,7 +256,7 @@ export function docDoneSentence(job: DocJob, onMac: boolean): string {
   const minutes = job.endedAt ? minutesBetween(job.startedAt, job.endedAt) : 0;
   const dollars = job.costUsd.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const took = job.endedAt ? ` Gebraucht habe ich ${minutes === 1 ? "eine Minute" : `${minutes} Minuten`} und ${dollars} Dollar bei Anthropic.` : "";
-  return `Dein Dokument „${title}“ ist fertig: ${job.sections} Abschnitte mit ${job.sources} Quellen. ${where}${took}`;
+  return `Dein Dokument „${title}“ ist fertig: ${anzahl(job.sections, "Abschnitt", "Abschnitte")} mit ${anzahl(job.sources, "Quelle", "Quellen")}. ${where}${took}`;
 }
 
 // Die Zeile für Claude im Gespräch: was gerade entsteht und welche Dokumente zuletzt fertig wurden.
@@ -287,6 +289,6 @@ export function docCaption(job: DocJob): string {
     const p = plainPoint(point);
     lines.push(`• ${p.length > 220 ? `${p.slice(0, 217)}…` : p}`);
   }
-  lines.push(`${job.sections} Abschnitte, ${job.sources} Quellen · ${usd(job.costUsd)}`);
+  lines.push(`${anzahl(job.sections, "Abschnitt", "Abschnitte")}, ${anzahl(job.sources, "Quelle", "Quellen")} · ${usd(job.costUsd)}`);
   return lines.join("\n");
 }

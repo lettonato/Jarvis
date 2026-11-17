@@ -70,14 +70,15 @@ Außerdem versteht er: **„Notiere Rechnung an Max schicken bis Freitag, wichti
 
 ## Sprechen mit „Jarvis“
 
-JARVIS hört von selbst zu, ohne Knopf. Sag **„Jarvis“** und dann, was du brauchst: „Jarvis, Briefing“, „Jarvis, wie läuft der Handel?“. Ein kurzer Doppelton zeigt, dass er dich gehört hat, und während du sprichst, siehst du deine Worte mitlaufen. Sagst du nur „Jarvis“, wartet er ein paar Sekunden auf den Rest. Nach seiner Antwort hört er noch etwa acht Sekunden weiter zu; da reicht die nächste Frage ohne „Jarvis“, in der Besprechung zum Beispiel „erledigt“ oder „weiter“.
+JARVIS hört von selbst zu, ohne Knopf. Sag **„Jarvis“** und dann, was du brauchst: „Jarvis, Briefing“, „Jarvis, wie läuft der Handel?“. Ein kurzer Doppelton zeigt, dass er dich gehört hat, und während du sprichst, siehst du deine Worte mitlaufen. Sagst du nur „Jarvis“, wartet er ein paar Sekunden auf den Rest. Nach seiner Antwort hört er noch etwa acht Sekunden weiter zu; da reicht die nächste Frage ohne „Jarvis“, in der Besprechung zum Beispiel „erledigt“ oder „weiter“. Getippt gilt dasselbe: „Jarvis, öffne Safari“ ist derselbe Befehl wie „Öffne Safari“.
 
-- **Unterbrechen:** „Jarvis, stopp“ oder Escape.
+- **Unterbrechen:** Sag einfach „Stopp“ (auch „Halt“, „Ruhe“, „Hör auf“), drück Escape oder sprich ihn mit „Jarvis“ neu an.
 - **Ausschalten:** „Jarvis, Mikrofon aus“ oder der Schalter **Hört auf „Jarvis“** über dem Gespräch. Dann sprichst du über den Mikrofon-Knopf oder die Leertaste. Wieder an mit dem Schalter oder „Mikrofon an“.
 - **Beim ersten Mal** fragt der Browser, ob JARVIS das Mikrofon benutzen darf: **Zulassen**. Laut antworten darf er erst, wenn du einmal auf die Seite geklickt hast; das verlangt der Browser, JARVIS erinnert dich daran.
 - **Browser:** Chrome oder Safari. In Safari muss unter **Systemeinstellungen → Tastatur** das **Diktat** eingeschaltet sein.
 - **Datenschutz:** Hat Chrome das deutsche Sprachpaket, erkennt er die Sprache auf dem Mac selbst, dann steht neben dem Schalter „nur auf dem Mac“. Sonst schickt Chrome den Ton zur Erkennung an Google, Safari an Apple, auch während JARVIS auf „Jarvis“ wartet.
-- **Stimme:** unter **Einstellungen → Stimme**. Am besten klingen die erweiterten Stimmen vom Mac, zum Beispiel „Yannick (Erweitert)“: Systemeinstellungen → Bedienungshilfen → Gesprochene Inhalte → Systemstimme → Stimmen verwalten.
+- **Natürlichere Stimme mit ElevenLabs (Zusatz, ab Werk aus):** unter **Einstellungen → Stimme** einen eigenen ElevenLabs-Schlüssel eintragen, eine Stimme aus deinem Konto wählen, Probe hören, einschalten. Dann geht jeder Satz, den JARVIS laut vorliest, an ElevenLabs und wird dort aus deinem Tarif berechnet; ein Tageslimit in Zeichen begrenzt das. Ohne Schlüssel, ausgeschaltet, über dem Limit, beim Not-Aus oder bei einem Fehler spricht der Mac.
+- **Stimme des Macs:** unter **Einstellungen → Stimme**. Am besten klingen die erweiterten Stimmen vom Mac, zum Beispiel „Yannick (Erweitert)“: Systemeinstellungen → Bedienungshilfen → Gesprochene Inhalte → Systemstimme → Stimmen verwalten.
 
 ## KI-Gehirn (Claude)
 
@@ -118,6 +119,15 @@ Unter **Aufgaben** oder **Einstellungen**: JARVIS zeigt die Tresore, die Obsidia
 Sperrt macOS den Ordner (Tresore in Dokumente, Schreibtisch oder iCloud Drive), sagt JARVIS das, statt einfach keine Aufgaben zu zeigen. Dann **Systemeinstellungen → Datenschutz & Sicherheit → Dateien und Ordner → Terminal** und den Ordner freischalten (steht Terminal dort nicht: unter **Festplattenvollzugriff** einschalten), danach JARVIS neu starten.
 
 **„Öffne Obsidian“**, **„Öffne meine Notizen“** oder **„Öffne den Eingang“** öffnet Obsidian an der richtigen Stelle.
+
+## Programme und Ordner am Mac öffnen
+
+**„Jarvis, öffne Safari“**, **„Starte Excel“**, **„Mach den Finder auf“** oder **„Zeig mir den Ordner Downloads“**: JARVIS öffnet Programme und Ordner aus einer festen Liste (19 übliche Programme und die Ordner Dokumente, Downloads, Schreibtisch und Bilder). Unter **Einstellungen → Programme** schaltest du einzelne Einträge aus, probierst sie mit **Öffnen** aus und trägst bis zu 12 eigene Programme ein (der Name so, wie das Programm im Ordner „Programme“ heißt).
+
+- JARVIS öffnet nur. Er bedient nichts, schließt nichts und öffnet auf diesem Weg keine einzelnen Dateien und keine Internetadressen.
+- „Öffne die Systemeinstellungen“ meint die des Mac, „Öffne die Einstellungen“ die von JARVIS. „Dokumente“ allein bleibt der Raum in JARVIS; den Ordner öffnet „Öffne den Ordner Dokumente“.
+- Über Telegram öffnet JARVIS nichts auf dem Mac. Jedes Öffnen steht im Audit-Log.
+- Bisher nur gegen einen nachgebauten Mac geprüft (Prüfliste Teil AB).
 
 ## Kalender verbinden
 
@@ -163,12 +173,13 @@ Wichtig heißt: markiert, oder ungelesen und weder Newsletter noch automatische 
 **Was dann aufs Handy kommt** (einzeln abschaltbar):
 
 - **Briefing** jeden Morgen zur eingestellten Zeit (Standard 7:30 Uhr): Wetter, Termine, wichtige Mails, fällige Aufgaben, Nachrichten und Spielgeld-Stand.
+- **Wochenbericht** (aus, bis du ihn einschaltest; vorgeschlagen Freitag 16:00 Uhr): was du diese Woche erledigt hast, was liegt, Termine und fällige Aufgaben der nächsten sieben Tage. Auf Zuruf jederzeit: „Wochenbericht“ am Mac, `/woche` am Handy. Als erledigt zählt, was in Obsidian mit Datum abgehakt ist (✅ und der Tag).
 - **Erinnerung** eine Viertelstunde vor jedem Termin.
 - **Warnungen:** Intel bremst den Desk, oder das Tageslimit ist erreicht.
 - **Trades:** jeder Kauf und Verkauf des Spielgeld-Desks mit Begründung.
 - **Rückfrage vor Käufen** mit den Knöpfen **Ja, kaufen** und **Nein** (nicht abschaltbar, solange die Rückfrage an ist; siehe [Rückfrage vor Käufen](#rückfrage-vor-käufen)). Nach deiner Antwort steht das Ergebnis unter der Frage, und die Knöpfe verschwinden.
 
-**Schreiben:** Mit KI-Gehirn schreibst du JARVIS wie in der App, etwa „Was steht morgen an?“, „Trag Freitag 15 Uhr Friseur ein“ oder „Fass mir die Mail von Anna zusammen“. Dazu gibt es feste Befehle, auch ohne KI-Gehirn: `/briefing`, `/handel`, `/pause` (oder einfach „Stopp“: keine neuen Käufe, der Stop-Loss passt weiter auf), `/weiter`, `/notaus`, `/hilfe`. Sprachnachrichten versteht er noch nicht; das Mikrofon der Handy-Tastatur macht aus Sprache Text.
+**Schreiben:** Mit KI-Gehirn schreibst du JARVIS wie in der App, etwa „Was steht morgen an?“, „Trag Freitag 15 Uhr Friseur ein“ oder „Fass mir die Mail von Anna zusammen“. Dazu gibt es feste Befehle, auch ohne KI-Gehirn: `/briefing`, `/abschluss`, `/woche`, `/handel`, `/pause` (oder einfach „Stopp“: keine neuen Käufe, der Stop-Loss passt weiter auf), `/weiter`, `/notaus`, `/hilfe`. Sprachnachrichten versteht er noch nicht; das Mikrofon der Handy-Tastatur macht aus Sprache Text.
 
 Schläft der Mac, antwortet JARVIS, sobald er wieder wach ist. Ist eine Nachricht dann älter als eine halbe Stunde, führt er sie nicht mehr blind aus und fragt nach; nur „Stopp“ und `/notaus` gelten auch verspätet. Das Briefing kommt noch bis drei Stunden nach der eingestellten Zeit. Damit Meldungen zuverlässig ankommen, sollte der Mac nicht schlafen: In den **Systemeinstellungen** unter **Batterie → Optionen** (MacBook) bzw. **Energie** (iMac, Mac mini) einschalten, dass er am Netzteil nicht von selbst in den Ruhezustand geht, wenn der Bildschirm aus ist.
 
@@ -392,6 +403,6 @@ Aufbau:
 | `src/lib/server/notify.ts` | Meldungen von Desk und Intel an alle, die zuhören (Telegram), auch Rückfragen mit Knöpfen |
 | `src/lib/approval.ts`, `src/components/Approvals.tsx` | Rückfrage vor Käufen: Grenze, Texte und Knöpfe; die Frage in JARVIS (Leiste oben, groß auf dem Trading-Desk). Die Arbeit macht `answerApproval` in `engine.ts` |
 
-`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `GECKOTERMINAL_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `TWELVEDATA_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt der Wache (Standard 10000), `JARVIS_HUNT_MS` den der Suche (Standard dreimal der Takt), `JARVIS_COMMODITY_MS` den der Rohstoffe (Standard 360000). Statt in den Einstellungen kann der Twelve-Data-Schlüssel auch in `TWELVEDATA_API_KEY` stehen. Für den Browser-Agenten: `JARVIS_CHROME` (Pfad zu einem anderen Chrome oder Chromium), `JARVIS_BROWSER_HEADLESS=1` (auch beim Übernehmen ohne sichtbares Fenster, für Rechner ohne Bildschirm), `JARVIS_BROWSER_TEMPO` (0.1 macht Zeiger und Tippen zehnmal langsamer, für Vorführvideos in Zeitlupe), `JARVIS_SEARCH_URL` (andere Suche, Standard DuckDuckGo) und `JARVIS_BROWSER_LOCAL` (kommagetrennte Hosts mit Port im eigenen Netz, die er trotzdem öffnen darf, nur für Tests).
+`JARVIS_CONFIG_DIR` legt fest, wo die Einstellungen liegen (Standard `~/.jarvis`). Für Tests mit nachgebauten Servern lassen sich `DEXSCREENER_URL`, `GECKOTERMINAL_URL`, `COINGECKO_URL`, `RUGCHECK_URL`, `TWELVEDATA_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL`, `ELEVENLABS_BASE_URL` und `TELEGRAM_API_URL` umlenken; `JARVIS_TICK_MS` ändert den Takt der Wache (Standard 10000), `JARVIS_HUNT_MS` den der Suche (Standard dreimal der Takt), `JARVIS_COMMODITY_MS` den der Rohstoffe (Standard 360000). Statt in den Einstellungen kann der Twelve-Data-Schlüssel auch in `TWELVEDATA_API_KEY` stehen. Für den Browser-Agenten: `JARVIS_CHROME` (Pfad zu einem anderen Chrome oder Chromium), `JARVIS_BROWSER_HEADLESS=1` (auch beim Übernehmen ohne sichtbares Fenster, für Rechner ohne Bildschirm), `JARVIS_BROWSER_TEMPO` (0.1 macht Zeiger und Tippen zehnmal langsamer, für Vorführvideos in Zeitlupe), `JARVIS_SEARCH_URL` (andere Suche, Standard DuckDuckGo) und `JARVIS_BROWSER_LOCAL` (kommagetrennte Hosts mit Port im eigenen Netz, die er trotzdem öffnen darf, nur für Tests).
 
 API-Schlüssel gehören später in eine Datei `.env.local`. Sie wird nie hochgeladen.

@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Marktlage } from "../Marktlage";
+import { Edelmetalle } from "../Edelmetalle";
 import { useJarvis } from "../JarvisProvider";
-import { Button, inputClass, LinkButton, Notice, PageHeader, Panel } from "../ui";
+import { Button, inputClass, Ladestand, LinkButton, Notice, PageHeader, Panel } from "../ui";
 import { postJson } from "@/lib/api";
-import { BASE_TOPICS, MAX_TOPICS, MOOD_LABEL, TYPICAL_INTEL_COST_USD, type IntelItem, type IntelReport, type IntelSnapshot } from "@/lib/intel";
+import { BASE_TOPICS, budgetHinweis, MAX_TOPICS, MOOD_LABEL, themaDazu, TYPICAL_INTEL_COST_USD, type IntelItem, type IntelReport, type IntelSnapshot } from "@/lib/intel";
+import { alsSatz } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 
 // Intel: das Lagebild aus Nachrichten und X, das Grok für dich liest. Oben die Lage und eine Warnung an
-// den Trading-Desk, falls es eine gibt, darunter die Meldungen mit Quelle, dann Suche und Themen.
+// den Trading-Desk, falls es eine gibt, darunter die Meldungen mit Quelle, dann Suche und Themen. Am Ende
+// steht das Lagebild für Gold und Silber (Edelmetalle.tsx); das kommt ohne Grok aus.
 
 const usd = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
 const clock = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -19,14 +23,14 @@ const when = (iso: string, now: Date | null) => {
 };
 
 const MOOD_TONE: Record<IntelReport["mood"], string> = {
-  positiv: "border-up/50 bg-up/10 text-green-200",
-  gemischt: "border-sky-300/40 bg-sky-400/10 text-sky-100",
-  negativ: "border-down/50 bg-down/10 text-red-200",
-  ruhig: "border-sky-300/20 bg-sky-400/5 text-sky-200/80",
+  positiv: "border-up/50 bg-up/10 text-up",
+  gemischt: "border-schiefer/40 bg-gletscher/10 text-schiefer",
+  negativ: "border-down/50 bg-down/10 text-down",
+  ruhig: "border-schiefer/20 bg-gletscher/5 text-stein/80",
 };
 
 export function IntelView() {
-  const { intel, setIntel } = useJarvis();
+  const { intel, setIntel, ausfall } = useJarvis();
   const now = useNow();
   const [error, setError] = useState<string | null>(null);
 
@@ -39,8 +43,9 @@ export function IntelView() {
     }
   };
 
-  const left = intel ? intel.budgetUsd - intel.spentTodayUsd : 0;
-  const canRun = Boolean(intel?.configured && !intel.running && left >= TYPICAL_INTEL_COST_USD);
+  // Ein Maß für beides: Gibt es einen Hinweis, dass das Budget nicht reicht, sind die Knöpfe aus, und umgekehrt.
+  const zuWenig = budgetHinweis(intel);
+  const canRun = Boolean(intel?.configured && !intel.running && !zuWenig);
   const report = intel?.report ?? null;
 
   return (
@@ -49,20 +54,21 @@ export function IntelView() {
         icon="intel"
         holo="modul-intel"
         title="Intel"
-        subtitle={intel?.configured ? `Nachrichten und X, gelesen von Grok · heute ${usd(intel.spentTodayUsd)} von ${usd(intel.budgetUsd)}` : "Nachrichten und X, gelesen von Grok"}
+        subtitle={intel?.configured ? `Nachrichten und X, gelesen von Grok. Heute ${usd(intel.spentTodayUsd)} von ${usd(intel.budgetUsd)}.` : "Nachrichten und X, gelesen von Grok"}
       >
         {intel?.configured && (
           <Button icon="laden" tone="primary" disabled={!canRun} onClick={() => refresh()} title={`Kostet etwa ${usd(TYPICAL_INTEL_COST_USD)}`}>
-            {intel.running && !intel.running.focus ? "Liest …" : `Aktualisieren · ≈ ${usd(TYPICAL_INTEL_COST_USD)}`}
+            {intel.running && !intel.running.focus ? "Liest …" : `Aktualisieren (etwa ${usd(TYPICAL_INTEL_COST_USD)})`}
           </Button>
         )}
       </PageHeader>
 
-      {!intel && <p className="text-sm text-quiet">Lade Intel …</p>}
+      {!intel && <Ladestand quelle="intel" aus={ausfall.intel} />}
+      <Marktlage />
 
       {intel && !intel.configured && (
         <Panel className="max-w-2xl">
-          <h2 className="mb-1 text-sm font-bold uppercase tracking-widest text-sky-100">Mit Grok verbinden</h2>
+          <h2 className="mb-1 text-sm font-bold text-schiefer">Mit Grok verbinden</h2>
           <p className="mb-4 text-sm text-quiet">
             Intel liest jeden Morgen und am Nachmittag die Nachrichten und X zu Bitcoin, Ethereum, Solana und deinen eigenen Themen, und JARVIS sagt dir im Briefing,
             was davon zählt. Er nutzt denselben xAI-Schlüssel wie der Crawler im Trading-Desk.
@@ -74,27 +80,28 @@ export function IntelView() {
       )}
 
       {intel?.warning && (
-        <div role="alert" className="rounded-xl border border-down/60 bg-down/10 px-4 py-3 text-sm text-red-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-red-300">Warnung an den Trading-Desk · bis {clock(intel.warning.until)} Uhr</p>
+        <div role="alert" className="rounded-xl border border-down/60 bg-down/10 px-4 py-3 text-sm text-down">
+          <p className="text-xs font-bold text-down">Warnung an den Trading-Desk bis {clock(intel.warning.until)} Uhr</p>
           <p className="mt-1">{intel.warning.text}</p>
-          <p className="mt-1 text-xs text-red-200/80">Solange kauft der Desk nichts Neues. Stop-Loss und Verkäufe laufen weiter. Intel kann den Desk nur bremsen, nie kaufen lassen.</p>
+          <p className="mt-1 text-xs text-down/80">Solange kauft der Desk nichts Neues. Stop-Loss und Verkäufe laufen weiter. Intel kann den Desk nur bremsen, nie kaufen lassen.</p>
         </div>
       )}
 
-      {error && <Notice tone="error">{error}</Notice>}
-      {intel?.error && !intel.running && <Notice tone="error">Letzter Versuch: {intel.error}</Notice>}
+      {error && <Notice meldung tone="error">{error}</Notice>}
+      {zuWenig && !intel?.running && <Notice>{zuWenig}</Notice>}
+      {intel?.error && !intel.running && <Notice tone="error">Letzter Versuch: {alsSatz(intel.error)}</Notice>}
       {intel?.running && <Running running={intel.running} now={now} />}
 
       {intel?.configured && report && (
         <Panel glow={!intel.running}>
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px]">
-            <span className={`rounded-full border px-2 py-0.5 font-bold uppercase tracking-widest ${MOOD_TONE[report.mood]}`}>Lage: {MOOD_LABEL[report.mood]}</span>
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+            <span className={`rounded-full border px-2 py-0.5 font-bold ${MOOD_TONE[report.mood]}`}>Lage: {MOOD_LABEL[report.mood]}</span>
             <span className="text-quiet">
-              Stand {when(report.at, now)} · {usd(report.costUsd)}
+              Stand {when(report.at, now)}, {usd(report.costUsd)}
             </span>
             {intel.nextAt && <span className="ml-auto text-quiet">nächstes Lagebild {when(intel.nextAt, now)}</span>}
           </div>
-          <p className="text-base leading-relaxed text-sky-50">{report.summary}</p>
+          <p className="text-base leading-relaxed text-schiefer">{report.summary}</p>
           <Items items={report.items} />
         </Panel>
       )}
@@ -107,6 +114,7 @@ export function IntelView() {
 
       {intel?.configured && <Search intel={intel} canRun={canRun} onSearch={refresh} now={now} />}
       {intel?.configured && <Topics intel={intel} />}
+      <Edelmetalle />
     </main>
   );
 }
@@ -114,9 +122,9 @@ export function IntelView() {
 function Running({ running, now }: { running: NonNullable<IntelSnapshot["running"]>; now: Date | null }) {
   const seconds = now ? Math.max(0, Math.round((now.getTime() - Date.parse(running.since)) / 1000)) : 0;
   return (
-    <Panel className="border-sky-300/50">
-      <p className="flex items-center gap-2 text-sm text-sky-100">
-        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sky-300 shadow-[0_0_10px_#7dd3fc]" />
+    <Panel className="border-schiefer/50">
+      <p className="flex items-center gap-2 text-sm text-schiefer">
+        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-gletscher" />
         {running.focus ? `Grok sucht Nachrichten und Beiträge auf X zu ${running.focus}` : "Grok liest die Nachrichten und X"} … {seconds} s
       </p>
       <p className="mt-1 text-xs text-quiet">Das dauert meist eine halbe bis eine Minute. JARVIS sagt Bescheid, wenn es fertig ist.</p>
@@ -133,23 +141,23 @@ const EFFECT: Record<IntelItem["effect"], { label: string; tone: string }> = {
 function Items({ items }: { items: IntelItem[] }) {
   if (items.length === 0) return <p className="mt-3 text-sm text-quiet">Keine Meldungen, die wirklich zählen.</p>;
   return (
-    <ol className="mt-4 divide-y divide-sky-300/10">
+    <ol className="mt-4 divide-y divide-schiefer/10">
       {items.map((item, i) => (
         <li key={`${item.title}-${i}`} className="flex gap-3 py-3">
-          <span className="mt-1 h-10 w-1 shrink-0 overflow-hidden rounded bg-sky-300/10" title={`Wichtigkeit ${Math.round(item.importance * 100)} %`}>
-            <span className="block w-full rounded bg-sky-300" style={{ height: `${Math.max(10, item.importance * 100)}%` }} />
+          <span className="mt-1 h-10 w-1 shrink-0 overflow-hidden rounded bg-gletscher/10" title={`Wichtigkeit ${Math.round(item.importance * 100)} %`}>
+            <span className="block w-full rounded bg-gletscher" style={{ height: `${Math.max(10, item.importance * 100)}%` }} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-widest">
-              <span className="rounded border border-sky-300/30 px-1.5 py-0.5 text-sky-200">{item.topic}</span>
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+              <span className="rounded border border-schiefer/30 px-1.5 py-0.5 text-stein">{item.topic}</span>
               <span className={EFFECT[item.effect].tone}>{EFFECT[item.effect].label}</span>
-              {item.fromX && <span className="rounded bg-sky-400/15 px-1.5 py-0.5 text-sky-100">auf X</span>}
+              {item.fromX && <span className="rounded bg-gletscher/15 px-1.5 py-0.5 text-schiefer">auf X</span>}
             </p>
-            <p className="mt-1 text-sm font-bold text-sky-50">{item.title}</p>
-            <p className="mt-0.5 text-sm text-sky-50/80">{item.summary}</p>
-            <p className="mt-1 text-[11px] text-quiet">
+            <p className="mt-1 text-sm font-bold text-schiefer">{item.title}</p>
+            <p className="mt-0.5 text-sm text-schiefer/80">{item.summary}</p>
+            <p className="mt-1 text-xs text-quiet">
               {item.url ? (
-                <a href={item.url} target="_blank" rel="noreferrer noopener" className="underline decoration-sky-300/40 hover:text-sky-200">
+                <a href={item.url} target="_blank" rel="noreferrer noopener" className="underline decoration-gletscher/40 hover:text-stein">
                   {item.source}
                 </a>
               ) : (
@@ -174,7 +182,7 @@ function Search({ intel, canRun, onSearch, now }: { intel: IntelSnapshot; canRun
   const search = intel.search;
   return (
     <Panel>
-      <h2 className="text-sm font-bold uppercase tracking-[0.25em] text-sky-100">Gezielt suchen</h2>
+      <h2 className="text-sm font-bold text-schiefer">Gezielt suchen</h2>
       <p className="mt-1 text-xs text-quiet">Grok sucht im Web und auf X nur zu diesem Thema. Das kostet wie ein Lagebild etwa {usd(TYPICAL_INTEL_COST_USD)}.</p>
       <form onSubmit={submit} className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="z. B. Tesla, Bitcoin-ETF, Deggendorf" aria-label="Thema" className={inputClass} maxLength={40} />
@@ -183,11 +191,11 @@ function Search({ intel, canRun, onSearch, now }: { intel: IntelSnapshot; canRun
         </Button>
       </form>
       {search && (
-        <div className="mt-4 border-t border-sky-300/15 pt-3">
-          <p className="text-[11px] text-quiet">
-            Zuletzt gesucht: <span className="font-bold text-sky-200">{search.focus}</span> · {when(search.at, now)} · {usd(search.costUsd)}
+        <div className="mt-4 border-t border-schiefer/15 pt-3">
+          <p className="text-xs text-quiet">
+            Zuletzt gesucht: <span className="font-bold text-stein">{search.focus}</span>, {when(search.at, now)}, {usd(search.costUsd)}
           </p>
-          <p className="mt-1 text-sm text-sky-50">{search.summary}</p>
+          <p className="mt-1 text-sm text-schiefer">{search.summary}</p>
           <Items items={search.items} />
         </div>
       )}
@@ -213,30 +221,32 @@ function Topics({ intel }: { intel: IntelSnapshot }) {
 
   const add = (e: FormEvent) => {
     e.preventDefault();
-    const t = draft.trim();
-    if (!t) return;
+    if (!draft.trim()) return;
+    // Erst prüfen, dann speichern: Ein Thema, das es schon gibt, wird nicht als „kommt ins nächste Lagebild“ bestätigt.
+    const dazu = themaDazu(own, draft);
+    if ("fehler" in dazu) return setMessage({ tone: "error", text: dazu.fehler });
     setDraft("");
-    void save({ topics: [...own, t] }, `„${t}“ kommt ins nächste Lagebild.`);
+    void save({ topics: dazu.topics }, `„${dazu.name}“ kommt ins nächste Lagebild.`);
   };
 
   return (
     <Panel>
-      <h2 className="text-sm font-bold uppercase tracking-[0.25em] text-sky-100">Deine Themen</h2>
+      <h2 className="text-sm font-bold text-schiefer">Deine Themen</h2>
       <p className="mt-1 text-xs text-quiet">Die vier festen Themen liest Intel immer. Bis zu {MAX_TOPICS} eigene kommen dazu, etwa eine Firma, eine Aktie oder deine Stadt.</p>
       <ul className="mt-3 flex flex-wrap gap-1.5 text-xs">
         {BASE_TOPICS.map((t) => (
-          <li key={t} className="rounded-full border border-sky-300/20 px-2.5 py-1 text-sky-200/70">
+          <li key={t} className="rounded-full border border-schiefer/20 px-2.5 py-1 text-stein/70">
             {t}
           </li>
         ))}
         {own.map((t) => (
-          <li key={t} className="flex items-center gap-1 rounded-full border border-sky-300/50 bg-sky-400/10 py-1 pl-2.5 pr-1 text-sky-50">
+          <li key={t} className="flex items-center gap-1 rounded-full border border-schiefer/50 bg-gletscher/10 py-1 pl-2.5 pr-1 text-schiefer">
             {t}
             <button
               type="button"
               onClick={() => save({ topics: own.filter((o) => o !== t) }, `„${t}“ entfernt.`)}
               aria-label={`${t} entfernen`}
-              className="grid h-5 w-5 place-items-center rounded-full text-sky-200 hover:bg-sky-400/20"
+              className="grid h-5 w-5 place-items-center rounded-full text-stein hover:bg-gletscher/20"
             >
               ×
             </button>
@@ -251,9 +261,9 @@ function Topics({ intel }: { intel: IntelSnapshot }) {
           </Button>
         </form>
       )}
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-sky-300/15 pt-3 text-sm">
-        <label className="flex items-center gap-2 text-sky-50/85">
-          <input type="checkbox" checked={intel.auto} onChange={(e) => save({ auto: e.target.checked }, e.target.checked ? "Intel liest wieder von selbst." : "Intel liest nur noch auf Zuruf.")} className="h-4 w-4 accent-sky-400" />
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-schiefer/15 pt-3 text-sm">
+        <label className="flex items-center gap-2 text-schiefer/85">
+          <input type="checkbox" checked={intel.auto} onChange={(e) => save({ auto: e.target.checked }, e.target.checked ? "Intel liest wieder von selbst." : "Intel liest nur noch auf Zuruf.")} className="h-4 w-4 accent-gletscher" />
           Von selbst lesen: morgens ab 6 Uhr und acht Stunden später
         </label>
         <BudgetForm key={intel.budgetUsd} budgetUsd={intel.budgetUsd} onSave={(budgetUsd) => save({ budgetUsd }, "Tagesbudget gespeichert.")} />
@@ -264,7 +274,7 @@ function Topics({ intel }: { intel: IntelSnapshot }) {
       </p>
       {message && (
         <div className="mt-2">
-          <Notice tone={message.tone}>{message.text}</Notice>
+          <Notice meldung tone={message.tone}>{message.text}</Notice>
         </div>
       )}
     </Panel>
