@@ -1,0 +1,9 @@
+# Geprüfte Fehlalarme des Secret-Scans (gitleaks), von Benedikt am 17. November 2026 freigegeben. Jede Zeile ist
+# genau ein Fund in genau einem Commit; alles andere bleibt im Scan. Neue Einträge nur nach Prüfung von Hand, mit
+# Grund, und nur mit Benedikts Freigabe.
+#
+# Schritt H1 (Commit e14da17): ausgedachte Platzhalter für den ElevenLabs-Schlüssel in Tests
+# („sk_abcdefghijklmnopqrstuvwxyz1234“, „sk_falsch_aber_lang_genug_…“, „sk_alter_schluessel_eines_anderen_kontos_…“).
+e14da17b6191b9f01dea717dca8ed2519fea46cb:test/regeln/stimme.test.ts:generic-api-key:24
+e14da17b6191b9f01dea717dca8ed2519fea46cb:test/module/stimme.test.ts:generic-api-key:72
+e14da17b6191b9f01dea717dca8ed2519fea46cb:test/module/stimme.test.ts:generic-api-key:123
